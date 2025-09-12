@@ -1,0 +1,67 @@
+{
+  "name": "medcall-ai",
+  "version": "1.0.0",
+  "description": "AI-powered real-time transcription and analysis for medical video calls",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:gateway": "npm run dev --workspace=apps/gateway",
+    "build:frontend": "npm run build --workspace=apps/frontend",
+    "build:gateway": "npm run build --workspace=apps/gateway",
+    "setup": "npm install && npm run setup --workspaces --if-present",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "db:migrate": "cd database && npm run migrate",
+    "db:seed": "cd database && npm run seed"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "concurrently": "^8.2.0",
+    "eslint": "^8.50.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^14.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "medical",
+    "transcription",
+    "ai",
+    "webrtc",
+    "real-time",
+    "healthcare"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/medcall-ai.git"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2"
+  }
+}
