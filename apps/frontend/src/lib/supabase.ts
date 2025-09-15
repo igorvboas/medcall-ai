@@ -1,18 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 // Configuração do Supabase usando variáveis NEXT_PUBLIC_ para client-side
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug das variáveis de ambiente
-/**
-console.log('DEBUG ENV VARS:', {
-  SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***defined***' : undefined,
-  supabaseUrl,
-  supabaseAnonKey: supabaseAnonKey ? '***defined***' : undefined
-});
- */
 // Função para verificar se as variáveis estão configuradas
 function getSupabaseConfigStatus() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,11 +14,9 @@ function getSupabaseConfigStatus() {
 // Verificar se as variáveis estão configuradas
 const isSupabaseConfigured = getSupabaseConfigStatus();
 
-console.log('Supabase configurado:', isSupabaseConfigured);
 
 // Aguardar que as variáveis sejam carregadas antes de criar o cliente
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Variáveis de ambiente do Supabase não encontradas. Usando valores de fallback.');
 }
 
 // Função para aguardar carregamento das variáveis de ambiente
@@ -49,25 +38,49 @@ export function waitForSupabaseConfig(): Promise<boolean> {
   });
 }
 
-export const supabase = createClient(
+// Cliente Supabase para browser com configuração SSR correta
+export const supabase = createBrowserClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-    db: {
-      schema: 'public',
-    },
-  }
+  supabaseAnonKey || 'placeholder-key'
 );
+
+// Função para verificar se o usuário está autenticado
+export async function isAuthenticated(): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return !!session;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Função para obter o usuário atual
+export async function getCurrentUser() {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Função para verificar estado da sessão no client-side
+export async function getClientSession() {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    
+    return { session, error };
+  } catch (error) {
+    return { session: null, error };
+  }
+}
 
 // Função para buscar pacientes do médico logado
 export async function getPatients() {
   // Verificar configuração dinamicamente
   const isConfigured = getSupabaseConfigStatus();
-  //console.log('🔍 isConfigured (dinâmico):', isConfigured);
   
   // Se o Supabase não estiver configurado, retornar pacientes mock
   if (!isConfigured) {
@@ -79,11 +92,36 @@ export async function getPatients() {
     ];
   }
 
-  
   try {
+    // ✅ CORREÇÃO: Usar a mesma lógica da API /api/patients
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('❌ Usuário não autenticado');
+      return [];
+    }
+
+    console.log('🔍 Buscando pacientes para médico:', session.user.id);
+
+    // ✅ Buscar médico na tabela medicos usando a FK do auth.users
+    const { data: medico, error: medicoError } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('user_auth', session.user.id)
+      .single();
+    
+    if (medicoError || !medico) {
+      console.error('❌ Médico não encontrado:', medicoError);
+      return [];
+    }
+
+    console.log('✅ Médico encontrado:', medico.id);
+
     const { data, error } = await supabase
       .from('patients')
-      .select('*');
+      .select('*')
+      .eq('doctor_id', medico.id) // ✅ Usar medicos.id, não auth.users.id
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Erro ao buscar pacientes:', error);
@@ -104,42 +142,29 @@ export async function createConsultation(consultationData: {
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
   patient_name: string;
 }) {
-  // Se o Supabase não estiver configurado, simular criação da consulta
-  if (!isSupabaseConfigured) {
-    console.warn('Supabase não configurado, simulando criação de consulta');
-    const mockConsultation = {
-      id: `mock-${Date.now()}`,
-      ...consultationData,
-      status: 'CREATED',
-      created_at: new Date().toISOString(),
-    };
-    
-    // Simular delay da API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return mockConsultation;
-  }
-
   try {
-    const { data, error } = await supabase
-      .from('consultations')
-      .insert([
-        {
-          ...consultationData,
-          status: 'CREATED',
-        },
-      ])
-      .select()
-      .single();
+    console.log('📝 Criando consulta via API...', consultationData);
+    
+    const response = await fetch('/api/consultations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(consultationData),
+    });
 
-    if (error) {
-      console.error('Erro ao criar consulta:', error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ Erro na API de consultas:', errorData);
+      throw new Error(errorData.error || 'Erro ao criar consulta');
     }
 
-    return data;
+    const consultation = await response.json();
+    console.log('✅ Consulta criada com sucesso:', consultation.id);
+    return consultation;
+    
   } catch (error) {
-    console.error('Erro na criação da consulta:', error);
+    console.error('💥 Erro na criação da consulta:', error);
     throw error;
   }
 }

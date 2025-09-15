@@ -23,27 +23,37 @@ body {
 :root {
   /* Light Mode */
   --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F8F8;
   --text-primary: #333333;
   --text-secondary: #7A7A7A;
+  --text-tertiary: #999999;
+  --primary-color: #A6CE39;
+  --primary-hover: #95B832;
   --accent-color: #A6CE39;
   --logo-color: #AAAAAA;
   --border-color: #E5E5E5;
   --card-bg: #FFFFFF;
   --hover-bg: #F5F5F5;
   --input-bg: #F8F8F8;
+  --error-color: #EF4444;
 }
 
 .dark {
   /* Dark Mode */
   --bg-primary: #0A0A0A;
+  --bg-secondary: #1A1A1A;
   --text-primary: #FFFFFF;
   --text-secondary: #CCCCCC;
+  --text-tertiary: #999999;
+  --primary-color: #A6CE39;
+  --primary-hover: #95B832;
   --accent-color: #A6CE39;
   --logo-color: #FFFFFF;
   --border-color: #333333;
   --card-bg: #1A1A1A;
   --hover-bg: #2A2A2A;
   --input-bg: #1A1A1A;
+  --error-color: #EF4444;
 }
 
 /* Layout Styles */
@@ -452,6 +462,30 @@ body {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(166, 206, 57, 0.1);
   background: var(--bg-primary);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease-in-out;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(166, 206, 57, 0.1);
+  background: var(--bg-primary);
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--hover-bg);
 }
 
 .radio-group {
@@ -1243,4 +1277,47 @@ body {
   min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
+}
+
+/* User Dropdown Styles */
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  min-width: 200px;
+  z-index: 50;
+}
+
+.user-info {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-email {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.logout-button:hover {
+  background: var(--hover-bg);
 }

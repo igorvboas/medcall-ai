@@ -20,7 +20,7 @@ const menuItems = [
   {
     icon: Home,
     label: 'Home',
-    href: '/',
+    href: '/dashboard',
   },
   {
     icon: UserPlus,

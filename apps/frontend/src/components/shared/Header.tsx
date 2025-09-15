@@ -1,12 +1,17 @@
 'use client';
 
-import { Search, Bell, User, Moon, Sun } from 'lucide-react';
+import { Search, Bell, User, Moon, Sun, LogOut } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Aguarda a hidratação para evitar erro de mismatch
   useEffect(() => {
@@ -18,6 +23,12 @@ export function Header() {
     if (mounted) {
       setTheme(theme === 'dark' ? 'light' : 'dark');
     }
+  };
+
+  // Função para fazer logout
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/auth/signin');
   };
 
 
@@ -67,12 +78,32 @@ export function Header() {
 
           {/* User Menu */}
           <div className="user-menu">
-            <button className="user-button">
+            <button 
+              className="user-button"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+            >
               <div className="user-avatar">
                 <User className="theme-icon" />
               </div>
-              <span className="user-name">Light</span>
+              <span className="user-name">
+                {user?.email?.split('@')[0] || 'Usuário'}
+              </span>
             </button>
+            
+            {showUserMenu && (
+              <div className="user-dropdown">
+                <div className="user-info">
+                  <p className="user-email">{user?.email}</p>
+                </div>
+                <button 
+                  className="logout-button"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

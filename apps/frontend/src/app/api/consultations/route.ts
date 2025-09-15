@@ -1,0 +1,189 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedSession } from '@/lib/supabase-server';
+
+// GET /api/consultations - Listar consultas do médico logado
+export async function GET(request: NextRequest) {
+  try {
+    console.log('=== GET /api/consultations ===');
+    
+    const authResult = await getAuthenticatedSession();
+    
+    if (!authResult) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    
+    const { supabase, session } = authResult;
+    const doctorAuthId = session.user.id;
+
+    // Buscar médico na tabela medicos usando a FK do auth.users
+    const { data: medico, error: medicoError } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('user_auth', doctorAuthId)
+      .single();
+    
+    if (medicoError || !medico) {
+      console.error('❌ Médico não encontrado:', medicoError);
+      return NextResponse.json(
+        { error: 'Médico não encontrado no sistema' },
+        { status: 404 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search');
+    const status = searchParams.get('status') as 'CREATED' | 'RECORDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR' | 'CANCELLED' | null;
+    const consultationType = searchParams.get('type') as 'PRESENCIAL' | 'TELEMEDICINA' | null;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    let query = supabase
+      .from('consultations')
+      .select(`
+        *,
+        patients:patient_id (
+          id,
+          name,
+          email,
+          phone
+        )
+      `, { count: 'exact' })
+      .eq('doctor_id', medico.id)
+      .order('created_at', { ascending: false });
+
+    // Aplicar filtros
+    if (search) {
+      query = query.or(`patient_name.ilike.%${search}%,patient_context.ilike.%${search}%,notes.ilike.%${search}%`);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (consultationType) {
+      query = query.eq('consultation_type', consultationType);
+    }
+
+    // Paginação
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+
+    const { data: consultations, error, count } = await query;
+
+    if (error) {
+      console.error('Erro ao buscar consultas:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar consultas' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      consultations: consultations || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro no endpoint GET /api/consultations:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/consultations - Criar nova consulta
+export async function POST(request: NextRequest) {
+  try {
+    console.log('=== POST /api/consultations ===');
+    
+    const authResult = await getAuthenticatedSession();
+    
+    if (!authResult) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+    
+    const { supabase, session } = authResult;
+    const doctorAuthId = session.user.id;
+
+    // Buscar médico na tabela medicos usando a FK do auth.users
+    const { data: medico, error: medicoError } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('user_auth', doctorAuthId)
+      .single();
+    
+    if (medicoError || !medico) {
+      console.error('❌ Médico não encontrado:', medicoError);
+      return NextResponse.json(
+        { error: 'Médico não encontrado no sistema' },
+        { status: 404 }
+      );
+    }
+
+    // Parse do body da requisição
+    const body = await request.json();
+    const { patient_id, consultation_type, patient_name } = body;
+
+    // Validação dos dados obrigatórios
+    if (!patient_id || !consultation_type || !patient_name) {
+      return NextResponse.json(
+        { error: 'Dados obrigatórios: patient_id, consultation_type, patient_name' },
+        { status: 400 }
+      );
+    }
+
+    // Validar se o paciente pertence ao médico
+    const { data: patient, error: patientError } = await supabase
+      .from('patients')
+      .select('id, name')
+      .eq('id', patient_id)
+      .eq('doctor_id', medico.id)
+      .single();
+
+    if (patientError || !patient) {
+      console.error('❌ Paciente não encontrado ou não pertence ao médico:', patientError);
+      return NextResponse.json(
+        { error: 'Paciente não encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Criar a consulta
+    const { data: consultation, error: insertError } = await supabase
+      .from('consultations')
+      .insert([
+        {
+          patient_id,
+          consultation_type,
+          patient_name,
+          doctor_id: medico.id,
+          status: 'CREATED',
+        },
+      ])
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Erro ao criar consulta:', insertError);
+      return NextResponse.json(
+        { error: 'Erro ao criar consulta' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Consulta criada com sucesso:', consultation.id);
+    return NextResponse.json(consultation, { status: 201 });
+
+  } catch (error) {
+    console.error('Erro no endpoint POST /api/consultations:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
