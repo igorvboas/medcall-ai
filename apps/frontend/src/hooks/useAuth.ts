@@ -24,10 +24,10 @@ export function useAuth(): AuthState & AuthActions {
     // Obter sessão inicial
     const getInitialSession = async () => {
       // eslint-disable-next-line no-console
-      console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
+      //console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
       const { data: { session } } = await supabase.auth.getSession();
       // eslint-disable-next-line no-console
-      console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
+      //console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

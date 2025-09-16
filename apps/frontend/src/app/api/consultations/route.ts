@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const doctorAuthId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorAuthId = user.id;
 
     // Buscar médico na tabela medicos usando a FK do auth.users
     const { data: medico, error: medicoError } = await supabase
@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const doctorAuthId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorAuthId = user.id;
 
     // Buscar médico na tabela medicos usando a FK do auth.users
     const { data: medico, error: medicoError } = await supabase

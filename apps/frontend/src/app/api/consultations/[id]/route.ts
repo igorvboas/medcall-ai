@@ -15,8 +15,8 @@ export async function GET(
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const doctorAuthId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorAuthId = user.id;
     const consultationId = params.id;
 
     // Buscar médico na tabela medicos

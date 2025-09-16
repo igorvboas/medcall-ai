@@ -28,8 +28,8 @@ async function getAuthenticatedSupabase() {
     throw new Error('Não autorizado');
   }
   
-  const { supabase, session } = authResult;
-  const doctorAuthId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorAuthId = user.id;
 
   // ✅ Buscar médico na tabela medicos usando a FK do auth.users
   const { data: medico, error: medicoError } = await supabase

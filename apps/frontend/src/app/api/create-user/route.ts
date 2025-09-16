@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const userId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const userId = user.id;
     
     console.log('✅ Usuário autenticado:', {
       id: userId,

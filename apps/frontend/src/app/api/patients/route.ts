@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const doctorAuthId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorAuthId = user.id;
 
     // ✅ Buscar médico na tabela medicos usando a FK do auth.users
     const { data: medico, error: medicoError } = await supabase
@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const { supabase, session } = authResult;
-    const doctorId = session.user.id;
+    const { supabase, session, user } = authResult;
+    const doctorId = user.id;
     console.log('✅ Doctor ID:', doctorId);
     
     const body: CreatePatientData = await request.json();
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Erro geral:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor', details: error.message },
+      { error: 'Erro interno do servidor', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

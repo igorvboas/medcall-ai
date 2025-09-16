@@ -32,11 +32,15 @@ export function createSupabaseServerClient() {
 export async function getAuthenticatedSession() {
   const supabase = createSupabaseServerClient();
   
-  const { data: { session }, error } = await supabase.auth.getSession();
+  // Usar getUser() em vez de getSession() para maior segurança
+  const { data: { user }, error } = await supabase.auth.getUser();
   
-  if (error || !session) {
+  if (error || !user) {
     return null;
   }
   
-  return { supabase, session };
+  // Obter a sessão após verificar o usuário
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  return { supabase, session, user };
 }
