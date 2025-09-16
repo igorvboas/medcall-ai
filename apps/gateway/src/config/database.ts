@@ -225,6 +225,45 @@ export const db = {
     
     return true;
   },
+
+  // Consultations helpers
+  async updateConsultation(id: string, data: any): Promise<boolean> {
+    const { error } = await supabase
+      .from('consultations')
+      .update({ ...data, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      console.error('Erro ao atualizar consulta:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async createTranscription(data: any): Promise<any | null> {
+    const { data: row, error } = await supabase
+      .from('transcriptions')
+      .insert(data)
+      .select()
+      .single();
+    if (error) {
+      console.error('Erro ao criar transcrição:', error);
+      return null;
+    }
+    return row;
+  },
+
+  async createDocument(data: any): Promise<any | null> {
+    const { data: row, error } = await supabase
+      .from('documents')
+      .insert(data)
+      .select()
+      .single();
+    if (error) {
+      console.error('Erro ao criar documento:', error);
+      return null;
+    }
+    return row;
+  },
 };
 
 export default supabase;

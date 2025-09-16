@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler, ValidationError } from '@/middleware/errorHandler';
 import { db } from '@/config/database';
+import { generateSimpleProtocol } from '@/services/protocolService';
 import { generateLiveKitToken } from '@/config/providers';
 
 const router = Router();
@@ -189,6 +190,9 @@ router.patch('/:sessionId/end', asyncHandler(async (req, res) => {
   // Finalizar sessão
   const updated = await db.updateSession(sessionId, {
     ended_at: new Date().toISOString(),
+    // opcionalmente ajustamos status
+    // @ts-ignore
+    status: 'ended',
   });
 
   if (!updated) {
@@ -199,6 +203,105 @@ router.patch('/:sessionId/end', asyncHandler(async (req, res) => {
     message: 'Sessão finalizada com sucesso',
     sessionId,
     endedAt: new Date().toISOString(),
+  });
+}));
+
+// Finalizar sessão e consolidar dados
+router.post('/:sessionId/complete', asyncHandler(async (req, res) => {
+  const { sessionId } = req.params;
+
+  if (!sessionId) {
+    throw new ValidationError('ID da sessão é obrigatório');
+  }
+
+  const session = await db.getSession(sessionId);
+  if (!session) {
+    return res.status(404).json({
+      error: { code: 'SESSION_NOT_FOUND', message: 'Sessão não encontrada' },
+    });
+  }
+
+  // Definir ended_at caso ainda não tenha sido setado
+  const endedAt = session.ended_at || new Date().toISOString();
+  if (!session.ended_at) {
+    await db.updateSession(sessionId, { ended_at: endedAt, /* @ts-ignore */ status: 'ended' });
+  }
+
+  // Buscar dados da sessão
+  const [utterances, suggestions] = await Promise.all([
+    db.getSessionUtterances(sessionId),
+    db.getSessionSuggestions(sessionId),
+  ]);
+
+  // Consolidar transcrição
+  const transcriptText = utterances
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map(u => `${u.speaker === 'doctor' ? 'Médico' : u.speaker === 'patient' ? 'Paciente' : 'Sistema'}: ${u.text}`)
+    .join('\n');
+
+  const avgConfidence =
+    utterances.length > 0
+      ? (utterances.reduce((sum, u) => sum + (u.confidence || 0), 0) / utterances.length)
+      : null;
+
+  const startedAt = new Date(session.started_at).getTime();
+  const finishedAt = new Date(endedAt).getTime();
+  const durationSeconds = Math.max(0, Math.round((finishedAt - startedAt) / 1000));
+
+  // Sugestões usadas
+  const usedSuggestions = suggestions.filter(s => s.used);
+
+  // Gerar protocolo simples
+  const protocol = generateSimpleProtocol({
+    transcriptText,
+    utterances,
+    suggestions,
+    usedSuggestions,
+    participants: session.participants,
+  });
+
+  // Persistir dados agrupados
+  // 1) Atualizar consulta, se existir
+  if (session.consultation_id) {
+    await db.updateConsultation(session.consultation_id, {
+      status: 'COMPLETED',
+      duration: durationSeconds,
+      notes: protocol.summary,
+    });
+
+    // 2) Criar transcrição consolidada
+    await db.createTranscription({
+      consultation_id: session.consultation_id,
+      raw_text: transcriptText,
+      summary: protocol.summary,
+      key_points: protocol.key_points,
+      diagnosis: protocol.diagnosis || null,
+      treatment: protocol.treatment || null,
+      observations: protocol.observations || null,
+      confidence: avgConfidence ?? undefined,
+      language: 'pt-BR',
+      model_used: 'live-realtime+fallback',
+    });
+
+    // 3) Criar documento de protocolo
+    await db.createDocument({
+      consultation_id: session.consultation_id,
+      title: `Protocolo de Atendimento - ${new Date(endedAt).toLocaleString('pt-BR')}`,
+      content: protocol.full_text,
+      type: 'REPORT',
+      format: 'text',
+    });
+  }
+
+  // Responder com resumo
+  return res.json({
+    message: 'Sessão finalizada e consolidada com sucesso',
+    sessionId,
+    durationSeconds,
+    suggestions: {
+      total: suggestions.length,
+      used: usedSuggestions.length,
+    },
   });
 }));
 

@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, MicOff, Square, Play, Volume2, FileText, Brain, AlertCircle, ClipboardList, User, Calendar } from 'lucide-react';
 import { useAudioForker } from '@/hooks/useAudioForker';
+import { CompletionModal } from './CompletionModal';
 import io, { Socket } from 'socket.io-client';
+import { useRouter } from 'next/navigation';
 
 interface PresentialCallRoomProps {
   sessionId: string;
@@ -42,6 +44,7 @@ export function PresentialCallRoom({
   patientMicId,
   patientName
 }: PresentialCallRoomProps) {
+  const router = useRouter();
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>({
@@ -51,6 +54,10 @@ export function PresentialCallRoom({
   });
   const [socket, setSocket] = useState<Socket | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completionSummary, setCompletionSummary] = useState<{ durationSeconds: number; suggestions: { total: number; used: number } } | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const transcriptionScrollRef = useRef<HTMLDivElement>(null);
   
   // Estados para dados da anamnese
@@ -313,13 +320,46 @@ export function PresentialCallRoom({
     audioForker.stopRecording();
     setSessionStartTime(null);
 
-    // Notificar gateway sobre fim da gravação
+    // Notificar gateway sobre fim da gravação (WebSocket)
     if (socket && connectionState.isConnected) {
       socket.emit('presential:stop_recording', {
         sessionId,
         timestamp: new Date().toISOString()
       });
     }
+
+    // Chamar endpoint HTTP para finalizar e consolidar a sessão
+    const finalize = async () => {
+      try {
+        setIsFinalizing(true);
+        const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || process.env.NEXT_PUBLIC_GATEWAY_URL || '';
+        const baseUrl = gatewayUrl.replace(/^ws(s)?:\/\//, (_m) => (gatewayUrl.startsWith('wss') ? 'https://' : 'http://'));
+        const url = `${baseUrl.replace(/\/$/, '')}/api/sessions/${sessionId}/complete`;
+        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        if (!resp.ok) {
+          const errText = await resp.text();
+          throw new Error(`Falha ao finalizar sessão: ${resp.status} ${errText}`);
+        }
+        const data = await resp.json();
+        setCompletionSummary({ durationSeconds: data.durationSeconds, suggestions: data.suggestions });
+        setIsCompleted(true);
+        setShowCompletionModal(true);
+
+        // Encerrar socket após finalizar
+        if (socket) {
+          socket.emit('session:leave', { sessionId, userId: 'doctor-current' });
+          socket.disconnect();
+          setSocket(null);
+        }
+      } catch (e) {
+        console.error(e);
+        setConnectionState(prev => ({ ...prev, error: e instanceof Error ? e.message : 'Erro ao finalizar sessão' }));
+      } finally {
+        setIsFinalizing(false);
+      }
+    };
+
+    finalize();
   }, [audioForker, socket, connectionState.isConnected, sessionId]);
 
   // Função para marcar sugestão como usada
@@ -360,6 +400,12 @@ export function PresentialCallRoom({
     }
   }, [socket, connectionState.isConnected, sessionId]);
 
+  // Função para redirecionar para consultas
+  const handleRedirectToConsultations = useCallback(() => {
+    // Redirecionar para /consultas com o ID da consulta como query param
+    router.push(`/consultas?consultation=${consultationId}&modal=true`);
+  }, [router, consultationId]);
+
   // Calcular duração da sessão
   const sessionDuration = sessionStartTime 
     ? Math.floor((Date.now() - sessionStartTime.getTime()) / 1000)
@@ -380,6 +426,11 @@ export function PresentialCallRoom({
           <p>Paciente: <strong>{patientName}</strong></p>
           {sessionStartTime && (
             <p>Duração: <strong>{formatDuration(sessionDuration)}</strong></p>
+          )}
+          {isCompleted && completionSummary && (
+            <p>
+              <strong>Finalizada</strong> • Duração: {formatDuration(completionSummary.durationSeconds)} • Sugestões usadas: {completionSummary.suggestions.used}/{completionSummary.suggestions.total}
+            </p>
           )}
         </div>
 
@@ -416,9 +467,10 @@ export function PresentialCallRoom({
               <button
                 onClick={handleStopSession}
                 className="btn btn-danger btn-large"
+                disabled={isFinalizing}
               >
                 <Square className="w-5 h-5" />
-                Parar Gravação
+                {isFinalizing ? 'Finalizando…' : 'Parar Gravação'}
               </button>
             )}
           </div>
@@ -437,6 +489,19 @@ export function PresentialCallRoom({
         <div className="connection-status">
           <div className="loading-spinner" />
           <span>Conectando ao servidor...</span>
+        </div>
+      )}
+
+      {isFinalizing && (
+        <div className="connection-status">
+          <div className="loading-spinner" />
+          <span>Finalizando consulta…</span>
+        </div>
+      )}
+
+      {isCompleted && (
+        <div className="connection-status success">
+          <span>✅ Consulta finalizada e salva com sucesso.</span>
         </div>
       )}
 
@@ -642,6 +707,24 @@ export function PresentialCallRoom({
           </div>
         </div>
       </div>
+
+      {/* Modal de Finalização */}
+      {showCompletionModal && completionSummary && (
+        <CompletionModal
+          isOpen={showCompletionModal}
+          onClose={() => setShowCompletionModal(false)}
+          consultationData={{
+            sessionId,
+            consultationId,
+            patientName,
+            durationSeconds: completionSummary.durationSeconds,
+            suggestions: completionSummary.suggestions,
+            utterances,
+            usedSuggestions: suggestions.filter(s => s.used)
+          }}
+          onRedirectToConsultations={handleRedirectToConsultations}
+        />
+      )}
     </div>
   );
 }
