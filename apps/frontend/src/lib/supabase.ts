@@ -4,6 +4,20 @@ import { createBrowserClient } from '@supabase/ssr';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Debug: log once on the client to verify env injection
+if (typeof window !== 'undefined') {
+  // Only log masked values to avoid exposing secrets in full
+  const maskedKey = (supabaseAnonKey || '').slice(0, 6) + '...' + (supabaseAnonKey || '').slice(-4);
+  // eslint-disable-next-line no-console
+  console.log('[DEBUG] supabase.ts env', {
+    url: supabaseUrl,
+    anonKey: maskedKey,
+    hasUrl: Boolean(supabaseUrl),
+    hasAnonKey: Boolean(supabaseAnonKey),
+    allEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE')),
+  });
+}
+
 // Função para verificar se as variáveis estão configuradas
 function getSupabaseConfigStatus() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,6 +57,22 @@ export const supabase = createBrowserClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );
+
+// Export for debugging in other modules
+export const supabaseConfigDebug = {
+  url: supabaseUrl || 'undefined',
+  hasAnonKey: Boolean(supabaseAnonKey),
+};
+
+// Validação crítica - se não temos as envs, não devemos usar o cliente
+if (typeof window !== 'undefined' && (!supabaseUrl || !supabaseAnonKey)) {
+  // eslint-disable-next-line no-console
+  console.error('[DEBUG] CRITICAL: Supabase envs missing!', {
+    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey ? 'present' : 'missing',
+    willUsePlaceholder: true,
+  });
+}
 
 // Função para verificar se o usuário está autenticado
 export async function isAuthenticated(): Promise<boolean> {

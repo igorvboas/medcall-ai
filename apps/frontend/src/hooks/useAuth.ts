@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseConfigDebug } from '@/lib/supabase';
 
 export interface AuthState {
   user: User | null;
@@ -23,7 +23,11 @@ export function useAuth(): AuthState & AuthActions {
   useEffect(() => {
     // Obter sessão inicial
     const getInitialSession = async () => {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
       const { data: { session } } = await supabase.auth.getSession();
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -57,18 +61,26 @@ export function useAuth(): AuthState & AuthActions {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.signIn request', { email, url: supabaseConfigDebug.url });
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.signIn response', { error });
       return { error };
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DEBUG] useAuth.signIn catch', error);
       return { error: error as AuthError };
     }
   };
 
   const signOut = async () => {
     try {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.signOut');
       const { error } = await supabase.auth.signOut();
       return { error };
     } catch (error) {

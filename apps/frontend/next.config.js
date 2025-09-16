@@ -1,10 +1,36 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+const fs = require('fs');
+
+// Carregar .env.local explicitamente
+const envPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+  console.log('[DEBUG] .env.local carregado:', {
+    SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
+    SUPABASE_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
+  });
+} else {
+  console.error('[ERROR] .env.local não encontrado em:', envPath);
+}
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: {
-    appDir: true,
+  // experimental.appDir não é mais necessário nas versões atuais
+  // Garantir que as variáveis NEXT_PUBLIC_ sejam expostas ao cliente
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_GATEWAY_URL: process.env.NEXT_PUBLIC_GATEWAY_URL,
+    NEXT_PUBLIC_GATEWAY_HTTP_URL: process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL,
   },
+  
+  // Permitir acesso de domínios de túnel durante desenvolvimento
+  // Evita o aviso: "Cross origin request detected ... configure allowedDevOrigins"
+  //allowedDevOrigins: [
+  //  'https://*.loca.lt',
+  //],
   
   // Variáveis NEXT_PUBLIC_ são automaticamente expostas ao cliente
   
@@ -121,3 +147,5 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
 };
+
+module.exports = nextConfig;
