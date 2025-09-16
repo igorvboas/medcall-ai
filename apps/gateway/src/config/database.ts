@@ -130,6 +130,11 @@ export const db = {
     return utterances || [];
   },
 
+  // Alias para compatibilidade com o código existente
+  async getSessionUtterances(sessionId: string): Promise<Utterance[]> {
+    return this.getUtterancesBySession(sessionId);
+  },
+
   async updateSession(id: string, data: Partial<CallSession>): Promise<boolean> {
     const { error } = await supabase
       .from('call_sessions')

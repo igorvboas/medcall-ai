@@ -284,6 +284,9 @@ function setupAudioProcessorListeners(sessionId: string, notifier: SessionNotifi
             // Emitir transcrição via WebSocket
             notifier.emitTranscriptionUpdate(sessionId, utterance);
             
+            // Trigger geração de sugestões após transcrição
+            triggerSuggestionGeneration(sessionId, utterance, notifier);
+            
             // Limpeza periódica do Set (manter últimos 1000 IDs)
             if (sentTranscriptionIds.size > 1000) {
               const idsArray = Array.from(sentTranscriptionIds);
@@ -335,4 +338,55 @@ function setupAudioProcessorListeners(sessionId: string, notifier: SessionNotifi
     onVoiceActivity,
     onSilence
   });
+}
+
+// Função para triggerar geração de sugestões
+async function triggerSuggestionGeneration(sessionId: string, utterance: any, notifier: any): Promise<void> {
+  try {
+    console.log(`🤖 Triggering suggestion generation for session ${sessionId} after utterance: "${utterance.text.substring(0, 50)}..."`);
+    
+    // Importar serviços necessários
+    const { suggestionService } = await import('@/services/suggestionService');
+    const { db } = await import('@/config/database');
+    
+    // Buscar informações da sessão
+    const session = await db.getSession(sessionId);
+    if (!session) {
+      console.log('⚠️ Sessão não encontrada para geração de sugestões');
+      return;
+    }
+
+    // Buscar utterances recentes da sessão
+    const utterances = await db.getSessionUtterances(sessionId);
+    
+    // Criar contexto para geração de sugestões
+    const context = {
+      sessionId,
+      patientName: 'Paciente', // TODO: Buscar nome real do paciente
+      sessionDuration: Math.floor((Date.now() - new Date(session.created_at).getTime()) / (1000 * 60)),
+      consultationType: session.session_type || 'presencial',
+      utterances: utterances.slice(-10), // Últimas 10 utterances
+      specialty: 'clinica_geral' // TODO: Determinar especialidade baseada no contexto
+    };
+
+    console.log(`📊 Context for suggestions: ${context.utterances.length} utterances, ${context.sessionDuration}min duration`);
+
+    // Gerar sugestões
+    const suggestions = await suggestionService.generateSuggestions(context);
+    
+    if (suggestions && suggestions.suggestions.length > 0) {
+      console.log(`🤖 ${suggestions.suggestions.length} sugestões geradas para sessão ${sessionId}`);
+      
+      // Emitir sugestões para a sessão usando o notifier passado
+      notifier.emitAISuggestions(sessionId, suggestions.suggestions);
+      notifier.emitContextUpdate(sessionId, suggestions.context_analysis);
+      
+      console.log(`📡 Sugestões enviadas via WebSocket para sessão ${sessionId}`);
+    } else {
+      console.log(`🤖 Nenhuma sugestão gerada para sessão ${sessionId}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao triggerar geração de sugestões:', error);
+  }
 }

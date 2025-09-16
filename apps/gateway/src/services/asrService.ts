@@ -2,6 +2,7 @@ import { ProcessedAudioChunk } from './audioProcessor';
 import { db } from '@/config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
+import { suggestionService } from './suggestionService';
 
 export interface TranscriptionResult {
   id: string;
@@ -276,6 +277,9 @@ class ASRService {
     try {
       await this.saveTranscription(transcriptionResult);
       console.log(`🎯 Transcrição baseada em análise real: [${audioChunk.channel}] "${transcribedText}" (${duration}ms, vol: ${intensity.toFixed(3)}, conf: ${Math.round(confidence * 100)}%)`);
+      
+      // Trigger geração de sugestões após salvar transcrição
+      await this.triggerSuggestionGeneration(transcriptionResult);
     } catch (error) {
       console.error('Erro ao salvar transcrição:', error);
     }
@@ -507,6 +511,85 @@ class ASRService {
   // Verificar se simulação está habilitada
   public isSimulationEnabled(): boolean {
     return this.enableSimulation;
+  }
+
+  /**
+   * Trigger geração de sugestões após nova transcrição
+   */
+  private async triggerSuggestionGeneration(transcription: TranscriptionResult): Promise<void> {
+    try {
+      console.log(`🤖 Triggering suggestion generation for session ${transcription.sessionId}`);
+      
+      // Buscar informações da sessão
+      const session = await db.getSession(transcription.sessionId);
+      if (!session) {
+        console.log('⚠️ Sessão não encontrada para geração de sugestões');
+        return;
+      }
+
+      // Buscar utterances recentes da sessão
+      const utterances = await db.getSessionUtterances(transcription.sessionId);
+      
+      // Criar contexto para geração de sugestões
+      const context = {
+        sessionId: transcription.sessionId,
+        patientName: 'Paciente', // TODO: Buscar nome real do paciente
+        sessionDuration: this.calculateSessionDuration(session.created_at),
+        consultationType: session.session_type || 'presencial',
+        utterances: utterances.slice(-10), // Últimas 10 utterances
+        specialty: 'clinica_geral' // TODO: Determinar especialidade baseada no contexto
+      };
+
+      console.log(`📊 Context for suggestions: ${context.utterances.length} utterances, ${context.sessionDuration}min duration`);
+
+      // Gerar sugestões de forma assíncrona (não bloquear transcrição)
+      setImmediate(async () => {
+        try {
+          const suggestions = await suggestionService.generateSuggestions(context);
+          if (suggestions && suggestions.suggestions.length > 0) {
+            console.log(`🤖 ${suggestions.suggestions.length} sugestões geradas para sessão ${transcription.sessionId}`);
+            
+            // Notificar via WebSocket se disponível
+            await this.notifyWebSocketSuggestions(transcription.sessionId, suggestions.suggestions);
+          } else {
+            console.log(`🤖 Nenhuma sugestão gerada para sessão ${transcription.sessionId}`);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao gerar sugestões:', error);
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no trigger de sugestões:', error);
+    }
+  }
+
+  /**
+   * Notifica sugestões via WebSocket
+   */
+  private async notifyWebSocketSuggestions(sessionId: string, suggestions: any[]): Promise<void> {
+    try {
+      // Tentar obter notifier do WebSocket
+      const { SessionNotifier } = await import('@/websocket/index');
+      
+      // Esta é uma implementação simplificada - em produção, você teria uma referência global ao notifier
+      console.log(`📡 WebSocket notification preparada para sessão ${sessionId}: ${suggestions.length} sugestões`);
+      
+      // TODO: Implementar notificação real via WebSocket
+      // Por enquanto, apenas log para debug
+      
+    } catch (error) {
+      console.log('📡 WebSocket notifier não disponível - sugestões salvas no banco');
+    }
+  }
+
+  /**
+   * Calcula duração da sessão em minutos
+   */
+  private calculateSessionDuration(startTime: string): number {
+    const start = new Date(startTime);
+    const now = new Date();
+    return Math.floor((now.getTime() - start.getTime()) / (1000 * 60));
   }
 }
 

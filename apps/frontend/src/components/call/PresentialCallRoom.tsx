@@ -167,9 +167,52 @@ export function PresentialCallRoom({
       });
 
       // Handlers para sugestões de IA
+      socketInstance.on('ai:suggestions', (data) => {
+        console.log('🤖 Frontend recebeu sugestões de IA:', data);
+        if (data.suggestions && Array.isArray(data.suggestions)) {
+          setSuggestions(prev => {
+            // Evitar duplicatas baseado no ID
+            const existingIds = new Set(prev.map(s => s.id));
+            const newSuggestions = data.suggestions.filter((s: any) => !existingIds.has(s.id));
+            return [...prev, ...newSuggestions];
+          });
+        }
+      });
+
       socketInstance.on('ai:suggestion', (data) => {
+        console.log('🤖 Frontend recebeu sugestão individual:', data);
         if (data.suggestion) {
-          setSuggestions(prev => [...prev, data.suggestion]);
+          setSuggestions(prev => {
+            // Evitar duplicatas
+            const exists = prev.some(s => s.id === data.suggestion.id);
+            if (!exists) {
+              return [...prev, data.suggestion];
+            }
+            return prev;
+          });
+        }
+      });
+
+      socketInstance.on('ai:context_update', (data) => {
+        console.log('🧠 Frontend recebeu atualização de contexto:', data);
+        // Aqui você pode atualizar informações de contexto se necessário
+      });
+
+      socketInstance.on('ai:suggestion:used', (data) => {
+        console.log('✅ Sugestão marcada como usada:', data);
+        setSuggestions(prev => 
+          prev.map(s => 
+            s.id === data.suggestionId 
+              ? { ...s, used: true, used_at: data.timestamp }
+              : s
+          )
+        );
+      });
+
+      socketInstance.on('suggestions:response', (data) => {
+        console.log('📋 Frontend recebeu sugestões existentes:', data);
+        if (data.suggestions && Array.isArray(data.suggestions)) {
+          setSuggestions(data.suggestions);
         }
       });
 
@@ -284,12 +327,37 @@ export function PresentialCallRoom({
     if (socket && connectionState.isConnected) {
       socket.emit('suggestion:used', {
         suggestionId,
-        sessionId
+        sessionId,
+        userId: 'doctor-current' // TODO: Pegar do contexto de auth
       });
+      
+      // Atualizar estado local imediatamente
+      setSuggestions(prev => 
+        prev.map(s => 
+          s.id === suggestionId 
+            ? { ...s, used: true, used_at: new Date().toISOString() }
+            : s
+        )
+      );
+      
+      console.log(`✅ Sugestão ${suggestionId} marcada como usada`);
     }
+  }, [socket, connectionState.isConnected, sessionId]);
 
-    // Remover da lista
-    setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+  // Função para solicitar sugestões existentes
+  const handleRequestSuggestions = useCallback(() => {
+    if (socket && connectionState.isConnected) {
+      socket.emit('suggestions:request', { sessionId });
+      console.log('📋 Solicitando sugestões existentes...');
+    }
+  }, [socket, connectionState.isConnected, sessionId]);
+
+  // Função para gerar novas sugestões manualmente
+  const handleGenerateSuggestions = useCallback(() => {
+    if (socket && connectionState.isConnected) {
+      socket.emit('suggestions:generate', { sessionId, force: true });
+      console.log('🤖 Gerando novas sugestões...');
+    }
   }, [socket, connectionState.isConnected, sessionId]);
 
   // Calcular duração da sessão
@@ -482,43 +550,91 @@ export function PresentialCallRoom({
 
         {/* Painel de Sugestões de IA */}
         <div className="suggestions-panel">
-          <h2>
-            <Brain className="w-5 h-5" />
-            Sugestões de IA
-          </h2>
+          <div className="suggestions-header">
+            <h2>
+              <Brain className="w-5 h-5" />
+              Sugestões de IA
+            </h2>
+            <div className="suggestions-actions">
+              <button
+                onClick={handleRequestSuggestions}
+                className="btn btn-sm btn-outline"
+                title="Carregar sugestões existentes"
+              >
+                📋 Carregar
+              </button>
+              <button
+                onClick={handleGenerateSuggestions}
+                className="btn btn-sm btn-primary"
+                title="Gerar novas sugestões"
+              >
+                🤖 Gerar
+              </button>
+            </div>
+          </div>
 
           <div className="suggestions-content">
             {suggestions.length === 0 ? (
-              <p className="no-suggestions">
-                Nenhuma sugestão disponível
-              </p>
+              <div className="no-suggestions">
+                <p>Nenhuma sugestão disponível</p>
+                <p className="suggestion-hint">
+                  Inicie a gravação para gerar sugestões baseadas na conversa
+                </p>
+              </div>
             ) : (
               <div className="suggestions-list">
                 {suggestions.map((suggestion) => (
                   <div 
                     key={suggestion.id} 
-                    className={`suggestion ${suggestion.type}`}
+                    className={`suggestion ${suggestion.type} ${suggestion.used ? 'used' : ''}`}
                   >
                     <div className="suggestion-header">
-                      <span className="type">
-                        {suggestion.type === 'question' && 'Pergunta'}
-                        {suggestion.type === 'diagnosis' && 'Diagnóstico'}
-                        {suggestion.type === 'treatment' && 'Tratamento'}
-                        {suggestion.type === 'note' && 'Observação'}
-                      </span>
-                      <span className="confidence">
+                      <div className="suggestion-meta">
+                        <span className="type">
+                          {suggestion.type === 'question' && '❓ Pergunta'}
+                          {suggestion.type === 'protocol' && '📋 Protocolo'}
+                          {suggestion.type === 'alert' && '⚠️ Alerta'}
+                          {suggestion.type === 'followup' && '🔄 Seguimento'}
+                          {suggestion.type === 'assessment' && '🔍 Avaliação'}
+                          {suggestion.type === 'insight' && '💡 Insight'}
+                          {suggestion.type === 'warning' && '⚠️ Aviso'}
+                        </span>
+                        <span className={`priority priority-${suggestion.priority}`}>
+                          {suggestion.priority === 'critical' && '🔴 Crítico'}
+                          {suggestion.priority === 'high' && '🟠 Alto'}
+                          {suggestion.priority === 'medium' && '🟡 Médio'}
+                          {suggestion.priority === 'low' && '🟢 Baixo'}
+                        </span>
+                      </div>
+                      <div className="suggestion-confidence">
                         {Math.round(suggestion.confidence * 100)}%
-                      </span>
+                      </div>
                     </div>
+                    
                     <div className="suggestion-text">
-                      {suggestion.text}
+                      {suggestion.content}
                     </div>
-                    <button
-                      onClick={() => handleUseSuggestion(suggestion.id)}
-                      className="btn btn-sm btn-outline"
-                    >
-                      Usar Sugestão
-                    </button>
+                    
+                    {suggestion.source && (
+                      <div className="suggestion-source">
+                        📚 {suggestion.source}
+                      </div>
+                    )}
+                    
+                    <div className="suggestion-actions">
+                      {!suggestion.used ? (
+                        <button
+                          onClick={() => handleUseSuggestion(suggestion.id)}
+                          className="btn btn-sm btn-primary"
+                        >
+                          ✅ Usar Sugestão
+                        </button>
+                      ) : (
+                        <div className="suggestion-used">
+                          ✅ Usada em {new Date(suggestion.used_at || '').toLocaleTimeString('pt-BR')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

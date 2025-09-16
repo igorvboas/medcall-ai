@@ -109,18 +109,110 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
     });
 
     // Handler para marcar sugestão como usada
-    socket.on('suggestion:used', (data: { suggestionId: string; sessionId: string }) => {
-      const { suggestionId, sessionId } = data;
+    socket.on('suggestion:used', async (data: { suggestionId: string; sessionId: string; userId?: string }) => {
+      const { suggestionId, sessionId, userId = 'unknown' } = data;
       
-      // TODO: Implementar marcação no banco
-      // Por enquanto, apenas notifica outros participantes
-      socket.to(`session:${sessionId}`).emit('suggestion:marked_used', {
-        suggestionId,
-        timestamp: new Date().toISOString(),
-      });
+      try {
+        // Importar suggestionService dinamicamente para evitar dependência circular
+        const { suggestionService } = await import('@/services/suggestionService');
+        
+        // Marcar sugestão como usada no banco
+        const success = await suggestionService.markSuggestionAsUsed(suggestionId, userId);
+        
+        if (success) {
+          // Notificar outros participantes da sessão
+          notifier.emitSuggestionUsed(sessionId, suggestionId, userId);
+          
+          if (isDevelopment) {
+            console.log(`✅ Sugestão ${suggestionId} marcada como usada na sessão ${sessionId} por ${userId}`);
+          }
+        } else {
+          socket.emit('error', {
+            code: 'SUGGESTION_UPDATE_FAILED',
+            message: 'Falha ao marcar sugestão como usada'
+          });
+        }
+      } catch (error) {
+        console.error('❌ Erro ao marcar sugestão como usada:', error);
+        socket.emit('error', {
+          code: 'SUGGESTION_UPDATE_ERROR',
+          message: 'Erro interno ao processar sugestão'
+        });
+      }
+    });
 
-      if (isDevelopment) {
-        console.log(`Sugestão ${suggestionId} marcada como usada na sessão ${sessionId}`);
+    // Handler para solicitar sugestões existentes
+    socket.on('suggestions:request', async (data: { sessionId: string }) => {
+      const { sessionId } = data;
+      
+      try {
+        const { suggestionService } = await import('@/services/suggestionService');
+        const suggestions = await suggestionService.getSessionSuggestions(sessionId);
+        
+        socket.emit('suggestions:response', {
+          sessionId,
+          suggestions,
+          count: suggestions.length,
+          timestamp: new Date().toISOString()
+        });
+        
+        if (isDevelopment) {
+          console.log(`📋 ${suggestions.length} sugestões enviadas para sessão ${sessionId}`);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar sugestões:', error);
+        socket.emit('error', {
+          code: 'SUGGESTIONS_FETCH_ERROR',
+          message: 'Erro ao buscar sugestões da sessão'
+        });
+      }
+    });
+
+    // Handler para solicitar geração manual de sugestões
+    socket.on('suggestions:generate', async (data: { sessionId: string; force?: boolean }) => {
+      const { sessionId, force = false } = data;
+      
+      try {
+        const { suggestionService } = await import('@/services/suggestionService');
+        
+        // Buscar contexto da sessão
+        const { db } = await import('@/config/database');
+        const session = await db.getSession(sessionId);
+        const utterances = await db.getSessionUtterances(sessionId);
+        
+        if (!session) {
+          socket.emit('error', {
+            code: 'SESSION_NOT_FOUND',
+            message: 'Sessão não encontrada'
+          });
+          return;
+        }
+        
+        const context = {
+          sessionId,
+          patientName: 'Paciente', // TODO: Buscar nome real
+          sessionDuration: Math.floor((Date.now() - new Date(session.created_at).getTime()) / (1000 * 60)),
+          consultationType: session.session_type || 'presencial',
+          utterances: utterances.slice(-10),
+          specialty: 'clinica_geral'
+        };
+        
+        const result = await suggestionService.generateSuggestions(context);
+        
+        if (result) {
+          notifier.emitAISuggestions(sessionId, result.suggestions);
+          notifier.emitContextUpdate(sessionId, result.context_analysis);
+          
+          if (isDevelopment) {
+            console.log(`🤖 ${result.suggestions.length} sugestões geradas manualmente para sessão ${sessionId}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erro ao gerar sugestões:', error);
+        socket.emit('error', {
+          code: 'SUGGESTIONS_GENERATION_ERROR',
+          message: 'Erro ao gerar sugestões'
+        });
       }
     });
 
@@ -180,6 +272,35 @@ export class SessionNotifier {
     this.io.to(`session:${sessionId}`).emit('ai:suggestion', {
       sessionId,
       suggestion,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Notificar múltiplas sugestões de IA para uma sessão
+  emitAISuggestions(sessionId: string, suggestions: any[]) {
+    this.io.to(`session:${sessionId}`).emit('ai:suggestions', {
+      sessionId,
+      suggestions,
+      count: suggestions.length,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Notificar atualização de contexto da IA
+  emitContextUpdate(sessionId: string, context: any) {
+    this.io.to(`session:${sessionId}`).emit('ai:context_update', {
+      sessionId,
+      context,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Notificar que uma sugestão foi marcada como usada
+  emitSuggestionUsed(sessionId: string, suggestionId: string, userId: string) {
+    this.io.to(`session:${sessionId}`).emit('ai:suggestion:used', {
+      sessionId,
+      suggestionId,
+      userId,
       timestamp: new Date().toISOString(),
     });
   }
