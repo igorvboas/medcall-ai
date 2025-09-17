@@ -1,6 +1,6 @@
 # MedCall AI
 
-AI-powered real-time transcription and analysis for medical video calls.
+AI-powered real-time transcription and analysis for medical video calls......
 
 ## 🚀 Overview
 
