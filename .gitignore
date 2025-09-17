@@ -145,6 +145,7 @@ typings/
 .env.production.local
 .env.local
 .env.exemple
+.env.gcp
 
 
 # parcel-bundler cache (https://parceljs.org/)
