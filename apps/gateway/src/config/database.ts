@@ -50,6 +50,8 @@ export interface CallSession {
   session_type: 'presencial' | 'online';
   started_at: string;
   ended_at?: string;
+  // Estado opcional da sessão para permitir atualizações (e.g., 'ended')
+  status?: string;
   participants: Record<string, any>;
   consent: boolean;
   metadata?: Record<string, any>;
@@ -73,10 +75,13 @@ export interface Suggestion {
   id: string;
   session_id: string;
   utterance_id?: string;
-  type: 'question' | 'insight' | 'warning' | 'protocol';
+  // Expandir tipos suportados para alinhar com AISuggestion
+  type: 'question' | 'insight' | 'warning' | 'protocol' | 'alert' | 'followup' | 'assessment';
   content: string;
   source?: string;
   confidence?: number;
+  // Tornar prioridade obrigatória para alinhar com AISuggestion
+  priority: 'low' | 'medium' | 'high' | 'critical';
   used: boolean;
   created_at: string;
 }
@@ -130,10 +135,7 @@ export const db = {
     return utterances || [];
   },
 
-  // Alias para compatibilidade com o código existente
-  async getSessionUtterances(sessionId: string): Promise<Utterance[]> {
-    return this.getUtterancesBySession(sessionId);
-  },
+  // Mantemos apenas a versão com suporte a limite
 
   async updateSession(id: string, data: Partial<CallSession>): Promise<boolean> {
     const { error } = await supabase

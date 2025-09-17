@@ -1,0 +1,27 @@
+runtime: nodejs20
+env: standard
+instance_class: F2
+
+entrypoint: >-
+  bash -lc "npm ci --quiet && npm run build -w @medcall/gateway && node apps/gateway/dist/index.js"
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 0
+  max_instances: 20
+  max_concurrent_requests: 80
+  target_throughput_utilization: 0.8
+
+env_variables:
+  NODE_ENV: "production"
+  FRONTEND_URL: "https://example.com"
+  # LIVEKIT_URL: ""
+  # LIVEKIT_API_KEY: ""
+  # LIVEKIT_API_SECRET: ""
+  # SUPABASE_URL: ""
+  # SUPABASE_SERVICE_ROLE_KEY: ""
+  # OPENAI_API_KEY: ""
+  # JWT_SECRET: "change-me-at-least-32-chars"
+  # ENCRYPTION_KEY: "change-me-at-least-32-chars"
+  # REDIS_URL: ""
+  # REDIS_PASSWORD: ""

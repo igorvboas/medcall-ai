@@ -185,7 +185,8 @@ class SuggestionService extends EventEmitter {
         }
       ]);
 
-      let content = response.choices[0].message.content || '{}';
+      const firstChoice = 'choices' in response ? response.choices[0] : undefined;
+      let content = firstChoice?.message?.content || '{}';
       
       // Limpar markdown se presente
       if (content.includes('```json')) {
@@ -206,7 +207,8 @@ class SuggestionService extends EventEmitter {
       try {
         analysis = JSON.parse(content);
       } catch (parseError) {
-        console.warn('⚠️ JSON inválido da IA, usando fallback:', parseError.message);
+        const err = parseError as Error;
+        console.warn('⚠️ JSON inválido da IA, usando fallback:', err.message);
         console.warn('📝 Conteúdo recebido:', content.substring(0, 200) + '...');
         
         // Fallback: análise básica baseada nos utterances
@@ -634,7 +636,8 @@ class SuggestionService extends EventEmitter {
         }
       ]);
 
-      let content = response.choices[0].message.content || '{}';
+      const firstChoice = 'choices' in response ? response.choices[0] : undefined;
+      let content = firstChoice?.message?.content || '{}';
       
       // Limpar markdown se presente
       if (content.includes('```json')) {
@@ -655,7 +658,8 @@ class SuggestionService extends EventEmitter {
       try {
         result = JSON.parse(content);
       } catch (parseError) {
-        console.warn('⚠️ JSON inválido na geração de sugestões, usando fallback:', parseError.message);
+        const err = parseError as Error;
+        console.warn('⚠️ JSON inválido na geração de sugestões, usando fallback:', err.message);
         console.warn('📝 Conteúdo recebido:', content.substring(0, 200) + '...');
         
         // Fallback: sugestões básicas baseadas no contexto
@@ -706,7 +710,8 @@ class SuggestionService extends EventEmitter {
         }
       ]);
 
-      let content = response.choices[0].message.content || '{}';
+      const firstChoice = 'choices' in response ? response.choices[0] : undefined;
+      let content = firstChoice?.message?.content || '{}';
       
       // Limpar markdown se presente
       if (content.includes('```json')) {
@@ -727,7 +732,8 @@ class SuggestionService extends EventEmitter {
       try {
         result = JSON.parse(content);
       } catch (parseError) {
-        console.warn('⚠️ JSON inválido nas sugestões de emergência, usando fallback:', parseError.message);
+        const err = parseError as Error;
+        console.warn('⚠️ JSON inválido nas sugestões de emergência, usando fallback:', err.message);
         console.warn('📝 Conteúdo recebido:', content.substring(0, 200) + '...');
         
         // Fallback: sugestões básicas de emergência
@@ -793,7 +799,25 @@ class SuggestionService extends EventEmitter {
         });
 
         if (saved) {
-          savedSuggestions.push(saved);
+          // Normalize to AISuggestion shape (confidence/priority required)
+          const normalized: AISuggestion = {
+            id: saved.id,
+            session_id: saved.session_id,
+            utterance_id: (saved as any).utterance_id,
+            type: saved.type as AISuggestion['type'],
+            content: saved.content,
+            source: saved.source,
+            source_section: (saved as any).source_section,
+            confidence: (saved as any).confidence ?? 0.8,
+            priority: (saved as any).priority ?? 'medium',
+            used: saved.used,
+            used_at: (saved as any).used_at,
+            used_by: (saved as any).used_by,
+            rag_context: (saved as any).rag_context,
+            created_at: saved.created_at,
+          };
+
+          savedSuggestions.push(normalized);
         }
       } catch (error) {
         console.error('❌ Erro ao salvar sugestão:', error);
@@ -934,7 +958,23 @@ class SuggestionService extends EventEmitter {
    */
   public async getSessionSuggestions(sessionId: string): Promise<AISuggestion[]> {
     try {
-      return await db.getSessionSuggestions(sessionId);
+      const rows = await db.getSessionSuggestions(sessionId);
+      return rows.map((s: any) => ({
+        id: s.id,
+        session_id: s.session_id,
+        utterance_id: s.utterance_id,
+        type: s.type as AISuggestion['type'],
+        content: s.content,
+        source: s.source,
+        source_section: s.source_section,
+        confidence: s.confidence ?? 0.8,
+        priority: s.priority ?? 'medium',
+        used: s.used,
+        used_at: s.used_at,
+        used_by: s.used_by,
+        rag_context: s.rag_context,
+        created_at: s.created_at,
+      }));
     } catch (error) {
       console.error('❌ Erro ao obter sugestões da sessão:', error);
       return [];

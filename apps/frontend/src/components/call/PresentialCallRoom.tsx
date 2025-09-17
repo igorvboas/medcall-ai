@@ -25,10 +25,24 @@ interface Utterance {
 
 interface Suggestion {
   id: string;
-  type: 'question' | 'diagnosis' | 'treatment' | 'note';
-  text: string;
+  type:
+    | 'question'
+    | 'protocol'
+    | 'alert'
+    | 'followup'
+    | 'assessment'
+    | 'insight'
+    | 'warning'
+    | 'diagnosis'
+    | 'treatment'
+    | 'note';
+  content: string;
   confidence: number;
   timestamp: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  used?: boolean;
+  used_at?: string;
+  source?: string;
 }
 
 interface ConnectionState {
@@ -332,7 +346,7 @@ export function PresentialCallRoom({
     const finalize = async () => {
       try {
         setIsFinalizing(true);
-        const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || process.env.NEXT_PUBLIC_GATEWAY_URL || '';
+        const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
         const baseUrl = gatewayUrl.replace(/^ws(s)?:\/\//, (_m) => (gatewayUrl.startsWith('wss') ? 'https://' : 'http://'));
         const url = `${baseUrl.replace(/\/$/, '')}/api/sessions/${sessionId}/complete`;
         const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });

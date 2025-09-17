@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { testDatabaseConnection } from '@/config/database';
 import { validateAllProviders } from '@/config/providers';
 import { asyncHandler } from '@/middleware/errorHandler';
@@ -7,7 +7,7 @@ import { config } from '@/config';
 const router = Router();
 
 // Health check detalhado
-router.get('/detailed', asyncHandler(async (req, res) => {
+router.get('/detailed', asyncHandler(async (req: Request, res: Response) => {
   const startTime = Date.now();
   
   // Testar componentes
@@ -68,7 +68,7 @@ router.get('/detailed', asyncHandler(async (req, res) => {
 }));
 
 // Health check rápido (para load balancers)
-router.get('/quick', (req, res) => {
+router.get('/quick', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -76,7 +76,7 @@ router.get('/quick', (req, res) => {
 });
 
 // Liveness probe (Kubernetes)
-router.get('/live', (req, res) => {
+router.get('/live', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'alive',
     timestamp: new Date().toISOString(),
@@ -84,7 +84,7 @@ router.get('/live', (req, res) => {
 });
 
 // Readiness probe (Kubernetes)
-router.get('/ready', asyncHandler(async (req, res) => {
+router.get('/ready', asyncHandler(async (req: Request, res: Response) => {
   try {
     // Verificar se serviços críticos estão prontos
     const dbReady = await testDatabaseConnection();

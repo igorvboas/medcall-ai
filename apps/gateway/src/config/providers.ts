@@ -57,24 +57,48 @@ export async function generateLiveKitToken(
     metadata,
   } = options;
 
-  const at = new AccessToken(
-    config.LIVEKIT_API_KEY,
-    config.LIVEKIT_API_SECRET,
-    { identity, metadata }
-  );
 
-  // TTL em segundos (24h)
-  at.ttl = 24 * 60 * 60;
+  try {
+    // Criar token com expiração de 2 horas a partir de agora
+    const now = Math.floor(Date.now() / 1000); // timestamp atual em segundos
+    const expiresIn = 2 * 60 * 60; // 2 horas em segundos
+    
+    const at = new AccessToken(
+      config.LIVEKIT_API_KEY,
+      config.LIVEKIT_API_SECRET,
+      { 
+        identity, 
+        metadata,
+        ttl: expiresIn // TTL em segundos
+      }
+    );
 
-  at.addGrant({
-    room: roomName,
-    roomJoin: true,
-    canPublish,
-    canSubscribe,
-    canPublishData,
-  });
+    at.addGrant({
+      room: roomName,
+      roomJoin: true,
+      canPublish,
+      canSubscribe,
+      canPublishData,
+    });
 
-  return await at.toJwt(); // <- agora aguardando a Promise
+    const token = await at.toJwt();
+    
+    // Debug: log detalhado para verificar token
+    const expiresAt = now + expiresIn;
+    console.log(`✅ Token LiveKit gerado:`);
+    console.log(`   - Identity: ${identity}`);
+    console.log(`   - Room: ${roomName}`);
+    console.log(`   - TTL: ${expiresIn}s (${expiresIn/3600}h)`);
+    console.log(`   - Issued at: ${now} (${new Date(now * 1000).toISOString()})`);
+    console.log(`   - Expires at: ${expiresAt} (${new Date(expiresAt * 1000).toISOString()})`);
+    console.log(`   - Token length: ${token.length} chars`);
+    
+    return token;
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar token LiveKit:', error);
+    throw new Error(`Falha na geração do token LiveKit: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  }
 }
 
 // Teste de configuração do LiveKit
@@ -106,6 +130,9 @@ export const redisSettings = config.REDIS_URL
       lazyConnect: true,
     }
   : null;
+
+// Alias export compatível com redis.ts
+export const redisConfig = redisSettings;
 
 // Teste de conexão Redis (se configurado)
 export async function testRedisConnection(): Promise<boolean> {
@@ -166,6 +193,8 @@ export async function makeChatCompletion(
     ...aiModels.completion,
     messages,
     ...options,
+    // garantir não-stream para que 'choices' exista
+    stream: false,
   };
 
   return await openaiClient.chat.completions.create(params);

@@ -44,6 +44,31 @@ async function createPresentialSession(consultationId: string, participantData: 
   return response.json();
 }
 
+// Função para criar sessão online
+async function createOnlineSession(consultationId: string, participantData: any) {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001'}/api/sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      consultation_id: consultationId,
+      session_type: 'online',
+      participants: participantData,
+      consent: true,
+      metadata: {
+        appointmentType: 'online'
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Falha ao criar sessão online');
+  }
+
+  return response.json();
+}
+
 export default function NovaConsultaPage() {
   const router = useRouter();
   const [selectedPatient, setSelectedPatient] = useState<string>('');
@@ -156,10 +181,21 @@ export default function NovaConsultaPage() {
           alert('Erro ao criar sessão presencial. Tente novamente.');
         }
       } else {
-        // Fluxo para consulta online (a ser implementado)
-        alert('Consulta online ainda não implementada. Use consulta presencial.');
-        // TODO: Implementar fluxo online com LiveKit
-        // router.push(`/call/${consultation.id}`);
+        // Fluxo para consulta online - redirecionar para configuração
+        try {
+          // Redirecionar para página de configuração de dispositivos
+          const setupParams = new URLSearchParams({
+            consultationId: consultation.id,
+            patientId: selectedPatient,
+            patientName: selectedPatientData.name
+          });
+
+          router.push(`/consulta/online/setup?${setupParams.toString()}`);
+          
+        } catch (setupError) {
+          console.error('Erro ao redirecionar para setup:', setupError);
+          alert('Erro ao configurar consulta online. Tente novamente.');
+        }
       }
       
     } catch (error) {

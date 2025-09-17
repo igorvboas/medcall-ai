@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler, ValidationError } from '@/middleware/errorHandler';
 import { db } from '@/config/database';
@@ -28,7 +28,7 @@ const createSessionSchema = z.object({
 });
 
 // Criar nova sessão
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', asyncHandler(async (req: Request, res: Response) => {
   // Validar dados de entrada
   const validationResult = createSessionSchema.safeParse(req.body);
   
@@ -101,6 +101,11 @@ router.post('/', asyncHandler(async (req, res) => {
         ),
       ]);
 
+      // Gerar URLs específicas para médico e paciente
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const doctorUrl = `${baseUrl}/consulta/online/doctor?sessionId=${session.id}&roomName=${roomName}&token=${doctorToken}&consultationId=${session.consultation_id}&patientName=${encodeURIComponent(participants.patient.name)}`;
+      const patientUrl = `${baseUrl}/consulta/online/patient?sessionId=${session.id}&roomName=${roomName}&token=${patientToken}&consultationId=${session.consultation_id}&doctorName=${encodeURIComponent(participants.doctor.name)}`;
+
       // Resposta com tokens e informações da sessão online
       res.status(201).json({
         session: {
@@ -115,6 +120,10 @@ router.post('/', asyncHandler(async (req, res) => {
           doctor: doctorToken,
           patient: patientToken,
         },
+        urls: {
+          doctor: doctorUrl,
+          patient: patientUrl,
+        },
         livekit: {
           url: process.env.LIVEKIT_URL,
         },
@@ -128,7 +137,7 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 // Buscar sessão por ID
-router.get('/:sessionId', asyncHandler(async (req, res) => {
+router.get('/:sessionId', asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
 
   if (!sessionId) {
@@ -160,7 +169,7 @@ router.get('/:sessionId', asyncHandler(async (req, res) => {
 }));
 
 // Finalizar sessão
-router.patch('/:sessionId/end', asyncHandler(async (req, res) => {
+router.patch('/:sessionId/end', asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
 
   if (!sessionId) {
@@ -190,8 +199,6 @@ router.patch('/:sessionId/end', asyncHandler(async (req, res) => {
   // Finalizar sessão
   const updated = await db.updateSession(sessionId, {
     ended_at: new Date().toISOString(),
-    // opcionalmente ajustamos status
-    // @ts-ignore
     status: 'ended',
   });
 
@@ -207,7 +214,7 @@ router.patch('/:sessionId/end', asyncHandler(async (req, res) => {
 }));
 
 // Finalizar sessão e consolidar dados
-router.post('/:sessionId/complete', asyncHandler(async (req, res) => {
+router.post('/:sessionId/complete', asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
 
   if (!sessionId) {
@@ -224,7 +231,7 @@ router.post('/:sessionId/complete', asyncHandler(async (req, res) => {
   // Definir ended_at caso ainda não tenha sido setado
   const endedAt = session.ended_at || new Date().toISOString();
   if (!session.ended_at) {
-    await db.updateSession(sessionId, { ended_at: endedAt, /* @ts-ignore */ status: 'ended' });
+    await db.updateSession(sessionId, { ended_at: endedAt, status: 'ended' });
   }
 
   // Buscar dados da sessão
