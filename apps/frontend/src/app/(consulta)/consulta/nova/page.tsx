@@ -21,7 +21,7 @@ interface MicrophoneDevice {
 
 // Função para criar sessão presencial
 async function createPresentialSession(consultationId: string, participantData: any) {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001'}/api/sessions`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/api/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ async function createPresentialSession(consultationId: string, participantData: 
 
 // Função para criar sessão online
 async function createOnlineSession(consultationId: string, participantData: any) {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001'}/api/sessions`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/api/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
