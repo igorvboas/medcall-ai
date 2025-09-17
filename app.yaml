@@ -14,7 +14,7 @@ automatic_scaling:
 
 env_variables:
   NODE_ENV: "production"
-  FRONTEND_URL: "https://example.com"
+  FRONTEND_URL: "https://medcall-ai.vercel.app/"
   # LIVEKIT_URL: ""
   # LIVEKIT_API_KEY: ""
   # LIVEKIT_API_SECRET: ""

@@ -1,16 +1,23 @@
 import cors from 'cors';
-import { corsOrigins, isDevelopment } from '../config';
+import { corsOrigins, isDevelopment, isProduction } from '../config';
 
 // Configuração específica de CORS para WebRTC e áudio
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     // Permitir requests sem origin (mobile apps, Postman, etc.)
-    if (!origin && isDevelopment) {
+    if (!origin) {
       return callback(null, true);
     }
 
     // Verificar se origin está na lista permitida
     if (origin && corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // TEMPORÁRIO: Permitir todos os origins em produção para resolver problema de CORS
+    // TODO: Configurar domínios específicos após definir FRONTEND_URL correto
+    if (isProduction) {
+      console.warn(`⚠️  CORS: Permitindo origin não autorizada: ${origin}`);
       return callback(null, true);
     }
 
