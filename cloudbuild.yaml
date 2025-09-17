@@ -58,7 +58,7 @@ steps:
       - "--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA"
       - "--region=${_REGION}"
       - "--platform=managed"
-      # - "--port=3001"
+      - "--port=8080"
       - "--allow-unauthenticated"
       - "--cpu=1"
       - "--memory=1Gi"

@@ -11,7 +11,7 @@ dotenv.config({
 const envSchema = z.object({
   // App Settings
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().default(3001),
+  PORT: z.coerce.number().default(process.env.PORT ? parseInt(process.env.PORT) : 8080),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   
   // LiveKit
