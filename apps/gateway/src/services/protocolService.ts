@@ -1,4 +1,4 @@
-import { Utterance, Suggestion } from '@/config/database';
+import { Utterance, Suggestion } from '../config/database';
 
 interface GenerateProtocolInput {
   transcriptText: string;

@@ -1,5 +1,5 @@
 import { ProcessedAudioChunk } from './audioProcessor';
-import { db } from '@/config/database';
+import { db } from '../config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
@@ -570,7 +570,7 @@ class ASRService {
   private async notifyWebSocketSuggestions(sessionId: string, suggestions: any[]): Promise<void> {
     try {
       // Tentar obter notifier do WebSocket
-      const { SessionNotifier } = await import('@/websocket/index');
+      const { SessionNotifier } = await import('../websocket/index');
       
       // Esta é uma implementação simplificada - em produção, você teria uma referência global ao notifier
       console.log(`📡 WebSocket notification preparada para sessão ${sessionId}: ${suggestions.length} sugestões`);

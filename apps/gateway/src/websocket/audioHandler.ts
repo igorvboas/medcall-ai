@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
-import { audioProcessor, AudioChunk } from '@/services/audioProcessor';
-import { asrService } from '@/services/asrService';
+import { audioProcessor, AudioChunk } from '../services/audioProcessor';
+import { asrService } from '../services/asrService';
 import { SessionNotifier } from './index';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -346,8 +346,8 @@ async function triggerSuggestionGeneration(sessionId: string, utterance: any, no
     console.log(`🤖 Triggering suggestion generation for session ${sessionId} after utterance: "${utterance.text.substring(0, 50)}..."`);
     
     // Importar serviços necessários
-    const { suggestionService } = await import('@/services/suggestionService');
-    const { db } = await import('@/config/database');
+    const { suggestionService } = await import('../services/suggestionService');
+    const { db } = await import('../config/database');
     
     // Buscar informações da sessão
     const session = await db.getSession(sessionId);

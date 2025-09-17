@@ -1,5 +1,5 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { isDevelopment } from '@/config';
+import { isDevelopment } from '../config';
 import { setupPresentialAudioHandlers } from './audioHandler';
 
 // Interfaces para eventos WebSocket
@@ -114,7 +114,7 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
       
       try {
         // Importar suggestionService dinamicamente para evitar dependência circular
-        const { suggestionService } = await import('@/services/suggestionService');
+        const { suggestionService } = await import('../services/suggestionService');
         
         // Marcar sugestão como usada no banco
         const success = await suggestionService.markSuggestionAsUsed(suggestionId, userId);
@@ -146,7 +146,7 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
       const { sessionId } = data;
       
       try {
-        const { suggestionService } = await import('@/services/suggestionService');
+        const { suggestionService } = await import('../services/suggestionService');
         const suggestions = await suggestionService.getSessionSuggestions(sessionId);
         
         socket.emit('suggestions:response', {
@@ -173,10 +173,10 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
       const { sessionId, force = false } = data;
       
       try {
-        const { suggestionService } = await import('@/services/suggestionService');
+        const { suggestionService } = await import('../services/suggestionService');
         
         // Buscar contexto da sessão
-        const { db } = await import('@/config/database');
+        const { db } = await import('../config/database');
         const session = await db.getSession(sessionId);
         const utterances = await db.getSessionUtterances(sessionId);
         

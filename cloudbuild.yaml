@@ -65,7 +65,7 @@ steps:
       - "--max-instances=10"
       - "--concurrency=80"
       - "--timeout=300"
-      - "--set-env-vars=NODE_ENV=production,FRONTEND_URL=https://your-frontend-url.com,LIVEKIT_URL=dummy,LIVEKIT_API_KEY=dummy,LIVEKIT_API_SECRET=dummy,SUPABASE_URL=dummy,SUPABASE_SERVICE_ROLE_KEY=dummy,OPENAI_API_KEY=dummy,JWT_SECRET=58d087d28772bc22206a939a1933e0a758b1419f886c8675d54aea02b9671b1e,ENCRYPTION_KEY=6f97301abfcc40e2b65d261f308564a50e189f0d80a85a037d201ec3be3f978c"
+      - "--set-env-vars=NODE_ENV=production,FRONTEND_URL=https://your-frontend-url.com,LIVEKIT_URL=https://dummy.livekit.com,LIVEKIT_API_KEY=dummy,LIVEKIT_API_SECRET=dummy,SUPABASE_URL=https://dummy.supabase.co,SUPABASE_SERVICE_ROLE_KEY=dummy,OPENAI_API_KEY=dummy,JWT_SECRET=58d087d28772bc22206a939a1933e0a758b1419f886c8675d54aea02b9671b1e,ENCRYPTION_KEY=6f97301abfcc40e2b65d261f308564a50e189f0d80a85a037d201ec3be3f978c"
 
 # Example build command (from repo root):
 # gcloud builds submit --region=${_REGION} --config=cloudbuild.yaml \

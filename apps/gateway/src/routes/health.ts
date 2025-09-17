@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { testDatabaseConnection } from '@/config/database';
-import { validateAllProviders } from '@/config/providers';
-import { asyncHandler } from '@/middleware/errorHandler';
-import { config } from '@/config';
+import { testDatabaseConnection } from '../config/database';
+import { validateAllProviders } from '../config/providers';
+import { asyncHandler } from '../middleware/errorHandler';
+import { config } from '../config';
 
 const router = Router();
 

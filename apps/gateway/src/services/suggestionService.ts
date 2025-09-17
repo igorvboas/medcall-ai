@@ -4,9 +4,9 @@
  */
 
 import { EventEmitter } from 'events';
-import { db } from '@/config/database';
-import { makeChatCompletion, makeEmbedding } from '@/config/providers';
-import { PromptTemplate, PROMPT_CONFIG } from '@/prompts/medical-prompts';
+import { db } from '../config/database';
+import { makeChatCompletion, makeEmbedding } from '../config/providers';
+import { PromptTemplate, PROMPT_CONFIG } from '../prompts/medical-prompts';
 import { randomUUID } from 'crypto';
 
 export interface ContextAnalysis {
@@ -996,7 +996,7 @@ class SuggestionService extends EventEmitter {
   private async notifyWebSocket(sessionId: string, suggestions: AISuggestion[], contextAnalysis: ContextAnalysis): Promise<void> {
     try {
       // Tentar obter instância do WebSocket notifier
-      const { SessionNotifier } = await import('@/websocket/index');
+      const { SessionNotifier } = await import('../websocket/index');
       
       // Esta é uma implementação simplificada - em produção, você teria uma referência global ao notifier
       console.log(`📡 WebSocket notification preparada para sessão ${sessionId}: ${suggestions.length} sugestões`);

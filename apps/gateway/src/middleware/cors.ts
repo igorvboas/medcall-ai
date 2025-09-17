@@ -1,5 +1,5 @@
 import cors from 'cors';
-import { corsOrigins, isDevelopment } from '@/config';
+import { corsOrigins, isDevelopment } from '../config';
 
 // Configuração específica de CORS para WebRTC e áudio
 export const corsMiddleware = cors({

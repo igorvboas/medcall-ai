@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { asyncHandler, ValidationError } from '@/middleware/errorHandler';
-import { db } from '@/config/database';
-import { generateSimpleProtocol } from '@/services/protocolService';
-import { generateLiveKitToken } from '@/config/providers';
+import { asyncHandler, ValidationError } from '../middleware/errorHandler';
+import { db } from '../config/database';
+import { generateSimpleProtocol } from '../services/protocolService';
+import { generateLiveKitToken } from '../config/providers';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { audioProcessor } from '@/services/audioProcessor';
-import { asrService } from '@/services/asrService';
+import { audioProcessor } from '../services/audioProcessor';
+import { asrService } from '../services/asrService';
 
 const router = Router();
 

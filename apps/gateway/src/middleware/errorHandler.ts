@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { isDevelopment } from '@/config';
+import { isDevelopment } from '../config';
 
 // Interface para erros customizados
 interface CustomError extends Error {
