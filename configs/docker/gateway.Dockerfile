@@ -44,9 +44,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/gateway/dist ./apps/gateway/dist
 COPY --from=builder /app/apps/gateway/package.json ./apps/gateway/package.json
 
-# Environment
-ENV PORT=3001
-EXPOSE 3001
+# Environment - PORT will be set by Cloud Run
+# ENV PORT=3001  # Removed - Cloud Run sets this dynamically
+# EXPOSE 3001    # Removed - Cloud Run handles port exposure
 
 # Healthcheck hits the non-authenticated health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
