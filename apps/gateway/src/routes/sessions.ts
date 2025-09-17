@@ -313,7 +313,7 @@ router.post('/:sessionId/complete', asyncHandler(async (req: Request, res: Respo
 }));
 
 // Listar sessões recentes (para dashboard)
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   // TODO: Implementar listagem com paginação
   // Por enquanto, retorna resposta básica
   res.json({
