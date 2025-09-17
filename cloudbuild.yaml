@@ -8,7 +8,7 @@
 # _DOCKERFILE: Path to the Dockerfile to build
 substitutions:
   _SERVICE: "medcall-gateway"
-  _REGION: "us-central1"
+  _REGION: "southamerica-east1"
   _REPO: "medcall"
   _DOCKERFILE: "configs/docker/gateway.Dockerfile"
 
