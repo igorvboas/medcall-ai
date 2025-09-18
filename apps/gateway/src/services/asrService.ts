@@ -337,6 +337,14 @@ class ASRService {
         return null;
       }
 
+      // 🔍 VALIDAÇÃO DETALHADA DO BUFFER WAV
+      const wavValidation = this.validateWavBuffer(audioChunk.audioBuffer);
+      if (!wavValidation.isValid) {
+        console.error(`❌ Buffer WAV inválido para ${audioChunk.channel}:`, wavValidation.errors);
+        return null;
+      }
+      console.log(`✅ Buffer WAV válido para ${audioChunk.channel}:`, wavValidation.info);
+
       // Criar arquivo temporário em memória para o Whisper
       // CORREÇÃO: Usar FormData conforme documentação oficial OpenAI
       // A API Whisper espera multipart/form-data com arquivo
@@ -655,6 +663,115 @@ class ASRService {
     const start = new Date(startTime);
     const now = new Date();
     return Math.floor((now.getTime() - start.getTime()) / (1000 * 60));
+  }
+  /**
+   * Valida se o Buffer WAV está no formato correto
+   */
+  private validateWavBuffer(buffer: Buffer): { isValid: boolean; errors: string[]; info: any } {
+    const errors: string[] = [];
+    const info: any = {};
+
+    try {
+      // Verificar tamanho mínimo (44 bytes = header WAV)
+      if (buffer.length < 44) {
+        errors.push(`Buffer muito pequeno: ${buffer.length} bytes (mínimo: 44 bytes)`);
+        return { isValid: false, errors, info };
+      }
+
+      // Verificar RIFF signature
+      const riffSignature = buffer.toString('ascii', 0, 4);
+      if (riffSignature !== 'RIFF') {
+        errors.push(`RIFF signature inválida: "${riffSignature}" (esperado: "RIFF")`);
+      }
+
+      // Verificar WAVE format
+      const waveFormat = buffer.toString('ascii', 8, 12);
+      if (waveFormat !== 'WAVE') {
+        errors.push(`WAVE format inválido: "${waveFormat}" (esperado: "WAVE")`);
+      }
+
+      // Verificar fmt chunk
+      const fmtChunk = buffer.toString('ascii', 12, 16);
+      if (fmtChunk !== 'fmt ') {
+        errors.push(`fmt chunk inválido: "${fmtChunk}" (esperado: "fmt ")`);
+      }
+
+      // Verificar audio format (deve ser 1 = PCM)
+      const audioFormat = buffer.readUInt16LE(20);
+      if (audioFormat !== 1) {
+        errors.push(`Audio format inválido: ${audioFormat} (esperado: 1 para PCM)`);
+      }
+
+      // Verificar número de canais
+      const numChannels = buffer.readUInt16LE(22);
+      if (numChannels !== 1) {
+        errors.push(`Número de canais inválido: ${numChannels} (esperado: 1 para mono)`);
+      }
+
+      // Verificar sample rate
+      const sampleRate = buffer.readUInt32LE(24);
+      if (sampleRate !== 44100 && sampleRate !== 48000 && sampleRate !== 16000) {
+        errors.push(`Sample rate inválido: ${sampleRate} Hz (esperado: 44100, 48000 ou 16000)`);
+      }
+
+      // Verificar bits per sample
+      const bitsPerSample = buffer.readUInt16LE(34);
+      if (bitsPerSample !== 16) {
+        errors.push(`Bits per sample inválido: ${bitsPerSample} (esperado: 16)`);
+      }
+
+      // Verificar data chunk
+      const dataChunk = buffer.toString('ascii', 36, 40);
+      if (dataChunk !== 'data') {
+        errors.push(`data chunk inválido: "${dataChunk}" (esperado: "data")`);
+      }
+
+      // Verificar se há dados de áudio
+      const dataSize = buffer.readUInt32LE(40);
+      const expectedDataSize = buffer.length - 44;
+      if (dataSize !== expectedDataSize) {
+        errors.push(`Tamanho dos dados incorreto: ${dataSize} bytes (esperado: ${expectedDataSize} bytes)`);
+      }
+
+      // Verificar se há dados de áudio suficientes
+      if (dataSize < 1000) { // Mínimo 1KB de áudio
+        errors.push(`Dados de áudio insuficientes: ${dataSize} bytes (mínimo: 1000 bytes)`);
+      }
+
+      // Informações do arquivo
+      info.size = buffer.length;
+      info.sampleRate = sampleRate;
+      info.channels = numChannels;
+      info.bitsPerSample = bitsPerSample;
+      info.audioFormat = audioFormat;
+      info.dataSize = dataSize;
+      info.duration = (dataSize / (sampleRate * numChannels * (bitsPerSample / 8))) * 1000; // em ms
+
+      // Verificar se há dados de áudio válidos (não todos zeros)
+      const audioData = buffer.slice(44);
+      let hasNonZeroData = false;
+      for (let i = 0; i < Math.min(audioData.length, 1000); i++) {
+        if (audioData[i] !== 0) {
+          hasNonZeroData = true;
+          break;
+        }
+      }
+      if (!hasNonZeroData) {
+        errors.push(`Dados de áudio parecem estar vazios (todos zeros)`);
+      }
+
+      console.log(`🔍 Validação WAV: ${buffer.length} bytes, ${sampleRate}Hz, ${numChannels} canal, ${bitsPerSample} bits, ${info.duration.toFixed(0)}ms`);
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        info
+      };
+
+    } catch (error) {
+      errors.push(`Erro ao validar WAV: ${error}`);
+      return { isValid: false, errors, info };
+    }
   }
 }
 
