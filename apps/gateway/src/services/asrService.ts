@@ -3,7 +3,7 @@ import { db } from '../config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
-import { Readable } from 'stream';
+import FormData from 'form-data';
 
 export interface TranscriptionResult {
   id: string;
@@ -338,9 +338,18 @@ class ASRService {
       }
 
       // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Usar Buffer com cast para contornar restrições do TypeScript
-      // A documentação oficial mostra que Buffer funciona na prática
-      const audioFile = audioChunk.audioBuffer;
+      // CORREÇÃO: Usar FormData conforme documentação oficial OpenAI
+      // A API Whisper espera multipart/form-data com arquivo
+      const formData = new FormData();
+      formData.append('file', audioChunk.audioBuffer, {
+        filename: 'audio.wav',
+        contentType: 'audio/wav'
+      });
+      formData.append('model', this.config.model);
+      formData.append('language', this.whisperConfig.language);
+      formData.append('response_format', this.whisperConfig.response_format);
+      formData.append('temperature', this.whisperConfig.temperature.toString());
+      formData.append('prompt', this.whisperConfig.prompt);
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
       console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
@@ -350,25 +359,36 @@ class ASRService {
       console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
       console.log(`🔍 DEBUG [WHISPER] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
 
-      // Chamar API Whisper com configurações otimizadas
+      // Chamar API Whisper usando fetch diretamente com FormData
       console.log(`🚀 CHAMANDO WHISPER API...`);
-      const response = await this.openai.audio.transcriptions.create({
-        file: audioFile as any, // Cast necessário para contornar restrições do TypeScript
-        model: this.config.model,
-        ...this.whisperConfig
+      
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          ...formData.getHeaders()
+        },
+        body: formData
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json() as any;
       
       console.log(`✅ WHISPER API RESPONDEU!`);
-      console.log(`🔍 DEBUG [WHISPER] Response received:`, response);
+      console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
 
       // Verificar se há texto transcrito
-      if (!response.text || response.text.trim().length === 0) {
+      if (!result.text || result.text.trim().length === 0) {
         console.log(`🔇 Whisper não detectou fala clara: ${audioChunk.channel}`);
         return null;
       }
 
       // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
-      const cleanedText = this.postProcessTranscription(response.text.trim());
+      const cleanedText = this.postProcessTranscription(result.text.trim());
       
       // Verificar se texto limpo não ficou vazio
       if (!cleanedText || cleanedText.length < 2) {
@@ -382,7 +402,7 @@ class ASRService {
         sessionId: audioChunk.sessionId,
         speaker: audioChunk.channel,
         text: cleanedText,
-        confidence: this.calculateWhisperConfidence(response),
+        confidence: this.calculateWhisperConfidence(result),
         timestamp: new Date().toISOString(),
         startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
         endTime: Math.round(audioChunk.timestamp),
@@ -393,7 +413,7 @@ class ASRService {
       await this.saveTranscription(transcriptionResult);
       
       // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
-      console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${response.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
+      console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
       console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
 
       return transcriptionResult;
