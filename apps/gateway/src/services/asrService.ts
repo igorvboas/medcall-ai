@@ -338,15 +338,10 @@ class ASRService {
       }
 
       // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Usar abordagem baseada na documentação oficial OpenAI
-      const audioFile = {
-        name: 'audio.wav',
-        type: 'audio/wav',
-        size: audioChunk.audioBuffer.length,
-        lastModified: Date.now(),
-        // Adicionar o buffer como propriedade direta
-        buffer: audioChunk.audioBuffer
-      } as any;
+      // CORREÇÃO: Usar File constructor compatível com Node.js
+      const audioFile = new File([audioChunk.audioBuffer], 'audio.wav', {
+        type: 'audio/wav'
+      });
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
       console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
@@ -354,13 +349,19 @@ class ASRService {
       console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
       console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
+      console.log(`🔍 DEBUG [WHISPER] File size: ${audioFile.size} bytes`);
+      console.log(`🔍 DEBUG [WHISPER] File type: ${audioFile.type}`);
 
       // Chamar API Whisper com configurações otimizadas
+      console.log(`🚀 CHAMANDO WHISPER API...`);
       const response = await this.openai.audio.transcriptions.create({
         file: audioFile,
         model: this.config.model,
         ...this.whisperConfig
       });
+      
+      console.log(`✅ WHISPER API RESPONDEU!`);
+      console.log(`🔍 DEBUG [WHISPER] Response received:`, response);
 
       // Verificar se há texto transcrito
       if (!response.text || response.text.trim().length === 0) {
@@ -393,7 +394,9 @@ class ASRService {
       // Salvar no banco de dados
       await this.saveTranscription(transcriptionResult);
       
+      // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
       console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${response.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
+      console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
 
       return transcriptionResult;
 
