@@ -151,10 +151,11 @@ export async function PUT(request: NextRequest) {
     console.log('✅ Médico atualizado:', updatedMedico);
     return NextResponse.json({ medico: updatedMedico });
 
-  } catch (error) {
-    console.error('❌ Erro geral:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('❌ Erro geral:', message);
     return NextResponse.json(
-      { error: 'Erro interno do servidor', details: error.message },
+      { error: 'Erro interno do servidor', details: message },
       { status: 500 }
     );
   }

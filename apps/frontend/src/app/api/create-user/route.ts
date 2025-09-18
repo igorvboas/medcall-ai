@@ -16,10 +16,10 @@ export async function GET(request: NextRequest) {
     const { supabase, session, user } = authResult;
     const userId = user.id;
     
-    console.log('✅ Usuário autenticado:', {
+  console.log('✅ Usuário autenticado:', {
       id: userId,
-      email: session.user.email,
-      name: session.user.user_metadata?.name || session.user.email
+      email: user.email,
+      name: user.user_metadata?.name || user.email
     });
     
     // Verificar se usuário já existe
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
     console.log('🔄 Criando usuário...');
     const newUser = {
       id: userId,
-      email: session.user.email!,
-      name: session.user.user_metadata?.name || session.user.email!.split('@')[0],
+      email: user.email!,
+      name: user.user_metadata?.name || user.email!.split('@')[0],
       is_doctor: true,
       subscription_type: 'FREE'
     };
@@ -79,11 +79,12 @@ export async function GET(request: NextRequest) {
       user: createdUser
     });
     
-  } catch (error) {
-    console.error('❌ Erro geral:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('❌ Erro geral:', message);
     return NextResponse.json({
       error: 'Erro interno do servidor',
-      details: error.message
+      details: message
     }, { status: 500 });
   }
 }

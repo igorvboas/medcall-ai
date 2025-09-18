@@ -204,10 +204,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
-  } catch (error) {
-    console.error('Erro no endpoint GET /api/dashboard:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Erro no endpoint GET /api/dashboard:', message);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: 'Erro interno do servidor', details: message },
       { status: 500 }
     );
   }
