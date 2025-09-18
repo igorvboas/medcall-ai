@@ -3,6 +3,7 @@ import { db } from '../config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
+import FormData from 'form-data';
 
 export interface TranscriptionResult {
   id: string;
@@ -337,15 +338,18 @@ class ASRService {
       }
 
       // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Criar objeto File-like compatível com Node.js
+      // CORREÇÃO: Criar objeto File-like que implementa a interface correta
       const audioFile = {
         name: 'audio.wav',
         type: 'audio/wav',
         size: audioChunk.audioBuffer.length,
-        stream: () => audioChunk.audioBuffer,
-        arrayBuffer: () => Promise.resolve(audioChunk.audioBuffer.buffer),
-        text: () => Promise.resolve(''),
-        lastModified: Date.now()
+        lastModified: Date.now(),
+        text: async () => '',
+        arrayBuffer: async () => audioChunk.audioBuffer.buffer.slice(audioChunk.audioBuffer.byteOffset, audioChunk.audioBuffer.byteOffset + audioChunk.audioBuffer.byteLength),
+        stream: () => {
+          const { Readable } = require('stream');
+          return Readable.from(audioChunk.audioBuffer);
+        }
       } as any;
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
