@@ -2,17 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 
-// Carregar .env explicitamente
-const envPath = path.resolve(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
-  require('dotenv').config({ path: envPath });
-  //console.log('[DEBUG] .env carregado:', {
-  //  SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
-  //  SUPABASE_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
-  //});
-} else {
-  console.error('[ERROR] .env não encontrado em:', envPath);
-}
+// Em produção (Vercel), as variáveis de ambiente vêm do Dashboard. Não carregar .env manualmente aqui.
 
 const nextConfig = {
   reactStrictMode: true,
@@ -57,6 +47,11 @@ const nextConfig = {
 
   // Configurações para audio worklets e WebRTC
   webpack: (config, { isServer }) => {
+    // Alias "@" → "src" para garantir resolução consistente em build
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname, 'src'),
+    };
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

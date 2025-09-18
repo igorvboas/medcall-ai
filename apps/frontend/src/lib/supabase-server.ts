@@ -2,9 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 // Carregar variáveis de ambiente explicitamente
-import { config } from 'dotenv';
-config({ path: '.env' });
-
+// Em produção, as envs vêm do ambiente (Vercel). Não carregar .env manualmente aqui.
+//import { config } from 'dotenv';
+//config({ path: '.env' });
 // Cliente Supabase para server-side (API routes)
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
