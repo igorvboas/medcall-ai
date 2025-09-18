@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 
 // Carregar variáveis de ambiente explicitamente
 import { config } from 'dotenv';
-config({ path: '.env.local' });
+config({ path: '.env' });
 
 // Cliente Supabase para server-side (API routes)
 export function createSupabaseServerClient() {
