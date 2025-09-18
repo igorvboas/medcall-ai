@@ -1,27 +1,16 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd apps/frontend && npm ci && npm run build",
+  "outputDirectory": "apps/frontend/.next",
+  "installCommand": "cd apps/frontend && npm ci",
+  "framework": "nextjs",
+  "rewrites": [
     {
-      "src": "apps/frontend/package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "apps/frontend/$1"
+      "source": "/(.*)",
+      "destination": "/apps/frontend/$1"
     }
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "apps/frontend/src/app/api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "buildCommand": "cd apps/frontend && npm ci && npm run build",
-  "outputDirectory": "apps/frontend/.next",
-  "installCommand": "cd apps/frontend && npm ci",
-  "framework": "nextjs"
+  }
 }
