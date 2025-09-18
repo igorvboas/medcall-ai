@@ -110,6 +110,11 @@ export function useAudioForker({
       }
 
       try {
+        // Verificar se AudioWorklet está disponível
+        if (!audioContext.audioWorklet) {
+          throw new Error('AudioWorklet não suportado neste navegador');
+        }
+
         // Tentar carregar o AudioWorklet (abordagem moderna)
         await audioContext.audioWorklet.addModule('/audio-processor.js');
         
@@ -129,11 +134,10 @@ export function useAudioForker({
 
         // Configurar processamento de áudio via MessagePort
         processor.port.onmessage = (event) => {
-          const { type, audioData, timestamp, sampleRate } = event.data;
+          const { type, audioData, timestamp, sampleRate, rms } = event.data;
           
           if (type === 'audiodata' && onAudioData) {
             // Debug: verificar se há áudio real
-            const rms = Math.sqrt(audioData.reduce((sum: number, sample: number) => sum + sample * sample, 0) / audioData.length);
             if (rms > 0.01) {
               console.log(`🎤 Frontend capturou áudio real: ${channel} - RMS: ${rms.toFixed(4)}`);
             }
@@ -147,6 +151,7 @@ export function useAudioForker({
           }
         };
 
+        console.log(`✅ AudioWorklet carregado com sucesso para ${channel}`);
         return {
           stream,
           audioContext,
@@ -177,17 +182,28 @@ export function useAudioForker({
           const inputBuffer = event.inputBuffer;
           const audioData = inputBuffer.getChannelData(0);
           
-          // Enviar dados para callback
-          if (onAudioData) {
-            onAudioData({
-              channel,
-              audioData: new Float32Array(audioData),
-              timestamp: Date.now(),
-              sampleRate: audioContext.sampleRate
-            });
+          // Calcular RMS para verificar se há áudio real
+          let sum = 0;
+          for (let i = 0; i < audioData.length; i++) {
+            sum += audioData[i] * audioData[i];
+          }
+          const rms = Math.sqrt(sum / audioData.length);
+          
+          // Só enviar se houver áudio significativo
+          if (rms > 0.001) {
+            // Enviar dados para callback
+            if (onAudioData) {
+              onAudioData({
+                channel,
+                audioData: new Float32Array(audioData),
+                timestamp: Date.now(),
+                sampleRate: audioContext.sampleRate
+              });
+            }
           }
         };
 
+        console.log(`✅ ScriptProcessor fallback ativado para ${channel}`);
         return {
           stream,
           audioContext,

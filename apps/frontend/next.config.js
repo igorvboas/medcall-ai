@@ -34,11 +34,16 @@ const nextConfig = {
         headers: [
           {
             key: 'Cross-Origin-Embedder-Policy',
-            value: 'require-corp',
+            value: 'credentialless', // Mais permissivo para AudioWorklet
           },
           {
             key: 'Cross-Origin-Opener-Policy',
             value: 'same-origin',
+          },
+          // Headers específicos para AudioWorklet
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
           },
         ],
       },
