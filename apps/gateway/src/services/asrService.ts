@@ -320,6 +320,12 @@ class ASRService {
       });
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
+      console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
+      console.log(`🔍 DEBUG [AUDIO] File size: ${audioFile.size} bytes`);
+      console.log(`🔍 DEBUG [AUDIO] File type: ${audioFile.type}`);
+      console.log(`🔍 DEBUG [AUDIO] Sample rate: ${audioChunk.sampleRate} Hz`);
+      console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
+      console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
 
       // Chamar API Whisper com configurações otimizadas
       const response = await this.openai.audio.transcriptions.create({

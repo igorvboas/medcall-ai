@@ -170,7 +170,10 @@ export function OnlineCallRoom({
       setConnectionState(prev => ({ ...prev, isConnecting: true }));
 
       // Conectar ao gateway WebSocket
-      socketInstance = io(process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001', {
+      const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001';
+      const wsUrl = gatewayUrl.replace(/^https?:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+      
+      socketInstance = io(wsUrl, {
         transports: ['websocket'],
         timeout: 10000
       });
