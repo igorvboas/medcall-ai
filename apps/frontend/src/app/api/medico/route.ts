@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { getAuthenticatedSession } from '@/lib/supabase-server';
 
 // Tipos locais para dados do médico
