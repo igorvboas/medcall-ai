@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Carregar .env.local explicitamente
-const envPath = path.resolve(process.cwd(), '.env.local');
+const envPath = path.resolve(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
   require('dotenv').config({ path: envPath });
   //console.log('[DEBUG] .env.local carregado:', {
@@ -11,7 +11,7 @@ if (fs.existsSync(envPath)) {
   //  SUPABASE_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
   //});
 } else {
-  console.error('[ERROR] .env.local não encontrado em:', envPath);
+  console.error('[ERROR] .env não encontrado em:', envPath);
 }
 
 const nextConfig = {
