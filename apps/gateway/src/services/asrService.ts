@@ -338,10 +338,16 @@ class ASRService {
       }
 
       // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Usar File constructor compatível com Node.js
-      const audioFile = new File([audioChunk.audioBuffer], 'audio.wav', {
-        type: 'audio/wav'
-      });
+      // CORREÇÃO: Criar objeto File-like que funciona no Node.js
+      const audioFile = {
+        name: 'audio.wav',
+        type: 'audio/wav',
+        size: audioChunk.audioBuffer.length,
+        lastModified: Date.now(),
+        stream: () => audioChunk.audioBuffer,
+        arrayBuffer: async () => audioChunk.audioBuffer.buffer.slice(audioChunk.audioBuffer.byteOffset, audioChunk.audioBuffer.byteOffset + audioChunk.audioBuffer.byteLength),
+        text: async () => ''
+      } as any;
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
       console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
@@ -349,8 +355,7 @@ class ASRService {
       console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
       console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
-      console.log(`🔍 DEBUG [WHISPER] File size: ${audioFile.size} bytes`);
-      console.log(`🔍 DEBUG [WHISPER] File type: ${audioFile.type}`);
+      console.log(`🔍 DEBUG [WHISPER] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
 
       // Chamar API Whisper com configurações otimizadas
       console.log(`🚀 CHAMANDO WHISPER API...`);
