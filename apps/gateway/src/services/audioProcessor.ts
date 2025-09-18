@@ -543,6 +543,25 @@ export class AudioProcessor extends EventEmitter {
     const length = float32Array.length;
     const buffer = Buffer.allocUnsafe(44 + length * 2);
     
+    // 🔍 DEBUG: Verificar dados de entrada
+    const hasNonZeroInput = float32Array.some(value => value !== 0);
+    const maxInputValue = Math.max(...float32Array);
+    const minInputValue = Math.min(...float32Array);
+    const avgInputValue = float32Array.reduce((sum, val) => sum + Math.abs(val), 0) / float32Array.length;
+    
+    console.log(`🔍 DEBUG [WAV_CONVERSION] Input:`, {
+      length,
+      hasNonZeroInput,
+      maxValue: maxInputValue.toFixed(6),
+      minValue: minInputValue.toFixed(6),
+      avgValue: avgInputValue.toFixed(6),
+      first10Values: Array.from(float32Array.slice(0, 10)).map(v => v.toFixed(6))
+    });
+
+    if (!hasNonZeroInput) {
+      console.warn(`⚠️⚠️⚠️ WAV CONVERSION: Input Float32Array está zerado!`);
+    }
+    
     // WAV Header
     buffer.write('RIFF', 0);                                    // ChunkID
     buffer.writeUInt32LE(36 + length * 2, 4);                  // ChunkSize
@@ -559,10 +578,34 @@ export class AudioProcessor extends EventEmitter {
     buffer.writeUInt32LE(length * 2, 40);                      // Subchunk2Size
     
     // Audio Data (16-bit PCM)
+    let nonZeroOutputCount = 0;
     for (let i = 0; i < length; i++) {
       const sample = Math.max(-1, Math.min(1, float32Array[i]));
       const int16Sample = Math.round(sample * 32767);
       buffer.writeInt16LE(int16Sample, 44 + i * 2);
+      
+      if (int16Sample !== 0) {
+        nonZeroOutputCount++;
+      }
+    }
+    
+    // 🔍 DEBUG: Verificar dados de saída
+    const audioData = buffer.slice(44);
+    const hasNonZeroOutput = audioData.some(byte => byte !== 0);
+    
+    console.log(`🔍 DEBUG [WAV_CONVERSION] Output:`, {
+      bufferSize: buffer.length,
+      audioDataSize: audioData.length,
+      hasNonZeroOutput,
+      nonZeroOutputCount,
+      first10Bytes: Array.from(audioData.slice(0, 10)),
+      first10Int16Values: []
+    });
+
+    // Verificar primeiros 10 valores Int16
+    for (let i = 0; i < Math.min(10, length); i++) {
+      const int16Value = buffer.readInt16LE(44 + i * 2);
+      console.log(`  Int16[${i}]: ${int16Value} (from Float32: ${float32Array[i].toFixed(6)})`);
     }
     
     return buffer;

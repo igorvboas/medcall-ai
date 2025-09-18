@@ -36,6 +36,27 @@ export function setupPresentialAudioHandlers(socket: Socket, notifier: SessionNo
       // Converter array de volta para Float32Array
       const float32AudioData = new Float32Array(audioData);
 
+      // 🔍 DEBUG: Verificar se os dados chegam zerados
+      const hasNonZeroData = float32AudioData.some(value => value !== 0);
+      const maxValue = Math.max(...float32AudioData);
+      const minValue = Math.min(...float32AudioData);
+      const avgValue = float32AudioData.reduce((sum, val) => sum + Math.abs(val), 0) / float32AudioData.length;
+      
+      console.log(`🔍 DEBUG [AUDIO_RECEPTION] doctor:`, {
+        arrayLength: audioData.length,
+        float32Length: float32AudioData.length,
+        hasNonZeroData,
+        maxValue: maxValue.toFixed(6),
+        minValue: minValue.toFixed(6),
+        avgValue: avgValue.toFixed(6),
+        first10Values: Array.from(float32AudioData.slice(0, 10)).map(v => v.toFixed(6))
+      });
+
+      if (!hasNonZeroData) {
+        console.warn(`⚠️⚠️⚠️ DADOS ZERADOS RECEBIDOS do frontend para doctor!`);
+        return; // Não processar dados zerados
+      }
+
       // Criar chunk de áudio
       const audioChunk: AudioChunk = {
         sessionId,
@@ -79,6 +100,27 @@ export function setupPresentialAudioHandlers(socket: Socket, notifier: SessionNo
 
       // Converter array de volta para Float32Array
       const float32AudioData = new Float32Array(audioData);
+
+      // 🔍 DEBUG: Verificar se os dados chegam zerados
+      const hasNonZeroData = float32AudioData.some(value => value !== 0);
+      const maxValue = Math.max(...float32AudioData);
+      const minValue = Math.min(...float32AudioData);
+      const avgValue = float32AudioData.reduce((sum, val) => sum + Math.abs(val), 0) / float32AudioData.length;
+      
+      console.log(`🔍 DEBUG [AUDIO_RECEPTION] patient:`, {
+        arrayLength: audioData.length,
+        float32Length: float32AudioData.length,
+        hasNonZeroData,
+        maxValue: maxValue.toFixed(6),
+        minValue: minValue.toFixed(6),
+        avgValue: avgValue.toFixed(6),
+        first10Values: Array.from(float32AudioData.slice(0, 10)).map(v => v.toFixed(6))
+      });
+
+      if (!hasNonZeroData) {
+        console.warn(`⚠️⚠️⚠️ DADOS ZERADOS RECEBIDOS do frontend para patient!`);
+        return; // Não processar dados zerados
+      }
 
       // Criar chunk de áudio
       const audioChunk: AudioChunk = {
