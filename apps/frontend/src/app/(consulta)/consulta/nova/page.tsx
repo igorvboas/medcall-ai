@@ -21,6 +21,7 @@ interface MicrophoneDevice {
 
 // Função para criar sessão presencial
 async function createPresentialSession(consultationId: string, participantData: any) {
+
   const response = await fetch(`${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/api/sessions`, {
     method: 'POST',
     headers: {
@@ -38,6 +39,7 @@ async function createPresentialSession(consultationId: string, participantData: 
   });
 
   if (!response.ok) {
+    console.log('-----> response', response);
     throw new Error('Falha ao criar sessão presencial');
   }
 
