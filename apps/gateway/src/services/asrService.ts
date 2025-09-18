@@ -314,18 +314,46 @@ class ASRService {
     }
 
     try {
+      // 🔍 VALIDAÇÕES PRÉ-ENVIO para evitar erros
+      const maxFileSize = 25 * 1024 * 1024; // 25MB limite do Whisper
+      const maxDuration = 25 * 60 * 1000; // 25 minutos limite do Whisper
+      
+      // Verificar tamanho do buffer
+      if (audioChunk.audioBuffer.length > maxFileSize) {
+        console.warn(`⚠️ Arquivo muito grande para Whisper: ${audioChunk.audioBuffer.length} bytes (máx: ${maxFileSize} bytes)`);
+        return null;
+      }
+      
+      // Verificar duração
+      if (audioChunk.duration > maxDuration) {
+        console.warn(`⚠️ Áudio muito longo para Whisper: ${audioChunk.duration}ms (máx: ${maxDuration}ms)`);
+        return null;
+      }
+      
+      // Verificar se buffer não está vazio
+      if (audioChunk.audioBuffer.length === 0) {
+        console.warn(`⚠️ Buffer de áudio vazio para ${audioChunk.channel}`);
+        return null;
+      }
+
       // Criar arquivo temporário em memória para o Whisper
-      const audioFile = new File([audioChunk.audioBuffer], 'audio.wav', {
-        type: 'audio/wav'
-      });
+      // CORREÇÃO: Criar objeto File-like compatível com Node.js
+      const audioFile = {
+        name: 'audio.wav',
+        type: 'audio/wav',
+        size: audioChunk.audioBuffer.length,
+        stream: () => audioChunk.audioBuffer,
+        arrayBuffer: () => Promise.resolve(audioChunk.audioBuffer.buffer),
+        text: () => Promise.resolve(''),
+        lastModified: Date.now()
+      } as any;
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
       console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
-      console.log(`🔍 DEBUG [AUDIO] File size: ${audioFile.size} bytes`);
-      console.log(`🔍 DEBUG [AUDIO] File type: ${audioFile.type}`);
       console.log(`🔍 DEBUG [AUDIO] Sample rate: ${audioChunk.sampleRate} Hz`);
       console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
+      console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
 
       // Chamar API Whisper com configurações otimizadas
       const response = await this.openai.audio.transcriptions.create({
@@ -372,13 +400,23 @@ class ASRService {
     } catch (error: any) {
       console.error('Erro na API Whisper:', error);
       
+      // 🔍 LOG DETALHADO do erro para diagnóstico
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Canal: ${audioChunk.channel}`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Duration: ${audioChunk.duration}ms`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Sample rate: ${audioChunk.sampleRate} Hz`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Error code: ${error.code || 'N/A'}`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Error status: ${error.status || 'N/A'}`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Error message: ${error.message || 'N/A'}`);
+      console.error(`🔍 DEBUG [WHISPER_ERROR] Error type: ${error.type || 'N/A'}`);
+      
       // Se for erro de rede ou API, lançar para usar fallback
       if (error.code === 'ENOTFOUND' || error.status >= 500) {
         throw error;
       }
       
       // Se for erro de áudio inválido, retornar null
-      console.warn(`⚠️ Áudio inválido para Whisper: ${audioChunk.channel}`);
+      console.warn(`⚠️ Áudio inválido para Whisper: ${audioChunk.channel} - ${error.message || 'Erro desconhecido'}`);
       return null;
     }
   }

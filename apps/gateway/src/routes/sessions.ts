@@ -29,11 +29,14 @@ const createSessionSchema = z.object({
 
 // Criar nova sessão
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
+  console.log('📨 Recebida requisição para criar sessão:', req.body);
+  
   // Validar dados de entrada
   const validationResult = createSessionSchema.safeParse(req.body);
   
   if (!validationResult.success) {
-    throw new ValidationError('Dados inválidos para criar sessão');
+    console.error('❌ Validação falhou:', validationResult.error);
+    throw new ValidationError(`Dados inválidos para criar sessão: ${validationResult.error.message}`);
   }
 
   const { consultation_id, session_type, participants, consent, metadata } = validationResult.data;
@@ -44,6 +47,15 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   }
 
   try {
+    console.log('📝 Tentando criar sessão com dados:', {
+      consultation_id,
+      session_type,
+      participants,
+      consent,
+      metadata,
+      started_at: new Date().toISOString(),
+    });
+
     // Criar sessão no banco
     const session = await db.createSession({
       consultation_id,
@@ -55,8 +67,11 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     });
 
     if (!session) {
+      console.error('❌ Falha ao criar sessão - retornou null');
       throw new Error('Falha ao criar sessão no banco de dados');
     }
+
+    console.log('✅ Sessão criada com sucesso:', session.id);
 
     const roomName = `session-${session.id}`;
 
@@ -131,8 +146,9 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     }
 
   } catch (error) {
-    console.error('Erro ao criar sessão:', error);
-    throw new Error('Falha ao criar sessão. Tente novamente.');
+    console.error('❌ Erro ao criar sessão:', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    throw new Error(`Falha ao criar sessão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
 }));
 

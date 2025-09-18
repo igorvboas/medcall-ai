@@ -376,6 +376,32 @@ export class AudioProcessor extends EventEmitter {
       // Converter para WAV com áudio normalizado
       const audioBuffer = this.float32ToWavBuffer(normalizedAudio, sampleRate);
 
+      // 🔍 VALIDAÇÕES ANTES DE PROCESSAR
+      const maxFileSize = 25 * 1024 * 1024; // 25MB limite do Whisper
+      const minDuration = 100; // Mínimo 100ms
+      const maxDuration = 25 * 60 * 1000; // Máximo 25 minutos
+      
+      // Verificar se o áudio é válido
+      if (audioBuffer.length === 0) {
+        console.warn(`⚠️ Buffer de áudio vazio para ${channel}`);
+        return;
+      }
+      
+      if (audioBuffer.length > maxFileSize) {
+        console.warn(`⚠️ Arquivo muito grande para Whisper: ${audioBuffer.length} bytes (máx: ${maxFileSize} bytes) - ${channel}`);
+        return;
+      }
+      
+      if (duration < minDuration) {
+        console.warn(`⚠️ Áudio muito curto: ${duration}ms (mín: ${minDuration}ms) - ${channel}`);
+        return;
+      }
+      
+      if (duration > maxDuration) {
+        console.warn(`⚠️ Áudio muito longo: ${duration}ms (máx: ${maxDuration}ms) - ${channel}`);
+        return;
+      }
+
       // Detectar atividade de voz final
       const hasVoiceActivity = this.detectVoiceActivity(concatenatedAudio);
       const averageVolume = this.calculateAverageVolume(concatenatedAudio);

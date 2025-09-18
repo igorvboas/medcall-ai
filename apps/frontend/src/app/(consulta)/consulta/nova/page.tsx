@@ -40,7 +40,9 @@ async function createPresentialSession(consultationId: string, participantData: 
 
   if (!response.ok) {
     console.log('-----> response', response);
-    throw new Error('Falha ao criar sessão presencial');
+    const errorText = await response.text();
+    console.log('-----> error body:', errorText);
+    throw new Error(`Falha ao criar sessão presencial: ${response.status} - ${errorText}`);
   }
 
   return response.json();
@@ -149,7 +151,8 @@ export default function NovaConsultaPage() {
       if (appointmentType === 'presencial') {
         // Fluxo para consulta presencial
         try {
-          const participantData = {
+          // Construir participantes sem enviar emails vazios (evita erro 500 por validação de email)
+          const participantData: any = {
             doctor: {
               id: 'doctor-current', // TODO: Pegar do contexto de auth
               name: 'Dr. Médico', // TODO: Pegar do contexto de auth
@@ -157,10 +160,14 @@ export default function NovaConsultaPage() {
             },
             patient: {
               id: selectedPatient,
-              name: selectedPatientData.name,
-              email: selectedPatientData.email || ''
+              name: selectedPatientData.name
             }
           };
+
+          // Incluir email do paciente somente se existir e não for string vazia
+          if (selectedPatientData.email && selectedPatientData.email.trim().length > 0) {
+            participantData.patient.email = selectedPatientData.email;
+          }
 
           // Criar sessão presencial no gateway
           const session = await createPresentialSession(consultation.id, participantData);
