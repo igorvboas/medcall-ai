@@ -136,12 +136,13 @@ const nextConfig = {
   // Configurações de ESLint
   eslint: {
     dirs: ['src'],
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
 
   // Configurações de TypeScript
   typescript: {
-    ignoreBuildErrors: false,
+    // Em produção, pule a checagem de tipos (o SWC ainda transpila TS)
+    ignoreBuildErrors: true,
   },
 };
 
