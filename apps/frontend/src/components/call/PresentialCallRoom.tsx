@@ -122,15 +122,16 @@ export function PresentialCallRoom({
 
       // Conectar ao gateway WebSocket
       const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001';
+      const wsUrl = gatewayUrl.replace(/^https?:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
       
-      socketInstance = io(gatewayUrl, {
+      socketInstance = io(wsUrl, {
         transports: ['websocket'],
         timeout: 10000
       });
 
       socketInstance.on('connect', () => {
         console.log('✅ WebSocket conectado');
-        console.log('🔗 URL do WebSocket:', gatewayUrl);
+        console.log('🔗 URL do WebSocket:', wsUrl);
         setConnectionState({
           isConnected: true,
           isConnecting: false,
