@@ -121,13 +121,16 @@ export function PresentialCallRoom({
       setConnectionState(prev => ({ ...prev, isConnecting: true }));
 
       // Conectar ao gateway WebSocket
-      socketInstance = io(process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001', {
+      const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001';
+      
+      socketInstance = io(gatewayUrl, {
         transports: ['websocket'],
         timeout: 10000
       });
 
       socketInstance.on('connect', () => {
         console.log('✅ WebSocket conectado');
+        console.log('🔗 URL do WebSocket:', gatewayUrl);
         setConnectionState({
           isConnected: true,
           isConnecting: false,
@@ -157,6 +160,11 @@ export function PresentialCallRoom({
           isConnecting: false,
           error: `Erro de conexão: ${error.message}`
         });
+      });
+
+      // Handler para confirmação de entrada na sessão
+      socketInstance.on('session:joined', (data) => {
+        console.log('✅ Entrou na sessão:', data);
       });
 
       // Handlers para transcrição
