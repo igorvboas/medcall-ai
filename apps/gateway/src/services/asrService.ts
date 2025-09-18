@@ -338,18 +338,14 @@ class ASRService {
       }
 
       // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Criar objeto File-like que implementa a interface correta
+      // CORREÇÃO: Usar abordagem baseada na documentação oficial OpenAI
       const audioFile = {
         name: 'audio.wav',
         type: 'audio/wav',
         size: audioChunk.audioBuffer.length,
         lastModified: Date.now(),
-        text: async () => '',
-        arrayBuffer: async () => audioChunk.audioBuffer.buffer.slice(audioChunk.audioBuffer.byteOffset, audioChunk.audioBuffer.byteOffset + audioChunk.audioBuffer.byteLength),
-        stream: () => {
-          const { Readable } = require('stream');
-          return Readable.from(audioChunk.audioBuffer);
-        }
+        // Adicionar o buffer como propriedade direta
+        buffer: audioChunk.audioBuffer
       } as any;
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
