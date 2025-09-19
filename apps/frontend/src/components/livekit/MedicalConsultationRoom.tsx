@@ -105,6 +105,28 @@ export function MedicalConsultationRoom({
     onError?.(error);
   };
 
+  // Debug: Log connection attempts
+  useEffect(() => {
+    console.log('🔍 MedicalConsultationRoom mounted with:', {
+      serverUrl,
+      token: token ? 'Present' : 'Missing',
+      roomName,
+      participantName
+    });
+  }, [serverUrl, token, roomName, participantName]);
+
+  // Timeout para detectar conexão travada
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isConnected) {
+        console.error('⏰ Timeout: Conexão não estabelecida em 30 segundos');
+        setConnectionError('Timeout: Não foi possível conectar à sala em 30 segundos');
+      }
+    }, 30000);
+
+    return () => clearTimeout(timeout);
+  }, [isConnected]);
+
   // Show loading state while connecting
   if (!isConnected || !isRoomReady) {
     return (
@@ -202,8 +224,15 @@ export function MedicalConsultationRoom({
         </p>
         <p style={{ color: '#a0aec0', fontSize: '14px' }}>
           Server URL: {serverUrl ? '✅' : '❌'}<br/>
-          Token: {token ? '✅' : '❌'}
+          Token: {token ? '✅' : '❌'}<br/>
+          Room Name: {roomName ? '✅' : '❌'}<br/>
+          Participant: {participantName ? '✅' : '❌'}
         </p>
+        <div style={{ marginTop: '1rem', fontSize: '12px', color: '#666' }}>
+          <p>Debug Info:</p>
+          <p>ServerUrl: {serverUrl}</p>
+          <p>Token: {token ? `${token.substring(0, 20)}...` : 'null'}</p>
+        </div>
       </div>
     );
   }
@@ -225,11 +254,6 @@ export function MedicalConsultationRoom({
       options={{
         adaptiveStream: true,
         dynacast: true,
-        videoCaptureDefaults: videoCaptureDefaults || {},
-        audioCaptureDefaults: audioCaptureDefaults || {},
-        publishDefaults: {
-          dtx: false,
-        },
       }}
     >
       <RoomAudioRenderer />
@@ -253,6 +277,9 @@ export function MedicalConsultationRoom({
           </h1>
           <p style={{ margin: '0.5rem 0 0 0', color: '#a0aec0' }}>
             Paciente: {patientName} | Sala: {roomName}
+          </p>
+          <p style={{ margin: '0.25rem 0 0 0', color: '#48bb78', fontSize: '12px' }}>
+            ✅ Conectado | 🚀 Sala Pronta
           </p>
         </div>
 
