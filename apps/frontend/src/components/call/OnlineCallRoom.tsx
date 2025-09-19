@@ -149,14 +149,15 @@ export function OnlineCallRoom({
     onAudioData: useCallback((audioData: Float32Array, timestamp: number) => {
       // Enviar dados de áudio via WebSocket para transcrição
       if (socket && connectionState.isConnected) {
-        socket.emit('online:audio:doctor', {
+        const audioChannel = userRole === 'doctor' ? 'doctor' : 'patient';
+        socket.emit(`online:audio:${audioChannel}`, {
           sessionId,
           audioData: Array.from(audioData),
           timestamp,
           sampleRate: 16000 // LiveKit default
         });
       }
-    }, [socket, connectionState.isConnected, sessionId]),
+    }, [socket, connectionState.isConnected, sessionId, userRole]),
     onError: useCallback((error: string) => {
       setConnectionState(prev => ({ ...prev, error }));
     }, [])
@@ -488,8 +489,9 @@ export function OnlineCallRoom({
             <div className="participant-container">
               <div className={`participant-video ${participants.length === 0 ? 'offline' : ''}`}>
                 {participants.length > 0 ? (
-                  // Renderizar vídeo do participante remoto se disponível
-                  participants.map((participant) => {
+                  // Renderizar vídeo do primeiro participante remoto
+                  (() => {
+                    const participant = participants[0];
                     const videoTrack = participant.videoTrackPublications.values().next().value?.track;
                     if (videoTrack) {
                       return (
@@ -506,11 +508,11 @@ export function OnlineCallRoom({
                       );
                     }
                     return (
-                      <div key={participant.identity} className="participant-avatar">
+                      <div className="participant-avatar">
                         <User size={40} />
                       </div>
                     );
-                  })
+                  })()
                 ) : (
                   <div className="participant-avatar">
                     <User size={40} />
