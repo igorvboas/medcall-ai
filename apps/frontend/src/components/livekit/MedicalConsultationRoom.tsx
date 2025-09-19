@@ -1,10 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
-import { LiveKitRoomProvider } from './LiveKitRoomProvider';
-import { MedicalVideoConference } from './MedicalVideoConference';
-import { RealtimeTranscription } from './RealtimeTranscription';
-import { SuggestionsPanel } from '../call/SuggestionsPanel';
+import React, { useState, useEffect } from 'react';
+import { 
+  LiveKitRoom, 
+  VideoConference,
+  GridLayout,
+  ParticipantTile,
+  ControlBar,
+  RoomAudioRenderer,
+  useTracks,
+  useLocalParticipant,
+  useRemoteParticipants,
+  ConnectionState,
+  ConnectionStateToast,
+  PreJoin,
+  LocalUserChoices
+} from '@livekit/components-react';
+import { Track } from 'livekit-client';
 
 interface MedicalConsultationRoomProps {
   // Room configuration
@@ -13,7 +25,7 @@ interface MedicalConsultationRoomProps {
   userRole?: 'doctor' | 'patient';
   sessionId: string;
   
-  // Connection details (optional, will be fetched if not provided)
+  // Connection details
   serverUrl?: string;
   token?: string;
   
@@ -28,28 +40,12 @@ interface MedicalConsultationRoomProps {
     deviceId?: string;
   };
   
-  // Quality settings
-  hq?: boolean;
-  
   // Event handlers
   onConnected?: () => void;
   onDisconnected?: () => void;
   onError?: (error: Error) => void;
   onEndCall?: () => void;
   onShareConsultation?: () => void;
-  
-  // Panel data for doctors
-  suggestions?: Array<{
-    id: string;
-    type: 'question' | 'diagnosis' | 'treatment';
-    text: string;
-    confidence: number;
-    timestamp: string;
-    used: boolean;
-    used_at?: string;
-  }>;
-  
-  onSuggestionUsed?: (suggestionId: string) => void;
 }
 
 export function MedicalConsultationRoom({
@@ -62,122 +58,38 @@ export function MedicalConsultationRoom({
   patientName,
   videoCaptureDefaults,
   audioCaptureDefaults,
-  hq = false,
   onConnected,
   onDisconnected,
   onError,
   onEndCall,
   onShareConsultation,
-  suggestions = [],
-  onSuggestionUsed,
 }: MedicalConsultationRoomProps) {
-  const [transcriptions, setTranscriptions] = useState<any[]>([]);
-  
-  // Render transcription panel for doctors
-  const transcriptionPanel = userRole === 'doctor' ? (
-    <RealtimeTranscription
-      sessionId={sessionId}
-      userRole={userRole}
-      onTranscriptionUpdate={setTranscriptions}
-    />
-  ) : null;
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // Render suggestions panel for doctors
-  const suggestionsPanel = userRole === 'doctor' ? (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        padding: '1rem', 
-        borderBottom: '1px solid #4a5568',
-        background: '#2a2a2a',
-        color: 'white'
-      }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-          🧠 Sugestões de IA
-        </h3>
-      </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        <SuggestionsPanel 
-          suggestions={suggestions}
-          onSuggestionUsed={onSuggestionUsed}
-        />
-      </div>
-    </div>
-  ) : null;
+  // Handle connection events
+  const handleConnected = () => {
+    console.log('✅ Connected to room');
+    setIsConnected(true);
+    setConnectionError(null);
+    onConnected?.();
+  };
 
-  // Render patient data panel for doctors
-  const patientDataPanel = userRole === 'doctor' ? (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        padding: '1rem', 
-        borderBottom: '1px solid #4a5568',
-        background: '#2a2a2a',
-        color: 'white'
-      }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-          👤 Dados do Paciente
-        </h3>
-      </div>
-      <div style={{ flex: 1, padding: '1rem', background: '#1a1a1a', color: 'white' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: '14px', marginBottom: '0.5rem', color: '#a0aec0' }}>
-            Nome
-          </label>
-          <div style={{ 
-            padding: '0.5rem', 
-            background: '#2a2a2a', 
-            borderRadius: '4px',
-            fontSize: '14px'
-          }}>
-            {patientName || 'Nome do paciente'}
-          </div>
-        </div>
-        
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: '14px', marginBottom: '0.5rem', color: '#a0aec0' }}>
-            Status da Consulta
-          </label>
-          <div style={{ 
-            padding: '0.5rem', 
-            background: '#2a2a2a', 
-            borderRadius: '4px',
-            fontSize: '14px',
-            color: '#48bb78'
-          }}>
-            ✅ Conectado
-          </div>
-        </div>
-        
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', marginBottom: '0.5rem', color: '#a0aec0' }}>
-            Tipo de Consulta
-          </label>
-          <div style={{ 
-            padding: '0.5rem', 
-            background: '#2a2a2a', 
-            borderRadius: '4px',
-            fontSize: '14px'
-          }}>
-            📹 Consulta Online
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  const handleDisconnected = () => {
+    console.log('❌ Disconnected from room');
+    setIsConnected(false);
+    onDisconnected?.();
+  };
 
-  // TESTE ISOLADO - Provider sem componentes LiveKit
-  return (
-    <LiveKitRoomProvider
-      roomName={roomName}
-      participantName={participantName}
-      serverUrl={serverUrl}
-      token={token}
-      onConnected={onConnected}
-      onDisconnected={onDisconnected}
-      onError={onError}
-      hq={hq}
-      videoCaptureDefaults={videoCaptureDefaults}
-      audioCaptureDefaults={audioCaptureDefaults}
-    >
+  const handleError = (error: Error) => {
+    console.error('❌ Room error:', error);
+    setConnectionError(error.message);
+    onError?.(error);
+  };
+
+  // Show error state
+  if (connectionError) {
+    return (
       <div style={{ 
         display: 'flex', 
         flexDirection: 'column',
@@ -189,30 +101,160 @@ export function MedicalConsultationRoom({
         padding: '2rem',
         textAlign: 'center'
       }}>
-        <h2>🧪 TESTE ISOLADO - LiveKitRoomProvider</h2>
-        <p>Se você está vendo esta mensagem, o Provider está funcionando!</p>
-        <p>Room: {roomName}</p>
-        <p>Participant: {participantName}</p>
-        <p>Server: {serverUrl}</p>
-        <p>Token: {token ? 'Presente' : 'Ausente'}</p>
-        
-        {onEndCall && (
-          <button 
-            onClick={onEndCall}
-            style={{
-              marginTop: '1rem',
-              padding: '0.75rem 1.5rem',
-              background: '#f56565',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            Finalizar Teste
-          </button>
-        )}
+        <h2 style={{ color: '#f56565', marginBottom: '1rem' }}>Erro de Conexão</h2>
+        <p style={{ color: '#a0aec0', marginBottom: '1rem' }}>
+          {connectionError}
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: '#a6ce39',
+            color: 'black',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar Novamente
+        </button>
       </div>
-    </LiveKitRoomProvider>
+    );
+  }
+
+  // Validate required props
+  if (!serverUrl || !token) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        background: '#1a1a1a',
+        color: 'white',
+        padding: '2rem',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ color: '#f56565', marginBottom: '1rem' }}>Configuração Inválida</h2>
+        <p style={{ color: '#a0aec0', marginBottom: '1rem' }}>
+          Server URL ou Token não fornecidos
+        </p>
+        <p style={{ color: '#a0aec0', fontSize: '14px' }}>
+          Server URL: {serverUrl ? '✅' : '❌'}<br/>
+          Token: {token ? '✅' : '❌'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <LiveKitRoom
+      video={true}
+      audio={true}
+      token={token}
+      serverUrl={serverUrl}
+      data-lk-theme="default"
+      style={{ height: '100vh' }}
+      onConnected={handleConnected}
+      onDisconnected={handleDisconnected}
+      onError={handleError}
+      connectOptions={{
+        autoSubscribe: true,
+      }}
+      options={{
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: videoCaptureDefaults || {},
+        audioCaptureDefaults: audioCaptureDefaults || {},
+        publishDefaults: {
+          dtx: false,
+          videoSimulcastLayers: [
+            { resolution: { width: 1280, height: 720 }, encoding: { maxBitrate: 2000000 } },
+            { resolution: { width: 640, height: 360 }, encoding: { maxBitrate: 500000 } }
+          ],
+        },
+      }}
+    >
+      <RoomAudioRenderer />
+      <ConnectionStateToast />
+      
+      <div style={{ 
+        height: '100vh',
+        background: '#1a1a1a',
+        color: 'white',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Header */}
+        <div style={{ 
+          padding: '1rem 2rem',
+          background: 'rgba(0,0,0,0.8)',
+          borderBottom: '1px solid #4a5568'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
+            🎥 Consulta Online - {userRole === 'doctor' ? 'Médico' : 'Paciente'}
+          </h1>
+          <p style={{ margin: '0.5rem 0 0 0', color: '#a0aec0' }}>
+            Paciente: {patientName} | Sala: {roomName}
+          </p>
+        </div>
+
+        {/* Video Area */}
+        <div style={{ flex: 1, padding: '1rem' }}>
+          <GridLayout style={{ height: '100%' }}>
+            <ParticipantTile />
+          </GridLayout>
+        </div>
+
+        {/* Controls */}
+        <div style={{ 
+          padding: '1rem',
+          background: 'rgba(0,0,0,0.8)',
+          borderTop: '1px solid #4a5568'
+        }}>
+          <ControlBar />
+          
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '1rem', 
+            marginTop: '1rem' 
+          }}>
+            {onEndCall && (
+              <button 
+                onClick={onEndCall}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#f56565',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Finalizar Consulta
+              </button>
+            )}
+            
+            {onShareConsultation && userRole === 'doctor' && (
+              <button 
+                onClick={onShareConsultation}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#a6ce39',
+                  color: 'black',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Compartilhar Link
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </LiveKitRoom>
   );
 }
