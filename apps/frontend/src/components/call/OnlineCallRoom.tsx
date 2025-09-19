@@ -456,7 +456,7 @@ export function OnlineCallRoom({
         <div className="main-video-area">
           {/* Participantes da Videoconferência */}
           <div className="video-participants">
-            {/* Médico */}
+            {/* Participante Atual (Você) */}
             <div className="participant-container">
               <div className="participant-video">
                 {localVideoTrack ? (
@@ -477,20 +477,40 @@ export function OnlineCallRoom({
                 )}
               </div>
               <div className="participant-name">
-                {userRole === 'doctor' ? 'Dr. Médico (Você)' : 'Dr. Médico'}
+                {userRole === 'doctor' ? 'Dr. Médico (Você)' : 'Você'}
               </div>
               <div className="participant-status">
                 {isLiveKitConnected ? 'Conectado' : 'Conectando'}
               </div>
             </div>
 
-            {/* Paciente */}
+            {/* Outro Participante */}
             <div className="participant-container">
               <div className={`participant-video ${participants.length === 0 ? 'offline' : ''}`}>
                 {participants.length > 0 ? (
-                  <div className="participant-avatar">
-                    <User size={40} />
-                  </div>
+                  // Renderizar vídeo do participante remoto se disponível
+                  participants.map((participant) => {
+                    const videoTrack = participant.videoTrackPublications.values().next().value?.track;
+                    if (videoTrack) {
+                      return (
+                        <video
+                          key={participant.identity}
+                          ref={(element) => {
+                            if (element && videoTrack) {
+                              videoTrack.attach(element);
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                        />
+                      );
+                    }
+                    return (
+                      <div key={participant.identity} className="participant-avatar">
+                        <User size={40} />
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="participant-avatar">
                     <User size={40} />
@@ -498,7 +518,7 @@ export function OnlineCallRoom({
                 )}
               </div>
               <div className="participant-name">
-                {userRole === 'patient' ? 'Você' : patientName}
+                {userRole === 'doctor' ? patientName : 'Dr. Médico'}
               </div>
               <div className={`participant-status ${participants.length === 0 ? 'offline' : ''}`}>
                 {participants.length > 0 ? 'Conectado' : 'Aguardando...'}
