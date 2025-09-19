@@ -196,8 +196,8 @@ export function OnlineCallRoom({
         // Entrar na sessão
         socketInstance!.emit('session:join', {
           sessionId,
-          userId: 'doctor-current', // TODO: Pegar do contexto de auth
-          role: 'doctor'
+          userId: userRole === 'doctor' ? 'doctor-current' : 'patient-current',
+          role: userRole
         });
 
         // Iniciar gravação da sessão online

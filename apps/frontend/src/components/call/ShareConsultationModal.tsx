@@ -139,7 +139,7 @@ export function ShareConsultationModal({
           
           <button onClick={handleShareNative} className="btn btn-primary">
             <Share2 size={16} />
-            {navigator.share ? 'Compartilhar' : 'Copiar Link'}
+            {typeof navigator.share === 'function' ? 'Compartilhar' : 'Copiar Link'}
           </button>
         </div>
       </div>

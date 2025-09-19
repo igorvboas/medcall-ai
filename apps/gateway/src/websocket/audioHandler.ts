@@ -42,6 +42,7 @@ export function setupPresentialAudioHandlers(socket: Socket, notifier: SessionNo
       const minValue = Math.min(...float32AudioData);
       const avgValue = float32AudioData.reduce((sum, val) => sum + Math.abs(val), 0) / float32AudioData.length;
       
+      /**
       console.log(`🔍 DEBUG [AUDIO_RECEPTION] doctor:`, {
         arrayLength: audioData.length,
         float32Length: float32AudioData.length,
@@ -51,6 +52,7 @@ export function setupPresentialAudioHandlers(socket: Socket, notifier: SessionNo
         avgValue: avgValue.toFixed(6),
         first10Values: Array.from(float32AudioData.slice(0, 10)).map(v => v.toFixed(6))
       });
+       */
 
       if (!hasNonZeroData) {
         console.warn(`⚠️⚠️⚠️ DADOS ZERADOS RECEBIDOS do frontend para doctor!`);
