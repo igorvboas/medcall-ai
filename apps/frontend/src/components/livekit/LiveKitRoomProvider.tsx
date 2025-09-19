@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   LiveKitRoom, 
   PreJoin, 
@@ -67,6 +67,9 @@ export function LiveKitRoomProvider({
   const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  // Auto-join quando serverUrl e token estão disponíveis (pular PreJoin)
+  const shouldAutoJoin = serverUrl && token;
+
   // Room options otimizadas
   const roomOptions = useMemo((): RoomOptions => {
     return {
@@ -103,6 +106,21 @@ export function LiveKitRoomProvider({
       audioDeviceId: audioCaptureDefaults?.deviceId,
     };
   }, [participantName, videoCaptureDefaults?.deviceId, audioCaptureDefaults?.deviceId]);
+
+  // Auto-join quando serverUrl e token estão disponíveis
+  useEffect(() => {
+    if (shouldAutoJoin && !connectionDetails && !preJoinChoices && connectionState === 'disconnected') {
+      console.log('🚀 Auto-joining room with provided credentials');
+      const autoJoinChoices: LocalUserChoices = {
+        username: participantName,
+        videoEnabled: true,
+        audioEnabled: true,
+        videoDeviceId: videoCaptureDefaults?.deviceId,
+        audioDeviceId: audioCaptureDefaults?.deviceId,
+      };
+      handlePreJoinSubmit(autoJoinChoices);
+    }
+  }, [shouldAutoJoin, connectionDetails, preJoinChoices, connectionState, participantName, videoCaptureDefaults?.deviceId, audioCaptureDefaults?.deviceId, handlePreJoinSubmit]);
 
   // Handle PreJoin submission
   const handlePreJoinSubmit = useCallback(async (values: LocalUserChoices) => {
@@ -223,6 +241,45 @@ export function LiveKitRoomProvider({
 
   // Render PreJoin if not connected yet
   if (!connectionDetails || !preJoinChoices) {
+    // Se deve fazer auto-join, mostrar loading ao invés do PreJoin
+    if (shouldAutoJoin) {
+      return (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100vh',
+          background: '#1a1a1a',
+          color: 'white'
+        }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <style>
+              {`
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `}
+            </style>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              border: '3px solid #4a5568', 
+              borderTop: '3px solid #a6ce39',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+          </div>
+          <h2 style={{ marginBottom: '0.5rem' }}>Conectando à consulta...</h2>
+          <p style={{ color: '#a0aec0' }}>
+            {connectionState === 'connecting' ? 'Estabelecendo conexão...' : 'Preparando dispositivos...'}
+          </p>
+        </div>
+      );
+    }
+    
+    // Caso contrário, mostrar PreJoin normal
     return (
       <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
         <PreJoin
