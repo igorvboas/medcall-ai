@@ -401,6 +401,9 @@ class ASRService {
       // 🔧 CORREÇÃO: Usar FormData de forma mais robusta
       const formData = new FormData();
       
+      // 🔧 CORREÇÃO: Adicionar model PRIMEIRO (algumas APIs são sensíveis à ordem)
+      formData.append('model', this.config.model);
+      
       // Adicionar arquivo com configurações específicas para Whisper
       formData.append('file', audioChunk.audioBuffer, {
         filename: 'audio.wav',
@@ -408,8 +411,7 @@ class ASRService {
         knownLength: audioChunk.audioBuffer.length
       });
       
-      // Adicionar parâmetros de configuração
-      formData.append('model', this.config.model);
+      // Adicionar outros parâmetros de configuração
       formData.append('language', this.whisperConfig.language);
       formData.append('response_format', this.whisperConfig.response_format);
       formData.append('temperature', this.whisperConfig.temperature.toString());
@@ -421,9 +423,18 @@ class ASRService {
       console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
       console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
+      
+      // 🔍 DEBUG: Verificar parâmetros do FormData
+      console.log(`🔍 DEBUG [FORMDATA] Model: "${this.config.model}"`);
+      console.log(`🔍 DEBUG [FORMDATA] Language: "${this.whisperConfig.language}"`);
+      console.log(`🔍 DEBUG [FORMDATA] Response format: "${this.whisperConfig.response_format}"`);
+      console.log(`🔍 DEBUG [FORMDATA] Temperature: "${this.whisperConfig.temperature}"`);
 
       // 🔧 CORREÇÃO: Usar headers corretos e timeout
       console.log(`🚀 CHAMANDO WHISPER API...`);
+      
+      // 🔧 CORREÇÃO: Usar node-fetch para melhor compatibilidade com FormData
+      const fetch = (await import('node-fetch')).default;
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
@@ -433,7 +444,7 @@ class ASRService {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            // Deixar o FormData definir o Content-Type automaticamente
+            ...formData.getHeaders() // Usar headers do FormData explicitamente
           },
           body: formData,
           signal: controller.signal
