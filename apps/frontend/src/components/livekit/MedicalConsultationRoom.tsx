@@ -8,7 +8,7 @@ import {
   RoomAudioRenderer,
   ConnectionStateToast,
 } from '@livekit/components-react';
-import { Track } from 'livekit-client';
+import { Track, createLocalVideoTrack, createLocalAudioTrack } from 'livekit-client';
 
 interface MedicalConsultationRoomProps {
   // Room configuration
@@ -61,15 +61,33 @@ export function MedicalConsultationRoom({
   const [isRoomReady, setIsRoomReady] = useState(false);
 
   // Handle connection events
-  const handleConnected = () => {
+  const handleConnected = async () => {
     console.log('✅ Connected to room');
     setIsConnected(true);
     setConnectionError(null);
     
-    // Aguardar um pouco antes de marcar como pronto para evitar race conditions
-    setTimeout(() => {
-      setIsRoomReady(true);
-    }, 1000);
+    // INICIALIZAR MICROFONE E CÂMERA AUTOMATICAMENTE (como no useLiveKitCall)
+    try {
+      console.log('🎤 Inicializando microfone e câmera...');
+      
+      // Solicitar permissões de mídia primeiro
+      await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      console.log('✅ Permissões de mídia obtidas');
+      
+      // Aguardar um pouco para garantir que os tracks estejam prontos
+      setTimeout(() => {
+        setIsRoomReady(true);
+        console.log('🚀 Sala pronta para uso');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao inicializar mídia:', error);
+      setConnectionError(`Erro ao acessar microfone/câmera: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
     
     onConnected?.();
   };
