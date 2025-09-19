@@ -190,20 +190,49 @@ export default function NovaConsultaPage() {
           alert('Erro ao criar sessão presencial. Tente novamente.');
         }
       } else {
-        // Fluxo para consulta online - redirecionar para configuração
+        // Fluxo para consulta online - criar sessão diretamente e ir para MedicalConsultationRoom
         try {
-          // Redirecionar para página de configuração de dispositivos
-          const setupParams = new URLSearchParams({
+          // Construir participantes para consulta online
+          const participantData: any = {
+            doctor: {
+              id: 'doctor-current', // TODO: Pegar do contexto de auth
+              name: 'Dr. Médico', // TODO: Pegar do contexto de auth
+              email: 'doctor@medcall.ai' // TODO: Pegar do contexto de auth
+            },
+            patient: {
+              id: selectedPatient,
+              name: selectedPatientData.name
+            }
+          };
+
+          // Incluir email do paciente somente se existir e não for string vazia
+          if (selectedPatientData.email && selectedPatientData.email.trim().length > 0) {
+            participantData.patient.email = selectedPatientData.email;
+          }
+
+          // Criar sessão online no gateway
+          const session = await createOnlineSession(consultation.id, participantData);
+          
+          console.log('Sessão online criada:', session);
+
+          // Redirecionar DIRETO para a página do médico com MedicalConsultationRoom
+          const doctorParams = new URLSearchParams({
+            sessionId: session.session.id,
             consultationId: consultation.id,
-            patientId: selectedPatient,
-            patientName: selectedPatientData.name
+            roomName: session.session.roomName,
+            token: session.tokens.doctor, // Token do médico como 'token'
+            patientToken: session.tokens.patient || '',
+            livekitUrl: session.livekit?.url || process.env.NEXT_PUBLIC_LIVEKIT_URL || '',
+            patientName: selectedPatientData.name,
+            cameraId: selectedDoctorMic, // Usar o microfone selecionado como referência inicial
+            microphoneId: selectedDoctorMic
           });
 
-          router.push(`/consulta/online/setup?${setupParams.toString()}`);
+          router.push(`/consulta/online/doctor?${doctorParams.toString()}`);
           
-        } catch (setupError) {
-          console.error('Erro ao redirecionar para setup:', setupError);
-          alert('Erro ao configurar consulta online. Tente novamente.');
+        } catch (onlineError) {
+          console.error('Erro ao criar sessão online:', onlineError);
+          alert('Erro ao criar sessão online. Tente novamente.');
         }
       }
       

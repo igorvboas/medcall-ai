@@ -205,6 +205,11 @@ export function MedicalToolbar({
   const room = useRoomContext();
   const [showSettings, setShowSettings] = useState(false);
 
+  // Wait for localParticipant to be initialized
+  if (!localParticipant) {
+    return null;
+  }
+
   const toggleCamera = () => {
     localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
   };

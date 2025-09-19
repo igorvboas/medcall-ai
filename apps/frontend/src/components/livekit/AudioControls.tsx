@@ -161,6 +161,11 @@ function MicrophoneControls() {
     autoGainControl: true,
   });
 
+  // Wait for localParticipant to be initialized
+  if (!localParticipant) {
+    return <div>Carregando controles...</div>;
+  }
+
   const toggleMicrophone = () => {
     localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
   };
