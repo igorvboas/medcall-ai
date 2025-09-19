@@ -1,3 +1,5 @@
+'use client';
+
 import '@livekit/components-styles';
 import { MedicalConsultationRoom } from '@/components/livekit/MedicalConsultationRoom';
 

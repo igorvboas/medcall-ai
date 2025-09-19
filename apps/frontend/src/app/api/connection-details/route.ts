@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AccessToken, AccessTokenOptions, VideoGrant } from 'livekit-server-sdk';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;

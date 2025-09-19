@@ -69,8 +69,8 @@ function OnlineConsultationContent() {
       participantName={userRole === 'doctor' ? 'Dr. Médico' : 'Paciente'}
       userRole={userRole}
       sessionId={sessionId}
-      serverUrl={livekitUrl}
-      token={token}
+      serverUrl={livekitUrl || undefined}
+      token={token || undefined}
       patientName={decodeURIComponent(patientName)}
       onEndCall={handleEndCall}
       onError={handleError}

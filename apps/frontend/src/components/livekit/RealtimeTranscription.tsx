@@ -205,10 +205,10 @@ export function RealtimeTranscription({
 
   // Get local audio track for processing
   const localTracks = useTracks([
-    { participant: localParticipant, source: Track.Source.Microphone }
+    Track.Source.Microphone
   ], { onlySubscribed: false });
 
-  const localAudioTrack = localTracks[0]?.track;
+  const localAudioTrack = localTracks[0]?.publication?.track;
 
   // Setup WebSocket connection for transcription
   useEffect(() => {
@@ -314,7 +314,7 @@ export function RealtimeTranscription({
 
       room.localParticipant.publishData(
         new TextEncoder().encode(data),
-        DataPacket_Kind.RELIABLE
+        { reliable: true }
       );
     }
   }, [room]);
