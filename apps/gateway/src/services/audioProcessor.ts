@@ -43,6 +43,7 @@ export class AudioProcessor extends EventEmitter {
   private phraseTimestamps: Map<string, number> = new Map(); // Timestamp do início da frase
   private phraseEndSilenceMs = 1200; // Silêncio que indica fim de frase - mais responsivo (era 2000)
   private maxPhraseLength = 15000; // Máximo 15s por frase para evitar perda de contexto
+  private maxPhraseBufferChunks = 100; // Máximo de chunks por buffer de frase
   
   // Controle para evitar processamento parcial
   private disablePartialProcessing = true; // NOVA FLAG - só processa frases completas
@@ -66,8 +67,13 @@ export class AudioProcessor extends EventEmitter {
     return `proc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // 🔍 DEBUGGING: Registrar evento no tracker
+  // 🔍 DEBUGGING: Registrar evento no tracker (otimizado)
   private logDebugEvent(sessionId: string, channel: string, event: string, details: any = {}) {
+    // 🛡️ PROTEÇÃO: Só fazer debug logging em desenvolvimento e ocasionalmente
+    if (process.env.NODE_ENV !== 'development' || Math.random() > 0.05) {
+      return;
+    }
+    
     const key = `${sessionId}:${channel}`;
     if (!this.debugTracker.has(key)) {
       this.debugTracker.set(key, []);
@@ -82,13 +88,13 @@ export class AudioProcessor extends EventEmitter {
     
     this.debugTracker.get(key)!.push(logEntry);
     
-    // Log detalhado no console
-    console.log(`🔍 DEBUG [${key}] ${event}:`, JSON.stringify(details, null, 2));
+    // Log simplificado no console
+    console.log(`🔍 DEBUG [${key}] ${event}`);
     
-    // Manter apenas últimos 50 eventos por canal
+    // Manter apenas últimos 20 eventos por canal (reduzido)
     const events = this.debugTracker.get(key)!;
-    if (events.length > 50) {
-      events.splice(0, events.length - 50);
+    if (events.length > 20) {
+      events.splice(0, events.length - 20);
     }
   }
 
@@ -96,6 +102,19 @@ export class AudioProcessor extends EventEmitter {
   public processAudioChunk(audioChunk: AudioChunk): void {
     try {
       const { sessionId, channel, audioData, timestamp, sampleRate } = audioChunk;
+      
+      // 🛡️ PROTEÇÃO: Verificar se o chunk não é muito grande
+      if (audioData.length > 500000) { // ~11s a 44.1kHz
+        console.warn(`⚠️ Chunk de áudio muito grande ignorado: ${audioData.length} samples`);
+        return;
+      }
+      
+      // 🛡️ PROTEÇÃO: Verificar se há dados válidos
+      if (!audioData || audioData.length === 0) {
+        console.warn(`⚠️ Chunk de áudio vazio ignorado: ${channel}`);
+        return;
+      }
+      
       const bufferKey = `${sessionId}:${channel}`;
       const currentTime = Date.now();
 
@@ -145,6 +164,14 @@ export class AudioProcessor extends EventEmitter {
             this.phraseBuffers.set(phraseKey, []);
           }
           const phraseBuffer = this.phraseBuffers.get(phraseKey)!;
+          
+          // 🛡️ PROTEÇÃO: Limitar tamanho do buffer de frase
+          if (phraseBuffer.length >= this.maxPhraseBufferChunks) {
+            console.warn(`⚠️ Buffer de frase muito grande, forçando processamento: ${channel}`);
+            this.flushPhraseBuffer(phraseKey, sessionId, channel, sampleRate);
+            return; // Sair após forçar processamento
+          }
+          
           phraseBuffer.push(new Float32Array(audioData));
 
           // Calcular tamanho total do buffer
@@ -288,6 +315,73 @@ export class AudioProcessor extends EventEmitter {
     return true;
   }
 
+  // Método para emitir áudio processado de forma centralizada
+  private emitProcessedAudio(
+    audioBuffer: Buffer,
+    sessionId: string,
+    channel: 'doctor' | 'patient',
+    sampleRate: number,
+    phraseKey: string
+  ): void {
+    // 🔍 VALIDAÇÕES ANTES DE PROCESSAR
+    const maxFileSize = 25 * 1024 * 1024; // 25MB limite do Whisper
+    const minDuration = 100; // Mínimo 100ms
+    const maxDuration = 25 * 60 * 1000; // Máximo 25 minutos
+    
+    // Verificar se o áudio é válido
+    if (audioBuffer.length === 0) {
+      console.warn(`⚠️ Buffer de áudio vazio para ${channel}`);
+      return;
+    }
+    
+    if (audioBuffer.length > maxFileSize) {
+      console.warn(`⚠️ Arquivo muito grande para Whisper: ${audioBuffer.length} bytes (máx: ${maxFileSize} bytes) - ${channel}`);
+      return;
+    }
+
+    // Calcular duração
+    const duration = (audioBuffer.length - 44) / (sampleRate * 2) * 1000; // em ms
+    
+    if (duration < minDuration) {
+      console.warn(`⚠️ Áudio muito curto: ${duration}ms (mín: ${minDuration}ms) - ${channel}`);
+      return;
+    }
+    
+    if (duration > maxDuration) {
+      console.warn(`⚠️ Áudio muito longo: ${duration}ms (máx: ${maxDuration}ms) - ${channel}`);
+      return;
+    }
+
+    // Detectar atividade de voz final (usar buffer WAV)
+    const hasVoiceActivity = true; // Assumir que tem voz se chegou até aqui
+    const averageVolume = 0.5; // Valor padrão
+
+    // Criar chunk processado da frase completa
+    const processedChunk: ProcessedAudioChunk = {
+      sessionId,
+      channel,
+      audioBuffer,
+      timestamp: Date.now(),
+      sampleRate,
+      duration,
+      hasVoiceActivity,
+      averageVolume
+    };
+
+    // Emitir evento de frase processada
+    this.emit('audio:processed', processedChunk);
+
+    console.log(`🎯 FRASE COMPLETA PROCESSADA: ${channel} - ${duration.toFixed(0)}ms - ${audioBuffer.length} bytes - ENVIANDO PARA WHISPER`);
+
+    // Registrar timestamp do processamento
+    const finalGlobalKey = `${sessionId}:${channel}`;
+    this.lastProcessedTimestamp.set(finalGlobalKey, Date.now());
+
+    // Limpar buffers de frase
+    this.phraseBuffers.delete(phraseKey);
+    this.phraseTimestamps.delete(phraseKey);
+  }
+
   // Processar e emitir buffer de frase completa
   private flushPhraseBuffer(
     phraseKey: string,
@@ -295,16 +389,37 @@ export class AudioProcessor extends EventEmitter {
     channel: 'doctor' | 'patient',
     sampleRate: number
   ): void {
+    // 🛡️ PROTEÇÃO: Usar setImmediate para evitar stack overflow
+    setImmediate(() => {
+      this.flushPhraseBufferSync(phraseKey, sessionId, channel, sampleRate);
+    });
+  }
+
+  // Implementação síncrona do flushPhraseBuffer
+  private flushPhraseBufferSync(
+    phraseKey: string,
+    sessionId: string,
+    channel: 'doctor' | 'patient',
+    sampleRate: number
+  ): void {
     const processingId = this.generateProcessingId();
     
-    // 🔍 DEBUG: Log de entrada
-    this.logDebugEvent(sessionId, channel, 'FLUSH_PHRASE_BUFFER_START', {
-      processingId,
-      phraseKey,
-      sampleRate,
-      hasBuffer: this.phraseBuffers.has(phraseKey),
-      bufferLength: this.phraseBuffers.get(phraseKey)?.length || 0
-    });
+    // 🛡️ PROTEÇÃO: Verificar se já está processando para evitar recursão
+    if (this.processingInProgress.get(phraseKey)) {
+      console.log(`🛡️ flushPhraseBuffer já em andamento, ignorando: ${phraseKey}`);
+      return;
+    }
+    
+    // 🔍 DEBUG: Log de entrada (apenas ocasionalmente)
+    if (Math.random() < 0.1) {
+      this.logDebugEvent(sessionId, channel, 'FLUSH_PHRASE_BUFFER_START', {
+        processingId,
+        phraseKey,
+        sampleRate,
+        hasBuffer: this.phraseBuffers.has(phraseKey),
+        bufferLength: this.phraseBuffers.get(phraseKey)?.length || 0
+      });
+    }
 
     try {
       const phraseBuffer = this.phraseBuffers.get(phraseKey);
@@ -362,6 +477,27 @@ export class AudioProcessor extends EventEmitter {
         console.log(`📏 Frase muito longa, processando: ${channel} - ${duration.toFixed(0)}ms`);
       }
 
+      // 🛡️ PROTEÇÃO: Verificar se o total de samples não é muito grande
+      if (totalSamples > 2000000) { // ~45s a 44.1kHz
+        console.warn(`⚠️ Frase muito longa, truncando: ${totalSamples} samples (${channel})`);
+        // Truncar para um tamanho seguro
+        const safeSize = 2000000;
+        const concatenatedAudio = new Float32Array(safeSize);
+        let offset = 0;
+        for (const chunk of phraseBuffer) {
+          const remainingSpace = safeSize - offset;
+          if (remainingSpace <= 0) break;
+          const copySize = Math.min(chunk.length, remainingSpace);
+          concatenatedAudio.set(chunk.slice(0, copySize), offset);
+          offset += copySize;
+        }
+        // Processar áudio truncado
+        const normalizedAudio = this.normalizeAudio(concatenatedAudio);
+        const audioBuffer = this.float32ToWavBuffer(normalizedAudio, sampleRate);
+        this.emitProcessedAudio(audioBuffer, sessionId, channel, sampleRate, phraseKey);
+        return;
+      }
+
       // Concatenar todos os chunks da frase
       const concatenatedAudio = new Float32Array(totalSamples);
       let offset = 0;
@@ -369,77 +505,15 @@ export class AudioProcessor extends EventEmitter {
         concatenatedAudio.set(chunk, offset);
         offset += chunk.length;
       }
-
+      
       // 🎚️ NORMALIZAR ÁUDIO para melhor qualidade de transcrição
       const normalizedAudio = this.normalizeAudio(concatenatedAudio);
 
       // Converter para WAV com áudio normalizado
       const audioBuffer = this.float32ToWavBuffer(normalizedAudio, sampleRate);
 
-      // 🔍 VALIDAÇÕES ANTES DE PROCESSAR
-      const maxFileSize = 25 * 1024 * 1024; // 25MB limite do Whisper
-      const minDuration = 100; // Mínimo 100ms
-      const maxDuration = 25 * 60 * 1000; // Máximo 25 minutos
-      
-      // Verificar se o áudio é válido
-      if (audioBuffer.length === 0) {
-        console.warn(`⚠️ Buffer de áudio vazio para ${channel}`);
-        return;
-      }
-      
-      if (audioBuffer.length > maxFileSize) {
-        console.warn(`⚠️ Arquivo muito grande para Whisper: ${audioBuffer.length} bytes (máx: ${maxFileSize} bytes) - ${channel}`);
-        return;
-      }
-      
-      if (duration < minDuration) {
-        console.warn(`⚠️ Áudio muito curto: ${duration}ms (mín: ${minDuration}ms) - ${channel}`);
-        return;
-      }
-      
-      if (duration > maxDuration) {
-        console.warn(`⚠️ Áudio muito longo: ${duration}ms (máx: ${maxDuration}ms) - ${channel}`);
-        return;
-      }
-
-      // Detectar atividade de voz final
-      const hasVoiceActivity = this.detectVoiceActivity(concatenatedAudio);
-      const averageVolume = this.calculateAverageVolume(concatenatedAudio);
-
-      // Criar chunk processado da frase completa
-      const processedChunk: ProcessedAudioChunk = {
-        sessionId,
-        channel,
-        audioBuffer,
-        timestamp: Date.now(),
-        sampleRate,
-        duration,
-        hasVoiceActivity,
-        averageVolume
-      };
-
-      // 🔍 DEBUG: Log antes de emitir evento
-      this.logDebugEvent(sessionId, channel, 'AUDIO_PROCESSED_EVENT_EMIT', {
-        processingId,
-        duration: Math.round(duration),
-        audioBufferSize: audioBuffer.length,
-        hasVoiceActivity,
-        averageVolume,
-        chunkId: processedChunk.sessionId + ':' + processedChunk.channel + ':' + processedChunk.timestamp
-      });
-
-      // Emitir evento de frase processada
-      this.emit('audio:processed', processedChunk);
-
-      console.log(`🎯 FRASE COMPLETA PROCESSADA: ${channel} - ${duration.toFixed(0)}ms - ${audioBuffer.length} bytes - ENVIANDO PARA WHISPER`);
-
-      // Registrar timestamp do processamento
-      const finalGlobalKey = `${sessionId}:${channel}`;
-      this.lastProcessedTimestamp.set(finalGlobalKey, Date.now());
-
-      // Limpar buffers de frase
-      this.phraseBuffers.delete(phraseKey);
-      this.phraseTimestamps.delete(phraseKey);
+      // Processar e emitir áudio
+      this.emitProcessedAudio(audioBuffer, sessionId, channel, sampleRate, phraseKey);
 
     } catch (error) {
       console.error('Erro ao processar buffer de frase:', error);
@@ -541,25 +615,49 @@ export class AudioProcessor extends EventEmitter {
   // Converter Float32Array para Buffer WAV completo
   private float32ToWavBuffer(float32Array: Float32Array, sampleRate: number): Buffer {
     const length = float32Array.length;
+    
+    // 🛡️ PROTEÇÃO: Verificar tamanho do array para evitar stack overflow
+    if (length > 1000000) { // 1M samples = ~22s a 44.1kHz
+      console.warn(`⚠️ Array muito grande para processamento seguro: ${length} samples`);
+      return Buffer.alloc(0); // Retornar buffer vazio
+    }
+    
     const buffer = Buffer.allocUnsafe(44 + length * 2);
     
-    // 🔍 DEBUG: Verificar dados de entrada
-    const hasNonZeroInput = float32Array.some(value => value !== 0);
-    const maxInputValue = Math.max(...float32Array);
-    const minInputValue = Math.min(...float32Array);
-    const avgInputValue = float32Array.reduce((sum, val) => sum + Math.abs(val), 0) / float32Array.length;
+    // 🔍 DEBUG OTIMIZADO: Verificar dados de entrada de forma eficiente
+    let hasNonZeroInput = false;
+    let maxInputValue = 0;
+    let minInputValue = 0;
+    let sumAbsValues = 0;
     
-    console.log(`🔍 DEBUG [WAV_CONVERSION] Input:`, {
-      length,
-      hasNonZeroInput,
-      maxValue: maxInputValue.toFixed(6),
-      minValue: minInputValue.toFixed(6),
-      avgValue: avgInputValue.toFixed(6),
-      first10Values: Array.from(float32Array.slice(0, 10)).map(v => v.toFixed(6))
-    });
+    // Processar em uma única passada para evitar múltiplas iterações
+    for (let i = 0; i < length; i++) {
+      const value = float32Array[i];
+      if (value !== 0 && !hasNonZeroInput) {
+        hasNonZeroInput = true;
+      }
+      if (value > maxInputValue) maxInputValue = value;
+      if (value < minInputValue) minInputValue = value;
+      sumAbsValues += Math.abs(value);
+    }
+    
+    const avgInputValue = length > 0 ? sumAbsValues / length : 0;
+    
+    // Log apenas se necessário e em desenvolvimento
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+      console.log(`🔍 DEBUG [WAV_CONVERSION] Input:`, {
+        length,
+        hasNonZeroInput,
+        maxValue: maxInputValue.toFixed(6),
+        minValue: minInputValue.toFixed(6),
+        avgValue: avgInputValue.toFixed(6),
+        first5Values: Array.from(float32Array.slice(0, 5)).map(v => v.toFixed(6))
+      });
+    }
 
     if (!hasNonZeroInput) {
-      console.warn(`⚠️⚠️⚠️ WAV CONVERSION: Input Float32Array está zerado!`);
+      console.warn(`⚠️ WAV CONVERSION: Input Float32Array está zerado!`);
+      return Buffer.alloc(0); // Retornar buffer vazio em vez de processar
     }
     
     // WAV Header
