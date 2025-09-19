@@ -3,6 +3,10 @@ import { corsOrigins, isDevelopment, isProduction } from '../config';
 
 // Configuração específica de CORS para WebRTC e áudio
 export const corsMiddleware = cors({
+  origin: '*', // LIBERADO COMPLETAMENTE - PERMITE TODAS AS ORIGENS
+  
+  // Função de origin comentada para debug - liberando tudo
+  /*
   origin: (origin, callback) => {
     // Permitir requests sem origin (mobile apps, Postman, etc.)
     if (!origin) {
@@ -29,6 +33,7 @@ export const corsMiddleware = cors({
     // Em produção, bloquear origins não autorizadas
     callback(new Error('Bloqueado pelo CORS: Origin não permitida'));
   },
+  */
   
   credentials: true,
   

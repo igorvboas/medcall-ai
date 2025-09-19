@@ -528,9 +528,9 @@ export function OnlineCallRoom({
                       );
                     }
                     return (
-                      <div className="participant-avatar">
-                        <User size={40} />
-                      </div>
+                  <div className="participant-avatar">
+                    <User size={40} />
+                  </div>
                     );
                   })()
                 ) : (

@@ -164,6 +164,7 @@ export function MedicalConsultationRoom({
     </div>
   ) : null;
 
+  // TESTE ISOLADO - Provider sem componentes LiveKit
   return (
     <LiveKitRoomProvider
       roomName={roomName}
@@ -177,17 +178,41 @@ export function MedicalConsultationRoom({
       videoCaptureDefaults={videoCaptureDefaults}
       audioCaptureDefaults={audioCaptureDefaults}
     >
-      <MedicalVideoConference
-        userRole={userRole}
-        patientName={patientName}
-        onEndCall={onEndCall}
-        onShareConsultation={onShareConsultation}
-        sessionId={sessionId}
-        consultationId={sessionId} // Using sessionId as consultationId for now
-        transcriptionPanel={transcriptionPanel}
-        suggestionsPanel={suggestionsPanel}
-        patientDataPanel={patientDataPanel}
-      />
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        background: '#1a1a1a',
+        color: 'white',
+        padding: '2rem',
+        textAlign: 'center'
+      }}>
+        <h2>🧪 TESTE ISOLADO - LiveKitRoomProvider</h2>
+        <p>Se você está vendo esta mensagem, o Provider está funcionando!</p>
+        <p>Room: {roomName}</p>
+        <p>Participant: {participantName}</p>
+        <p>Server: {serverUrl}</p>
+        <p>Token: {token ? 'Presente' : 'Ausente'}</p>
+        
+        {onEndCall && (
+          <button 
+            onClick={onEndCall}
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1.5rem',
+              background: '#f56565',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Finalizar Teste
+          </button>
+        )}
+      </div>
     </LiveKitRoomProvider>
   );
 }

@@ -33,8 +33,8 @@ class GatewayServer {
     this.server = createServer(this.app);
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: corsOrigins,
-        methods: ['GET', 'POST'],
+        origin: '*', // LIBERADO COMPLETAMENTE - PERMITE TODAS AS ORIGENS
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         credentials: true,
       },
       transports: ['websocket', 'polling'],
