@@ -520,8 +520,8 @@ export function OnlineCallRoom({
               <div className="participant-name">
                 {userRole === 'doctor' ? patientName : 'Dr. Médico'}
               </div>
-              <div className={`participant-status ${participants.length === 0 ? 'offline' : ''}`}>
-                {participants.length > 0 ? 'Conectado' : 'Aguardando...'}
+              <div className={`participant-status ${participants.length === 0 && !isLiveKitConnected ? 'offline' : ''}`}>
+                {participants.length > 0 ? 'Conectado' : (isLiveKitConnected ? 'Conectado' : 'Aguardando...')}
               </div>
             </div>
           </div>
