@@ -2,9 +2,10 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { OnlineCallRoom } from '@/components/call/OnlineCallRoom';
+import { MedicalConsultationRoom } from '@/components/livekit/MedicalConsultationRoom';
 import { ShareConsultationModal } from '@/components/call/ShareConsultationModal';
 import { useState } from 'react';
+import '@livekit/components-styles';
 
 function DoctorConsultationContent() {
   const searchParams = useSearchParams();
@@ -53,22 +54,35 @@ function DoctorConsultationContent() {
     );
   }
 
+  const handleEndCall = () => {
+    // Redirect to consultation summary or dashboard
+    window.location.href = '/consulta/nova';
+  };
+
+  const handleError = (error: Error) => {
+    console.error('Medical consultation error:', error);
+    // You could show a toast notification here
+  };
+
   return (
     <>
-      <OnlineCallRoom
-        sessionId={sessionId}
-        consultationId={consultationId}
-        doctorToken={doctorToken}
-        patientToken={null} // Médico não precisa do token do paciente
-        livekitUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ''}
+      <MedicalConsultationRoom
         roomName={roomName}
-        patientName={decodeURIComponent(patientName)}
+        participantName="Dr. Médico"
         userRole="doctor"
-        selectedDevices={{
-          cameraId: cameraId || null,
-          microphoneId: microphoneId || null
+        sessionId={sessionId}
+        serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+        token={doctorToken}
+        patientName={decodeURIComponent(patientName)}
+        videoCaptureDefaults={{
+          deviceId: cameraId || undefined
         }}
+        audioCaptureDefaults={{
+          deviceId: microphoneId || undefined
+        }}
+        onEndCall={handleEndCall}
         onShareConsultation={() => setShowShareModal(true)}
+        onError={handleError}
       />
       
       {showShareModal && (

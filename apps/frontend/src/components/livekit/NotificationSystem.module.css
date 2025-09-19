@@ -1,0 +1,246 @@
+/* Notification System Styles */
+.notificationContainer {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.notificationToast {
+  background: #1a1a1a;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  min-width: 320px;
+}
+
+/* Notification Types */
+.notificationToast.success {
+  border-left: 4px solid #48bb78;
+}
+
+.notificationToast.error {
+  border-left: 4px solid #f56565;
+}
+
+.notificationToast.warning {
+  border-left: 4px solid #ed8936;
+}
+
+.notificationToast.info {
+  border-left: 4px solid #4299e1;
+}
+
+/* Animation States */
+.notificationToast.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notificationToast.hidden {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+/* Notification Icon */
+.notificationIcon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.125rem;
+}
+
+.success .notificationIcon {
+  color: #48bb78;
+}
+
+.error .notificationIcon {
+  color: #f56565;
+}
+
+.warning .notificationIcon {
+  color: #ed8936;
+}
+
+.info .notificationIcon {
+  color: #4299e1;
+}
+
+/* Notification Content */
+.notificationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificationTitle {
+  font-weight: 600;
+  font-size: 14px;
+  color: #e2e8f0;
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+.notificationMessage {
+  font-size: 13px;
+  color: #a0aec0;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.notificationTimestamp {
+  font-size: 11px;
+  color: #718096;
+  font-weight: 500;
+}
+
+/* Close Button */
+.closeButton {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-top: -0.25rem;
+  margin-right: -0.25rem;
+}
+
+.closeButton:hover {
+  background: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Progress Bar (for auto-hide notifications) */
+.notificationToast::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.3;
+  animation: progressBar 5s linear forwards;
+}
+
+.notificationToast.success::after {
+  background: #48bb78;
+}
+
+.notificationToast.error::after {
+  background: #f56565;
+}
+
+.notificationToast.warning::after {
+  background: #ed8936;
+}
+
+.notificationToast.info::after {
+  background: #4299e1;
+}
+
+@keyframes progressBar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notificationContainer {
+    top: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    max-width: none;
+  }
+  
+  .notificationToast {
+    min-width: auto;
+    padding: 0.75rem;
+  }
+  
+  .notificationTitle {
+    font-size: 13px;
+  }
+  
+  .notificationMessage {
+    font-size: 12px;
+  }
+  
+  .notificationTimestamp {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .notificationToast {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .notificationIcon {
+    align-self: flex-start;
+  }
+  
+  .closeButton {
+    align-self: flex-end;
+    margin-top: -2rem;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .notificationToast {
+    background: rgba(26, 26, 26, 0.95);
+    border-color: #4a5568;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .notificationToast {
+    border-width: 2px;
+  }
+  
+  .notificationTitle {
+    font-weight: 700;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .notificationToast {
+    transition: opacity 0.2s ease;
+  }
+  
+  .notificationToast.visible {
+    transform: none;
+  }
+  
+  .notificationToast.hidden {
+    transform: none;
+  }
+  
+  .notificationToast::after {
+    animation: none;
+  }
+}

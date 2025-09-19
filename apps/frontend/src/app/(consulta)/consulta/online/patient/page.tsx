@@ -4,7 +4,8 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { Camera, Mic, Phone, AlertCircle, User, CheckCircle, Volume2 } from 'lucide-react';
 import { useMediaDevices } from '@/hooks/useMediaDevices';
-import { OnlineCallRoom } from '@/components/call/OnlineCallRoom';
+import { MedicalConsultationRoom } from '@/components/livekit/MedicalConsultationRoom';
+import '@livekit/components-styles';
 
 function PatientConsultationContent() {
   const searchParams = useSearchParams();
@@ -106,17 +107,34 @@ function PatientConsultationContent() {
 
   // Se já está na chamada, mostrar o componente principal
   if (isInCall) {
+    const handleEndCall = () => {
+      // Redirect to home or feedback page
+      window.location.href = '/';
+    };
+
+    const handleError = (error: Error) => {
+      console.error('Patient consultation error:', error);
+      setError('Erro na consulta. Por favor, tente novamente.');
+      setIsInCall(false);
+    };
+
     return (
-      <OnlineCallRoom
-        sessionId={sessionId!}
-        consultationId={consultationId!}
-        doctorToken={null} // Paciente não precisa do token do médico
-        patientToken={patientToken!}
-        livekitUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ''}
+      <MedicalConsultationRoom
         roomName={roomName!}
-        patientName="Você" // Para o paciente, não precisa mostrar o próprio nome
+        participantName="Paciente"
         userRole="patient"
-        selectedDevices={getSelectedDevices()}
+        sessionId={sessionId!}
+        serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+        token={patientToken!}
+        patientName="Você"
+        videoCaptureDefaults={{
+          deviceId: selectedCamera || undefined
+        }}
+        audioCaptureDefaults={{
+          deviceId: selectedMicrophone || undefined
+        }}
+        onEndCall={handleEndCall}
+        onError={handleError}
       />
     );
   }

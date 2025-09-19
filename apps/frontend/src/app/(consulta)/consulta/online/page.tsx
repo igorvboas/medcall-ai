@@ -2,7 +2,8 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { OnlineCallRoom } from '@/components/call/OnlineCallRoom';
+import { MedicalConsultationRoom } from '@/components/livekit/MedicalConsultationRoom';
+import '@livekit/components-styles';
 
 function OnlineConsultationContent() {
   const searchParams = useSearchParams();
@@ -50,15 +51,29 @@ function OnlineConsultationContent() {
     );
   }
 
+  const handleEndCall = () => {
+    window.location.href = '/consulta/nova';
+  };
+
+  const handleError = (error: Error) => {
+    console.error('Online consultation error:', error);
+  };
+
+  // Determine user role based on available tokens
+  const userRole = doctorToken ? 'doctor' : 'patient';
+  const token = doctorToken || patientToken;
+
   return (
-    <OnlineCallRoom
-      sessionId={sessionId}
-      consultationId={consultationId}
-      doctorToken={doctorToken}
-      patientToken={patientToken}
-      livekitUrl={livekitUrl}
+    <MedicalConsultationRoom
       roomName={roomName}
+      participantName={userRole === 'doctor' ? 'Dr. Médico' : 'Paciente'}
+      userRole={userRole}
+      sessionId={sessionId}
+      serverUrl={livekitUrl}
+      token={token}
       patientName={decodeURIComponent(patientName)}
+      onEndCall={handleEndCall}
+      onError={handleError}
     />
   );
 }
