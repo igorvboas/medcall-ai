@@ -18,6 +18,7 @@ function PatientConsultationContent() {
   const roomName = searchParams.get('roomName');
   const patientToken = searchParams.get('token');
   const doctorName = searchParams.get('doctorName');
+  const livekitUrl = searchParams.get('livekitUrl');
 
   const {
     cameras,
@@ -124,7 +125,7 @@ function PatientConsultationContent() {
         participantName="Paciente"
         userRole="patient"
         sessionId={sessionId!}
-        serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+        serverUrl={livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL}
         token={patientToken!}
         patientName="Você"
         videoCaptureDefaults={{

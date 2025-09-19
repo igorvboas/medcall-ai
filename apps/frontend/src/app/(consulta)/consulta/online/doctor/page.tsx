@@ -19,6 +19,7 @@ function DoctorConsultationContent() {
   const cameraId = searchParams.get('cameraId');
   const microphoneId = searchParams.get('microphoneId');
   const patientToken = searchParams.get('patientToken');
+  const livekitUrl = searchParams.get('livekitUrl');
 
   // Validar parâmetros obrigatórios
   if (!sessionId || !consultationId || !doctorToken || !roomName || !patientName) {
@@ -71,7 +72,7 @@ function DoctorConsultationContent() {
         participantName="Dr. Médico"
         userRole="doctor"
         sessionId={sessionId}
-        serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+        serverUrl={livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL}
         token={doctorToken}
         patientName={decodeURIComponent(patientName)}
         videoCaptureDefaults={{

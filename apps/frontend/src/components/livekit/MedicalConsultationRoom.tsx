@@ -119,7 +119,9 @@ export function MedicalConsultationRoom({
       NEXT_PUBLIC_LIVEKIT_URL: process.env.NEXT_PUBLIC_LIVEKIT_URL,
       NEXT_PUBLIC_LIVEKIT_API_KEY: process.env.NEXT_PUBLIC_LIVEKIT_API_KEY,
       hasServerUrl: Boolean(serverUrl),
-      hasToken: Boolean(token)
+      hasToken: Boolean(token),
+      serverUrlValue: serverUrl,
+      tokenValue: token ? `${token.substring(0, 20)}...` : 'null'
     });
   }, [serverUrl, token, roomName, participantName]);
 
@@ -135,10 +137,44 @@ export function MedicalConsultationRoom({
       }
     };
 
+    const validateJWTToken = () => {
+      if (!token) {
+        console.error('❌ Token JWT não fornecido');
+        return;
+      }
+      
+      try {
+        // Decodificar JWT para verificar se é válido
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          console.error('❌ Token JWT inválido: formato incorreto');
+          return;
+        }
+        
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('🔍 JWT Token payload:', {
+          sub: payload.sub,
+          exp: payload.exp,
+          expDate: new Date(payload.exp * 1000).toISOString(),
+          isExpired: Date.now() > payload.exp * 1000,
+          video: payload.video
+        });
+        
+        if (Date.now() > payload.exp * 1000) {
+          console.error('❌ Token JWT expirado!');
+          setConnectionError('Token JWT expirado. Recarregue a página.');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao decodificar JWT:', error);
+      }
+    };
+
     if (serverUrl) {
       testLiveKitConnection();
     }
-  }, [serverUrl]);
+    
+    validateJWTToken();
+  }, [serverUrl, token]);
 
   // Timeout para detectar conexão travada
   useEffect(() => {
@@ -262,6 +298,13 @@ export function MedicalConsultationRoom({
     );
   }
 
+  console.log('🚀 Rendering LiveKitRoom with:', {
+    serverUrl,
+    token: token ? `${token.substring(0, 20)}...` : 'null',
+    roomName,
+    participantName
+  });
+
   return (
     <LiveKitRoom
       video={true}
@@ -279,6 +322,8 @@ export function MedicalConsultationRoom({
       options={{
         adaptiveStream: true,
         dynacast: true,
+        videoCaptureDefaults: videoCaptureDefaults || {},
+        audioCaptureDefaults: audioCaptureDefaults || {},
       }}
     >
       <RoomAudioRenderer />
