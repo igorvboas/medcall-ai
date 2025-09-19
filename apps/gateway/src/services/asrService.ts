@@ -104,11 +104,13 @@ class ASRService {
       console.log(`🔍 DEBUG [ASR] USANDO WHISPER - ${asrId}`);
       // Usar OpenAI Whisper para transcrição real
       const result = await this.transcribeWithWhisper(audioChunk);
+      /**
       console.log(`🔍 DEBUG [ASR] WHISPER RESULTADO - ${asrId}:`, {
         hasResult: !!result,
         text: result?.text || null,
         id: result?.id || null
       });
+       */
       return result;
       
     } catch (error) {
@@ -418,17 +420,17 @@ class ASRService {
       formData.append('prompt', this.whisperConfig.prompt);
 
       console.log(`🎤 Enviando áudio para Whisper: ${audioChunk.channel} - ${audioChunk.duration}ms`);
-      console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
-      console.log(`🔍 DEBUG [AUDIO] Sample rate: ${audioChunk.sampleRate} Hz`);
-      console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
-      console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
-      console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
+      //console.log(`🔍 DEBUG [AUDIO] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
+      //console.log(`🔍 DEBUG [AUDIO] Sample rate: ${audioChunk.sampleRate} Hz`);
+      //console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
+      //console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
+      //console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
       
       // 🔍 DEBUG: Verificar parâmetros do FormData
-      console.log(`🔍 DEBUG [FORMDATA] Model: "${this.config.model}"`);
-      console.log(`🔍 DEBUG [FORMDATA] Language: "${this.whisperConfig.language}"`);
-      console.log(`🔍 DEBUG [FORMDATA] Response format: "${this.whisperConfig.response_format}"`);
-      console.log(`🔍 DEBUG [FORMDATA] Temperature: "${this.whisperConfig.temperature}"`);
+      //console.log(`🔍 DEBUG [FORMDATA] Model: "${this.config.model}"`);
+      //console.log(`🔍 DEBUG [FORMDATA] Language: "${this.whisperConfig.language}"`);
+      //console.log(`🔍 DEBUG [FORMDATA] Response format: "${this.whisperConfig.response_format}"`);
+      //console.log(`🔍 DEBUG [FORMDATA] Temperature: "${this.whisperConfig.temperature}"`);
 
       // 🔧 CORREÇÃO: Usar headers corretos e timeout
       console.log(`🚀 CHAMANDO WHISPER API...`);

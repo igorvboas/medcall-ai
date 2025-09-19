@@ -650,22 +650,6 @@ export function PresentialCallRoom({
               <Brain className="w-5 h-5" />
               Sugestões de IA
             </h2>
-            <div className="suggestions-actions">
-              <button
-                onClick={handleRequestSuggestions}
-                className="btn btn-sm btn-outline"
-                title="Carregar sugestões existentes"
-              >
-                📋 Carregar
-              </button>
-              <button
-                onClick={handleGenerateSuggestions}
-                className="btn btn-sm btn-primary"
-                title="Gerar novas sugestões"
-              >
-                🤖 Gerar
-              </button>
-            </div>
           </div>
 
           <div className="suggestions-content">
