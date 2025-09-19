@@ -308,6 +308,46 @@ class ASRService {
     }
   }
 
+  // Processar resposta do Whisper
+  private async processWhisperResponse(result: any, audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
+    // Verificar se há texto transcrito
+    if (!result.text || result.text.trim().length === 0) {
+      console.log(`🔇 Whisper não detectou fala clara: ${audioChunk.channel}`);
+      return null;
+    }
+
+    // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
+    const cleanedText = this.postProcessTranscription(result.text.trim());
+    
+    // Verificar se texto limpo não ficou vazio
+    if (!cleanedText || cleanedText.length < 2) {
+      console.log(`🔇 Texto muito curto após limpeza: "${cleanedText}"`);
+      return null;
+    }
+
+    // Criar resultado de transcrição
+    const transcriptionResult: TranscriptionResult = {
+      id: randomUUID(),
+      sessionId: audioChunk.sessionId,
+      speaker: audioChunk.channel,
+      text: cleanedText,
+      confidence: this.calculateWhisperConfidence(result),
+      timestamp: new Date().toISOString(),
+      startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
+      endTime: Math.round(audioChunk.timestamp),
+      is_final: true
+    };
+
+    // Salvar no banco de dados
+    await this.saveTranscription(transcriptionResult);
+    
+    // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
+    console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
+    console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
+
+    return transcriptionResult;
+  }
+
   // Integração com OpenAI Whisper
   private async transcribeWithWhisper(audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
     if (!this.openai || !audioChunk.hasVoiceActivity) {
@@ -345,14 +385,30 @@ class ASRService {
       }
       console.log(`✅ Buffer WAV válido para ${audioChunk.channel}:`, wavValidation.info);
 
-      // Criar arquivo temporário em memória para o Whisper
-      // CORREÇÃO: Usar FormData conforme documentação oficial OpenAI
-      // A API Whisper espera multipart/form-data com arquivo
+      // 🔍 VALIDAÇÃO ADICIONAL: Verificar se o buffer não está corrompido
+      if (audioChunk.audioBuffer.length < 1000) {
+        console.warn(`⚠️ Buffer WAV muito pequeno: ${audioChunk.audioBuffer.length} bytes`);
+        return null;
+      }
+
+      // 🔍 VALIDAÇÃO ADICIONAL: Verificar assinatura RIFF
+      const riffSignature = audioChunk.audioBuffer.toString('ascii', 0, 4);
+      if (riffSignature !== 'RIFF') {
+        console.error(`❌ Assinatura RIFF inválida: "${riffSignature}"`);
+        return null;
+      }
+
+      // 🔧 CORREÇÃO: Usar FormData de forma mais robusta
       const formData = new FormData();
+      
+      // Adicionar arquivo com configurações específicas para Whisper
       formData.append('file', audioChunk.audioBuffer, {
         filename: 'audio.wav',
-        contentType: 'audio/wav'
+        contentType: 'audio/wav',
+        knownLength: audioChunk.audioBuffer.length
       });
+      
+      // Adicionar parâmetros de configuração
       formData.append('model', this.config.model);
       formData.append('language', this.whisperConfig.language);
       formData.append('response_format', this.whisperConfig.response_format);
@@ -365,66 +421,46 @@ class ASRService {
       console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
       console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
-      console.log(`🔍 DEBUG [WHISPER] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
 
-      // Chamar API Whisper usando fetch diretamente com FormData
+      // 🔧 CORREÇÃO: Usar headers corretos e timeout
       console.log(`🚀 CHAMANDO WHISPER API...`);
       
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          ...formData.getHeaders()
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json() as any;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
       
-      console.log(`✅ WHISPER API RESPONDEU!`);
-      console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
+      try {
+        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            // Deixar o FormData definir o Content-Type automaticamente
+          },
+          body: formData,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
-      // Verificar se há texto transcrito
-      if (!result.text || result.text.trim().length === 0) {
-        console.log(`🔇 Whisper não detectou fala clara: ${audioChunk.channel}`);
-        return null;
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json() as any;
+        
+        console.log(`✅ WHISPER API RESPONDEU!`);
+        console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
+        
+        return this.processWhisperResponse(result, audioChunk);
+        
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Timeout na API Whisper (30s)');
+        }
+        throw fetchError;
       }
-
-      // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
-      const cleanedText = this.postProcessTranscription(result.text.trim());
-      
-      // Verificar se texto limpo não ficou vazio
-      if (!cleanedText || cleanedText.length < 2) {
-        console.log(`🔇 Texto muito curto após limpeza: "${cleanedText}"`);
-        return null;
-      }
-
-      // Criar resultado de transcrição
-      const transcriptionResult: TranscriptionResult = {
-        id: randomUUID(),
-        sessionId: audioChunk.sessionId,
-        speaker: audioChunk.channel,
-        text: cleanedText,
-        confidence: this.calculateWhisperConfidence(result),
-        timestamp: new Date().toISOString(),
-        startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
-        endTime: Math.round(audioChunk.timestamp),
-        is_final: true
-      };
-
-      // Salvar no banco de dados
-      await this.saveTranscription(transcriptionResult);
-      
-      // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
-      console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
-      console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
-
-      return transcriptionResult;
 
     } catch (error: any) {
       console.error('Erro na API Whisper:', error);
