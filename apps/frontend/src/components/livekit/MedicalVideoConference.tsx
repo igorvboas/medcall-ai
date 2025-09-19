@@ -6,18 +6,8 @@ import {
   GridLayout,
   ParticipantTile,
   RoomAudioRenderer,
-  useLocalParticipant,
-  useRemoteParticipants,
-  useTracks,
-  TrackReference,
-  ConnectionStateToast,
-  useRoomContext,
 } from '@livekit/components-react';
-import { Track, Participant } from 'livekit-client';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, User } from 'lucide-react';
 import styles from './MedicalVideoConference.module.css';
-import { MedicalToolbar } from './MedicalToolbar';
-import { NotificationSystem } from './NotificationSystem';
 
 interface MedicalVideoConferenceProps {
   userRole?: 'doctor' | 'patient';
@@ -32,104 +22,6 @@ interface MedicalVideoConferenceProps {
   patientDataPanel?: React.ReactNode;
 }
 
-function CustomParticipantTile({ 
-  participant, 
-  source, 
-  userRole, 
-  isLocal = false 
-}: { 
-  participant: Participant; 
-  source: Track.Source;
-  userRole?: 'doctor' | 'patient';
-  isLocal?: boolean;
-}) {
-  const tracks = useTracks([{ participant, source }], { onlySubscribed: false });
-  const track = tracks[0];
-
-  // Determine participant label
-  let participantLabel = participant.name || participant.identity;
-  if (isLocal) {
-    participantLabel = userRole === 'doctor' ? 'Dr. Médico (Você)' : 'Você';
-  } else {
-    // Remote participant
-    if (userRole === 'doctor') {
-      participantLabel = participant.name || 'Paciente';
-    } else {
-      participantLabel = 'Dr. Médico';
-    }
-  }
-
-  return (
-    <div className={styles.medicalParticipantTile}>
-      <ParticipantTile
-        participant={participant}
-        source={source}
-        className={styles.medicalTile}
-      />
-      <div className={styles.medicalParticipantInfo}>
-        <div className={styles.medicalParticipantName}>
-          {participantLabel}
-        </div>
-        <div className={styles.medicalParticipantStatus}>
-          {participant.connectionQuality ? (
-            <span className={`${styles.connectionQuality} ${styles[`quality${participant.connectionQuality.charAt(0).toUpperCase()}${participant.connectionQuality.slice(1)}`]}`}>
-              {participant.connectionQuality === 'excellent' ? '🟢' : 
-               participant.connectionQuality === 'good' ? '🟡' : '🔴'}
-            </span>
-          ) : null}
-          {track?.isMuted ? '🔇' : '🔊'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function TwoParticipantLayout({ 
-  userRole,
-  localParticipant,
-  remoteParticipants 
-}: {
-  userRole?: 'doctor' | 'patient';
-  localParticipant: Participant;
-  remoteParticipants: Participant[];
-}) {
-  return (
-    <div className={styles.medicalTwoParticipantLayout}>
-      {/* Local Participant (sempre visível) */}
-      <div className={styles.localParticipantContainer}>
-        <CustomParticipantTile
-          participant={localParticipant}
-          source={Track.Source.Camera}
-          userRole={userRole}
-          isLocal={true}
-        />
-      </div>
-
-      {/* Remote Participant */}
-      <div className={styles.remoteParticipantContainer}>
-        {remoteParticipants.length > 0 ? (
-          <CustomParticipantTile
-            participant={remoteParticipants[0]}
-            source={Track.Source.Camera}
-            userRole={userRole}
-            isLocal={false}
-          />
-        ) : (
-          <div className={styles.waitingForParticipant}>
-            <div className={styles.waitingAvatar}>
-              <User size={48} />
-            </div>
-            <div className={styles.waitingText}>
-              {userRole === 'doctor' ? 'Aguardando paciente...' : 'Aguardando médico...'}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function MedicalVideoConference({
   userRole = 'doctor',
   patientName,
@@ -141,74 +33,74 @@ export function MedicalVideoConference({
   suggestionsPanel,
   patientDataPanel,
 }: MedicalVideoConferenceProps) {
-  const { localParticipant } = useLocalParticipant();
-  const remoteParticipants = useRemoteParticipants();
-
-  // Wait for localParticipant to be initialized
-  if (!localParticipant) {
-    return (
+  // Simplified version for debugging
+  return (
+    <div className={styles.medicalVideoConference} data-lk-theme="default">
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
         height: '100vh',
         background: '#1a1a1a',
-        color: 'white'
+        color: 'white',
+        flexDirection: 'column',
+        gap: '1rem',
+        padding: '2rem'
       }}>
-        <div>Conectando...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.medicalVideoConference} data-lk-theme="default">
-      {/* Notification System */}
-      <NotificationSystem userRole={userRole} />
-      
-      {/* Main Layout */}
-      <div className={styles.medicalMainLayout}>
-        {/* Video Area */}
-        <div className={styles.medicalVideoArea}>
-          <TwoParticipantLayout
-            userRole={userRole}
-            localParticipant={localParticipant}
-            remoteParticipants={remoteParticipants}
-          />
-          
-          {/* Medical Toolbar */}
-          <MedicalToolbar 
-            userRole={userRole}
-            onEndCall={onEndCall}
-            onShareConsultation={onShareConsultation}
-            sessionId={sessionId}
-            consultationId={consultationId}
-          />
+        <h2>🎥 Consulta Online - {userRole === 'doctor' ? 'Médico' : 'Paciente'}</h2>
+        <p>Paciente: {patientName}</p>
+        <p>Sessão: {sessionId}</p>
+        
+        {/* Use the most basic LiveKit components */}
+        <div style={{ 
+          width: '80%', 
+          height: '60%', 
+          border: '1px solid #4a5568',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}>
+          <GridLayout style={{ height: '100%', width: '100%' }}>
+            <ParticipantTile />
+          </GridLayout>
         </div>
-
-        {/* Side Panels (apenas para médicos) */}
-        {userRole === 'doctor' && (
-          <div className={styles.medicalSidePanels}>
-            {transcriptionPanel && (
-              <div className={`${styles.medicalPanel} ${styles.transcriptionPanel}`}>
-                {transcriptionPanel}
-              </div>
-            )}
-            
-            {suggestionsPanel && (
-              <div className={`${styles.medicalPanel} ${styles.suggestionsPanel}`}>
-                {suggestionsPanel}
-              </div>
-            )}
-            
-            {patientDataPanel && (
-              <div className={`${styles.medicalPanel} ${styles.patientDataPanel}`}>
-                {patientDataPanel}
-              </div>
-            )}
-          </div>
-        )}
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <ControlBar />
+          
+          {onEndCall && (
+            <button 
+              onClick={onEndCall}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#f56565',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Finalizar Consulta
+            </button>
+          )}
+          
+          {onShareConsultation && userRole === 'doctor' && (
+            <button 
+              onClick={onShareConsultation}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#a6ce39',
+                color: 'black',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Compartilhar Link
+            </button>
+          )}
+        </div>
       </div>
-
+      
       {/* Audio Renderer */}
       <RoomAudioRenderer />
     </div>
