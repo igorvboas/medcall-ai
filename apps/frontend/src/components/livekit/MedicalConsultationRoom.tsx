@@ -113,7 +113,32 @@ export function MedicalConsultationRoom({
       roomName,
       participantName
     });
+    
+    // Debug: Check environment variables
+    console.log('🔍 Environment variables:', {
+      NEXT_PUBLIC_LIVEKIT_URL: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+      NEXT_PUBLIC_LIVEKIT_API_KEY: process.env.NEXT_PUBLIC_LIVEKIT_API_KEY,
+      hasServerUrl: Boolean(serverUrl),
+      hasToken: Boolean(token)
+    });
   }, [serverUrl, token, roomName, participantName]);
+
+  // Teste de conectividade com LiveKit
+  useEffect(() => {
+    const testLiveKitConnection = async () => {
+      try {
+        console.log('🧪 Testando conectividade com LiveKit...');
+        const response = await fetch(`${serverUrl!.replace('wss://', 'https://')}/api/health`);
+        console.log('✅ LiveKit server is reachable:', response.status);
+      } catch (error) {
+        console.error('❌ LiveKit server unreachable:', error);
+      }
+    };
+
+    if (serverUrl) {
+      testLiveKitConnection();
+    }
+  }, [serverUrl]);
 
   // Timeout para detectar conexão travada
   useEffect(() => {
