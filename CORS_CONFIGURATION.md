@@ -34,7 +34,7 @@ Substitua o `FRONTEND_URL` no `app.yaml` pelo domínio real do seu frontend:
 ```yaml
 env_variables:
   NODE_ENV: "production"
-  FRONTEND_URL: "https://seu-dominio-real.com"
+  FRONTEND_URL: "https://medcall-ai-frontend-v2.vercel.app/
 ```
 
 ### 2. Configurar CORS Restritivo

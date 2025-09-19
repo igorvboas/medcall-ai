@@ -3,18 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LiveKitRoom, 
-  VideoConference,
-  GridLayout,
   ParticipantTile,
   ControlBar,
   RoomAudioRenderer,
-  useTracks,
-  useLocalParticipant,
-  useRemoteParticipants,
-  ConnectionState,
   ConnectionStateToast,
-  PreJoin,
-  LocalUserChoices
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 
@@ -66,18 +58,26 @@ export function MedicalConsultationRoom({
 }: MedicalConsultationRoomProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isRoomReady, setIsRoomReady] = useState(false);
 
   // Handle connection events
   const handleConnected = () => {
     console.log('✅ Connected to room');
     setIsConnected(true);
     setConnectionError(null);
+    
+    // Aguardar um pouco antes de marcar como pronto para evitar race conditions
+    setTimeout(() => {
+      setIsRoomReady(true);
+    }, 1000);
+    
     onConnected?.();
   };
 
   const handleDisconnected = () => {
     console.log('❌ Disconnected from room');
     setIsConnected(false);
+    setIsRoomReady(false);
     onDisconnected?.();
   };
 
@@ -86,6 +86,48 @@ export function MedicalConsultationRoom({
     setConnectionError(error.message);
     onError?.(error);
   };
+
+  // Show loading state while connecting
+  if (!isConnected || !isRoomReady) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        background: '#1a1a1a',
+        color: 'white',
+        padding: '2rem',
+        textAlign: 'center'
+      }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <style>
+            {`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}
+          </style>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '3px solid #4a5568', 
+            borderTop: '3px solid #a6ce39',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+        </div>
+        <h2 style={{ marginBottom: '0.5rem' }}>
+          {!isConnected ? 'Conectando à sala...' : 'Preparando interface...'}
+        </h2>
+        <p style={{ color: '#a0aec0' }}>
+          Sala: {roomName} | Participante: {participantName}
+        </p>
+      </div>
+    );
+  }
 
   // Show error state
   if (connectionError) {
@@ -169,10 +211,6 @@ export function MedicalConsultationRoom({
         audioCaptureDefaults: audioCaptureDefaults || {},
         publishDefaults: {
           dtx: false,
-          videoSimulcastLayers: [
-            { resolution: { width: 1280, height: 720 }, encoding: { maxBitrate: 2000000 } },
-            { resolution: { width: 640, height: 360 }, encoding: { maxBitrate: 500000 } }
-          ],
         },
       }}
     >
@@ -202,9 +240,34 @@ export function MedicalConsultationRoom({
 
         {/* Video Area */}
         <div style={{ flex: 1, padding: '1rem' }}>
-          <GridLayout style={{ height: '100%' }}>
-            <ParticipantTile />
-          </GridLayout>
+          <div style={{ 
+            height: '100%', 
+            background: '#2a2a2a',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid #4a5568'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ marginBottom: '1rem' }}>🎥 Área de Vídeo</h3>
+              <p style={{ color: '#a0aec0', marginBottom: '1rem' }}>
+                Aguardando participantes...
+              </p>
+              <div style={{ 
+                width: '200px', 
+                height: '150px', 
+                background: '#1a1a1a',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto'
+              }}>
+                <ParticipantTile />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Controls */}
