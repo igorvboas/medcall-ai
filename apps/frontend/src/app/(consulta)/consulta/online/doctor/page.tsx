@@ -11,6 +11,8 @@ function DoctorConsultationContent() {
   const searchParams = useSearchParams();
   const [showShareModal, setShowShareModal] = useState(false);
   
+  console.log('🔍 DoctorConsultationContent mounted');
+  
   const sessionId = searchParams.get('sessionId');
   const consultationId = searchParams.get('consultationId');
   const roomName = searchParams.get('roomName');
@@ -21,8 +23,27 @@ function DoctorConsultationContent() {
   const patientToken = searchParams.get('patientToken');
   const livekitUrl = searchParams.get('livekitUrl');
 
+  console.log('🔍 URL Parameters:', {
+    sessionId,
+    consultationId,
+    roomName,
+    doctorToken: doctorToken ? `${doctorToken.substring(0, 20)}...` : 'null',
+    patientName,
+    cameraId,
+    microphoneId,
+    patientToken: patientToken ? `${patientToken.substring(0, 20)}...` : 'null',
+    livekitUrl
+  });
+
   // Validar parâmetros obrigatórios
   if (!sessionId || !consultationId || !doctorToken || !roomName || !patientName) {
+    console.log('❌ Missing required parameters:', {
+      sessionId: !!sessionId,
+      consultationId: !!consultationId,
+      doctorToken: !!doctorToken,
+      roomName: !!roomName,
+      patientName: !!patientName
+    });
     return (
       <div className="error-page">
         <div className="page-content">
@@ -65,6 +86,14 @@ function DoctorConsultationContent() {
     // You could show a toast notification here
   };
 
+  console.log('🚀 About to render MedicalConsultationRoom with:', {
+    roomName,
+    sessionId,
+    serverUrl: livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL,
+    token: doctorToken ? `${doctorToken.substring(0, 20)}...` : 'null',
+    patientName: decodeURIComponent(patientName)
+  });
+
   return (
     <>
       <MedicalConsultationRoom
@@ -100,6 +129,8 @@ function DoctorConsultationContent() {
 }
 
 export default function DoctorConsultationPage() {
+  console.log('🔍 DoctorConsultationPage mounted');
+  
   return (
     <Suspense fallback={
       <div className="loading-page">
