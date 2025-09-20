@@ -51,14 +51,14 @@ router.get('/token', asyncHandler(async (req: Request, res: Response) => {
       }
     });
 
-  } catch (error) {
-    console.error('❌ Erro na geração de token:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Falha na geração de token',
-      details: error.message
-    });
-  }
+    } catch (error) {
+      console.error('❌ Erro na geração de token:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Falha na geração de token',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
 }));
 
 /**
@@ -107,14 +107,14 @@ router.post('/connection', asyncHandler(async (req: Request, res: Response) => {
       data: roomInfo
     });
 
-  } catch (error) {
-    console.error('❌ Erro na conexão:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Falha na conexão com LiveKit',
-      details: error.message
-    });
-  }
+    } catch (error) {
+      console.error('❌ Erro na conexão:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Falha na conexão com LiveKit',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
 }));
 
 /**
@@ -184,14 +184,14 @@ router.post('/session', asyncHandler(async (req: Request, res: Response) => {
       }
     });
 
-  } catch (error) {
-    console.error('❌ Erro no teste de sessão:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Falha no teste de sessão',
-      details: error.message
-    });
-  }
+    } catch (error) {
+      console.error('❌ Erro no teste de sessão:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Falha no teste de sessão',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
 }));
 
 /**
@@ -236,13 +236,13 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
 
   const health = {
     timestamp: new Date().toISOString(),
-    status: 'unknown',
+    status: 'unknown' as string,
     checks: {
       config: false,
       tokenGeneration: false,
       connection: false
     },
-    details: {}
+    details: {} as Record<string, string>
   };
 
   try {
@@ -267,9 +267,9 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
           health.checks.tokenGeneration = true;
           health.details.tokenGeneration = 'Geração OK';
         }
-      } catch (error) {
-        health.details.tokenGeneration = `Erro: ${error.message}`;
-      }
+        } catch (error) {
+          health.details.tokenGeneration = `Erro: ${error instanceof Error ? error.message : String(error)}`;
+        }
     }
 
     // 3. Testar conexão (se token OK)
@@ -289,9 +289,9 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
         health.checks.connection = true;
         health.details.connection = 'Conexão OK';
         
-      } catch (error) {
-        health.details.connection = `Erro: ${error.message}`;
-      }
+        } catch (error) {
+          health.details.connection = `Erro: ${error instanceof Error ? error.message : String(error)}`;
+        }
     }
 
     // Determinar status geral
@@ -308,7 +308,7 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
 
   } catch (error) {
     health.status = 'error';
-    health.details.error = error.message;
+    health.details.error = error instanceof Error ? error.message : String(error);
     
     res.status(500).json({
       success: false,
