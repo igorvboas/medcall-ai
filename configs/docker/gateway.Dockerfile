@@ -26,7 +26,7 @@ RUN npm ci
 
 # Copy full repository and build only the gateway package
 COPY . .
-RUN npm run build -w @medcall/gateway
+RUN npm run build:gateway
 
 # ---------- Runtime ----------
 FROM base AS runtime
@@ -50,7 +50,7 @@ COPY --from=builder /app/apps/gateway/package.json ./apps/gateway/package.json
 
 # Healthcheck hits the non-authenticated health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:${PORT}/health || exit 1
+  CMD curl -fsS http://localhost:8080/api/health || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "apps/gateway/dist/index.js"]

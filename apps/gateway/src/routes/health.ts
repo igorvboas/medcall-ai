@@ -6,6 +6,14 @@ import { config } from '../config';
 
 const router = Router();
 
+// Health check simples (para load balancers e healthcheck do Docker)
+router.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Health check detalhado
 router.get('/detailed', asyncHandler(async (req: Request, res: Response) => {
   const startTime = Date.now();
