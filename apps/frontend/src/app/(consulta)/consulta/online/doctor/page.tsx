@@ -22,6 +22,7 @@ function DoctorConsultationContent() {
   const microphoneId = searchParams?.get('microphoneId');
   const patientToken = searchParams?.get('patientToken');
   const livekitUrl = searchParams?.get('livekitUrl');
+  
 
   console.log('🔍 URL Parameters:', {
     sessionId,

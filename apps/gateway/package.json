@@ -20,6 +20,8 @@
     "test:config": "tsx src/test-config.ts"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.14",
+    "@livekit/components-styles": "^1.1.6",
     "@supabase/supabase-js": "^2.38.4",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
