@@ -220,9 +220,8 @@ export default function TestingLiveKitPage() {
           color: '#a0aec0'
         }}>
           <h4 style={{ margin: '0 0 0.5rem 0', color: '#ffc107' }}>🔧 Debug Info:</h4>
-          <p style={{ margin: '0.25rem 0' }}>• URL: {window.location.href}</p>
           <p style={{ margin: '0.25rem 0' }}>• Timestamp: {new Date().toLocaleString()}</p>
-          <p style={{ margin: '0.25rem 0' }}>• User Agent: {navigator.userAgent.substring(0, 50)}...</p>
+          <p style={{ margin: '0.25rem 0' }}>• Environment: {typeof window !== 'undefined' ? 'Client' : 'Server'}</p>
         </div>
       </div>
     </div>

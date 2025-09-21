@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { SimpleLiveKitRoom } from '@/components/livekit/SimpleLiveKitRoom';
 
-export default function NovaOnlineTestPage() {
+function NovaOnlineTestPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -203,5 +203,35 @@ export default function NovaOnlineTestPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NovaOnlineTestPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#1a1a1a',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #4a5568',
+            borderTop: '3px solid #a6ce39',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }} />
+          <p>Carregando página de teste...</p>
+        </div>
+      </div>
+    }>
+      <NovaOnlineTestPageContent />
+    </Suspense>
   );
 }
