@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getPatients } from '@/lib/supabase';
 
 interface Patient {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  status: string;
 }
 
 export default function TestingLiveKitPage() {
@@ -14,18 +18,32 @@ export default function TestingLiveKitPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Lista de pacientes de teste
-  const testPatients: Patient[] = [
-    { id: 'patient-001', name: 'João Silva', email: 'joao@test.com' },
-    { id: 'patient-002', name: 'Maria Santos', email: 'maria@test.com' },
-    { id: 'patient-003', name: 'Pedro Costa', email: 'pedro@test.com' },
-    { id: 'patient-004', name: 'Ana Oliveira', email: 'ana@test.com' },
-    { id: 'patient-005', name: 'Carlos Ferreira', email: 'carlos@test.com' },
-  ];
+  const [loadingPatients, setLoadingPatients] = useState(true);
 
   useEffect(() => {
-    setPatients(testPatients);
+    // Carregar pacientes do banco de dados
+    const loadPatients = async () => {
+      try {
+        setLoadingPatients(true);
+        const patientsData = await getPatients();
+        setPatients(patientsData);
+      } catch (error) {
+        console.error('Erro ao carregar pacientes:', error);
+        // Fallback para pacientes de teste se houver erro
+        const testPatients: Patient[] = [
+          { id: 'patient-001', name: 'João Silva', email: 'joao@test.com', phone: null, city: null, status: 'active' },
+          { id: 'patient-002', name: 'Maria Santos', email: 'maria@test.com', phone: null, city: null, status: 'active' },
+          { id: 'patient-003', name: 'Pedro Costa', email: 'pedro@test.com', phone: null, city: null, status: 'active' },
+          { id: 'patient-004', name: 'Ana Oliveira', email: 'ana@test.com', phone: null, city: null, status: 'active' },
+          { id: 'patient-005', name: 'Carlos Ferreira', email: 'carlos@test.com', phone: null, city: null, status: 'active' },
+        ];
+        setPatients(testPatients);
+      } finally {
+        setLoadingPatients(false);
+      }
+    };
+
+    loadPatients();
   }, []);
 
   const handleStartCall = async () => {
@@ -48,9 +66,9 @@ export default function TestingLiveKitPage() {
           session_type: 'online',
           participants: {
             doctor: {
-              id: 'doctor-test',
-              name: 'Dr. Teste',
-              email: 'doctor@test.com'
+              id: 'doctor-current',
+              name: 'Dr. Médico',
+              email: 'doctor@medcall.com'
             },
             patient: patients.find(p => p.id === selectedPatient)
           },
@@ -135,24 +153,40 @@ export default function TestingLiveKitPage() {
           <select
             value={selectedPatient}
             onChange={(e) => setSelectedPatient(e.target.value)}
+            disabled={loadingPatients}
             style={{
               width: '100%',
               padding: '0.75rem',
               fontSize: '1rem',
-              background: '#1a1a1a',
-              color: 'white',
+              background: loadingPatients ? '#2a2a2a' : '#1a1a1a',
+              color: loadingPatients ? '#666' : 'white',
               border: '1px solid #4a5568',
               borderRadius: '6px',
-              cursor: 'pointer'
+              cursor: loadingPatients ? 'not-allowed' : 'pointer'
             }}
           >
-            <option value="">Selecione um paciente...</option>
+            <option value="">
+              {loadingPatients ? 'Carregando pacientes...' : 'Selecione um paciente...'}
+            </option>
             {patients.map((patient) => (
               <option key={patient.id} value={patient.id}>
-                {patient.name} ({patient.email})
+                {patient.name} {patient.email && `(${patient.email})`}
+                {patient.city && ` - ${patient.city}`}
               </option>
             ))}
           </select>
+          {loadingPatients && (
+            <p style={{ 
+              marginTop: '0.5rem', 
+              fontSize: '0.9rem', 
+              color: '#ffc107',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span>🔄</span> Carregando pacientes do banco de dados...
+            </p>
+          )}
         </div>
 
         <div style={{
@@ -166,7 +200,8 @@ export default function TestingLiveKitPage() {
           <p style={{ margin: '0.25rem 0' }}>• Gateway: {process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}</p>
           <p style={{ margin: '0.25rem 0' }}>• LiveKit: {process.env.NEXT_PUBLIC_LIVEKIT_URL || 'Não configurado'}</p>
           <p style={{ margin: '0.25rem 0' }}>• Tipo: Sessão de Teste</p>
-          <p style={{ margin: '0.25rem 0' }}>• Pacientes: {patients.length} disponíveis</p>
+          <p style={{ margin: '0.25rem 0' }}>• Pacientes: {patients.length} disponíveis {loadingPatients ? '(carregando...)' : ''}</p>
+          <p style={{ margin: '0.25rem 0' }}>• Fonte: {patients.length > 0 && patients[0].id.startsWith('patient-') ? 'Teste' : 'Banco de dados'}</p>
         </div>
 
         <button
