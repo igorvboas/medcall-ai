@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste LiveKit</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .success { border-color: #28a745; background: rgba(40, 167, 69, 0.1); }
+        .error { border-color: #dc3545; background: rgba(220, 53, 69, 0.1); }
+        .loading { border-color: #ffc107; background: rgba(255, 193, 7, 0.1); }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log { background: #000; padding: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #333; border-radius: 3px; background: #333; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste LiveKit - MedCall AI</h1>
+        
+        <div class="test-section">
+            <h3>Configurações</h3>
+            <div>
+                <label>Gateway URL:</label>
+                <input type="text" id="gatewayUrl" value="https://medcall-gateway-416450784258.southamerica-east1.run.app" style="width: 400px;">
+            </div>
+            <div>
+                <label>LiveKit URL:</label>
+                <input type="text" id="livekitUrl" value="wss://tria-app-0hg0ktck.livekit.cloud" style="width: 400px;">
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Teste Gateway</h3>
+            <button onclick="testGateway()">Testar Gateway</button>
+            <div id="gatewayResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Teste Criação de Sessão</h3>
+            <button onclick="testSessionCreation()">Criar Sessão de Teste</button>
+            <div id="sessionResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Teste Conexão LiveKit</h3>
+            <button onclick="testLiveKitConnection()" id="livekitBtn">Testar Conexão LiveKit</button>
+            <div id="livekitResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Teste Completo</h3>
+            <button onclick="runFullTest()">Executar Teste Completo</button>
+            <div id="fullTestResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Logs</h3>
+            <div id="logs" class="log"></div>
+            <button onclick="clearLogs()">Limpar Logs</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/livekit-client@2.6.0/dist/livekit-client.umd.js"></script>
+    <script>
+        let currentSessionData = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('logs');
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ffc107';
+            logElement.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function setResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = `test-section ${type}`;
+        }
+
+        async function testGateway() {
+            setResult('gatewayResult', 'Testando...', 'loading');
+            log('🔍 Testando gateway...');
+            
+            try {
+                const gatewayUrl = document.getElementById('gatewayUrl').value;
+                const response = await fetch(`${gatewayUrl}/api/health`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Gateway funcionando!', 'success');
+                    setResult('gatewayResult', `
+                        <h4>✅ Gateway OK</h4>
+                        <p>Status: ${data.status}</p>
+                        <p>Timestamp: ${data.timestamp}</p>
+                    `, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erro no gateway: ${error.message}`, 'error');
+                setResult('gatewayResult', `
+                    <h4>❌ Gateway Error</h4>
+                    <p>Erro: ${error.message}</p>
+                `, 'error');
+            }
+        }
+
+        async function testSessionCreation() {
+            setResult('sessionResult', 'Criando sessão...', 'loading');
+            log('🔍 Criando sessão de teste...');
+            
+            try {
+                const gatewayUrl = document.getElementById('gatewayUrl').value;
+                const response = await fetch(`${gatewayUrl}/api/sessions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        consultation_id: 'test-' + Date.now(),
+                        session_type: 'online',
+                        participants: {
+                            doctor: {
+                                id: 'doctor-current',
+                                name: 'Dr. Médico',
+                                email: 'doctor@test.com'
+                            },
+                            patient: {
+                                id: 'patient-test',
+                                name: 'Paciente Teste',
+                                email: 'patient@test.com'
+                            }
+                        },
+                        consent: true,
+                        metadata: {
+                            appointmentType: 'online'
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentSessionData = data;
+                    log('✅ Sessão criada com sucesso!', 'success');
+                    log(`Token length: ${data.tokens.doctor.length}`, 'info');
+                    log(`Room: ${data.session.roomName}`, 'info');
+                    
+                    setResult('sessionResult', `
+                        <h4>✅ Sessão Criada</h4>
+                        <p>Session ID: ${data.session.id}</p>
+                        <p>Room: ${data.session.roomName}</p>
+                        <p>Token length: ${data.tokens.doctor.length}</p>
+                        <p>LiveKit URL: ${data.livekit.url}</p>
+                    `, 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Erro ao criar sessão: ${error.message}`, 'error');
+                setResult('sessionResult', `
+                    <h4>❌ Erro na Sessão</h4>
+                    <p>Erro: ${error.message}</p>
+                `, 'error');
+            }
+        }
+
+        async function testLiveKitConnection() {
+            if (!currentSessionData) {
+                alert('Primeiro crie uma sessão!');
+                return;
+            }
+
+            setResult('livekitResult', 'Conectando ao LiveKit...', 'loading');
+            log('🔍 Testando conexão com LiveKit...');
+            
+            try {
+                const { Room } = livekit;
+                const room = new Room();
+                
+                // Configurar timeout
+                const timeout = setTimeout(() => {
+                    room.disconnect();
+                    throw new Error('Timeout: Conexão não estabelecida em 15 segundos');
+                }, 15000);
+
+                // Listeners de eventos
+                room.on('connected', () => {
+                    clearTimeout(timeout);
+                    log('✅ Conectado ao LiveKit!', 'success');
+                    log(`Room: ${room.name}`, 'info');
+                    log(`Participants: ${room.remoteParticipants.size}`, 'info');
+                    
+                    setResult('livekitResult', `
+                        <h4>✅ LiveKit Conectado</h4>
+                        <p>Room: ${room.name}</p>
+                        <p>Participants: ${room.remoteParticipants.size}</p>
+                        <p>Connection State: ${room.state}</p>
+                    `, 'success');
+                    
+                    // Desconectar após teste
+                    setTimeout(() => room.disconnect(), 2000);
+                });
+
+                room.on('disconnected', (reason) => {
+                    log(`❌ Desconectado: ${reason}`, 'error');
+                });
+
+                room.on('connectionQualityChanged', (quality) => {
+                    log(`📊 Qualidade: ${quality}`, 'info');
+                });
+
+                // Conectar
+                await room.connect(currentSessionData.livekit.url, currentSessionData.tokens.doctor);
+                
+            } catch (error) {
+                log(`❌ Erro na conexão LiveKit: ${error.message}`, 'error');
+                setResult('livekitResult', `
+                    <h4>❌ Erro LiveKit</h4>
+                    <p>Erro: ${error.message}</p>
+                `, 'error');
+            }
+        }
+
+        async function runFullTest() {
+            log('🚀 Iniciando teste completo...', 'info');
+            clearLogs();
+            
+            await testGateway();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testSessionCreation();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (currentSessionData) {
+                await testLiveKitConnection();
+            }
+            
+            log('✅ Teste completo finalizado!', 'success');
+        }
+
+        // Auto-executar teste do gateway ao carregar
+        window.onload = () => {
+            log('🔧 Página carregada. Execute os testes...', 'info');
+        };
+    </script>
+</body>
+</html>
