@@ -13,15 +13,15 @@ function DoctorConsultationContent() {
   
   console.log('🔍 DoctorConsultationContent mounted');
   
-  const sessionId = searchParams.get('sessionId');
-  const consultationId = searchParams.get('consultationId');
-  const roomName = searchParams.get('roomName');
-  const doctorToken = searchParams.get('token');
-  const patientName = searchParams.get('patientName');
-  const cameraId = searchParams.get('cameraId');
-  const microphoneId = searchParams.get('microphoneId');
-  const patientToken = searchParams.get('patientToken');
-  const livekitUrl = searchParams.get('livekitUrl');
+  const sessionId = searchParams?.get('sessionId');
+  const consultationId = searchParams?.get('consultationId');
+  const roomName = searchParams?.get('roomName');
+  const doctorToken = searchParams?.get('token');
+  const patientName = searchParams?.get('patientName');
+  const cameraId = searchParams?.get('cameraId');
+  const microphoneId = searchParams?.get('microphoneId');
+  const patientToken = searchParams?.get('patientToken');
+  const livekitUrl = searchParams?.get('livekitUrl');
 
   console.log('🔍 URL Parameters:', {
     sessionId,
