@@ -67,6 +67,7 @@ export function MedicalConsultationRoom({
     console.log('✅ Connected to room');
     setIsConnected(true);
     setConnectionError(null);
+    setRetryCount(0); // Reset retry count on successful connection
     
     // INICIALIZAR MICROFONE E CÂMERA AUTOMATICAMENTE (como no useLiveKitCall)
     try {
@@ -103,8 +104,33 @@ export function MedicalConsultationRoom({
 
   const handleError = (error: Error) => {
     console.error('❌ Room error:', error);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
     setConnectionError(error.message);
     onError?.(error);
+  };
+
+  // Handlers adicionais para eventos LiveKit
+  const handleConnecting = () => {
+    console.log('🔄 Conectando ao LiveKit...');
+  };
+
+  const handleReconnecting = () => {
+    console.log('🔄 Reconectando ao LiveKit...');
+    setIsRetrying(true);
+  };
+
+  const handleReconnected = () => {
+    console.log('✅ Reconectado ao LiveKit!');
+    setIsRetrying(false);
+    setRetryCount(0);
+  };
+
+  const handleConnectionStateChanged = (state: any) => {
+    console.log('📊 Estado da conexão:', state);
   };
 
   // Função para tentar reconectar automaticamente
@@ -485,6 +511,13 @@ export function MedicalConsultationRoom({
         dynacast: true,
         videoCaptureDefaults: videoCaptureDefaults || {},
         audioCaptureDefaults: audioCaptureDefaults || {},
+        // Configurações adicionais para melhor conectividade
+        publishDefaults: {
+          videoSimulcastLayers: [
+            { width: 640, height: 360, resolution: { width: 640, height: 360 }, encoding: { maxBitrate: 200000 } },
+            { width: 1280, height: 720, resolution: { width: 1280, height: 720 }, encoding: { maxBitrate: 500000 } },
+          ],
+        },
       }}
     >
       <RoomAudioRenderer />
