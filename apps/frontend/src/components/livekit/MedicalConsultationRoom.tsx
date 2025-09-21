@@ -59,6 +59,8 @@ export function MedicalConsultationRoom({
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isRoomReady, setIsRoomReady] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Handle connection events
   const handleConnected = async () => {
@@ -103,6 +105,22 @@ export function MedicalConsultationRoom({
     console.error('❌ Room error:', error);
     setConnectionError(error.message);
     onError?.(error);
+  };
+
+  // Função para tentar reconectar automaticamente
+  const retryConnection = () => {
+    if (isRetrying || retryCount >= 3) return;
+    
+    console.log(`🔄 Tentativa de reconexão ${retryCount + 1}/3`);
+    setIsRetrying(true);
+    setConnectionError(null);
+    setRetryCount(prev => prev + 1);
+    
+    // Simular reconexão após 2 segundos
+    setTimeout(() => {
+      setIsRetrying(false);
+      window.location.reload();
+    }, 2000);
   };
 
   // Debug: Log connection attempts
@@ -176,17 +194,56 @@ export function MedicalConsultationRoom({
     validateJWTToken();
   }, [serverUrl, token]);
 
-  // Timeout para detectar conexão travada
+  // Timeout para detectar conexão travada com debug detalhado e retry automático
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!isConnected) {
+      if (!isConnected && !isRetrying) {
         console.error('⏰ Timeout: Conexão não estabelecida em 30 segundos');
-        setConnectionError('Timeout: Não foi possível conectar à sala em 30 segundos');
+        
+        // Debug detalhado do timeout
+        console.log('🔍 Debug do Timeout:');
+        console.log('  - serverUrl:', serverUrl);
+        console.log('  - token presente:', !!token);
+        console.log('  - token válido:', token ? 'Verificando...' : 'Não');
+        console.log('  - roomName:', roomName);
+        console.log('  - isConnected:', isConnected);
+        console.log('  - connectionError:', connectionError);
+        console.log('  - retryCount:', retryCount);
+        
+        // Testar conectividade do LiveKit
+        if (serverUrl) {
+          const testUrl = serverUrl.replace('wss://', 'https://');
+          fetch(`${testUrl}/api/health`)
+            .then(response => {
+              console.log('🧪 LiveKit Health Check:', response.status);
+              if (response.ok) {
+                if (retryCount < 2) {
+                  console.log('🔄 LiveKit está funcionando, tentando reconexão automática...');
+                  retryConnection();
+                } else {
+                  setConnectionError('LiveKit está funcionando, mas a conexão WebSocket falhou. Verifique sua conexão de internet.');
+                }
+              } else {
+                setConnectionError('Servidor LiveKit não está respondendo corretamente.');
+              }
+            })
+            .catch(error => {
+              console.error('🧪 LiveKit Health Check Failed:', error);
+              if (retryCount < 2) {
+                console.log('🔄 Problema de conectividade, tentando reconexão automática...');
+                retryConnection();
+              } else {
+                setConnectionError('Não foi possível conectar ao servidor LiveKit. Verifique sua conexão de internet.');
+              }
+            });
+        } else {
+          setConnectionError('URL do servidor LiveKit não configurada.');
+        }
       }
     }, 30000);
 
     return () => clearTimeout(timeout);
-  }, [isConnected]);
+  }, [isConnected, serverUrl, token, roomName, connectionError, retryCount, isRetrying]);
 
   // Show loading state while connecting
   if (!isConnected || !isRoomReady) {
@@ -221,11 +278,59 @@ export function MedicalConsultationRoom({
           }} />
         </div>
         <h2 style={{ marginBottom: '0.5rem' }}>
-          {!isConnected ? 'Conectando à sala...' : 'Preparando interface...'}
+          {isRetrying ? `Reconectando... (${retryCount}/3)` : 
+           !isConnected ? 'Conectando à sala...' : 'Preparando interface...'}
         </h2>
         <p style={{ color: '#a0aec0' }}>
           Sala: {roomName} | Participante: {participantName}
         </p>
+        {retryCount > 0 && (
+          <p style={{ color: '#ffc107', fontSize: '14px', marginTop: '0.5rem' }}>
+            ⚠️ Tentativa {retryCount}/3
+          </p>
+        )}
+        
+        {/* Botão de Debug */}
+        <div style={{ marginTop: '1rem' }}>
+          <button 
+            onClick={() => {
+              console.log('🔧 DEBUG MANUAL:');
+              console.log('URL atual:', window.location.href);
+              console.log('Parâmetros:', Object.fromEntries(new URLSearchParams(window.location.search)));
+              console.log('ServerUrl:', serverUrl);
+              console.log('Token length:', token?.length);
+              console.log('RoomName:', roomName);
+              console.log('ParticipantName:', participantName);
+              
+              // Testar gateway
+              fetch('https://medcall-gateway-416450784258.southamerica-east1.run.app/api/health')
+                .then(r => r.json())
+                .then(data => console.log('Gateway Status:', data))
+                .catch(err => console.error('Gateway Error:', err));
+                
+              // Testar LiveKit
+              if (serverUrl) {
+                const testUrl = serverUrl.replace('wss://', 'https://');
+                fetch(`${testUrl}/api/health`)
+                  .then(r => console.log('LiveKit Health:', r.status))
+                  .catch(err => console.error('LiveKit Error:', err));
+              }
+              
+              alert('Debug executado! Verifique o console (F12)');
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#4a5568',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            🔧 Debug (F12)
+          </button>
+        </div>
       </div>
     );
   }
@@ -248,19 +353,75 @@ export function MedicalConsultationRoom({
         <p style={{ color: '#a0aec0', marginBottom: '1rem' }}>
           {connectionError}
         </p>
-        <button 
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: '#a6ce39',
-            color: 'black',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
-          Tentar Novamente
-        </button>
+        
+        {/* Informações de Debug */}
+        <div style={{ 
+          background: '#2a2a2a', 
+          padding: '1rem', 
+          borderRadius: '8px', 
+          marginBottom: '1rem',
+          fontSize: '12px',
+          textAlign: 'left',
+          maxWidth: '600px'
+        }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#ffc107' }}>🔍 Informações de Debug:</h4>
+          <p style={{ margin: '0.25rem 0' }}>• Server URL: {serverUrl || 'Não definido'}</p>
+          <p style={{ margin: '0.25rem 0' }}>• Token: {token ? 'Presente' : 'Ausente'}</p>
+          <p style={{ margin: '0.25rem 0' }}>• Room: {roomName || 'Não definido'}</p>
+          <p style={{ margin: '0.25rem 0' }}>• Participante: {participantName || 'Não definido'}</p>
+          <p style={{ margin: '0.25rem 0' }}>• Timestamp: {new Date().toLocaleString()}</p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#a6ce39',
+              color: 'black',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Tentar Novamente
+          </button>
+          
+          <button 
+            onClick={() => {
+              console.log('🔧 DEBUG COMPLETO:');
+              console.log('URL:', window.location.href);
+              console.log('Parâmetros:', Object.fromEntries(new URLSearchParams(window.location.search)));
+              console.log('ServerUrl:', serverUrl);
+              console.log('Token:', token ? `${token.substring(0, 50)}...` : 'null');
+              console.log('RoomName:', roomName);
+              console.log('Error:', connectionError);
+              
+              // Testes de conectividade
+              fetch('https://medcall-gateway-416450784258.southamerica-east1.run.app/api/health')
+                .then(r => r.json())
+                .then(data => console.log('Gateway:', data))
+                .catch(err => console.error('Gateway Error:', err));
+                
+              if (serverUrl) {
+                const testUrl = serverUrl.replace('wss://', 'https://');
+                fetch(`${testUrl}/api/health`)
+                  .then(r => console.log('LiveKit:', r.status))
+                  .catch(err => console.error('LiveKit Error:', err));
+              }
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#4a5568',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            🔧 Debug Console
+          </button>
+        </div>
       </div>
     );
   }
