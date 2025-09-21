@@ -15,7 +15,6 @@ import { initializeRedis } from './config/redis';
 import healthRoutes from './routes/health';
 import sessionRoutes from './routes/sessions';
 import debugRoutes from './routes/debug';
-import testLiveKitRoutes from './routes/test-livekit';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -99,10 +98,6 @@ class GatewayServer {
       this.app.use('/debug', debugRoutes);
     }
     
-    // Test routes (apenas em desenvolvimento)
-    if (isDevelopment) {
-      this.app.use('/api/test', testLiveKitRoutes);
-    }
 
     // Catch-all para rotas não encontradas
     this.app.use('*', (req, res) => {
