@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   useParticipants
 } from '@livekit/components-react';
-import { useTranscriptionWebSocket } from '../../hooks/useTranscriptionWebSocket';
-
+import { useTranscriptionLiveKit } from '../../hooks/useTranscriptionLiveKit';
 interface TranscriptionDisplayProps {
   patientName?: string;
   userRole?: 'doctor' | 'patient';
@@ -33,7 +32,7 @@ export function TranscriptionDisplay({
     startTranscription,
     stopTranscription,
     clearTranscriptions
-  } = useTranscriptionWebSocket({
+  } = useTranscriptionLiveKit({
     roomName,
     participantId,
     consultationId,
