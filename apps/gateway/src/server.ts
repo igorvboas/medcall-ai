@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import { TranscriptionWebSocketHandler } from './websocket/transcriptionHandler';
 import transcriptionRoutes from './routes/transcription';
+import sessionsRoutes from './routes/sessions';
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,7 +12,7 @@ const httpServer = createServer(app);
 // Configurar Socket.IO com CORS corrigido
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://medcall-ai.vercel.app"
+  "https://medcall-ai-frontend-v2.vercel.app"
 ];
 
 if (process.env.FRONTEND_URL) {
@@ -46,6 +47,7 @@ console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Configurada' : 'N
 
 // Rotas da API
 app.use('/api/transcription', transcriptionRoutes);
+app.use('/api/sessions', sessionsRoutes);
 
 // Suas outras rotas existentes podem ser adicionadas aqui
 // app.use('/api/sessions', sessionRoutes);
