@@ -23,7 +23,9 @@ export function TranscriptionDisplay({
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const transcriptionsEndRef = useRef<HTMLDivElement>(null);
-  
+  console.log('🔍 TranscriptionDisplay renderizado!');
+  console.log('🔍 TranscriptionDisplay props:', { patientName, userRole, roomName, participantId, consultationId });
+  console.log('🔍 TranscriptionDisplay isVisible:', isVisible);
   // Usar o hook WebSocket para transcrições
   const {
     transcriptions,
@@ -65,7 +67,7 @@ export function TranscriptionDisplay({
     
     return groups;
   }, [transcriptions]);
-
+  
   // Função para obter nome do participante
   const getParticipantName = (identity: string) => {
     const participant = participants.find(p => p.identity === identity);
