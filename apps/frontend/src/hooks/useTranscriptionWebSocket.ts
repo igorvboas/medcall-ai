@@ -34,6 +34,16 @@ export function useTranscriptionWebSocket({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
 
+  // ADICIONE ESTE LOG NO INÍCIO
+  console.log('🔍 Hook useTranscriptionWebSocket iniciado com:', {
+    roomName,
+    participantId,
+    consultationId,
+    enabled,
+    gatewayUrl
+  });
+
+
   // Conectar ao WebSocket
   useEffect(() => {
     if (!enabled || !roomName || !participantId) return;
