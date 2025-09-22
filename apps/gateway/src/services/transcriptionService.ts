@@ -2,7 +2,8 @@ import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
 import { Room, RoomServiceClient, AccessToken } from 'livekit-server-sdk';
-import WebSocket from 'ws';
+import { Room as ClientRoom, RemoteParticipant, RemoteTrack, RemoteTrackPublication } from 'livekit-client';
+import { TextEncoder } from 'util';
 
 interface TranscriptionSegment {
   id: string;
@@ -37,6 +38,9 @@ export class TranscriptionService extends EventEmitter {
   private audioBuffers: Map<string, Buffer[]> = new Map();
   private processingQueue: Map<string, NodeJS.Timeout> = new Map();
   
+  // Novo: Gerenciar conexões reais às salas
+  private roomConnections: Map<string, ClientRoom> = new Map();
+  
   constructor() {
     super();
     
@@ -64,13 +68,13 @@ export class TranscriptionService extends EventEmitter {
    */
   async startTranscription(roomName: string, consultationId: string): Promise<void> {
     try {
-      console.log(`🎤 Iniciando transcrição para sala: ${roomName}`);
+      console.log(`Iniciando transcrição para sala: ${roomName}`);
       
       if (!this.activeRooms.has(roomName)) {
         this.activeRooms.set(roomName, new Set());
       }
       
-      // Conectar à sala LiveKit como participante invisível
+      // Conectar à sala LiveKit como participante real
       await this.connectToRoom(roomName, consultationId);
       
     } catch (error) {
@@ -84,7 +88,14 @@ export class TranscriptionService extends EventEmitter {
    */
   async stopTranscription(roomName: string): Promise<void> {
     try {
-      console.log(`🛑 Parando transcrição para sala: ${roomName}`);
+      console.log(`Parando transcrição para sala: ${roomName}`);
+      
+      // Desconectar da sala LiveKit
+      const room = this.roomConnections.get(roomName);
+      if (room) {
+        await room.disconnect();
+        this.roomConnections.delete(roomName);
+      }
       
       // Limpar buffers de áudio
       this.audioBuffers.delete(roomName);
@@ -106,7 +117,7 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Processar chunk de áudio
+   * Processar chunk de áudio (mantém lógica existente)
    */
   async processAudioChunk(audioChunk: AudioChunk, roomName: string): Promise<void> {
     try {
@@ -129,16 +140,14 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Agendar processamento de transcrição
+   * Agendar processamento de transcrição (mantém lógica existente)
    */
   private scheduleProcessing(bufferKey: string, roomName: string, participantId: string): void {
-    // Cancelar timeout anterior se existir
     const existingTimeout = this.processingQueue.get(bufferKey);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
     
-    // Agendar novo processamento em 1 segundo
     const timeout = setTimeout(async () => {
       await this.processBufferedAudio(bufferKey, roomName, participantId);
     }, 1000);
@@ -147,7 +156,7 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Processar áudio bufferizado
+   * Processar áudio bufferizado (mantém lógica existente)
    */
   private async processBufferedAudio(bufferKey: string, roomName: string, participantId: string): Promise<void> {
     try {
@@ -156,18 +165,13 @@ export class TranscriptionService extends EventEmitter {
         return;
       }
       
-      // Concatenar buffers
       const combinedBuffer = Buffer.concat(audioBuffers);
-      
-      // Limpar buffer
       this.audioBuffers.set(bufferKey, []);
       
-      // Verificar se há áudio suficiente (mínimo 0.5 segundos)
-      if (combinedBuffer.length < 8000) { // ~0.5s a 16kHz
+      if (combinedBuffer.length < 8000) {
         return;
       }
       
-      // Converter para formato WAV e transcrever
       const transcription = await this.transcribeAudio(combinedBuffer, {
         language: 'pt',
         model: 'whisper-1',
@@ -175,7 +179,6 @@ export class TranscriptionService extends EventEmitter {
       });
       
       if (transcription && transcription.text.trim()) {
-        // Enviar transcrição para a sala
         await this.sendTranscriptionToRoom(roomName, {
           id: this.generateTranscriptionId(),
           text: transcription.text,
@@ -194,45 +197,42 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Transcrever áudio usando OpenAI Whisper
+   * Transcrever áudio usando OpenAI Whisper (mantém lógica existente)
    */
   private async transcribeAudio(audioBuffer: Buffer, options: TranscriptionOptions = {}): Promise<any> {
-        try {
-        // Converter buffer para formato WAV
-        const wavBuffer = this.convertToWav(audioBuffer);
-        
-        // CORREÇÃO: Usar Blob ao invés de File para Node.js
-        const blob = new Blob([wavBuffer], { type: 'audio/wav' });
-        
-        // Ou melhor ainda, usar FormData diretamente
-        const formData = new FormData();
-        formData.append('file', blob, 'audio.wav');
-        formData.append('model', options.model || 'whisper-1');
-        formData.append('language', options.language || 'pt');
-        formData.append('response_format', options.response_format || 'verbose_json');
-        formData.append('temperature', (options.temperature || 0).toString());
-    
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            },
-            body: formData
-        });
-    
-        if (!response.ok) {
-            throw new Error(`OpenAI API error: ${response.status}`);
-        }
-    
-        return await response.json();
-        
-        } catch (error) {
-        console.error('Erro na transcrição:', error);
-        return null;
-        }
+    try {
+      const wavBuffer = this.convertToWav(audioBuffer);
+      const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+      
+      const formData = new FormData();
+      formData.append('file', blob, 'audio.wav');
+      formData.append('model', options.model || 'whisper-1');
+      formData.append('language', options.language || 'pt');
+      formData.append('response_format', options.response_format || 'verbose_json');
+      formData.append('temperature', (options.temperature || 0).toString());
+
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      return await response.json();
+      
+    } catch (error) {
+      console.error('Erro na transcrição:', error);
+      return null;
     }
+  }
+
   /**
-   * Converter buffer raw para WAV
+   * Converter buffer raw para WAV (mantém lógica existente)
    */
   private convertToWav(rawBuffer: Buffer, sampleRate: number = 16000, channels: number = 1): Buffer {
     const length = rawBuffer.length;
@@ -253,30 +253,28 @@ export class TranscriptionService extends EventEmitter {
     buffer.write('data', 36);
     buffer.writeUInt32LE(length, 40);
     
-    // Copiar dados de áudio
     rawBuffer.copy(buffer, 44);
-    
     return buffer;
   }
 
   /**
-   * Enviar transcrição para a sala LiveKit
+   * Enviar transcrição para a sala LiveKit (mantém estrutura, muda implementação)
    */
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      // Salvar no banco de dados
+      // Salvar no banco de dados (mantém)
       await this.saveTranscriptionToDatabase(segment);
       
-      // Enviar via LiveKit data stream
+      // NOVO: Enviar via LiveKit data stream real
       await this.sendLiveKitDataMessage(roomName, {
         type: 'transcription',
         data: segment
       });
       
-      // Emitir evento local
+      // Emitir evento local (mantém)
       this.emit('transcription', { roomName, segment });
       
-      console.log(`📝 Transcrição enviada: ${segment.participantName}: ${segment.text}`);
+      console.log(`Transcrição enviada: ${segment.participantName}: ${segment.text}`);
       
     } catch (error) {
       console.error('Erro ao enviar transcrição:', error);
@@ -284,10 +282,16 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Conectar à sala LiveKit como agente
+   * NOVO: Conectar à sala LiveKit como participante real
    */
   private async connectToRoom(roomName: string, consultationId: string): Promise<void> {
     try {
+      // Verificar se já conectado
+      if (this.roomConnections.has(roomName)) {
+        console.log(`Já conectado à sala: ${roomName}`);
+        return;
+      }
+
       // Criar token para o agente de transcrição
       const token = new AccessToken(
         process.env.LIVEKIT_API_KEY!,
@@ -301,15 +305,44 @@ export class TranscriptionService extends EventEmitter {
       token.addGrant({
         room: roomName,
         roomJoin: true,
-        canPublish: false,
-        canSubscribe: true,
-        canPublishData: true
+        canPublish: false,      // Não publica áudio/vídeo
+        canSubscribe: true,     // Escuta áudio dos outros
+        canPublishData: true    // Pode enviar dados (transcrições)
       });
       
-      const jwt = token.toJwt();
+      const jwt = await token.toJwt();
       
-      // Conectar à sala (implementação WebSocket/SDK específica)
-      console.log(`🔗 Conectando agente à sala: ${roomName}`);
+      console.log(`Conectando agente à sala: ${roomName}`);
+      
+      // Conectar à sala usando cliente LiveKit
+      const room = new ClientRoom();
+      await room.connect(process.env.LIVEKIT_URL!, jwt, {
+        autoSubscribe: true,    // Inscrever automaticamente em tracks
+      });
+      
+      // Armazenar conexão
+      this.roomConnections.set(roomName, room);
+      
+      // Configurar event listeners
+      room.on('participantConnected', (participant: RemoteParticipant) => {
+        console.log(`Participante conectou: ${participant.identity}`);
+      });
+      
+      room.on('participantDisconnected', (participant: RemoteParticipant) => {
+        console.log(`Participante desconectou: ${participant.identity}`);
+      });
+      
+      room.on('trackSubscribed', (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        console.log(`Track subscribed: ${track.kind} from ${participant.identity}`);
+        // Aqui poderia escutar áudio diretamente se necessário
+      });
+      
+      room.on('disconnected', () => {
+        console.log(`Agente desconectou da sala: ${roomName}`);
+        this.roomConnections.delete(roomName);
+      });
+      
+      console.log(`Agente conectado com sucesso à sala: ${roomName}`);
       
     } catch (error) {
       console.error('Erro ao conectar à sala:', error);
@@ -318,13 +351,28 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Enviar mensagem de dados via LiveKit
+   * NOVO: Implementação real do envio de dados via LiveKit
    */
   private async sendLiveKitDataMessage(roomName: string, message: any): Promise<void> {
     try {
-      // Implementar envio de dados via LiveKit
-      // Isso depende da implementação específica do seu cliente LiveKit
-      console.log(`📤 Enviando dados para sala ${roomName}:`, message);
+      const room = this.roomConnections.get(roomName);
+      if (!room) {
+        console.error(`Sala não encontrada: ${roomName}`);
+        return;
+      }
+      
+      // Serializar mensagem para envio
+      const messageData = JSON.stringify(message);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(messageData);
+      
+      // Enviar dados via LiveKit usando formato correto
+      await room.localParticipant.publishData(data, {
+        reliable: true,           // Garantir entrega
+        topic: 'transcription'    // Tópico específico
+      });
+      
+      console.log(`Dados enviados via LiveKit para sala ${roomName}:`, message.type);
       
     } catch (error) {
       console.error('Erro ao enviar dados LiveKit:', error);
@@ -332,7 +380,7 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Salvar transcrição no banco de dados
+   * Salvar transcrição no banco de dados (mantém lógica existente)
    */
   private async saveTranscriptionToDatabase(segment: TranscriptionSegment): Promise<void> {
     try {
@@ -359,11 +407,10 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Obter nome do participante
+   * Obter nome do participante (mantém lógica existente)
    */
   private async getParticipantName(participantId: string): Promise<string> {
     try {
-      // Buscar no banco ou usar cache
       const { data } = await this.supabase
         .from('participants')
         .select('name')
@@ -378,25 +425,27 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Gerar ID único para transcrição
+   * Gerar ID único para transcrição (mantém lógica existente)
    */
   private generateTranscriptionId(): string {
     return `transcription_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Obter estatísticas de transcrição
+   * Obter estatísticas de transcrição (mantém lógica existente)
    */
   async getTranscriptionStats(roomName: string): Promise<any> {
     try {
       const activeParticipants = this.activeRooms.get(roomName)?.size || 0;
       const bufferSize = this.audioBuffers.size;
+      const isConnected = this.roomConnections.has(roomName);
       
       return {
         roomName,
         activeParticipants,
         bufferSize,
-        isActive: this.activeRooms.has(roomName)
+        isActive: this.activeRooms.has(roomName),
+        livekitConnected: isConnected
       };
       
     } catch (error) {
