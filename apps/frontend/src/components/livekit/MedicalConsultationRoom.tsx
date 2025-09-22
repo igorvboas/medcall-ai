@@ -6,7 +6,7 @@ import {
   VideoConference,
   RoomAudioRenderer,
   ConnectionStateToast,
-} from '@livekit/components-react';
+} from '@livekit/components-react'; 
 import { TranscriptionDisplay } from './TranscriptionDisplay';
 
 interface MedicalConsultationRoomProps {
