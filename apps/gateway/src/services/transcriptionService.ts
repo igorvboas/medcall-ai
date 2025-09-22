@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
 import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
 import { Room, RoomEvent, RemoteParticipant, RemoteTrack, RemoteTrackPublication } from '@livekit/rtc-node';
-import { TextEncoder } from 'util';
+import { randomUUID } from 'crypto';
 
 interface TranscriptionSegment {
   id: string;
@@ -43,6 +43,11 @@ export class TranscriptionService extends EventEmitter {
   
   constructor() {
     super();
+    
+    // TEMPORÁRIO: Para desenvolvimento com certificados self-signed
+    if (process.env.NODE_ENV !== 'production-offttl') {
+      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
+    }
     
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -433,8 +438,8 @@ export class TranscriptionService extends EventEmitter {
    * Gerar ID único para transcrição no formato UUID
    */
   private generateTranscriptionId(): string {
-    // Gerar UUID v4 real em vez de string customizada
-    return crypto.randomUUID();
+    // Usar randomUUID do módulo crypto do Node.js
+    return randomUUID();
   }
 
   /**
