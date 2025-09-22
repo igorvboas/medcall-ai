@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import GatewayServer from './server';
+import GatewayServer from './server_old';
 
 // Inicializar e iniciar o servidor
 async function bootstrap() {

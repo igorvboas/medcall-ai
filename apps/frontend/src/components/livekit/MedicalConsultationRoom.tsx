@@ -7,6 +7,7 @@ import {
   RoomAudioRenderer,
   ConnectionStateToast,
 } from '@livekit/components-react';
+import { TranscriptionDisplay } from './TranscriptionDisplay';
 
 interface MedicalConsultationRoomProps {
   // Room configuration
@@ -198,6 +199,15 @@ export function MedicalConsultationRoom({
           {/* Componentes auxiliares */}
           <RoomAudioRenderer />
           <ConnectionStateToast />
+          
+          {/* Componente de Transcrição em Tempo Real */}
+          <TranscriptionDisplay 
+            patientName={patientName}
+            userRole={userRole}
+            roomName={roomName}
+            participantId={participantName}
+            consultationId={sessionId}
+          />
         </LiveKitRoom>
       </div>
 
