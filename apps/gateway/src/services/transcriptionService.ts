@@ -197,29 +197,40 @@ export class TranscriptionService extends EventEmitter {
    * Transcrever áudio usando OpenAI Whisper
    */
   private async transcribeAudio(audioBuffer: Buffer, options: TranscriptionOptions = {}): Promise<any> {
-    try {
-      // Converter buffer para formato WAV
-      const wavBuffer = this.convertToWav(audioBuffer);
-      
-      // Criar arquivo temporário em memória
-      const file = new File([wavBuffer], 'audio.wav', { type: 'audio/wav' });
-      
-      const response = await this.openai.audio.transcriptions.create({
-        file: file,
-        model: options.model || 'whisper-1',
-        language: options.language || 'pt',
-        response_format: options.response_format || 'verbose_json',
-        temperature: options.temperature || 0
-      });
-      
-      return response;
-      
-    } catch (error) {
-      console.error('Erro na transcrição:', error);
-      return null;
+        try {
+        // Converter buffer para formato WAV
+        const wavBuffer = this.convertToWav(audioBuffer);
+        
+        // CORREÇÃO: Usar Blob ao invés de File para Node.js
+        const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+        
+        // Ou melhor ainda, usar FormData diretamente
+        const formData = new FormData();
+        formData.append('file', blob, 'audio.wav');
+        formData.append('model', options.model || 'whisper-1');
+        formData.append('language', options.language || 'pt');
+        formData.append('response_format', options.response_format || 'verbose_json');
+        formData.append('temperature', (options.temperature || 0).toString());
+    
+        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: formData
+        });
+    
+        if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.status}`);
+        }
+    
+        return await response.json();
+        
+        } catch (error) {
+        console.error('Erro na transcrição:', error);
+        return null;
+        }
     }
-  }
-
   /**
    * Converter buffer raw para WAV
    */
