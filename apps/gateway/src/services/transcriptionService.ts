@@ -1,16 +1,7 @@
 import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
-import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
-import { 
-  Room, 
-  RoomEvent, 
-  RemoteParticipant, 
-  RemoteTrack, 
-  RemoteTrackPublication,
-  AudioStream,
-  dispose 
-} from '@livekit/rtc-node';
+import { RoomServiceClient, AccessToken, DataPacket_Kind } from 'livekit-server-sdk';
 import { randomUUID } from 'crypto';
 import { TextEncoder } from 'util';
 
@@ -20,9 +11,16 @@ interface TranscriptionSegment {
   participantId: string;
   participantName: string;
   timestamp: Date;
-  is_final: boolean;
+  final: boolean;
   confidence?: number;
   language?: string;
+}
+
+interface AudioChunk {
+  data: Buffer;
+  participantId: string;
+  sampleRate: number;
+  channels: number;
 }
 
 interface TranscriptionOptions {
@@ -37,10 +35,8 @@ export class TranscriptionService extends EventEmitter {
   private supabase: any;
   private livekitClient: RoomServiceClient;
   private activeRooms: Map<string, Set<string>> = new Map();
-  private roomConnections: Map<string, Room> = new Map();
-  private audioStreams: Map<string, AudioStream> = new Map();
-  private processingBuffers: Map<string, Int16Array[]> = new Map();
-  private processingTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private audioBuffers: Map<string, Buffer[]> = new Map();
+  private processingQueue: Map<string, NodeJS.Timeout> = new Map();
   
   constructor() {
     super();
@@ -63,245 +59,86 @@ export class TranscriptionService extends EventEmitter {
 
   async startTranscription(roomName: string, consultationId: string): Promise<void> {
     try {
-      console.log(`[LiveKit] Iniciando transcrição para sala: ${roomName}`);
+      console.log(`Iniciando transcrição para sala: ${roomName}`);
       
       if (!this.activeRooms.has(roomName)) {
         this.activeRooms.set(roomName, new Set());
       }
       
-      await this.connectToRoom(roomName, consultationId);
+      // Por enquanto, apenas ativar transcrição via WebSocket até resolver SSL
+      console.log(`Transcrição ativada para sala: ${roomName}`);
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao iniciar transcrição:', error);
+      console.error('Erro ao iniciar transcrição:', error);
       throw error;
     }
   }
 
   async stopTranscription(roomName: string): Promise<void> {
     try {
-      console.log(`[LiveKit] Parando transcrição para sala: ${roomName}`);
+      console.log(`Parando transcrição para sala: ${roomName}`);
       
-       // Limpar streams de áudio
-       const audioStreams = Array.from(this.audioStreams.entries())
-         .filter(([key]) => key.startsWith(roomName));
-       
-       for (const [key] of audioStreams) {
-         this.audioStreams.delete(key);
-       }
+      this.audioBuffers.delete(roomName);
       
-      // Limpar buffers de processamento
-      const bufferKeys = Array.from(this.processingBuffers.keys())
-        .filter(key => key.startsWith(roomName));
-      
-      for (const key of bufferKeys) {
-        const timeout = this.processingTimeouts.get(key);
-        if (timeout) {
-          clearTimeout(timeout);
-          this.processingTimeouts.delete(key);
-        }
-        this.processingBuffers.delete(key);
-      }
-      
-      // Desconectar da sala
-      const room = this.roomConnections.get(roomName);
-      if (room) {
-        await room.disconnect();
-        this.roomConnections.delete(roomName);
+      const timeout = this.processingQueue.get(roomName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.processingQueue.delete(roomName);
       }
       
       this.activeRooms.delete(roomName);
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao parar transcrição:', error);
-    }
-  }
-
-  private async connectToRoom(roomName: string, consultationId: string): Promise<void> {
-    try {
-      if (this.roomConnections.has(roomName)) {
-        console.log(`[LiveKit] Já conectado à sala: ${roomName}`);
-        return;
-      }
-
-      // Criar token para agente de transcrição
-      const token = new AccessToken(
-        process.env.LIVEKIT_API_KEY!,
-        process.env.LIVEKIT_API_SECRET!,
-        {
-          identity: `transcription-agent-${consultationId}`,
-          name: 'Agente de Transcrição LiveKit'
-        }
-      );
-      
-      token.addGrant({
-        room: roomName,
-        roomJoin: true,
-        canPublish: false,       // Agente não publica áudio/vídeo
-        canSubscribe: true,      // Subscreve para ouvir participantes
-        canPublishData: true     // Publica transcrições via data channels
-      });
-      
-      const jwt = await token.toJwt();
-      
-      console.log(`[LiveKit] Conectando agente à sala: ${roomName}`);
-      
-      // Conectar usando API oficial @livekit/rtc-node
-      const room = new Room();
-      await room.connect(process.env.LIVEKIT_URL!, jwt, {
-        autoSubscribe: true,  // Subscrever automaticamente a tracks de áudio
-        dynacast: true        // Otimizar bandwidth
-      });
-      
-      this.roomConnections.set(roomName, room);
-      console.log(`[LiveKit] ✅ Agente conectado com sucesso à sala: ${roomName}`);
-      
-      // Configurar event listeners nativos LiveKit
-      this.setupRoomEventListeners(room, roomName);
-      
-    } catch (error) {
-      console.error('[LiveKit] Erro ao conectar à sala:', error);
+      console.error('Erro ao parar transcrição:', error);
       throw error;
     }
   }
 
-  private setupRoomEventListeners(room: Room, roomName: string): void {
-    // Participante conectou
-    room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-      console.log(`[LiveKit] Participante conectou: ${participant.identity}`);
-      const activeParticipants = this.activeRooms.get(roomName) || new Set();
-      activeParticipants.add(participant.identity);
-      this.activeRooms.set(roomName, activeParticipants);
-    });
-    
-    // Participante desconectou
-    room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      console.log(`[LiveKit] Participante desconectou: ${participant.identity}`);
-      const activeParticipants = this.activeRooms.get(roomName);
-      if (activeParticipants) {
-        activeParticipants.delete(participant.identity);
-      }
-      
-       // Limpar stream de áudio do participante
-       const streamKey = `${roomName}-${participant.identity}`;
-       this.audioStreams.delete(streamKey);
-    });
-    
-    // Track subscribed - EVENTO PRINCIPAL para captura de áudio
-    room.on(RoomEvent.TrackSubscribed, async (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-      console.log(`[LiveKit] Track subscribed: ${track.kind} from ${participant.identity}`);
-      
-      // Verificar se é track de áudio usando comparação de string segura
-      const trackKind = String(track.kind).toLowerCase();
-      if (trackKind.includes('audio') || trackKind === '1') {
-        console.log(`[LiveKit] Configurando captura de áudio para: ${participant.identity}`);
-        await this.setupAudioCapture(track, participant, roomName);
-      }
-    });
-    
-    // Track unsubscribed
-    room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-      console.log(`[LiveKit] Track unsubscribed: ${track.kind} from ${participant.identity}`);
-      
-       // Limpar stream de áudio
-       const streamKey = `${roomName}-${participant.identity}`;
-       this.audioStreams.delete(streamKey);
-    });
-    
-    // Desconexão da sala
-    room.on(RoomEvent.Disconnected, () => {
-      console.log(`[LiveKit] Agente desconectou da sala: ${roomName}`);
-      this.roomConnections.delete(roomName);
-    });
-  }
-
-  private async setupAudioCapture(track: RemoteTrack, participant: RemoteParticipant, roomName: string): Promise<void> {
+  async processAudioChunk(audioChunk: AudioChunk, roomName: string): Promise<void> {
     try {
-      const streamKey = `${roomName}-${participant.identity}`;
+      const { data, participantId } = audioChunk;
       
-      // Criar AudioStream nativo LiveKit para capturar frames de áudio
-      const audioStream = new AudioStream(track);
-      this.audioStreams.set(streamKey, audioStream);
+      const bufferKey = `${roomName}-${participantId}`;
+      if (!this.audioBuffers.has(bufferKey)) {
+        this.audioBuffers.set(bufferKey, []);
+      }
       
-      console.log(`[LiveKit] AudioStream configurado para: ${participant.identity}`);
-      
-      // Processar frames de áudio de forma assíncrona
-      this.processAudioStream(audioStream, participant, roomName);
+      this.audioBuffers.get(bufferKey)!.push(data);
+      this.scheduleProcessing(bufferKey, roomName, participantId);
       
     } catch (error) {
-      console.error(`[LiveKit] Erro ao configurar captura de áudio para ${participant.identity}:`, error);
+      console.error('Erro ao processar chunk de áudio:', error);
     }
   }
 
-  private async processAudioStream(audioStream: AudioStream, participant: RemoteParticipant, roomName: string): Promise<void> {
-    try {
-      const bufferKey = `${roomName}-${participant.identity}`;
-      
-      // Processar frames de áudio usando iterator nativo LiveKit
-      for await (const audioFrame of audioStream) {
-        // audioFrame contém os dados de áudio PCM
-        const audioData = audioFrame.data; // Int16Array com dados PCM
-        
-        // Adicionar ao buffer para processamento em lotes
-        if (!this.processingBuffers.has(bufferKey)) {
-          this.processingBuffers.set(bufferKey, []);
-        }
-        
-        this.processingBuffers.get(bufferKey)!.push(audioData);
-        
-        // Agendar processamento com debounce
-        this.scheduleTranscriptionProcessing(bufferKey, participant, roomName);
-      }
-      
-    } catch (error) {
-      console.error(`[LiveKit] Erro no processamento de AudioStream para ${participant.identity}:`, error);
-    }
-  }
-
-  private scheduleTranscriptionProcessing(bufferKey: string, participant: RemoteParticipant, roomName: string): void {
-    // Cancelar timeout anterior se existir
-    const existingTimeout = this.processingTimeouts.get(bufferKey);
+  private scheduleProcessing(bufferKey: string, roomName: string, participantId: string): void {
+    const existingTimeout = this.processingQueue.get(bufferKey);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
     
-    // Agendar processamento com debounce de 1 segundo
     const timeout = setTimeout(async () => {
-      await this.processBufferedAudio(bufferKey, participant, roomName);
+      await this.processBufferedAudio(bufferKey, roomName, participantId);
     }, 1000);
     
-    this.processingTimeouts.set(bufferKey, timeout);
+    this.processingQueue.set(bufferKey, timeout);
   }
 
-  private async processBufferedAudio(bufferKey: string, participant: RemoteParticipant, roomName: string): Promise<void> {
+  private async processBufferedAudio(bufferKey: string, roomName: string, participantId: string): Promise<void> {
     try {
-      const audioBuffers = this.processingBuffers.get(bufferKey);
+      const audioBuffers = this.audioBuffers.get(bufferKey);
       if (!audioBuffers || audioBuffers.length === 0) {
         return;
       }
       
-      // Combinar todos os frames em um único buffer
-      const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
-      const combinedBuffer = new Int16Array(totalLength);
+      const combinedBuffer = Buffer.concat(audioBuffers);
+      this.audioBuffers.set(bufferKey, []);
       
-      let offset = 0;
-      for (const buffer of audioBuffers) {
-        combinedBuffer.set(buffer, offset);
-        offset += buffer.length;
-      }
-      
-      // Limpar buffer
-      this.processingBuffers.set(bufferKey, []);
-      
-      // Verificar se há dados suficientes para transcrição
-      if (combinedBuffer.length < 4000) { // Mínimo ~250ms de áudio a 16kHz
+      if (combinedBuffer.length < 8000) {
         return;
       }
       
-      console.log(`[LiveKit] Processando ${combinedBuffer.length} samples de áudio de ${participant.identity}`);
-      
-      // Converter Int16Array para Buffer para Whisper
-      const audioBuffer = Buffer.from(combinedBuffer.buffer);
-      const transcription = await this.transcribeAudio(audioBuffer, {
+      const transcription = await this.transcribeAudio(combinedBuffer, {
         language: 'pt',
         model: 'whisper-1',
         response_format: 'verbose_json'
@@ -311,17 +148,17 @@ export class TranscriptionService extends EventEmitter {
         await this.sendTranscriptionToRoom(roomName, {
           id: randomUUID(),
           text: transcription.text,
-          participantId: participant.identity,
-          participantName: participant.name || participant.identity,
+          participantId,
+          participantName: await this.getParticipantName(participantId),
           timestamp: new Date(),
-          is_final: true,
+          final: true,
           confidence: transcription.confidence,
           language: transcription.language
         });
       }
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao processar áudio bufferizado:', error);
+      console.error('Erro ao processar áudio bufferizado:', error);
     }
   }
 
@@ -352,7 +189,7 @@ export class TranscriptionService extends EventEmitter {
       return await response.json();
       
     } catch (error) {
-      console.error('[LiveKit] Erro na transcrição Whisper:', error);
+      console.error('Erro na transcrição:', error);
       return null;
     }
   }
@@ -382,44 +219,36 @@ export class TranscriptionService extends EventEmitter {
 
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      // Salvar no banco de dados
       await this.saveTranscriptionToDatabase(segment);
       
-      // Enviar via LiveKit data channels nativos
-      await this.publishDataToRoom(roomName, {
+      // Enviar via data usando RoomServiceClient
+      await this.sendDataViaRoomService(roomName, {
         type: 'transcription',
         data: segment
       });
       
-      console.log(`[LiveKit] ✅ Transcrição enviada: ${segment.participantName}: ${segment.text}`);
+      this.emit('transcription', { roomName, segment });
+      
+      console.log(`Transcrição enviada: ${segment.participantName}: ${segment.text}`);
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao enviar transcrição:', error);
+      console.error('Erro ao enviar transcrição:', error);
     }
   }
 
-  private async publishDataToRoom(roomName: string, message: any): Promise<void> {
+  private async sendDataViaRoomService(roomName: string, message: any): Promise<void> {
     try {
-      const room = this.roomConnections.get(roomName);
-      if (!room || !room.localParticipant) {
-        console.error(`[LiveKit] Sala ou localParticipant não encontrado: ${roomName}`);
-        return;
-      }
-      
       const messageData = JSON.stringify(message);
       const encoder = new TextEncoder();
       const data = encoder.encode(messageData);
       
-      // Usar API nativa publishData do LiveKit
-      await room.localParticipant.publishData(data, {
-        reliable: true,
-        topic: 'transcription'
-      });
+      // Usar RoomServiceClient.sendData para enviar dados sem conectar como participante
+      await this.livekitClient.sendData(roomName, data, DataPacket_Kind.RELIABLE);
       
-      console.log(`[LiveKit] ✅ Dados enviados via data channel: ${roomName}`);
+      console.log(`Dados enviados via RoomServiceClient para sala ${roomName}`);
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao publicar dados:', error);
+      console.error('Erro ao enviar dados via RoomServiceClient:', error);
     }
   }
 
@@ -429,105 +258,57 @@ export class TranscriptionService extends EventEmitter {
         .from('utterances')
         .insert({
           id: segment.id,
-          session_id: segment.participantId, // Usar participantId como session_id temporário
-          speaker: this.mapParticipantToSpeaker(segment.participantId),
-          speaker_id: segment.participantId,
           text: segment.text,
-          is_final: segment.is_final,
-          start_ms: Date.now(),
-          end_ms: null,
+          participant_id: segment.participantId,
+          participant_name: segment.participantName,
+          timestamp: segment.timestamp.toISOString(),
           confidence: segment.confidence,
-          processing_status: 'completed'
+          language: segment.language,
+          final: segment.final
         });
       
       if (error) {
-        console.error('[LiveKit] Erro ao salvar transcrição:', error);
+        console.error('Erro ao salvar transcrição:', error);
       }
       
     } catch (error) {
-      console.error('[LiveKit] Erro no banco de dados:', error);
+      console.error('Erro no banco de dados:', error);
     }
   }
 
-  private mapParticipantToSpeaker(participantId: string): 'doctor' | 'patient' | 'system' {
-    if (participantId.includes('doctor') || participantId.includes('medico')) {
-      return 'doctor';
-    } else if (participantId.includes('transcription-agent')) {
-      return 'system';
-    } else {
-      return 'patient';
+  private async getParticipantName(participantId: string): Promise<string> {
+    try {
+      const { data } = await this.supabase
+        .from('participants')
+        .select('name')
+        .eq('id', participantId)
+        .single();
+      
+      return data?.name || participantId;
+      
+    } catch (error) {
+      return participantId;
     }
   }
 
   async getTranscriptionStats(roomName: string): Promise<any> {
     try {
       const activeParticipants = this.activeRooms.get(roomName)?.size || 0;
-      const activeStreams = Array.from(this.audioStreams.keys())
-        .filter(key => key.startsWith(roomName)).length;
-      const isConnected = this.roomConnections.has(roomName);
+      const bufferSize = this.audioBuffers.size;
       
       return {
         roomName,
         activeParticipants,
-        activeAudioStreams: activeStreams,
+        bufferSize,
         isActive: this.activeRooms.has(roomName),
-        livekitConnected: isConnected,
-        bufferCount: this.processingBuffers.size
+        livekitConnected: false // Por enquanto false até resolver SSL
       };
       
     } catch (error) {
-      console.error('[LiveKit] Erro ao obter estatísticas:', error);
+      console.error('Erro ao obter estatísticas:', error);
       return null;
     }
-  }
-
-  // Cleanup ao finalizar aplicação
-  async dispose(): Promise<void> {
-    console.log('[LiveKit] Finalizando TranscriptionService...');
-    
-    // Fechar todas as conexões
-    for (const [roomName, room] of this.roomConnections) {
-      try {
-        await room.disconnect();
-        console.log(`[LiveKit] Sala desconectada: ${roomName}`);
-      } catch (error) {
-        console.error(`[LiveKit] Erro ao desconectar sala ${roomName}:`, error);
-      }
-    }
-    
-     // Fechar todos os streams de áudio
-     for (const [streamKey] of this.audioStreams) {
-       console.log(`[LiveKit] AudioStream removido: ${streamKey}`);
-     }
-    
-    // Limpar timeouts
-    for (const timeout of this.processingTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    
-    // Limpar mapas
-    this.roomConnections.clear();
-    this.audioStreams.clear();
-    this.processingBuffers.clear();
-    this.processingTimeouts.clear();
-    this.activeRooms.clear();
-    
-    // Dispose global do LiveKit
-    await dispose();
-    
-    console.log('[LiveKit] ✅ TranscriptionService finalizado');
   }
 }
 
 export const transcriptionService = new TranscriptionService();
-
-// Cleanup graceful ao finalizar processo
-process.on('SIGINT', async () => {
-  await transcriptionService.dispose();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await transcriptionService.dispose();
-  process.exit(0);
-});
