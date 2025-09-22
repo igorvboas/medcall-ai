@@ -2,8 +2,7 @@ import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
 import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
-import { Room, RoomEvent, RemoteParticipant, RemoteTrack, RemoteTrackPublication } from '@livekit/rtc-node';
-import { randomUUID } from 'crypto';
+import { TextEncoder } from 'util';
 
 interface TranscriptionSegment {
   id: string;
@@ -11,7 +10,7 @@ interface TranscriptionSegment {
   participantId: string;
   participantName: string;
   timestamp: Date;
-  is_final: boolean;  // Corrigido: usar is_final como no schema
+  final: boolean;  // REVERTER: usar final como estava antes
   confidence?: number;
   language?: string;
 }
@@ -38,16 +37,8 @@ export class TranscriptionService extends EventEmitter {
   private audioBuffers: Map<string, Buffer[]> = new Map();
   private processingQueue: Map<string, NodeJS.Timeout> = new Map();
   
-  // Usando @livekit/rtc-node Room
-  private roomConnections: Map<string, Room> = new Map();
-  
   constructor() {
     super();
-    
-    // TEMPORÁRIO: Para desenvolvimento com certificados self-signed
-    if (process.env.NODE_ENV !== 'production-offttl') {
-      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
-    }
     
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -76,7 +67,8 @@ export class TranscriptionService extends EventEmitter {
         this.activeRooms.set(roomName, new Set());
       }
       
-      await this.connectToRoom(roomName, consultationId);
+      // SIMPLIFICAR: Não conectar como participante por enquanto devido ao SSL
+      console.log(`Transcrição ativada para sala: ${roomName} (via WebSocket)`);
       
     } catch (error) {
       console.error('Erro ao iniciar transcrição:', error);
@@ -90,12 +82,6 @@ export class TranscriptionService extends EventEmitter {
   async stopTranscription(roomName: string): Promise<void> {
     try {
       console.log(`Parando transcrição para sala: ${roomName}`);
-      
-      const room = this.roomConnections.get(roomName);
-      if (room) {
-        await room.disconnect();
-        this.roomConnections.delete(roomName);
-      }
       
       this.audioBuffers.delete(roomName);
       
@@ -179,7 +165,7 @@ export class TranscriptionService extends EventEmitter {
           participantId,
           participantName: await this.getParticipantName(participantId),
           timestamp: new Date(),
-          is_final: true,
+          final: true,  // REVERTER: usar final
           confidence: transcription.confidence,
           language: transcription.language
         });
@@ -252,15 +238,12 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Enviar transcrição para a sala LiveKit
+   * Enviar transcrição para a sala
    */
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
+      // SIMPLIFICAR: Apenas salvar no banco e emitir evento (WebSocket irá enviar)
       await this.saveTranscriptionToDatabase(segment);
-      await this.sendLiveKitDataMessage(roomName, {
-        type: 'transcription',
-        data: segment
-      });
       
       this.emit('transcription', { roomName, segment });
       
@@ -272,137 +255,21 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Conectar à sala LiveKit usando @livekit/rtc-node
-   */
-  private async connectToRoom(roomName: string, consultationId: string): Promise<void> {
-    try {
-      if (this.roomConnections.has(roomName)) {
-        console.log(`Já conectado à sala: ${roomName}`);
-        return;
-      }
-
-      const token = new AccessToken(
-        process.env.LIVEKIT_API_KEY!,
-        process.env.LIVEKIT_API_SECRET!,
-        {
-          identity: `transcription-agent-${consultationId}`,
-          name: 'Agente de Transcrição'
-        }
-      );
-      
-      token.addGrant({
-        room: roomName,
-        roomJoin: true,
-        canPublish: false,
-        canSubscribe: true,
-        canPublishData: true
-      });
-      
-      const jwt = await token.toJwt();
-      
-      console.log(`Conectando agente à sala: ${roomName}`);
-      
-      const room = new Room();
-      await room.connect(process.env.LIVEKIT_URL!, jwt);
-      
-      this.roomConnections.set(roomName, room);
-      
-      // Event listeners
-      room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-        console.log(`Participante conectou: ${participant.identity}`);
-        const activeParticipants = this.activeRooms.get(roomName) || new Set();
-        activeParticipants.add(participant.identity);
-        this.activeRooms.set(roomName, activeParticipants);
-      });
-      
-      room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-        console.log(`Participante desconectou: ${participant.identity}`);
-        const activeParticipants = this.activeRooms.get(roomName);
-        if (activeParticipants) {
-          activeParticipants.delete(participant.identity);
-        }
-      });
-      
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-        console.log(`Track subscribed: ${track.kind} from ${participant.identity}`);
-        
-        // Verificar se é track de áudio (sem enum para evitar erro)
-        const kindStr = String(track.kind).toLowerCase();
-        if (kindStr.includes('audio') || kindStr === '1') {  // KIND_AUDIO pode ser enum 1
-          this.setupAudioCapture(track, participant, roomName);
-        }
-      });
-      
-      room.on(RoomEvent.Disconnected, () => {
-        console.log(`Agente desconectou da sala: ${roomName}`);
-        this.roomConnections.delete(roomName);
-      });
-      
-      console.log(`Agente conectado com sucesso à sala: ${roomName}`);
-      
-    } catch (error) {
-      console.error('Erro ao conectar à sala:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Configurar captura de áudio (placeholder por enquanto)
-   */
-  private setupAudioCapture(track: RemoteTrack, participant: RemoteParticipant, roomName: string): void {
-    console.log(`Audio track configurado para: ${participant.identity}`);
-    // TODO: Implementar quando API de audio frames estiver estável
-    // O @livekit/rtc-node ainda está em preview
-  }
-
-  /**
-   * Enviar dados via LiveKit
-   */
-  private async sendLiveKitDataMessage(roomName: string, message: any): Promise<void> {
-    try {
-      const room = this.roomConnections.get(roomName);
-      if (!room || !room.localParticipant) {
-        console.error(`Sala ou localParticipant não encontrado: ${roomName}`);
-        return;
-      }
-      
-      const messageData = JSON.stringify(message);
-      const encoder = new TextEncoder();
-      const data = encoder.encode(messageData);
-      
-      await room.localParticipant.publishData(data, {
-        reliable: true,
-        topic: 'transcription'
-      });
-      
-      console.log(`Dados enviados via LiveKit para sala ${roomName}: ${message.type}`);
-      
-    } catch (error) {
-      console.error('Erro ao enviar dados LiveKit:', error);
-    }
-  }
-
-  /**
-   * Salvar transcrição no banco (corrigido para schema real)
+   * Salvar transcrição no banco (usar estrutura original que funcionava)
    */
   private async saveTranscriptionToDatabase(segment: TranscriptionSegment): Promise<void> {
     try {
-      // Usar consultationId como session_id temporário
-      const sessionId = segment.participantId; 
-      
       const { error } = await this.supabase
         .from('utterances')
         .insert({
           id: segment.id,
-          session_id: sessionId,
-          speaker: this.mapParticipantToSpeaker(segment.participantId),
-          speaker_id: segment.participantId,
           text: segment.text,
-          is_final: segment.is_final,
-          start_ms: Date.now(),
-          end_ms: null,
+          participant_id: segment.participantId,
+          participant_name: segment.participantName,
+          timestamp: segment.timestamp.toISOString(),
           confidence: segment.confidence,
-          processing_status: 'completed'
+          language: segment.language,
+          final: segment.final
         });
       
       if (error) {
@@ -415,31 +282,28 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Mapear participantId para speaker type
+   * Obter nome do participante
    */
-  private mapParticipantToSpeaker(participantId: string): 'doctor' | 'patient' | 'system' {
-    if (participantId.includes('doctor') || participantId.includes('medico')) {
-      return 'doctor';
-    } else if (participantId.includes('transcription-agent')) {
-      return 'system';
-    } else {
-      return 'patient';
+  private async getParticipantName(participantId: string): Promise<string> {
+    try {
+      const { data } = await this.supabase
+        .from('participants')
+        .select('name')
+        .eq('id', participantId)
+        .single();
+      
+      return data?.name || participantId;
+      
+    } catch (error) {
+      return participantId;
     }
   }
 
   /**
-   * Obter nome do participante
-   */
-  private async getParticipantName(participantId: string): Promise<string> {
-    return participantId; // Simplificado por enquanto
-  }
-
-  /**
-   * Gerar ID único para transcrição no formato UUID
+   * Gerar ID único para transcrição (formato que funcionava)
    */
   private generateTranscriptionId(): string {
-    // Usar randomUUID do módulo crypto do Node.js
-    return randomUUID();
+    return `transcription_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
@@ -449,14 +313,13 @@ export class TranscriptionService extends EventEmitter {
     try {
       const activeParticipants = this.activeRooms.get(roomName)?.size || 0;
       const bufferSize = this.audioBuffers.size;
-      const isConnected = this.roomConnections.has(roomName);
       
       return {
         roomName,
         activeParticipants,
         bufferSize,
         isActive: this.activeRooms.has(roomName),
-        livekitConnected: isConnected
+        livekitConnected: false  // Por enquanto false devido ao SSL
       };
       
     } catch (error) {
