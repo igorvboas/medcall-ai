@@ -38,6 +38,8 @@ export function useTranscriptionWebSocket({
   useEffect(() => {
     if (!enabled || !roomName || !participantId) return;
 
+    console.log('🔗 Conectando ao serviço de transcrição...');
+    
     const socketUrl = gatewayUrl.replace('http', 'ws');
     socketRef.current = io(`${socketUrl}/transcription`, {
       transports: ['websocket'],
@@ -48,7 +50,7 @@ export function useTranscriptionWebSocket({
 
     // Event listeners
     socket.on('connect', () => {
-      console.log('Conectado ao serviço de transcrição');
+      console.log('✅ Conectado ao serviço de transcrição');
       setIsConnected(true);
       setError(null);
 
@@ -61,21 +63,22 @@ export function useTranscriptionWebSocket({
     });
 
     socket.on('disconnect', () => {
-      console.log('Desconectado do serviço de transcrição');
+      console.log('❌ Desconectado do serviço de transcrição');
       setIsConnected(false);
     });
 
     socket.on('transcription-joined', (data) => {
-      console.log('Entrou na sala de transcrição:', data);
+      console.log('🎉 Entrou na sala de transcrição:', data);
     });
 
     socket.on('transcription-segment', (data) => {
+      console.log('📝 Nova transcrição recebida:', data.segment);
       const { segment } = data;
       setTranscriptions(prev => [...prev, segment]);
     });
 
     socket.on('error', (data) => {
-      console.error('Erro na transcrição:', data);
+      console.error('❌ Erro na transcrição:', data);
       setError(data.message || 'Erro desconhecido');
     });
 
@@ -87,29 +90,55 @@ export function useTranscriptionWebSocket({
     };
   }, [enabled, roomName, participantId, consultationId, gatewayUrl]);
 
-  // Configurar captura de áudio
+  // Configurar captura de áudio do LiveKit
   useEffect(() => {
     if (!enabled || !isConnected || !socketRef.current) return;
 
-    const startAudioCapture = async () => {
-      try {
-        // Solicitar acesso ao microfone
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            sampleRate: 16000,
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true
+    console.log('🎤 Tentando usar áudio do LiveKit para transcrição...');
+
+    // Tentar acessar o contexto de áudio do LiveKit
+    const tryCaptureLiveKitAudio = () => {
+      // Buscar elementos de áudio do LiveKit
+      const audioElements = document.querySelectorAll('audio');
+      console.log('🔍 Elementos de áudio encontrados:', audioElements.length);
+
+      if (audioElements.length > 0) {
+        audioElements.forEach((audio, index) => {
+          console.log(`🎵 Áudio ${index}:`, audio.srcObject);
+          
+          if (audio.srcObject) {
+            try {
+              const stream = audio.srcObject as MediaStream;
+              const audioTracks = stream.getAudioTracks();
+              
+              if (audioTracks.length > 0) {
+                console.log('✅ Track de áudio encontrado, iniciando captura...');
+                startAudioProcessing(stream);
+                return;
+              }
+            } catch (error) {
+              console.error('Erro ao processar stream:', error);
+            }
           }
         });
+      }
 
+      // Se não encontrou áudio do LiveKit, tentar acesso direto
+      if (audioElements.length === 0) {
+        console.log('⚠️ Áudio do LiveKit não encontrado, tentando acesso direto...');
+        startDirectAudioCapture();
+      }
+    };
+
+    const startAudioProcessing = (stream: MediaStream) => {
+      try {
         mediaStreamRef.current = stream;
-
+        
         // Criar contexto de áudio
         audioContextRef.current = new AudioContext({ sampleRate: 16000 });
         const source = audioContextRef.current.createMediaStreamSource(stream);
 
-        // Criar processador para capturar áudio
+        // Criar processador
         processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
         
         processorRef.current.onaudioprocess = (event) => {
@@ -117,14 +146,19 @@ export function useTranscriptionWebSocket({
 
           const inputData = event.inputBuffer.getChannelData(0);
           
-          // Converter float32 para int16
+          // Verificar se há áudio (não silêncio)
+          const hasAudio = inputData.some(sample => Math.abs(sample) > 0.01);
+          if (!hasAudio) return;
+
+          // Converter e enviar
           const int16Data = new Int16Array(inputData.length);
           for (let i = 0; i < inputData.length; i++) {
             int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
           }
 
-          // Converter para base64 e enviar
           const audioData = Buffer.from(int16Data.buffer).toString('base64');
+          
+          console.log('📤 Enviando áudio para transcrição...');
           
           socketRef.current.emit('audio-data', {
             roomName,
@@ -135,22 +169,47 @@ export function useTranscriptionWebSocket({
           });
         };
 
-        // Conectar os nós
+        // Conectar nós
         source.connect(processorRef.current);
         processorRef.current.connect(audioContextRef.current.destination);
 
-        console.log('Captura de áudio iniciada para transcrição');
-
+        console.log('🎵 Processamento de áudio iniciado!');
+        
       } catch (error) {
-        console.error('Erro ao iniciar captura de áudio:', error);
-        setError('Erro ao acessar microfone');
+        console.error('❌ Erro no processamento:', error);
+        setError('Erro ao processar áudio do LiveKit');
       }
     };
 
-    startAudioCapture();
+    const startDirectAudioCapture = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        });
+
+        console.log('✅ Acesso direto ao microfone obtido');
+        startAudioProcessing(stream);
+        
+      } catch (error) {
+        console.error('❌ Erro no acesso direto:', error);
+        setError('Não foi possível acessar o microfone');
+      }
+    };
+
+    // Aguardar LiveKit carregar completamente
+    const timeout = setTimeout(() => {
+      tryCaptureLiveKitAudio();
+    }, 3000); // 3 segundos para LiveKit carregar
 
     return () => {
-      // Limpar recursos de áudio
+      clearTimeout(timeout);
+      
+      // Limpar recursos
       if (processorRef.current) {
         processorRef.current.disconnect();
         processorRef.current = null;
@@ -161,8 +220,13 @@ export function useTranscriptionWebSocket({
         audioContextRef.current = null;
       }
       
+      // Não parar o stream se for do LiveKit
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        const tracks = mediaStreamRef.current.getTracks();
+        // Só parar se for nosso stream direto
+        if (tracks.length > 0 && tracks[0].label.includes('default')) {
+          tracks.forEach(track => track.stop());
+        }
         mediaStreamRef.current = null;
       }
     };
