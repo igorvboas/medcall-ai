@@ -56,7 +56,8 @@ export function MedicalConsultationRoom({
   onShareConsultation,
 }: MedicalConsultationRoomProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
-
+  console.log('MedicalConsultationRoom renderizado!');
+  console.log('MedicalConsultationRoom props:', { roomName, participantName, userRole, sessionId, serverUrl, token, patientName, videoCaptureDefaults, audioCaptureDefaults, onConnected, onDisconnected, onError, onEndCall, onShareConsultation });
   // Handle connection events
   const handleConnected = async () => {
     console.log('✅ Connected to room');
