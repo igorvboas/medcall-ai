@@ -77,6 +77,13 @@ export function MedicalConsultationRoom({
 
   // Validate required props
   if (!serverUrl || !token) {
+    console.log('🔍🔍🔍🔍 Props inválidas:', {
+      serverUrl,
+      token,
+      roomName,
+      participantName
+    });
+
     return (
       <div style={{ 
         display: 'flex', 
@@ -109,6 +116,17 @@ export function MedicalConsultationRoom({
     roomName,
     participantName
   });
+
+  console.log('🔍🔍🔍🔍 Props para TranscriptionDisplay:', {
+    patientName,
+    userRole,
+    roomName,
+    participantId: participantName,
+    consultationId: sessionId
+  });
+
+
+console.log('🔍 Verificando se TranscriptionDisplay será renderizado...');
 
   return (
     <div style={{ height: '100vh', background: '#1a1a1a' }}>
@@ -198,7 +216,8 @@ export function MedicalConsultationRoom({
           
           {/* Componentes auxiliares */}
           <RoomAudioRenderer />
-
+          
+          <ConnectionStateToast />
 
           {/* Componente de Transcrição em Tempo Real */}
           <TranscriptionDisplay 

@@ -83,6 +83,7 @@ export function TranscriptionDisplay({
   };
 
   if (!isVisible) {
+    console.log('🔍🔍🔍🔍 TranscriptionDisplay não é visível');
     return (
       <button
         onClick={() => setIsVisible(true)}
@@ -106,7 +107,7 @@ export function TranscriptionDisplay({
       </button>
     );
   }
-
+ console.log('🔍🔍🔍🔍 TranscriptionDisplay é visível');
   return (
     <div style={{
       position: 'fixed',
@@ -225,7 +226,9 @@ export function TranscriptionDisplay({
                 {Object.entries(groupedTranscriptions).map(([participantId, participantTranscriptions]) => {
                   const participantName = getParticipantName(participantId);
                   const participantRole = getParticipantRole(participantId);
-                  
+                  console.log('🔍🔍🔍🔍 Participant ID:', participantId);
+                  console.log('🔍🔍🔍🔍 Participant Name:', participantName);
+                  console.log('🔍🔍🔍🔍 Participant Role:', participantRole);
                   return (
                     <div key={participantId}>
                       {participantTranscriptions.map((transcription, index) => (
