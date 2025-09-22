@@ -430,10 +430,11 @@ export class TranscriptionService extends EventEmitter {
   }
 
   /**
-   * Gerar ID único para transcrição
+   * Gerar ID único para transcrição no formato UUID
    */
   private generateTranscriptionId(): string {
-    return `transcription_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Gerar UUID v4 real em vez de string customizada
+    return crypto.randomUUID();
   }
 
   /**
