@@ -198,8 +198,8 @@ export function MedicalConsultationRoom({
           
           {/* Componentes auxiliares */}
           <RoomAudioRenderer />
-          <ConnectionStateToast />
-          
+
+
           {/* Componente de Transcrição em Tempo Real */}
           <TranscriptionDisplay 
             patientName={patientName}

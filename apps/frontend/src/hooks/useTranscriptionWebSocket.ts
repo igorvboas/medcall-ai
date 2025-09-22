@@ -44,6 +44,7 @@ export function useTranscriptionWebSocket({
   });
 
 
+
   // Conectar ao WebSocket
   useEffect(() => {
     if (!enabled || !roomName || !participantId) return;
