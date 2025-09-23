@@ -23,6 +23,45 @@ class LiveKitTranscriberAgentManager {
     try { (room as any).setAutoSubscribe?.(true); } catch {}
     await room.connect(url, token);
 
+    const ensureSubscribed = (pub: any) => {
+      try {
+        const k = (pub as any)?.kind;
+        if (k === 'audio' || k === 1) {
+          console.log('[LK-Agent] Ensuring subscribed to pub:', {
+            kind: k,
+            trackSid: (pub as any)?.trackSid,
+            subscribed: (pub as any)?.isSubscribed,
+          });
+          (pub as any)?.setSubscribed?.(true);
+        }
+      } catch (e) {
+        console.error('[LK-Agent] Failed to subscribe to pub:', e);
+      }
+    };
+
+    // Forçar subscribe para publicações já existentes ao conectar (compat com diferentes typings)
+    try {
+      const parts: any = (room as any).participants ?? (room as any).remoteParticipants ?? (room as any).getParticipants?.();
+      if (parts && typeof parts.forEach === 'function') {
+        parts.forEach((p: any) => {
+          p?.trackPublications?.forEach?.((pub: any) => ensureSubscribed(pub));
+        });
+      }
+    } catch {}
+
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      console.log('[LK-Agent] ParticipantConnected:', participant.identity);
+      try {
+        (participant as any)?.trackPublications?.forEach?.((pub: any) => ensureSubscribed(pub));
+      } catch {}
+    });
+
+    room.on(RoomEvent.TrackPublished, (pub) => {
+      try {
+        ensureSubscribed(pub as any);
+      } catch {}
+    });
+
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
       console.log('[LK-Agent] TrackSubscribed:', {
         kind: (track as any)?.kind,
