@@ -301,7 +301,16 @@ export function useMicTransmitter() {
       // Conectar WebSocket
       wsRef.current = await connectWebSocket(config);
 
-      // Configurar captura de áudio
+      // TESTE SIMPLES: Enviar dados de teste primeiro
+      console.log('[MicTransmitter] 🧪 Sending test data to keep WebSocket alive...');
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // Criar buffer PCM16 de teste (silêncio)
+        const testBuffer = new Int16Array(640).fill(0); // 640 samples = ~40ms de silêncio
+        wsRef.current.send(testBuffer.buffer);
+        console.log('[MicTransmitter] ✅ Test buffer sent:', testBuffer.buffer.byteLength, 'bytes');
+      }
+
+      // Configurar captura de áudio (se teste funcionar)
       await setupAudioCapture();
 
       console.log('[MicTransmitter] Started successfully');

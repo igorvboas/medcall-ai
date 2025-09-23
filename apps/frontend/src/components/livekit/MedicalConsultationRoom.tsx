@@ -62,8 +62,7 @@ export function MedicalConsultationRoom({
   // Hook para transmissão de áudio para transcrição
   const micTransmitter = useMicTransmitter();
   
-  console.log('MedicalConsultationRoom renderizado!');
-  console.log('MedicalConsultationRoom props:', { roomName, participantName, userRole, sessionId, serverUrl, token, patientName, videoCaptureDefaults, audioCaptureDefaults, onConnected, onDisconnected, onError, onEndCall, onShareConsultation });
+  // Logs de debug removidos para evitar spam no console
   // Handle connection events
   const handleConnected = async () => {
     console.log('✅ Connected to room');
@@ -77,6 +76,19 @@ export function MedicalConsultationRoom({
 
   // Função para iniciar transcrição após user gesture
   const startTranscriptionWithUserGesture = useCallback(async () => {
+    console.log('🚨 [DEBUG] Button clicked! startTranscriptionWithUserGesture called');
+    console.log('🚨 [DEBUG] Current state:', {
+      isLiveKitConnected,
+      micTransmitterState: {
+        isConnected: micTransmitter.isConnected,
+        isTransmitting: micTransmitter.isTransmitting,
+        isMuted: micTransmitter.isMuted,
+        error: micTransmitter.error
+      },
+      sessionId,
+      userRole
+    });
+
     if (!isLiveKitConnected) {
       console.log('⚠️ LiveKit not connected yet, waiting...');
       return;
@@ -163,23 +175,7 @@ export function MedicalConsultationRoom({
     );
   }
 
-  console.log('🚀 Rendering LiveKitRoom with:', {
-    serverUrl,
-    token: token ? `${token.substring(0, 20)}...` : 'null',
-    roomName,
-    participantName
-  });
-
-  console.log('🔍🔍🔍🔍 Props para TranscriptionDisplay:', {
-    patientName,
-    userRole,
-    roomName,
-    participantId: participantName,
-    consultationId: sessionId
-  });
-
-
-console.log('🔍 Verificando se TranscriptionDisplay será renderizado...');
+  // Debug logs removidos para evitar render loops
 
   return (
     <div style={{ height: '100vh', background: '#1a1a1a' }}>
