@@ -1,4 +1,3 @@
-import '@livekit/rtc-node';
 import { Room, RoomEvent, RemoteAudioTrack, Track } from 'livekit-client';
 import { transcriptionService } from './transcriptionService';
 
@@ -17,6 +16,9 @@ class LiveKitTranscriberAgentManager {
 
     const url = process.env.LIVEKIT_URL as string;
     const token = await this.createAccessToken(roomName);
+
+    // Ensure rtc-node bindings are registered before using livekit-client in Node
+    await import('@livekit/rtc-node');
 
     const room = new Room();
     // Garantir auto-subscribe para tracks remotas
