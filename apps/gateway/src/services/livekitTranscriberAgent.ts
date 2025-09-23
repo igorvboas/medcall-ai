@@ -1,4 +1,5 @@
-import { Room, RoomEvent, RemoteAudioTrack, dispose } from '@livekit/rtc-node';
+//import { Room, RoomEvent, RemoteAudioTrack, dispose } from '@livekit/rtc-node';
+import { Room, RoomEvent, dispose } from '@livekit/rtc-node';
 import { transcriptionService } from './transcriptionService';
 
 type ActiveAgent = {
@@ -65,13 +66,43 @@ class LiveKitTranscriberAgentManager {
         participant: participant?.identity,
         sid: (track as any)?.sid,
       });
+
+
       // rtc-node usa enum TrackKind.Audio = 1 internamente; aceitar também string por segurança
       const kind = (track as any)?.kind;
       if (!(kind === 1 || kind === 'audio')) return;
-      console.log("---> RemoteAudioTrack.constructor.name", RemoteAudioTrack.constructor.name);
-      console.log("---> Object.keys(RemoteAudioTrack)", Object.keys(RemoteAudioTrack));
+
+       // loga os métodos disponíveis
+      console.log('---> [LK-Agent] Track methods:', Object.keys(track));
+
+      if ('createAudioStream' in track) {
+        const pcm = (track as any).createAudioStream(16000, 1);
+        pcm.on('data', async (buf: Buffer) => {
+          if (!buf?.length) return;
+          console.log('[LK-Agent] PCM chunk received:', buf.length);
+          try {
+            await transcriptionService.processAudioChunk(
+              {
+                data: buf,
+                participantId: participant.identity ?? participant.sid,
+                sampleRate: 16000,
+                channels: 1,
+              },
+              roomName,
+            );
+          } catch (e) {
+            console.error('[LK-Agent] Error processing PCM chunk:', e);
+          }
+        });
+      } else {
+        console.warn('[LK-Agent] Track does not support createAudioStream:', track.constructor?.name);
+      }
+
+      /**
       const audioTrack = track as RemoteAudioTrack;
       const pcm = (audioTrack as any).createAudioStream(16000, 1);
+
+
       pcm.on('data', async (buf: Buffer) => {
         try {
           if (!buf || buf.length === 0) return;
@@ -89,6 +120,8 @@ class LiveKitTranscriberAgentManager {
           console.error('[LK-Agent] Error processing PCM chunk:', e);
         }
       });
+      */
+
     });
 
     // Relay transcriptions back over Text Stream
