@@ -68,6 +68,8 @@ class LiveKitTranscriberAgentManager {
       // rtc-node usa enum TrackKind.Audio = 1 internamente; aceitar também string por segurança
       const kind = (track as any)?.kind;
       if (!(kind === 1 || kind === 'audio')) return;
+      console.log("---> RemoteAudioTrack.constructor.name", RemoteAudioTrack.constructor.name);
+      console.log("---> Object.keys(RemoteAudioTrack)", Object.keys(RemoteAudioTrack));
       const audioTrack = track as RemoteAudioTrack;
       const pcm = (audioTrack as any).createAudioStream(16000, 1);
       pcm.on('data', async (buf: Buffer) => {
