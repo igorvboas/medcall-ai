@@ -1,5 +1,7 @@
 'use client';
 
+console.log('🚀🚀🚀 TRANSCRIPTION DISPLAY ARQUIVO CARREGADO!');
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   useParticipants
@@ -20,9 +22,12 @@ export function TranscriptionDisplay({
   participantId,
   consultationId 
 }: TranscriptionDisplayProps) {
+  console.log('🚀🚀🚀 TRANSCRIPTION DISPLAY RENDERIZADO!');
+  
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const transcriptionsEndRef = useRef<HTMLDivElement>(null);
+  
   console.log('🔍 TranscriptionDisplay renderizado!');
   console.log('🔍 TranscriptionDisplay props:', { patientName, userRole, roomName, participantId, consultationId });
   console.log('🔍 TranscriptionDisplay isVisible:', isVisible);

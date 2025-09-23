@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useDataChannel, useLocalParticipant } from '@livekit/components-react';
 import { Room, LocalAudioTrack, Track } from 'livekit-client';
 
+console.log('🚀🚀🚀 HOOK useTranscriptionLiveKit ARQUIVO CARREGADO!');
+
 interface TranscriptionSegment {
   id: string;
   text: string;
@@ -25,6 +27,8 @@ export function useTranscriptionLiveKit({
   consultationId,
   enabled = true,
 }: UseTranscriptionLiveKitProps) {
+  console.log('🚀🚀🚀 HOOK useTranscriptionLiveKit EXECUTADO!');
+  
   const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
