@@ -1,5 +1,5 @@
 import '@livekit/rtc-node';
-import { Room, RoomEvent, RemoteAudioTrack, Track, DataPublishOptions } from 'livekit-client';
+import { Room, RoomEvent, RemoteAudioTrack, Track } from '@livekit/rtc-node';
 import { transcriptionService } from './transcriptionService';
 
 type ActiveAgent = {
@@ -22,7 +22,7 @@ class LiveKitTranscriberAgentManager {
     await room.connect(url, token);
 
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
-      if (track.kind !== Track.Kind.Audio) return;
+      if (track.kind !== 'audio' as any) return;
       const audioTrack = track as RemoteAudioTrack;
       // createAudioStream is provided by @livekit/rtc-node at runtime,
       // but it's not in the TypeScript typings of livekit-client.
@@ -50,8 +50,8 @@ class LiveKitTranscriberAgentManager {
       if (rn !== roomName) return;
       try {
         const msg = Buffer.from(JSON.stringify({ type: 'transcription', data: segment }), 'utf8');
-        const opts: DataPublishOptions = { reliable: true, topic: 'transcription' } as any;
-        room.localParticipant.publishData(msg, opts);
+        const opts = { reliable: true, topic: 'transcription' } as any;
+        room.localParticipant?.publishData(msg, opts);
       } catch {}
     };
     transcriptionService.on('transcription', relay);
