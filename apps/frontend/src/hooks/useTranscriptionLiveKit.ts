@@ -68,6 +68,9 @@ export function useTranscriptionLiveKit({
       console.log('🎤 Transcrição online iniciada:', data);
       setIsConnected(true);
       setError(null);
+      
+      // Iniciar captura de áudio real do LiveKit
+      startLiveKitAudioCapture(socketInstance);
     });
 
     socketInstance.on('online:transcription-stopped', (data) => {
@@ -87,6 +90,83 @@ export function useTranscriptionLiveKit({
       }
     };
   }, [enabled, roomName, participantId, consultationId]);
+
+  // Capturar áudio real do LiveKit
+  const startLiveKitAudioCapture = (socket: Socket) => {
+    try {
+      console.log('🎤 Iniciando captura de áudio real do LiveKit...');
+      
+      // Aguardar LiveKit carregar completamente
+      setTimeout(() => {
+        const audioElements = document.querySelectorAll('audio');
+        console.log(`🔍 Elementos de áudio encontrados: ${audioElements.length}`);
+        
+        if (audioElements.length > 0) {
+          audioElements.forEach((audio, index) => {
+            if (audio.srcObject) {
+              const stream = audio.srcObject as MediaStream;
+              const audioTracks = stream.getAudioTracks();
+              
+              if (audioTracks.length > 0) {
+                console.log(`✅ Track de áudio encontrado ${index}, iniciando captura...`);
+                captureAudioFromStream(stream, socket);
+              }
+            }
+          });
+        } else {
+          console.log('⚠️ Nenhum elemento de áudio do LiveKit encontrado');
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao iniciar captura de áudio:', error);
+    }
+  };
+
+  // Capturar áudio de um stream
+  const captureAudioFromStream = (stream: MediaStream, socket: Socket) => {
+    try {
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      
+      processor.onaudioprocess = (event) => {
+        if (!socket.connected) return;
+        
+        const inputData = event.inputBuffer.getChannelData(0);
+        
+        // Verificar se há áudio (não silêncio)
+        const hasAudio = inputData.some(sample => Math.abs(sample) > 0.01);
+        if (!hasAudio) return;
+        
+        // Converter para Int16Array
+        const int16Data = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+        }
+        
+        // Enviar para o backend
+        const audioData = Buffer.from(int16Data.buffer).toString('base64');
+        socket.emit('online:audio-data', {
+          roomName,
+          participantId,
+          audioData,
+          sampleRate: 16000,
+          channels: 1
+        });
+        
+        console.log('🎤 Áudio enviado para transcrição');
+      };
+      
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      
+      console.log('✅ Captura de áudio LiveKit iniciada');
+      
+    } catch (error) {
+      console.error('❌ Erro ao capturar áudio:', error);
+    }
+  };
 
   // Callback para processar mensagens recebidas via LiveKit Data Channels
   const onDataReceived = useCallback((message: any) => {

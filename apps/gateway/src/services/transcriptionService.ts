@@ -78,30 +78,17 @@ export class TranscriptionService extends EventEmitter {
   }
 
   private setupLiveKitAudioCapture(roomName: string, consultationId: string): void {
-    // Por enquanto, simular captura de áudio
-    // Em uma implementação real, isso seria feito via WebSocket ou LiveKit SDK
     console.log(`🎵 Configurando captura de áudio LiveKit para sala: ${roomName}`);
     
-    // Simular áudio recebido do LiveKit (para teste)
-    setTimeout(() => {
-      this.simulateLiveKitAudio(roomName, consultationId);
-    }, 2000);
+    // Em vez de simular, aguardar áudio real do frontend
+    console.log(`⏳ Aguardando áudio real do LiveKit para sala: ${roomName}`);
+    
+    // O áudio será recebido via WebSocket do frontend
+    // quando o usuário falar no microfone
   }
 
-  private simulateLiveKitAudio(roomName: string, consultationId: string): void {
-    // Simular áudio do LiveKit para teste
-    const mockAudioData = Buffer.from('mock audio data');
-    const participantId = 'test-participant';
-    
-    console.log(`🎤 Simulando áudio LiveKit para sala: ${roomName}`);
-    
-    this.processAudioChunk({
-      data: mockAudioData,
-      participantId,
-      sampleRate: 16000,
-      channels: 1
-    }, roomName);
-  }
+  // Remover simulação - usar áudio real
+  // private simulateLiveKitAudio() - REMOVIDO
 
   async stopTranscription(roomName: string): Promise<void> {
     try {
