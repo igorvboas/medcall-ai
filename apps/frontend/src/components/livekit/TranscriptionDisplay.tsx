@@ -58,7 +58,8 @@ export function TranscriptionDisplay({
     const groups: { [participantId: string]: any[] } = {};
     
     transcriptions.forEach((transcription: any) => {
-      const participantId = transcription.participantIdentity;
+      // Usar participantId em vez de participantIdentity
+      const participantId = transcription.participantId;
       if (!groups[participantId]) {
         groups[participantId] = [];
       }

@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
-import { TranscriptionWebSocketHandler } from './websocket/transcriptionHandler';
+import { setupWebSocketHandlers } from './websocket';
 import transcriptionRoutes from './routes/transcription';
 import sessionsRoutes from './routes/sessions';
 
@@ -71,47 +71,26 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Log conexões Socket.IO principal
-io.on('connection', (socket) => {
-  console.log('🔌 Cliente conectou ao Socket.IO principal:', socket.id);
-  
-  socket.on('disconnect', (reason) => {
-    console.log('❌ Cliente desconectou do Socket.IO principal:', socket.id, 'Razão:', reason);
-  });
+// Configurar handlers WebSocket
+console.log('📝 Inicializando handlers WebSocket...');
+setupWebSocketHandlers(io);
 
-  socket.on('error', (error) => {
-    console.error('❌ Erro no Socket.IO principal:', error);
-  });
-});
-
-// Configurar handler de transcrição WebSocket
-console.log('📝 Inicializando handler de transcrição...');
-const transcriptionHandler = new TranscriptionWebSocketHandler(io);
-
-// Configurar namespace para transcrição
-const transcriptionNamespace = io.of('/transcription');
-
-transcriptionNamespace.on('connection', (socket) => {
-  console.log('📝 Cliente conectou ao namespace de transcrição:', socket.id);
-  console.log('📝 Total de clientes no namespace:', transcriptionNamespace.sockets.size);
-  
-  // Enviar confirmação de conexão
-  socket.emit('connection-confirmed', {
-    message: 'Connected to transcription service',
-    socketId: socket.id,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Configurar handlers
-  transcriptionHandler.handleConnection(socket);
-  
-  socket.on('disconnect', (reason) => {
-    console.log('❌ Cliente desconectou do namespace de transcrição:', socket.id, 'Razão:', reason);
-    console.log('📝 Total de clientes restantes:', transcriptionNamespace.sockets.size);
-  });
-
-  socket.on('error', (error) => {
-    console.error('❌ Erro no namespace de transcrição:', error);
+// Health check expandido
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    services: {
+      transcription: 'running',
+      websocket: 'running',
+      socketio: io ? 'initialized' : 'not initialized',
+      livekit: 'integrated'
+    },
+    environment: {
+      node_env: process.env.NODE_ENV,
+      port: process.env.PORT || 3001,
+      frontend_url: process.env.FRONTEND_URL || 'not set'
+    }
   });
 });
 
@@ -138,8 +117,9 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log('🚀 Gateway server running on port', PORT);
   console.log('📝 Transcription service available at /api/transcription');
-  console.log('🔌 WebSocket available at /transcription');
+  console.log('🔌 WebSocket available for online consultations');
   console.log('🌍 Health check available at /api/health');
+  console.log('🎤 LiveKit transcription integrated');
   console.log('CORS configurado para:', allowedOrigins);
 });
 

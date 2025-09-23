@@ -134,6 +134,29 @@ export function useTranscriptionLiveKit({
   // Usar hook nativo LiveKit para data channels com callback
   const { send } = useDataChannel('transcription', onDataReceived);
 
+  // Função para enviar áudio para o backend (simulação)
+  const sendAudioToBackend = useCallback((audioData: ArrayBuffer) => {
+    if (!socket?.connected) return;
+
+    try {
+      // Converter para base64
+      const base64Audio = Buffer.from(audioData).toString('base64');
+      
+      // Enviar para o backend
+      socket.emit('online:audio-data', {
+        roomName,
+        participantId,
+        audioData: base64Audio,
+        sampleRate: 16000,
+        channels: 1
+      });
+      
+      console.log('🎤 Áudio enviado para o backend');
+    } catch (error) {
+      console.error('❌ Erro ao enviar áudio:', error);
+    }
+  }, [socket, roomName, participantId]);
+
   // Funções de controle
   const startTranscription = useCallback(() => {
     console.log('📝 [LiveKit] startTranscription chamado');
@@ -168,6 +191,7 @@ export function useTranscriptionLiveKit({
     error,
     startTranscription,
     stopTranscription,
-    clearTranscriptions
+    clearTranscriptions,
+    sendAudioToBackend
   };
 }

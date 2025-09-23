@@ -204,28 +204,24 @@ export function setupOnlineConsultationHandlers(socket: Socket, notifier: Sessio
     }
   });
 
-  // Handler para limpar transcrições
-  socket.on('online:clear-transcriptions', async (data: { roomName: string; consultationId: string }) => {
+  // Handler para receber áudio do LiveKit
+  socket.on('online:audio-data', async (data: { roomName: string; participantId: string; audioData: string; sampleRate: number; channels: number }) => {
     try {
-      const { roomName, consultationId } = data;
+      const { roomName, participantId, audioData, sampleRate, channels } = data;
       
-      // TODO: Implementar limpeza de transcrições no banco
-      // Por enquanto, apenas notificar
+      console.log(`🎤 Áudio recebido do LiveKit para sala: ${roomName}, participante: ${participantId}`);
       
-      // Notificar outros participantes
-      socket.to(`consultation:${consultationId}`).emit('online:transcriptions-cleared', {
-        roomName,
-        consultationId,
-        timestamp: new Date().toISOString()
-      });
+      // Converter base64 para Buffer
+      const audioBuffer = Buffer.from(audioData, 'base64');
       
-      console.log(`🧹 Transcrições limpas para consulta ${consultationId}`);
+      // Processar áudio
+      await livekitTranscriptionService.processLiveKitAudio(audioBuffer, participantId, roomName);
       
     } catch (error) {
-      console.error('❌ Erro ao limpar transcrições:', error);
+      console.error('❌ Erro ao processar áudio LiveKit:', error);
       socket.emit('error', {
-        code: 'CLEAR_TRANSCRIPTIONS_ERROR',
-        message: 'Erro ao limpar transcrições'
+        code: 'AUDIO_PROCESSING_ERROR',
+        message: 'Erro ao processar áudio do LiveKit'
       });
     }
   });
