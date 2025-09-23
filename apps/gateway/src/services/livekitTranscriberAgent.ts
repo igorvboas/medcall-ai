@@ -69,14 +69,7 @@ class LiveKitTranscriberAgentManager {
       const kind = (track as any)?.kind;
       if (!(kind === 1 || kind === 'audio')) return;
       const audioTrack = track as RemoteAudioTrack;
-      // createAudioStream is provided by @livekit/rtc-node at runtime,
-      // but it's not in the TypeScript typings of livekit-client.
-      const createAudioStream = (audioTrack as any)?.createAudioStream?.bind(audioTrack);
-      if (!createAudioStream) {
-        console.error('❌ createAudioStream not available on RemoteAudioTrack (rtc-node not registered?)');
-        return;
-      }
-      const pcm = createAudioStream(16000, 1);
+      const pcm = (audioTrack as any).createAudioStream(16000, 1);
       pcm.on('data', async (buf: Buffer) => {
         try {
           if (!buf || buf.length === 0) return;
