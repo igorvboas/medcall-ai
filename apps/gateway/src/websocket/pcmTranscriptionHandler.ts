@@ -46,10 +46,23 @@ export class PCMTranscriptionHandler {
   handleUpgrade(request: IncomingMessage, socket: any, head: Buffer): void {
     const url = new URL(request.url!, `http://${request.headers.host}`);
     
+    console.log('🔍 [PCM-UPGRADE] Analyzing request:', {
+      pathname: url.pathname,
+      search: url.search,
+      expectedPath: '/ws/transcribe',
+      matches: url.pathname === '/ws/transcribe'
+    });
+    
     if (url.pathname === '/ws/transcribe') {
+      console.log('✅ [PCM-UPGRADE] Path matches, upgrading...');
+      
       this.wss.handleUpgrade(request, socket, head, (ws) => {
+        console.log('🔗 [PCM-UPGRADE] WebSocket upgrade successful, emitting connection event');
         this.wss.emit('connection', ws, request);
       });
+    } else {
+      console.log('❌ [PCM-UPGRADE] Path does not match, rejecting upgrade');
+      socket.destroy();
     }
   }
 
@@ -122,10 +135,11 @@ export class PCMTranscriptionHandler {
     });
 
     // Handler de pong (heartbeat)
-    ws.on('pong', () => {
+    ws.on('pong', (data) => {
       const connection = this.connections.get(connectionId);
       if (connection) {
         connection.lastActivity = Date.now();
+        console.log(`🏓 [PCM-PONG] Received pong from ${connectionId}, data: ${data.toString()}`);
       }
     });
   }
@@ -279,24 +293,36 @@ export class PCMTranscriptionHandler {
   }
 
   /**
-   * Timer de limpeza para conexões inativas
+   * Timer de limpeza para conexões inativas + Keepalive robusto
    */
   private startCleanupTimer(): void {
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();
-      const timeout = 30000; // 30 segundos
+      const inactivityTimeout = 60000; // 60 segundos sem atividade
+      const pingInterval = 25000; // 25 segundos - antes do timeout do Cloud Run
 
       for (const [connectionId, connection] of this.connections.entries()) {
-        if (now - connection.lastActivity > timeout) {
-          console.log(`[PCMTranscription] Cleaning up inactive connection: ${connectionId}`);
+        const timeSinceActivity = now - connection.lastActivity;
+
+        if (timeSinceActivity > inactivityTimeout) {
+          console.log(`🧹 [PCM-CLEANUP] Cleaning up inactive connection: ${connectionId} (${timeSinceActivity}ms inactive)`);
           connection.ws.close(1000, 'Inactive connection cleanup');
           this.connections.delete(connectionId);
-        } else {
-          // Enviar ping para manter conexão viva
-          if (connection.ws.readyState === WebSocket.OPEN) {
-            connection.ws.ping();
+        } else if (timeSinceActivity > pingInterval && connection.ws.readyState === WebSocket.OPEN) {
+          // Enviar ping preventivo para manter conexão viva
+          try {
+            connection.ws.ping(Buffer.from(`keepalive-${now}`));
+            console.log(`📡 [PCM-KEEPALIVE] Sent ping to ${connectionId} (${timeSinceActivity}ms since last activity)`);
+          } catch (error) {
+            console.error(`❌ [PCM-KEEPALIVE] Failed to ping ${connectionId}:`, error);
+            this.connections.delete(connectionId);
           }
         }
+      }
+
+      // Log estatísticas periódicas
+      if (this.connections.size > 0) {
+        console.log(`📊 [PCM-STATS] Active connections: ${this.connections.size}`);
       }
     }, 15000); // Verificar a cada 15 segundos
   }

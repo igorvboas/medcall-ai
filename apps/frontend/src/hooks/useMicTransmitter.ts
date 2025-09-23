@@ -21,39 +21,65 @@ export function useMicTransmitter() {
     error: null,
   });
 
+  // Referências fortes para evitar GC
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const configRef = useRef<MicTransmitterConfig | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const buffersSentRef = useRef(0);
+  const lastPingRef = useRef(0);
 
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000; // 1 segundo
+  const pingInterval = 20000; // 20 segundos - keepalive para frontend
 
   const cleanup = useCallback(() => {
+    console.log('[MicTransmitter] 🧹 Starting cleanup...');
+
     // Fechar WebSocket
     if (wsRef.current) {
+      console.log('[MicTransmitter] 🔌 Closing WebSocket');
       wsRef.current.close();
       wsRef.current = null;
     }
 
-    // Parar worklet
+    // Desconectar audio graph corretamente
+    if (sourceNodeRef.current) {
+      console.log('[MicTransmitter] 🎵 Disconnecting source node');
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+
     if (workletNodeRef.current) {
+      console.log('[MicTransmitter] 🔧 Disconnecting worklet node');
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
     }
 
-    // Fechar AudioContext
+    // Fechar AudioContext (suspend primeiro para evitar clicks)
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close();
+      console.log('[MicTransmitter] 🎧 Closing AudioContext, current state:', audioContextRef.current.state);
+      if (audioContextRef.current.state === 'running') {
+        audioContextRef.current.suspend().then(() => {
+          audioContextRef.current?.close();
+        });
+      } else {
+        audioContextRef.current.close();
+      }
       audioContextRef.current = null;
     }
 
     // Parar stream de áudio
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      console.log('[MicTransmitter] 🎙️ Stopping media stream tracks');
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('[MicTransmitter] 🛑 Stopped track:', track.kind, track.label);
+      });
       streamRef.current = null;
     }
 
@@ -63,11 +89,17 @@ export function useMicTransmitter() {
       reconnectTimeoutRef.current = null;
     }
 
+    // Reset counters
+    buffersSentRef.current = 0;
+    lastPingRef.current = 0;
+
     setState(prev => ({
       ...prev,
       isConnected: false,
       isTransmitting: false,
     }));
+
+    console.log('[MicTransmitter] ✅ Cleanup completed');
   }, []);
 
   const connectWebSocket = useCallback(async (config: MicTransmitterConfig) => {
@@ -136,6 +168,8 @@ export function useMicTransmitter() {
 
   const setupAudioCapture = useCallback(async () => {
     try {
+      console.log('[MicTransmitter] 🎤 Setting up audio capture...');
+
       // Solicitar acesso ao microfone
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -148,35 +182,77 @@ export function useMicTransmitter() {
       });
 
       streamRef.current = stream;
+      console.log('[MicTransmitter] ✅ Media stream obtained:', {
+        tracks: stream.getTracks().length,
+        audio: stream.getAudioTracks().map(t => ({ 
+          kind: t.kind, 
+          label: t.label, 
+          enabled: t.enabled,
+          readyState: t.readyState 
+        }))
+      });
 
       // Criar AudioContext
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
 
+      // Verificar e ativar AudioContext se necessário
+      if (audioContext.state === 'suspended') {
+        console.log('[MicTransmitter] ⏳ AudioContext suspended, resuming...');
+        await audioContext.resume();
+      }
+
+      console.log('[MicTransmitter] 🎧 AudioContext state:', audioContext.state, 'sampleRate:', audioContext.sampleRate);
+
       // Carregar AudioWorklet
+      console.log('[MicTransmitter] 📥 Loading AudioWorklet module...');
       await audioContext.audioWorklet.addModule('/worklets/pcm16-worklet.js');
+      console.log('[MicTransmitter] ✅ AudioWorklet module loaded successfully');
 
       // Criar nós de áudio
       const source = audioContext.createMediaStreamSource(stream);
       const workletNode = new AudioWorkletNode(audioContext, 'pcm16-processor');
 
+      sourceNodeRef.current = source;
       workletNodeRef.current = workletNode;
 
-      // Conectar pipeline de áudio
+      // Verificar conexão do audio graph
+      console.log('[MicTransmitter] 🔗 Connecting audio graph: MediaStreamSource → WorkletNode');
       source.connect(workletNode);
+
+      // Verificar se o worklet está conectado
+      console.log('[MicTransmitter] 🔍 Worklet connected:', {
+        numberOfInputs: workletNode.numberOfInputs,
+        numberOfOutputs: workletNode.numberOfOutputs,
+        channelCount: workletNode.channelCount,
+      });
 
       // Escutar mensagens do worklet (chunks PCM)
       workletNode.port.onmessage = (event) => {
+        buffersSentRef.current++;
+
         if (wsRef.current?.readyState === WebSocket.OPEN && !state.isMuted) {
           wsRef.current.send(event.data); // Enviar ArrayBuffer binário
+          
+          // Log ocasional para debug
+          if (buffersSentRef.current % 100 === 0) {
+            console.log(`[MicTransmitter] 📊 Sent ${buffersSentRef.current} buffers, last size: ${event.data.byteLength} bytes`);
+          }
         }
       };
 
+      // Verificar se worklet está produzindo dados
+      setTimeout(() => {
+        if (buffersSentRef.current === 0) {
+          console.warn('[MicTransmitter] ⚠️ No audio buffers produced after 3 seconds - check microphone permissions/mute');
+        }
+      }, 3000);
+
       setState(prev => ({ ...prev, isTransmitting: true }));
-      console.log('[MicTransmitter] Audio capture setup completed');
+      console.log('[MicTransmitter] ✅ Audio capture setup completed');
 
     } catch (error) {
-      console.error('[MicTransmitter] Audio setup failed:', error);
+      console.error('[MicTransmitter] ❌ Audio setup failed:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setState(prev => ({ ...prev, error: `Audio setup failed: ${message}` }));
       throw error;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LiveKitRoom, 
   VideoConference,
@@ -70,19 +70,33 @@ export function MedicalConsultationRoom({
     setConnectionError(null);
     setIsLiveKitConnected(true);
     
-    // Iniciar transmissão de áudio para transcrição
-    try {
-      await micTransmitter.start({
-        sessionId,
-        participantId: participantName,
-      });
-      console.log('✅ Mic transmitter started for transcription');
-    } catch (error) {
-      console.error('❌ Failed to start mic transmitter:', error);
-    }
+    console.log('🎙️ LiveKit connected, waiting for user gesture to start transcription...');
     
     onConnected?.();
   };
+
+  // Função para iniciar transcrição após user gesture
+  const startTranscriptionWithUserGesture = useCallback(async () => {
+    if (!isLiveKitConnected) {
+      console.log('⚠️ LiveKit not connected yet, waiting...');
+      return;
+    }
+
+    try {
+      console.log('🎤 Starting mic transmitter after user gesture...');
+      
+      // Limpar participantId para ASCII simples
+      const cleanParticipantId = userRole === 'doctor' ? 'Doctor' : 'Patient';
+      
+      await micTransmitter.start({
+        sessionId,
+        participantId: cleanParticipantId,
+      });
+      console.log('✅ Mic transmitter started for transcription with participantId:', cleanParticipantId);
+    } catch (error) {
+      console.error('❌ Failed to start mic transmitter:', error);
+    }
+  }, [micTransmitter, sessionId, userRole, isLiveKitConnected]);
 
   const handleDisconnected = () => {
     console.log('❌ Disconnected from room');
@@ -193,6 +207,43 @@ console.log('🔍 Verificando se TranscriptionDisplay será renderizado...');
           display: 'flex',
           gap: '1rem'
         }}>
+          {/* Botão para ativar transcrição */}
+          {isLiveKitConnected && !micTransmitter.isTransmitting && (
+            <button 
+              onClick={startTranscriptionWithUserGesture}
+              style={{
+                padding: '0.5rem 1rem',
+                background: micTransmitter.isConnected ? '#4caf50' : '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              🎤 Ativar Transcrição
+            </button>
+          )}
+
+          {/* Status da transcrição */}
+          {micTransmitter.isTransmitting && (
+            <div style={{
+              padding: '0.5rem 1rem',
+              background: micTransmitter.isMuted ? '#ff9800' : '#4caf50',
+              color: 'white',
+              borderRadius: '6px',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              {micTransmitter.isMuted ? '🔇' : '🎤'} Transcrição {micTransmitter.isMuted ? 'Pausada' : 'Ativa'}
+            </div>
+          )}
+
           {onShareConsultation && userRole === 'doctor' && (
             <button 
               onClick={onShareConsultation}

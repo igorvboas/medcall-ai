@@ -59,6 +59,31 @@ app.get('/api/pcm-transcription/stats', (req, res) => {
   res.json(pcmHandler.getStats());
 });
 
+// Health check detalhado para WebSocket PCM
+app.get('/api/pcm-transcription/health', (req, res) => {
+  const stats = pcmHandler.getStats();
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    websocket: {
+      server_running: true,
+      active_connections: stats.totalConnections,
+      active_sessions: stats.activeSessions,
+    },
+    system: {
+      memory: process.memoryUsage(),
+      uptime: process.uptime(),
+    },
+    environment: {
+      node_env: process.env.NODE_ENV,
+      livekit_url: process.env.LIVEKIT_URL ? 'configured' : 'missing',
+      openai_key: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
+    }
+  };
+  
+  res.json(health);
+});
+
 // Suas outras rotas existentes podem ser adicionadas aqui
 // app.use('/api/sessions', sessionRoutes);
 // app.use('/api/consultations', consultationRoutes);
@@ -101,18 +126,53 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Configurar upgrade para WebSocket PCM
+// Configurar upgrade para WebSocket PCM com debug detalhado
 httpServer.on('upgrade', (request, socket, head) => {
-  pcmHandler.handleUpgrade(request, socket, head);
+  console.log('🔄 [WS-UPGRADE] Request received:', {
+    url: request.url,
+    method: request.method,
+    headers: {
+      connection: request.headers.connection,
+      upgrade: request.headers.upgrade,
+      'sec-websocket-key': request.headers['sec-websocket-key'],
+      'sec-websocket-version': request.headers['sec-websocket-version'],
+      origin: request.headers.origin
+    }
+  });
+
+  try {
+    pcmHandler.handleUpgrade(request, socket, head);
+    console.log('✅ [WS-UPGRADE] Handled by PCM handler');
+  } catch (error) {
+    console.error('❌ [WS-UPGRADE] Error in handler:', error);
+    socket.destroy();
+  }
 });
 
 httpServer.listen(PORT, () => {
-  console.log('🚀 Gateway server running on port', PORT);
-  console.log('📝 Transcription service available at /api/transcription');
-  console.log('🌍 Health check available at /api/health');
-  console.log('🎤 LiveKit native transcription integrated');
-  console.log('🎙️ PCM WebSocket transcription available at /ws/transcribe');
-  console.log('CORS configurado para:', allowedOrigins);
+  console.log('🚀 ============================================');
+  console.log('🚀 MedCall Gateway Server Started');
+  console.log('🚀 ============================================');
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('');
+  console.log('🔗 Available Endpoints:');
+  console.log('  📝 Transcription API: /api/transcription');
+  console.log('  🎤 LiveKit API: /api/livekit/transcription');
+  console.log('  📋 Sessions API: /api/sessions');
+  console.log('  🎙️ PCM WebSocket: /ws/transcribe');
+  console.log('  ❤️ Health Check: /api/health');
+  console.log('  📊 PCM Stats: /api/pcm-transcription/stats');
+  console.log('  🔬 PCM Health: /api/pcm-transcription/health');
+  console.log('');
+  console.log('🛡️ CORS Origins:');
+  allowedOrigins.forEach(origin => console.log(`  ✅ ${origin}`));
+  console.log('');
+  console.log('🔧 Services Status:');
+  console.log('  🎤 LiveKit Agent: DISABLED (using PCM WebSocket)');
+  console.log('  🎙️ PCM WebSocket: ACTIVE');
+  console.log('  📡 LiveKit DataChannel: ACTIVE');
+  console.log('🚀 ============================================');
 });
 
 // Tratamento de sinais de encerramento
