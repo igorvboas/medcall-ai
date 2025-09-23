@@ -22,6 +22,11 @@ class LiveKitTranscriberAgentManager {
     await room.connect(url, token);
 
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+      console.log('[LK-Agent] TrackSubscribed:', {
+        kind: (track as any)?.kind,
+        participant: participant?.identity,
+        sid: (track as any)?.sid,
+      });
       if (track.kind !== 'audio' as any) return;
       const audioTrack = track as RemoteAudioTrack;
       // createAudioStream is provided by @livekit/rtc-node at runtime,
@@ -33,6 +38,9 @@ class LiveKitTranscriberAgentManager {
       }
       const pcm = createAudioStream(16000, 1);
       pcm.on('data', async (buf: Buffer) => {
+        try {
+          if (!buf || buf.length === 0) return;
+          console.log('[LK-Agent] PCM chunk received:', buf.length);
         await transcriptionService.processAudioChunk(
           {
             data: buf,
@@ -42,6 +50,9 @@ class LiveKitTranscriberAgentManager {
           },
           roomName,
         );
+        } catch (e) {
+          console.error('[LK-Agent] Error processing PCM chunk:', e);
+        }
       });
     });
 
@@ -50,7 +61,7 @@ class LiveKitTranscriberAgentManager {
       if (rn !== roomName) return;
       try {
         const msg = Buffer.from(JSON.stringify({ type: 'transcription', data: segment }), 'utf8');
-        const opts = { reliable: true, topic: 'transcription' } as any;
+        const opts = { reliable: true, topic: 'lk.transcription' } as any;
         room.localParticipant?.publishData(msg, opts);
       } catch {}
     };

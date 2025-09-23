@@ -113,7 +113,7 @@ export function useTranscriptionLiveKit({
   }, [enabled]);
 
   // Escutar Data Channel para transcrições
-  const { send } = useDataChannel('transcription', onTranscriptionReceived);
+  const { send } = useDataChannel('lk.transcription', onTranscriptionReceived);
 
   const startTranscription = useCallback(() => {
     console.log('📝 [LiveKit] Iniciando transcrição nativa...');
