@@ -33,7 +33,8 @@ FROM base AS runtime
 
 # Add tini for proper signal handling in containers
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends tini curl \
+  && apt-get install -y --no-install-recommends tini curl ca-certificates \
+  && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy root manifests and node_modules from builder

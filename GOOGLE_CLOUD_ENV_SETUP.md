@@ -94,3 +94,41 @@ curl -X POST https://medcall-gateway-416450784258.southamerica-east1.run.app/api
 - **SEMPRE** use variáveis de ambiente para secrets
 - **ROTACIONE** as chaves periodicamente
 - **MONITORE** o uso das APIs para detectar vazamentos
+
+## 🔐 TLS/SSL (LiveKit Cloud) – Checklist rápido
+
+1) URL correta (sempre WSS):
+
+```
+LIVEKIT_URL=wss://tria-app-0hg0ktck.livekit.cloud
+```
+
+2) Certificados raiz no container do Gateway (Cloud Run):
+
+- Dockerfile (Debian/Bookworm base já usada):
+
+```
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+```
+
+3) Proxy corporativo/CA interna (se aplicável):
+
+- Suba a CA como Secret e monte no container, aponte:
+
+```
+NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca_interna.pem
+```
+
+4) Hora/NTP correta do ambiente.
+
+5) Testes dentro do container:
+
+```
+curl -sv https://tria-app-0hg0ktck.livekit.cloud/settings/regions | cat
+node -e "require('https').get('https://tria-app-0hg0ktck.livekit.cloud/settings/regions',r=>console.log(r.statusCode)).on('error',e=>console.error(e))"
+```
+
+Se aparecer "invalid peer certificate: UnknownIssuer", faltam CAs ou há proxy MITM sem CA instalada.
