@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import { livekitNativeHandler } from './handlers/livekitNativeHandler';
 import transcriptionRoutes from './routes/transcription';
+import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
 
 const app = express();
@@ -47,6 +48,7 @@ console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Configurada' : 'N
 
 // Rotas da API
 app.use('/api/transcription', transcriptionRoutes);
+app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
 app.use('/api/sessions', sessionsRoutes);
 
 // Suas outras rotas existentes podem ser adicionadas aqui

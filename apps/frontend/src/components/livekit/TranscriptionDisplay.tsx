@@ -31,20 +31,36 @@ export function TranscriptionDisplay({
   console.log('🔍 TranscriptionDisplay renderizado!');
   console.log('🔍 TranscriptionDisplay props:', { patientName, userRole, roomName, participantId, consultationId });
   console.log('🔍 TranscriptionDisplay isVisible:', isVisible);
-  // Usar o hook WebSocket para transcrições
-  const {
-    transcriptions,
-    isConnected,
-    error,
-    startTranscription,
-    stopTranscription,
-    clearTranscriptions
-  } = useTranscriptionLiveKit({
-    roomName,
-    participantId,
-    consultationId,
-    enabled: true
-  });
+  console.log('🔍🔍🔍 ANTES de chamar useTranscriptionLiveKit');
+  
+  let transcriptions: any[] = [];
+  let isConnected = false;
+  let error: string | null = null;
+  let startTranscription: () => void = () => {};
+  let stopTranscription: () => void = () => {};
+  let clearTranscriptions: () => void = () => {};
+  
+  try {
+    // Usar o hook WebSocket para transcrições
+    const hookResult = useTranscriptionLiveKit({
+      roomName,
+      participantId,
+      consultationId,
+      enabled: true
+    });
+    
+    transcriptions = hookResult.transcriptions;
+    isConnected = hookResult.isConnected;
+    error = hookResult.error;
+    startTranscription = hookResult.startTranscription;
+    stopTranscription = hookResult.stopTranscription;
+    clearTranscriptions = hookResult.clearTranscriptions;
+    
+    console.log('🔍🔍🔍 DEPOIS de chamar useTranscriptionLiveKit - SUCESSO');
+  } catch (hookError) {
+    console.error('❌❌❌ ERRO ao chamar useTranscriptionLiveKit:', hookError);
+    error = `Erro no hook: ${hookError}`;
+  }
   
   // Obter participantes
   const participants = useParticipants();
