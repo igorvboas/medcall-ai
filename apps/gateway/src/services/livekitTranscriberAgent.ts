@@ -1,4 +1,4 @@
-import { Room, RoomEvent, RemoteAudioTrack, Track } from 'livekit-client';
+import { Room, RoomEvent, RemoteAudioTrack } from '@livekit/rtc-node';
 import { transcriptionService } from './transcriptionService';
 
 type ActiveAgent = {
@@ -17,13 +17,8 @@ class LiveKitTranscriberAgentManager {
     const url = process.env.LIVEKIT_URL as string;
     const token = await this.createAccessToken(roomName);
 
-    // Ensure rtc-node bindings are registered before using livekit-client in Node
-    await import('@livekit/rtc-node');
-
     const room = new Room();
-    // Garantir auto-subscribe para tracks remotas
-    try { (room as any).setAutoSubscribe?.(true); } catch {}
-    await room.connect(url, token);
+    await room.connect(url, token, { autoSubscribe: true, dynacast: true });
 
     const ensureSubscribed = (pub: any) => {
       try {
@@ -41,13 +36,13 @@ class LiveKitTranscriberAgentManager {
       }
     };
 
-    // Forçar subscribe para publicações já existentes ao conectar (compat com diferentes typings)
+    // Forçar subscribe para publicações já existentes ao conectar (compat API rtc-node)
     try {
-      const parts: any = (room as any).participants ?? (room as any).remoteParticipants ?? (room as any).getParticipants?.();
-      if (parts && typeof parts.forEach === 'function') {
-        parts.forEach((p: any) => {
+      const partsIter: Iterable<any> | undefined = (room as any).remoteParticipants?.values?.();
+      if (partsIter) {
+        for (const p of partsIter as any) {
           p?.trackPublications?.forEach?.((pub: any) => ensureSubscribed(pub));
-        });
+        }
       }
     } catch {}
 
@@ -70,9 +65,9 @@ class LiveKitTranscriberAgentManager {
         participant: participant?.identity,
         sid: (track as any)?.sid,
       });
+      // rtc-node usa enum TrackKind.Audio = 1 internamente; aceitar também string por segurança
       const kind = (track as any)?.kind;
-      // Aceitar 'audio' (browser) ou 1 (enum numérico no Node bindings)
-      if (!(kind === 'audio' || kind === 1)) return;
+      if (!(kind === 1 || kind === 'audio')) return;
       const audioTrack = track as RemoteAudioTrack;
       // createAudioStream is provided by @livekit/rtc-node at runtime,
       // but it's not in the TypeScript typings of livekit-client.
