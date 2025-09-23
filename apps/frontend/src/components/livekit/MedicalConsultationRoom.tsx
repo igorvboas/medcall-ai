@@ -65,19 +65,19 @@ export function MedicalConsultationRoom({
   // Logs de debug removidos para evitar spam no console
   // Handle connection events
   const handleConnected = async () => {
-    console.log('✅ Connected to room');
+    console.log('[MDR] >> ✅ Connected to room');
     setConnectionError(null);
     setIsLiveKitConnected(true);
     
-    console.log('🎙️ LiveKit connected, waiting for user gesture to start transcription...');
+    console.log('[MDR] >> 🎙️ LiveKit connected, waiting for user gesture to start transcription...');
     
     onConnected?.();
   };
 
   // Função para iniciar transcrição após user gesture
   const startTranscriptionWithUserGesture = useCallback(async () => {
-    console.log('🚨 [DEBUG] Button clicked! startTranscriptionWithUserGesture called');
-    console.log('🚨 [DEBUG] Current state:', {
+    console.log('[MDR] >> 🚨 [DEBUG] Button clicked! startTranscriptionWithUserGesture called');
+    console.log('[MDR] >> 🚨 [DEBUG] Current state:', {
       isLiveKitConnected,
       micTransmitterState: {
         isConnected: micTransmitter.isConnected,
@@ -90,12 +90,12 @@ export function MedicalConsultationRoom({
     });
 
     if (!isLiveKitConnected) {
-      console.log('⚠️ LiveKit not connected yet, waiting...');
+      console.log('[MDR] >> ⚠️ LiveKit not connected yet, waiting...');
       return;
     }
 
     try {
-      console.log('🎤 Starting mic transmitter after user gesture...');
+      console.log('[MDR] >> 🎤 Starting mic transmitter after user gesture...');
       
       // Limpar participantId para ASCII simples
       const cleanParticipantId = userRole === 'doctor' ? 'Doctor' : 'Patient';
@@ -104,19 +104,19 @@ export function MedicalConsultationRoom({
         sessionId,
         participantId: cleanParticipantId,
       });
-      console.log('✅ Mic transmitter started for transcription with participantId:', cleanParticipantId);
+      console.log('[MDR] >> ✅ Mic transmitter started for transcription with participantId:', cleanParticipantId);
     } catch (error) {
       console.error('❌❌ Failed to start mic transmitter:', error);
     }
   }, [micTransmitter, sessionId, userRole, isLiveKitConnected]);
 
   const handleDisconnected = () => {
-    console.log('❌ Disconnected from room');
+    console.log('[MDR] >> ❌ Disconnected from room');
     setIsLiveKitConnected(false);
     
     // Parar transmissão de áudio
     micTransmitter.stop();
-    console.log('🔇 Mic transmitter stopped');
+    console.log('[MDR] >> 🔇 Mic transmitter stopped');
     
     onDisconnected?.();
   };
@@ -142,7 +142,7 @@ export function MedicalConsultationRoom({
 
   // Validate required props
   if (!serverUrl || !token) {
-    console.log('🔍🔍🔍🔍 Props inválidas:', {
+    console.log('[MDR] >> 🔍🔍🔍🔍 Props inválidas:', {
       serverUrl,
       token,
       roomName,

@@ -38,31 +38,31 @@ export function useMicTransmitter() {
   const pingInterval = 20000; // 20 segundos - keepalive para frontend
 
   const cleanup = useCallback(() => {
-    console.log('[MicTransmitter] 🧹 Starting cleanup...');
+    console.log('[uMT] >> [MicTransmitter] 🧹 Starting cleanup...');
 
     // Fechar WebSocket
     if (wsRef.current) {
-      console.log('[MicTransmitter] 🔌 Closing WebSocket');
+      console.log('[uMT] >> [MicTransmitter] 🔌 Closing WebSocket');
       wsRef.current.close();
       wsRef.current = null;
     }
 
     // Desconectar audio graph corretamente
     if (sourceNodeRef.current) {
-      console.log('[MicTransmitter] 🎵 Disconnecting source node');
+      console.log('[uMT] >> [MicTransmitter] 🎵 Disconnecting source node');
       sourceNodeRef.current.disconnect();
       sourceNodeRef.current = null;
     }
 
     if (workletNodeRef.current) {
-      console.log('[MicTransmitter] 🔧 Disconnecting worklet node');
+      console.log('[uMT] >> [MicTransmitter] 🔧 Disconnecting worklet node');
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
     }
 
     // Fechar AudioContext (suspend primeiro para evitar clicks)
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      console.log('[MicTransmitter] 🎧 Closing AudioContext, current state:', audioContextRef.current.state);
+      console.log('[uMT] >> [MicTransmitter] 🎧 Closing AudioContext, current state:', audioContextRef.current.state);
       if (audioContextRef.current.state === 'running') {
         audioContextRef.current.suspend().then(() => {
           audioContextRef.current?.close();
@@ -75,10 +75,10 @@ export function useMicTransmitter() {
 
     // Parar stream de áudio
     if (streamRef.current) {
-      console.log('[MicTransmitter] 🎙️ Stopping media stream tracks');
+      console.log('[uMT] >> [MicTransmitter] 🎙️ Stopping media stream tracks');
       streamRef.current.getTracks().forEach(track => {
         track.stop();
-        console.log('[MicTransmitter] 🛑 Stopped track:', track.kind, track.label);
+        console.log('[uMT] >> [MicTransmitter] 🛑 Stopped track:', track.kind, track.label);
       });
       streamRef.current = null;
     }
@@ -99,14 +99,14 @@ export function useMicTransmitter() {
       isTransmitting: false,
     }));
 
-    console.log('[MicTransmitter] ✅ Cleanup completed');
+    console.log('[uMT] >> [MicTransmitter] ✅ Cleanup completed');
   }, []);
 
   const connectWebSocket = useCallback(async (config: MicTransmitterConfig) => {
     const gatewayUrl = config.gatewayUrl || process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001';
     const wsUrl = `${gatewayUrl.replace('http', 'ws')}/ws/transcribe?session=${config.sessionId}&participant=${config.participantId}`;
 
-    console.log('[MicTransmitter] 🔗 Connecting WebSocket:', {
+    console.log('[uMT] >> [MicTransmitter] 🔗 Connecting WebSocket:', {
       gatewayUrl,
       wsUrl,
       sessionId: config.sessionId,
@@ -117,7 +117,7 @@ export function useMicTransmitter() {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('[MicTransmitter] ✅ WebSocket connected successfully');
+        console.log('[uMT] >> [MicTransmitter] ✅ WebSocket connected successfully');
         reconnectAttemptsRef.current = 0;
         setState(prev => ({ ...prev, isConnected: true, error: null }));
         resolve(ws);
@@ -130,7 +130,7 @@ export function useMicTransmitter() {
       };
 
       ws.onclose = (event) => {
-        console.log('[MicTransmitter] WebSocket closed:', event.code, event.reason);
+        console.log('[uMT] >> [MicTransmitter] WebSocket closed:', event.code, event.reason);
         setState(prev => ({ ...prev, isConnected: false }));
 
         // Auto-reconexão se não foi fechamento manual
@@ -142,7 +142,7 @@ export function useMicTransmitter() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('[MicTransmitter] Message from server:', data);
+          console.log('[uMT] >> [MicTransmitter] Message from server:', data);
         } catch (e) {
           console.warn('[MicTransmitter] Non-JSON message received:', event.data);
         }
@@ -175,7 +175,7 @@ export function useMicTransmitter() {
 
   const setupAudioCapture = useCallback(async () => {
     try {
-      console.log('[MicTransmitter] 🎤 Setting up audio capture...');
+      console.log('[uMT] >> [MicTransmitter] 🎤 Setting up audio capture...');
 
       // Solicitar acesso ao microfone
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -189,7 +189,7 @@ export function useMicTransmitter() {
       });
 
       streamRef.current = stream;
-      console.log('[MicTransmitter] ✅ Media stream obtained:', {
+      console.log('[uMT] >> [MicTransmitter] ✅ Media stream obtained:', {
         tracks: stream.getTracks().length,
         audio: stream.getAudioTracks().map(t => ({ 
           kind: t.kind, 
@@ -205,17 +205,17 @@ export function useMicTransmitter() {
 
       // Verificar e ativar AudioContext se necessário
       if (audioContext.state === 'suspended') {
-        console.log('[MicTransmitter] ⏳ AudioContext suspended, resuming...');
+        console.log('[uMT] >> [MicTransmitter] ⏳ AudioContext suspended, resuming...');
         await audioContext.resume();
       }
 
-      console.log('[MicTransmitter] 🎧 AudioContext state:', audioContext.state, 'sampleRate:', audioContext.sampleRate);
+      console.log('[uMT] >> [MicTransmitter] 🎧 AudioContext state:', audioContext.state, 'sampleRate:', audioContext.sampleRate);
 
       // Carregar AudioWorklet
-      console.log('[MicTransmitter] 📥 Loading AudioWorklet module...');
+      console.log('[uMT] >> [MicTransmitter] 📥 Loading AudioWorklet module...');
       try {
         await audioContext.audioWorklet.addModule('/worklets/pcm16-worklet.js');
-        console.log('[MicTransmitter] ✅ AudioWorklet module loaded successfully');
+        console.log('[uMT] >> [MicTransmitter] ✅ AudioWorklet module loaded successfully');
       } catch (workletError) {
         console.error('[MicTransmitter] ❌ Failed to load AudioWorklet:', workletError);
         const message = workletError instanceof Error ? workletError.message : 'Unknown error';
@@ -230,11 +230,11 @@ export function useMicTransmitter() {
       workletNodeRef.current = workletNode;
 
       // Verificar conexão do audio graph
-      console.log('[MicTransmitter] 🔗 Connecting audio graph: MediaStreamSource → WorkletNode');
+      console.log('[uMT] >> [MicTransmitter] 🔗 Connecting audio graph: MediaStreamSource → WorkletNode');
       source.connect(workletNode);
 
       // Verificar se o worklet está conectado
-      console.log('[MicTransmitter] 🔍 Worklet connected:', {
+      console.log('[uMT] >> [MicTransmitter] 🔍 Worklet connected:', {
         numberOfInputs: workletNode.numberOfInputs,
         numberOfOutputs: workletNode.numberOfOutputs,
         channelCount: workletNode.channelCount,
@@ -283,7 +283,7 @@ export function useMicTransmitter() {
       }, 3000);
 
       setState(prev => ({ ...prev, isTransmitting: true }));
-      console.log('[MicTransmitter] ✅ Audio capture setup completed');
+      console.log('[uMT] >> [MicTransmitter] ✅ Audio capture setup completed');
 
     } catch (error) {
       console.error('[MicTransmitter] ❌ Audio setup failed:', error);
@@ -302,18 +302,18 @@ export function useMicTransmitter() {
       wsRef.current = await connectWebSocket(config);
 
       // TESTE SIMPLES: Enviar dados de teste primeiro
-      console.log('[MicTransmitter] 🧪 Sending test data to keep WebSocket alive...');
+      console.log('[uMT] >> [MicTransmitter] 🧪 Sending test data to keep WebSocket alive...');
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         // Criar buffer PCM16 de teste (silêncio)
         const testBuffer = new Int16Array(640).fill(0); // 640 samples = ~40ms de silêncio
         wsRef.current.send(testBuffer.buffer);
-        console.log('[MicTransmitter] ✅ Test buffer sent:', testBuffer.buffer.byteLength, 'bytes');
+        console.log('[uMT] >> [MicTransmitter] ✅ Test buffer sent:', testBuffer.buffer.byteLength, 'bytes');
       }
 
       // Configurar captura de áudio (se teste funcionar)
       await setupAudioCapture();
 
-      console.log('[MicTransmitter] Started successfully');
+      console.log('[uMT] >> [MicTransmitter] Started successfully');
     } catch (error) {
       console.error('[MicTransmitter] Start failed:', error);
       cleanup();
@@ -322,19 +322,19 @@ export function useMicTransmitter() {
   }, [connectWebSocket, setupAudioCapture, cleanup]);
 
   const stop = useCallback(() => {
-    console.log('[MicTransmitter] Stopping...');
+    console.log('[uMT] >> [MicTransmitter] Stopping...');
     configRef.current = null;
     cleanup();
   }, [cleanup]);
 
   const mute = useCallback(() => {
     setState(prev => ({ ...prev, isMuted: true }));
-    console.log('[MicTransmitter] Muted');
+    console.log('[uMT] >> [MicTransmitter] Muted');
   }, []);
 
   const unmute = useCallback(() => {
     setState(prev => ({ ...prev, isMuted: false }));
-    console.log('[MicTransmitter] Unmuted');
+    console.log('[uMT] >> [MicTransmitter] Unmuted');
   }, []);
 
   // Cleanup ao desmontar componente

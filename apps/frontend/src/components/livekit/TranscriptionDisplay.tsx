@@ -1,6 +1,6 @@
 'use client';
 
-console.log('🚀🚀🚀 TRANSCRIPTION DISPLAY ARQUIVO CARREGADO!');
+console.log('[TD] >> 🚀🚀🚀 TRANSCRIPTION DISPLAY ARQUIVO CARREGADO!');
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
@@ -22,16 +22,16 @@ export function TranscriptionDisplay({
   participantId,
   consultationId 
 }: TranscriptionDisplayProps) {
-  console.log('🚀🚀🚀 TRANSCRIPTION DISPLAY RENDERIZADO!');
+  console.log('[TD] >> 🚀🚀🚀 TRANSCRIPTION DISPLAY RENDERIZADO!');
   
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const transcriptionsEndRef = useRef<HTMLDivElement>(null);
   
-  console.log('🔍 TranscriptionDisplay renderizado!');
-  console.log('🔍 TranscriptionDisplay props:', { patientName, userRole, roomName, participantId, consultationId });
-  console.log('🔍 TranscriptionDisplay isVisible:', isVisible);
-  console.log('🔍🔍🔍 ANTES de chamar useTranscriptionLiveKit');
+  console.log('[TD] >> 🔍 TranscriptionDisplay renderizado!');
+  console.log('[TD] >> 🔍 TranscriptionDisplay props:', { patientName, userRole, roomName, participantId, consultationId });
+  console.log('[TD] >> 🔍 TranscriptionDisplay isVisible:', isVisible);
+  console.log('[TD] >> 🔍🔍🔍 ANTES de chamar useTranscriptionLiveKit');
   
   let transcriptions: any[] = [];
   let isConnected = false;
@@ -56,7 +56,7 @@ export function TranscriptionDisplay({
     stopTranscription = hookResult.stopTranscription;
     clearTranscriptions = hookResult.clearTranscriptions;
     
-    console.log('🔍🔍🔍 DEPOIS de chamar useTranscriptionLiveKit - SUCESSO');
+    console.log('[TD] >> 🔍🔍🔍 DEPOIS de chamar useTranscriptionLiveKit - SUCESSO');
   } catch (hookError) {
     console.error('❌❌❌ ERRO ao chamar useTranscriptionLiveKit:', hookError);
     error = `Erro no hook: ${hookError}`;
@@ -106,7 +106,7 @@ export function TranscriptionDisplay({
   };
 
   if (!isVisible) {
-    console.log('🔍🔍🔍🔍 TranscriptionDisplay não é visível');
+    console.log('[TD] >> 🔍🔍🔍🔍 TranscriptionDisplay não é visível');
     return (
       <button
         onClick={() => setIsVisible(true)}
@@ -130,7 +130,7 @@ export function TranscriptionDisplay({
       </button>
     );
   }
- console.log('🔍🔍🔍🔍 TranscriptionDisplay é visível');
+ console.log('[TD] >> 🔍🔍🔍🔍 TranscriptionDisplay é visível');
   return (
     <div style={{
       position: 'fixed',
@@ -249,9 +249,9 @@ export function TranscriptionDisplay({
                 {Object.entries(groupedTranscriptions).map(([participantId, participantTranscriptions]) => {
                   const participantName = getParticipantName(participantId);
                   const participantRole = getParticipantRole(participantId);
-                  console.log('🔍🔍🔍🔍 Participant ID:', participantId);
-                  console.log('🔍🔍🔍🔍 Participant Name:', participantName);
-                  console.log('🔍🔍🔍🔍 Participant Role:', participantRole);
+                  console.log('[TD] >> 🔍🔍🔍🔍 Participant ID:', participantId);
+                  console.log('[TD] >> 🔍🔍🔍🔍 Participant Name:', participantName);
+                  console.log('[TD] >> 🔍🔍🔍🔍 Participant Role:', participantRole);
                   return (
                     <div key={participantId}>
                       {participantTranscriptions.map((transcription, index) => (
