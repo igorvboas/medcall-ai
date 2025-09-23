@@ -2,7 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
-import { livekitNativeHandler } from './handlers/livekitNativeHandler';
 import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
@@ -62,31 +61,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       transcription: 'running',
-      websocket: 'running',
+      livekit: 'native-integration',
       socketio: io ? 'initialized' : 'not initialized'
     },
-    environment: {
-      node_env: process.env.NODE_ENV,
-      port: process.env.PORT || 3001,
-      frontend_url: process.env.FRONTEND_URL || 'not set'
-    }
-  });
-});
-
-// Configurar LiveKit nativo
-console.log('🎤 Inicializando LiveKit nativo...');
-// LiveKit nativo não precisa de WebSocket para transcrição
-
-// Health check expandido
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-        services: {
-          transcription: 'running',
-          livekit: 'native-integration',
-          socketio: io ? 'initialized' : 'not initialized'
-        },
     environment: {
       node_env: process.env.NODE_ENV,
       port: process.env.PORT || 3001,

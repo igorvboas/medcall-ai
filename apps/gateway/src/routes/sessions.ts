@@ -4,6 +4,7 @@ import { asyncHandler, ValidationError } from '../middleware/errorHandler';
 import { db } from '../config/database';
 import { generateSimpleProtocol } from '../services/protocolService';
 import { generateLiveKitToken } from '../config/providers';
+import { livekitTranscriberAgent } from '../services/livekitTranscriberAgent';
 
 const router = Router();
 
@@ -120,6 +121,16 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
       const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const doctorUrl = `${baseUrl}/consulta/online/doctor?sessionId=${session.id}&roomName=${roomName}&token=${doctorToken}&consultationId=${session.consultation_id}&patientName=${encodeURIComponent(participants.patient.name)}`;
       const patientUrl = `${baseUrl}/consulta/online/patient?sessionId=${session.id}&roomName=${roomName}&token=${patientToken}&consultationId=${session.consultation_id}&doctorName=${encodeURIComponent(participants.doctor.name)}`;
+
+      // Iniciar transcriber agent para a sala
+      try {
+        console.log(`🎤 Iniciando transcriber agent para sala: ${roomName}`);
+        await livekitTranscriberAgent.start(roomName);
+        console.log(`✅ Transcriber agent iniciado para sala: ${roomName}`);
+      } catch (error) {
+        console.error(`❌ Erro ao iniciar transcriber agent para sala ${roomName}:`, error);
+        // Não falhar a criação da sessão se o transcriber agent falhar
+      }
 
       // Resposta com tokens e informações da sessão online
       res.status(201).json({
