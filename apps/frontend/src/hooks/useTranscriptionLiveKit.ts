@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useDataChannel } from '@livekit/components-react';
+import { io, Socket } from 'socket.io-client';
 
 interface TranscriptionSegment {
   id: string;
@@ -27,6 +28,7 @@ export function useTranscriptionLiveKit({
   const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   console.log('📝 Hook useTranscriptionLiveKit iniciado com:', {
     roomName,
@@ -35,7 +37,58 @@ export function useTranscriptionLiveKit({
     enabled
   });
 
-  // Callback para processar mensagens recebidas
+  // Conectar ao WebSocket para controle de transcrição
+  useEffect(() => {
+    if (!enabled || !roomName || !participantId || !consultationId) return;
+
+    console.log('🔗 Conectando ao WebSocket para controle de transcrição...');
+    
+    const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
+    const socketUrl = gatewayUrl.replace('http', 'ws');
+    
+    const socketInstance = io(socketUrl, {
+      transports: ['websocket'],
+      autoConnect: true
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('✅ Conectado ao WebSocket para controle de transcrição');
+      setSocket(socketInstance);
+      
+      // Iniciar transcrição online
+      socketInstance.emit('online:start-transcription', {
+        roomName,
+        consultationId,
+        participantId,
+        participantName: participantId
+      });
+    });
+
+    socketInstance.on('online:transcription-started', (data) => {
+      console.log('🎤 Transcrição online iniciada:', data);
+      setIsConnected(true);
+      setError(null);
+    });
+
+    socketInstance.on('online:transcription-stopped', (data) => {
+      console.log('🛑 Transcrição online parada:', data);
+      setIsConnected(false);
+    });
+
+    socketInstance.on('error', (data) => {
+      console.error('❌ Erro na transcrição online:', data);
+      setError(data.message || 'Erro desconhecido');
+    });
+
+    return () => {
+      if (socketInstance.connected) {
+        socketInstance.emit('online:stop-transcription', { roomName, consultationId });
+        socketInstance.disconnect();
+      }
+    };
+  }, [enabled, roomName, participantId, consultationId]);
+
+  // Callback para processar mensagens recebidas via LiveKit Data Channels
   const onDataReceived = useCallback((message: any) => {
     if (!enabled) return;
 
@@ -81,33 +134,33 @@ export function useTranscriptionLiveKit({
   // Usar hook nativo LiveKit para data channels com callback
   const { send } = useDataChannel('transcription', onDataReceived);
 
-  // Simular conexão ativa quando LiveKit está disponível
-  useEffect(() => {
-    if (enabled) {
-      setIsConnected(true);
-      setError(null);
-      console.log('📝 [LiveKit] Transcrição ativada via data channels');
-    } else {
-      setIsConnected(false);
-    }
-  }, [enabled]);
-
-  // Funções de controle (mantidas para compatibilidade)
+  // Funções de controle
   const startTranscription = useCallback(() => {
-    console.log('📝 [LiveKit] startTranscription chamado (nativo LiveKit)');
-    setIsConnected(true);
-    setError(null);
-  }, []);
+    console.log('📝 [LiveKit] startTranscription chamado');
+    if (socket?.connected) {
+      socket.emit('online:start-transcription', {
+        roomName,
+        consultationId,
+        participantId,
+        participantName: participantId
+      });
+    }
+  }, [socket, roomName, consultationId, participantId]);
 
   const stopTranscription = useCallback(() => {
-    console.log('📝 [LiveKit] stopTranscription chamado (nativo LiveKit)');
-    setIsConnected(false);
-  }, []);
+    console.log('📝 [LiveKit] stopTranscription chamado');
+    if (socket?.connected) {
+      socket.emit('online:stop-transcription', { roomName, consultationId });
+    }
+  }, [socket, roomName, consultationId]);
 
   const clearTranscriptions = useCallback(() => {
     console.log('📝 [LiveKit] clearTranscriptions chamado');
     setTranscriptions([]);
-  }, []);
+    if (socket?.connected) {
+      socket.emit('online:clear-transcriptions', { roomName, consultationId });
+    }
+  }, [socket, roomName, consultationId]);
 
   return {
     transcriptions,

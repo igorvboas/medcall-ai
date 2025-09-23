@@ -1,6 +1,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { isDevelopment } from '../config';
 import { setupPresentialAudioHandlers } from './audioHandler';
+import { setupOnlineConsultationHandlers } from './onlineConsultationHandler';
 
 // Interfaces para eventos WebSocket
 interface SessionJoinData {
@@ -28,6 +29,9 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
 
     // Configurar handlers de áudio presencial
     setupPresentialAudioHandlers(socket, notifier);
+
+    // Configurar handlers de consulta online
+    setupOnlineConsultationHandlers(socket, notifier);
 
     // Handler para participar de uma sessão
     socket.on('session:join', (data: SessionJoinData) => {
