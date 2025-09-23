@@ -1,4 +1,4 @@
-import { Room, RoomEvent, RemoteAudioTrack } from '@livekit/rtc-node';
+import { Room, RoomEvent, RemoteAudioTrack, dispose } from '@livekit/rtc-node';
 import { transcriptionService } from './transcriptionService';
 
 type ActiveAgent = {
@@ -134,5 +134,13 @@ class LiveKitTranscriberAgentManager {
 }
 
 export const livekitTranscriberAgent = new LiveKitTranscriberAgentManager();
+
+// Graceful shutdown for rtc-node resources
+process.on('SIGINT', async () => {
+  try { await dispose(); } catch {}
+});
+process.on('SIGTERM', async () => {
+  try { await dispose(); } catch {}
+});
 
 
