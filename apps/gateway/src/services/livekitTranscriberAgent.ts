@@ -1,5 +1,5 @@
 import '@livekit/rtc-node';
-import { Room, RoomEvent, RemoteAudioTrack, Track } from '@livekit/rtc-node';
+import { Room, RoomEvent, RemoteAudioTrack, Track } from 'livekit-client';
 import { transcriptionService } from './transcriptionService';
 
 type ActiveAgent = {
