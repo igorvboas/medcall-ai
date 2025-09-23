@@ -40,18 +40,39 @@ export function useTranscriptionLiveKit({
   // Obter participante local do LiveKit
   const localParticipant = useLocalParticipant();
 
+  // Debug: verificar estado do participante local
+  console.log('🔍 Debug - localParticipant:', localParticipant);
+  console.log('🔍 Debug - localParticipant.localParticipant:', localParticipant.localParticipant);
+
   // Inicializar transcrição LiveKit nativa
   useEffect(() => {
-    if (!enabled || !localParticipant.localParticipant) return;
+    console.log('🔍 useEffect executado - enabled:', enabled, 'localParticipant:', !!localParticipant.localParticipant);
+    
+    if (!enabled) {
+      console.log('⚠️ Transcrição desabilitada');
+      return;
+    }
+    
+    if (!localParticipant.localParticipant) {
+      console.log('⚠️ Participante local não disponível');
+      return;
+    }
 
     console.log('🎤 Inicializando transcrição LiveKit nativa...');
     
     // Verificar se há track de áudio local
     const audioTracks = Array.from(localParticipant.localParticipant.audioTrackPublications.values());
+    console.log('🔍 Audio tracks encontrados:', audioTracks.length);
+    
     const audioTrack = audioTracks.find(track => track.track);
     
     if (!audioTrack || !audioTrack.track) {
       console.log('⚠️ Nenhum track de áudio encontrado');
+      console.log('🔍 Audio tracks disponíveis:', audioTracks.map(t => ({ 
+        track: !!t.track, 
+        enabled: t.isEnabled,
+        subscribed: t.isSubscribed 
+      })));
       return;
     }
 
@@ -68,9 +89,12 @@ export function useTranscriptionLiveKit({
   const startNativeLiveKitTranscription = (audioTrack: LocalAudioTrack) => {
     try {
       console.log('🎤 Iniciando captura de áudio nativa do LiveKit...');
+      console.log('🔍 AudioTrack:', audioTrack);
       
       // Obter stream do track de áudio do LiveKit
       const stream = audioTrack.mediaStream;
+      console.log('🔍 Stream obtido:', stream);
+      
       if (!stream) {
         console.error('❌ Stream de áudio não disponível');
         setError('Stream de áudio não disponível');
@@ -86,15 +110,27 @@ export function useTranscriptionLiveKit({
       let audioChunkCount = 0;
       
       processor.onaudioprocess = (event) => {
-        if (!isTranscribing) return;
+        console.log('🔍 onaudioprocess chamado - isTranscribing:', isTranscribing);
+        
+        if (!isTranscribing) {
+          console.log('⚠️ Transcrição não ativa, ignorando áudio');
+          return;
+        }
         
         const inputData = event.inputBuffer.getChannelData(0);
+        console.log('🔍 Input data length:', inputData.length);
         
         // Verificar se há áudio (não silêncio)
         const hasAudio = inputData.some(sample => Math.abs(sample) > 0.01);
-        if (!hasAudio) return;
+        console.log('🔍 Has audio:', hasAudio);
+        
+        if (!hasAudio) {
+          console.log('⚠️ Sem áudio detectado, ignorando');
+          return;
+        }
         
         audioChunkCount++;
+        console.log(`🎤 Processando chunk ${audioChunkCount} com áudio`);
         
         // Converter para Int16Array
         const int16Data = new Int16Array(inputData.length);
@@ -133,7 +169,12 @@ export function useTranscriptionLiveKit({
   // Enviar áudio via LiveKit Data Channel
   const sendAudioViaLiveKit = (audioData: string) => {
     try {
-      if (!localParticipant.localParticipant) return;
+      console.log('🔍 sendAudioViaLiveKit chamado');
+      
+      if (!localParticipant.localParticipant) {
+        console.error('❌ Participante local não disponível');
+        return;
+      }
       
       const message = {
         type: 'audio-data',
@@ -146,11 +187,17 @@ export function useTranscriptionLiveKit({
         }
       };
       
+      console.log('🔍 Mensagem preparada:', message.type);
+      
       const encoder = new TextEncoder();
       const data = encoder.encode(JSON.stringify(message));
       
+      console.log('🔍 Dados codificados, tamanho:', data.length);
+      
       // Enviar via LiveKit Data Channel
       localParticipant.localParticipant.publishData(data, { reliable: true });
+      
+      console.log('✅ Áudio enviado via LiveKit Data Channel');
       
     } catch (error) {
       console.error('❌ Erro ao enviar áudio via LiveKit:', error);
