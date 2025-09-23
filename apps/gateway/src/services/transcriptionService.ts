@@ -237,7 +237,7 @@ export class TranscriptionService extends EventEmitter {
     try {
       await this.saveTranscriptionToDatabase(segment);
       
-      // Enviar via data usando RoomServiceClient
+      // Enviar via LiveKit Data Channel nativo
       await this.sendDataViaRoomService(roomName, {
         type: 'transcription',
         data: segment
@@ -245,10 +245,10 @@ export class TranscriptionService extends EventEmitter {
       
       this.emit('transcription', { roomName, segment });
       
-      console.log(`Transcrição enviada: ${segment.participantName}: ${segment.text}`);
+      console.log(`📝 Transcrição enviada via LiveKit nativo: ${segment.participantName}: ${segment.text}`);
       
     } catch (error) {
-      console.error('Erro ao enviar transcrição:', error);
+      console.error('❌ Erro ao enviar transcrição:', error);
     }
   }
 

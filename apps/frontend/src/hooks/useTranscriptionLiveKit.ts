@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useDataChannel } from '@livekit/components-react';
-import { io, Socket } from 'socket.io-client';
+import { useDataChannel, useLocalParticipant } from '@livekit/components-react';
+import { Room, LocalAudioTrack, Track } from 'livekit-client';
 
 interface TranscriptionSegment {
   id: string;
@@ -28,7 +28,7 @@ export function useTranscriptionLiveKit({
   const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   console.log('📝 Hook useTranscriptionLiveKit iniciado com:', {
     roomName,
@@ -37,101 +37,56 @@ export function useTranscriptionLiveKit({
     enabled
   });
 
-  // Conectar ao WebSocket para controle de transcrição
+  // Obter participante local do LiveKit
+  const localParticipant = useLocalParticipant();
+
+  // Inicializar transcrição LiveKit nativa
   useEffect(() => {
-    if (!enabled || !roomName || !participantId || !consultationId) return;
+    if (!enabled || !localParticipant.localParticipant) return;
 
-    console.log('🔗 Conectando ao WebSocket para controle de transcrição...');
+    console.log('🎤 Inicializando transcrição LiveKit nativa...');
     
-    const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
-    const socketUrl = gatewayUrl.replace('http', 'ws');
+    // Verificar se há track de áudio local
+    const audioTracks = Array.from(localParticipant.localParticipant.audioTrackPublications.values());
+    const audioTrack = audioTracks.find(track => track.track);
     
-    const socketInstance = io(socketUrl, {
-      transports: ['websocket'],
-      autoConnect: true
-    });
-
-    socketInstance.on('connect', () => {
-      console.log('✅ Conectado ao WebSocket para controle de transcrição');
-      setSocket(socketInstance);
-      
-      // Iniciar transcrição online
-      socketInstance.emit('online:start-transcription', {
-        roomName,
-        consultationId,
-        participantId,
-        participantName: participantId
-      });
-    });
-
-    socketInstance.on('online:transcription-started', (data) => {
-      console.log('🎤 Transcrição online iniciada:', data);
-      setIsConnected(true);
-      setError(null);
-      
-      // Iniciar captura de áudio real do LiveKit
-      startLiveKitAudioCapture(socketInstance);
-    });
-
-    socketInstance.on('online:transcription-stopped', (data) => {
-      console.log('🛑 Transcrição online parada:', data);
-      setIsConnected(false);
-    });
-
-    socketInstance.on('error', (data) => {
-      console.error('❌ Erro na transcrição online:', data);
-      setError(data.message || 'Erro desconhecido');
-    });
-
-    return () => {
-      if (socketInstance.connected) {
-        socketInstance.emit('online:stop-transcription', { roomName, consultationId });
-        socketInstance.disconnect();
-      }
-    };
-  }, [enabled, roomName, participantId, consultationId]);
-
-  // Capturar áudio real do LiveKit
-  const startLiveKitAudioCapture = (socket: Socket) => {
-    try {
-      console.log('🎤 Iniciando captura de áudio real do LiveKit...');
-      
-      // Aguardar LiveKit carregar completamente
-      setTimeout(() => {
-        const audioElements = document.querySelectorAll('audio');
-        console.log(`🔍 Elementos de áudio encontrados: ${audioElements.length}`);
-        
-        if (audioElements.length > 0) {
-          audioElements.forEach((audio, index) => {
-            if (audio.srcObject) {
-              const stream = audio.srcObject as MediaStream;
-              const audioTracks = stream.getAudioTracks();
-              
-              if (audioTracks.length > 0) {
-                console.log(`✅ Track de áudio encontrado ${index}, iniciando captura...`);
-                captureAudioFromStream(stream, socket);
-              }
-            }
-          });
-        } else {
-          console.log('⚠️ Nenhum elemento de áudio do LiveKit encontrado');
-        }
-      }, 3000);
-      
-    } catch (error) {
-      console.error('❌ Erro ao iniciar captura de áudio:', error);
+    if (!audioTrack || !audioTrack.track) {
+      console.log('⚠️ Nenhum track de áudio encontrado');
+      return;
     }
-  };
 
-  // Capturar áudio de um stream
-  const captureAudioFromStream = (stream: MediaStream, socket: Socket) => {
+    console.log('✅ Track de áudio encontrado, iniciando transcrição...');
+    setIsConnected(true);
+    setIsTranscribing(true);
+    
+    // Iniciar captura de áudio nativa do LiveKit
+    startNativeLiveKitTranscription(audioTrack.track as LocalAudioTrack);
+    
+  }, [enabled, localParticipant.localParticipant]);
+
+  // Capturar áudio nativo do LiveKit
+  const startNativeLiveKitTranscription = (audioTrack: LocalAudioTrack) => {
     try {
+      console.log('🎤 Iniciando captura de áudio nativa do LiveKit...');
+      
+      // Obter stream do track de áudio do LiveKit
+      const stream = audioTrack.mediaStream;
+      if (!stream) {
+        console.error('❌ Stream de áudio não disponível');
+        setError('Stream de áudio não disponível');
+        return;
+      }
+      
+      console.log('✅ Stream de áudio obtido do LiveKit');
+      
       const audioContext = new AudioContext({ sampleRate: 16000 });
       const source = audioContext.createMediaStreamSource(stream);
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
       
+      let audioChunkCount = 0;
+      
       processor.onaudioprocess = (event) => {
-        if (!socket.connected) return;
+        if (!isTranscribing) return;
         
         const inputData = event.inputBuffer.getChannelData(0);
         
@@ -139,23 +94,19 @@ export function useTranscriptionLiveKit({
         const hasAudio = inputData.some(sample => Math.abs(sample) > 0.01);
         if (!hasAudio) return;
         
+        audioChunkCount++;
+        
         // Converter para Int16Array
         const int16Data = new Int16Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
           int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
         }
         
-        // Enviar para o backend
+        // Enviar áudio via LiveKit Data Channel
         const audioData = Buffer.from(int16Data.buffer).toString('base64');
-        socket.emit('online:audio-data', {
-          roomName,
-          participantId,
-          audioData,
-          sampleRate: 16000,
-          channels: 1
-        });
+        sendAudioViaLiveKit(audioData);
         
-        console.log('🎤 Áudio enviado para transcrição');
+        console.log(`🎤 Áudio enviado via LiveKit (chunk ${audioChunkCount})`);
       };
       
       source.connect(processor);
@@ -163,8 +114,46 @@ export function useTranscriptionLiveKit({
       
       console.log('✅ Captura de áudio LiveKit iniciada');
       
+      // Limpar recursos quando parar
+      const cleanup = () => {
+        processor.disconnect();
+        source.disconnect();
+        audioContext.close();
+      };
+      
+      // Armazenar função de cleanup
+      (localParticipant.localParticipant as any).audioCleanup = cleanup;
+      
     } catch (error) {
-      console.error('❌ Erro ao capturar áudio:', error);
+      console.error('❌ Erro ao iniciar captura de áudio LiveKit:', error);
+      setError('Erro ao iniciar captura de áudio LiveKit');
+    }
+  };
+
+  // Enviar áudio via LiveKit Data Channel
+  const sendAudioViaLiveKit = (audioData: string) => {
+    try {
+      if (!localParticipant.localParticipant) return;
+      
+      const message = {
+        type: 'audio-data',
+        data: {
+          participantId,
+          audioData,
+          sampleRate: 16000,
+          channels: 1,
+          timestamp: Date.now()
+        }
+      };
+      
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify(message));
+      
+      // Enviar via LiveKit Data Channel
+      localParticipant.localParticipant.publishData(data, { reliable: true });
+      
+    } catch (error) {
+      console.error('❌ Erro ao enviar áudio via LiveKit:', error);
     }
   };
 
@@ -214,64 +203,37 @@ export function useTranscriptionLiveKit({
   // Usar hook nativo LiveKit para data channels com callback
   const { send } = useDataChannel('transcription', onDataReceived);
 
-  // Função para enviar áudio para o backend (simulação)
-  const sendAudioToBackend = useCallback((audioData: ArrayBuffer) => {
-    if (!socket?.connected) return;
-
-    try {
-      // Converter para base64
-      const base64Audio = Buffer.from(audioData).toString('base64');
-      
-      // Enviar para o backend
-      socket.emit('online:audio-data', {
-        roomName,
-        participantId,
-        audioData: base64Audio,
-        sampleRate: 16000,
-        channels: 1
-      });
-      
-      console.log('🎤 Áudio enviado para o backend');
-    } catch (error) {
-      console.error('❌ Erro ao enviar áudio:', error);
-    }
-  }, [socket, roomName, participantId]);
-
-  // Funções de controle
+  // Funções de controle LiveKit nativas
   const startTranscription = useCallback(() => {
-    console.log('📝 [LiveKit] startTranscription chamado');
-    if (socket?.connected) {
-      socket.emit('online:start-transcription', {
-        roomName,
-        consultationId,
-        participantId,
-        participantName: participantId
-      });
-    }
-  }, [socket, roomName, consultationId, participantId]);
+    console.log('📝 [LiveKit] Iniciando transcrição nativa...');
+    setIsTranscribing(true);
+    setIsConnected(true);
+  }, []);
 
   const stopTranscription = useCallback(() => {
-    console.log('📝 [LiveKit] stopTranscription chamado');
-    if (socket?.connected) {
-      socket.emit('online:stop-transcription', { roomName, consultationId });
+    console.log('📝 [LiveKit] Parando transcrição nativa...');
+    setIsTranscribing(false);
+    setIsConnected(false);
+    
+    // Limpar recursos de áudio
+    if ((localParticipant.localParticipant as any).audioCleanup) {
+      (localParticipant.localParticipant as any).audioCleanup();
+      (localParticipant.localParticipant as any).audioCleanup = null;
     }
-  }, [socket, roomName, consultationId]);
+  }, [localParticipant.localParticipant]);
 
   const clearTranscriptions = useCallback(() => {
-    console.log('📝 [LiveKit] clearTranscriptions chamado');
+    console.log('📝 [LiveKit] Limpando transcrições...');
     setTranscriptions([]);
-    if (socket?.connected) {
-      socket.emit('online:clear-transcriptions', { roomName, consultationId });
-    }
-  }, [socket, roomName, consultationId]);
+  }, []);
 
   return {
     transcriptions,
     isConnected,
     error,
+    isTranscribing,
     startTranscription,
     stopTranscription,
-    clearTranscriptions,
-    sendAudioToBackend
+    clearTranscriptions
   };
 }

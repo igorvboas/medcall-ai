@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
-import { setupWebSocketHandlers } from './websocket';
+import { livekitNativeHandler } from './handlers/livekitNativeHandler';
 import transcriptionRoutes from './routes/transcription';
 import sessionsRoutes from './routes/sessions';
 
@@ -71,21 +71,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Configurar handlers WebSocket
-console.log('📝 Inicializando handlers WebSocket...');
-setupWebSocketHandlers(io);
+// Configurar LiveKit nativo
+console.log('🎤 Inicializando LiveKit nativo...');
+// LiveKit nativo não precisa de WebSocket para transcrição
 
 // Health check expandido
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    services: {
-      transcription: 'running',
-      websocket: 'running',
-      socketio: io ? 'initialized' : 'not initialized',
-      livekit: 'integrated'
-    },
+        services: {
+          transcription: 'running',
+          livekit: 'native-integration',
+          socketio: io ? 'initialized' : 'not initialized'
+        },
     environment: {
       node_env: process.env.NODE_ENV,
       port: process.env.PORT || 3001,
@@ -117,9 +116,8 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log('🚀 Gateway server running on port', PORT);
   console.log('📝 Transcription service available at /api/transcription');
-  console.log('🔌 WebSocket available for online consultations');
   console.log('🌍 Health check available at /api/health');
-  console.log('🎤 LiveKit transcription integrated');
+  console.log('🎤 LiveKit native transcription integrated');
   console.log('CORS configurado para:', allowedOrigins);
 });
 
