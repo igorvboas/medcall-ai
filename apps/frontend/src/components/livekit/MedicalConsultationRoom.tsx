@@ -94,7 +94,7 @@ export function MedicalConsultationRoom({
       });
       console.log('✅ Mic transmitter started for transcription with participantId:', cleanParticipantId);
     } catch (error) {
-      console.error('❌ Failed to start mic transmitter:', error);
+      console.error('❌❌ Failed to start mic transmitter:', error);
     }
   }, [micTransmitter, sessionId, userRole, isLiveKitConnected]);
 
