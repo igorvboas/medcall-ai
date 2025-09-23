@@ -106,11 +106,18 @@ export function useMicTransmitter() {
     const gatewayUrl = config.gatewayUrl || process.env.NEXT_PUBLIC_GATEWAY_URL || 'ws://localhost:3001';
     const wsUrl = `${gatewayUrl.replace('http', 'ws')}/ws/transcribe?session=${config.sessionId}&participant=${config.participantId}`;
 
+    console.log('[MicTransmitter] 🔗 Connecting WebSocket:', {
+      gatewayUrl,
+      wsUrl,
+      sessionId: config.sessionId,
+      participantId: config.participantId
+    });
+
     return new Promise<WebSocket>((resolve, reject) => {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('[MicTransmitter] WebSocket connected');
+        console.log('[MicTransmitter] ✅ WebSocket connected successfully');
         reconnectAttemptsRef.current = 0;
         setState(prev => ({ ...prev, isConnected: true, error: null }));
         resolve(ws);
@@ -206,8 +213,14 @@ export function useMicTransmitter() {
 
       // Carregar AudioWorklet
       console.log('[MicTransmitter] 📥 Loading AudioWorklet module...');
-      await audioContext.audioWorklet.addModule('/worklets/pcm16-worklet.js');
-      console.log('[MicTransmitter] ✅ AudioWorklet module loaded successfully');
+      try {
+        await audioContext.audioWorklet.addModule('/worklets/pcm16-worklet.js');
+        console.log('[MicTransmitter] ✅ AudioWorklet module loaded successfully');
+      } catch (workletError) {
+        console.error('[MicTransmitter] ❌ Failed to load AudioWorklet:', workletError);
+        const message = workletError instanceof Error ? workletError.message : 'Unknown error';
+        throw new Error(`AudioWorklet loading failed: ${message}`);
+      }
 
       // Criar nós de áudio
       const source = audioContext.createMediaStreamSource(stream);
@@ -231,12 +244,33 @@ export function useMicTransmitter() {
       workletNode.port.onmessage = (event) => {
         buffersSentRef.current++;
 
+        // Log detalhado dos primeiros buffers
+        if (buffersSentRef.current <= 5) {
+          console.log(`[MicTransmitter] 🎵 Worklet buffer #${buffersSentRef.current}:`, {
+            size: event.data.byteLength,
+            wsState: wsRef.current?.readyState,
+            isMuted: state.isMuted,
+            wsReady: wsRef.current?.readyState === WebSocket.OPEN
+          });
+        }
+
         if (wsRef.current?.readyState === WebSocket.OPEN && !state.isMuted) {
-          wsRef.current.send(event.data); // Enviar ArrayBuffer binário
-          
-          // Log ocasional para debug
-          if (buffersSentRef.current % 100 === 0) {
-            console.log(`[MicTransmitter] 📊 Sent ${buffersSentRef.current} buffers, last size: ${event.data.byteLength} bytes`);
+          try {
+            wsRef.current.send(event.data); // Enviar ArrayBuffer binário
+            
+            // Log ocasional para debug
+            if (buffersSentRef.current % 100 === 0) {
+              console.log(`[MicTransmitter] 📊 Sent ${buffersSentRef.current} buffers, last size: ${event.data.byteLength} bytes`);
+            }
+          } catch (sendError) {
+            console.error('[MicTransmitter] ❌ Failed to send buffer via WebSocket:', sendError);
+          }
+        } else {
+          if (buffersSentRef.current <= 10) {
+            console.warn(`[MicTransmitter] ⚠️ Skipping buffer #${buffersSentRef.current} - WS not ready or muted:`, {
+              wsState: wsRef.current?.readyState,
+              isMuted: state.isMuted
+            });
           }
         }
       };
