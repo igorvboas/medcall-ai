@@ -1,4 +1,4 @@
-import { Room, RoomOptions, VideoPresets as LiveKitVideoPresets } from 'livekit-client';
+import { Room, RoomOptions, VideoPresets as LiveKitVideoPresets, LogLevel, setLogLevel } from 'livekit-client';
 
 // Configurações do LiveKit
 export const livekitConfig = {
@@ -45,6 +45,8 @@ export const VideoPresets = {
 
 // Função para criar uma nova instância do Room
 export function createLiveKitRoom(options?: Partial<RoomOptions>): Room {
+  // Configure global log level to reduce noisy logs
+  setLogLevel(LogLevel.warn);
   const roomOptions = { ...defaultRoomOptions, ...options };
   return new Room(roomOptions);
 }

@@ -24,17 +24,7 @@ function DoctorConsultationContent() {
   const livekitUrl = searchParams?.get('livekitUrl');
   
 
-  console.log('🔍 URL Parameters:', {
-    sessionId,
-    consultationId,
-    roomName,
-    doctorToken: doctorToken ? `${doctorToken.substring(0, 20)}...` : 'null',
-    patientName,
-    cameraId,
-    microphoneId,
-    patientToken: patientToken ? `${patientToken.substring(0, 20)}...` : 'null',
-    livekitUrl
-  });
+  // Log removido para evitar spam infinito
 
   // Validar parâmetros obrigatórios
   if (!sessionId || !consultationId || !doctorToken || !roomName || !patientName) {
@@ -87,13 +77,7 @@ function DoctorConsultationContent() {
     // You could show a toast notification here
   };
 
-  console.log('🚀 About to render MedicalConsultationRoom with:', {
-    roomName,
-    sessionId,
-    serverUrl: livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL,
-    token: doctorToken ? `${doctorToken.substring(0, 20)}...` : 'null',
-    patientName: decodeURIComponent(patientName)
-  });
+  // Log removido para evitar spam infinito
 
   return (
     <>

@@ -165,12 +165,7 @@ export function MedicalConsultationRoom({
 
   // Validate required props
   if (!serverUrl || !token) {
-    console.log('[MDR] >> 🔍🔍🔍🔍 Props inválidas:', {
-      serverUrl,
-      token,
-      roomName,
-      participantName
-    });
+    // Log removido para evitar spam infinito
 
     return (
       <div style={{ 
