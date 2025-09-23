@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useDataChannel, useLocalParticipant } from '@livekit/components-react';
 import { Room, LocalAudioTrack, Track } from 'livekit-client';
 
-console.log('[uTLK] >> 🚀🚀🚀 HOOK useTranscriptionLiveKit ARQUIVO CARREGADO!');
+// Logs removidos para evitar spam infinito
 
 interface TranscriptionSegment {
   id: string;
@@ -27,47 +27,27 @@ export function useTranscriptionLiveKit({
   consultationId,
   enabled = true,
 }: UseTranscriptionLiveKitProps) {
-  console.log('[uTLK] >> 🚀🚀🚀 HOOK useTranscriptionLiveKit EXECUTADO!');
-  
   const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
-  console.log('[uTLK] >> 📝 Hook useTranscriptionLiveKit iniciado com:', {
-    roomName,
-    participantId,
-    consultationId,
-    enabled
-  });
-
   // Obter participante local do LiveKit
   const localParticipant = useLocalParticipant();
 
-  // Debug: verificar estado do participante local
-  console.log('[uTLK] >> 🔍 Debug - localParticipant:', localParticipant);
-  console.log('[uTLK] >> 🔍 Debug - localParticipant.localParticipant:', localParticipant.localParticipant);
-
   // Inicializar transcrição LiveKit nativa
   useEffect(() => {
-    console.log('[uTLK] >> 🔍 useEffect executado - enabled:', enabled, 'localParticipant:', !!localParticipant.localParticipant);
-    
     if (!enabled) {
-      console.log('[uTLK] >> ⚠️ Transcrição desabilitada');
       return;
     }
     
     if (!localParticipant.localParticipant) {
-      console.log('[uTLK] >> ⚠️ Participante local não disponível');
       return;
     }
 
-    console.log('[uTLK] >> 🎤 Inicializando transcrição LiveKit nativa...');
-    
     // Garantir que o microfone está habilitado e publicado como Audio Track
     localParticipant.localParticipant.setMicrophoneEnabled(true);
     
-    console.log('[uTLK] >> ✅ Microfone habilitado e publicado como Audio Track');
     setIsConnected(true);
     setIsTranscribing(true);
     
@@ -78,7 +58,7 @@ export function useTranscriptionLiveKit({
     if (!enabled) return;
     
     try {
-      console.log('[uTLK] >> 📝 [LiveKit] Data channel message received:', message);
+      // Log removido
       
       if (!message.payload) return;
       
@@ -86,7 +66,7 @@ export function useTranscriptionLiveKit({
       const messageStr = decoder.decode(message.payload);
       const parsedMessage = JSON.parse(messageStr);
       
-      console.log('[uTLK] >> 📝 [LiveKit] Mensagem decodificada:', parsedMessage);
+      // Log removido
       
       if (parsedMessage.type === 'transcription' && parsedMessage.data) {
         const segment: TranscriptionSegment = {
@@ -94,7 +74,7 @@ export function useTranscriptionLiveKit({
           timestamp: new Date(parsedMessage.data.timestamp)
         };
         
-        console.log('[uTLK] >> 📝 [LiveKit] Nova transcrição recebida:', segment);
+        // Log removido
         
         setTranscriptions(prev => {
           // Evitar duplicatas
@@ -116,7 +96,7 @@ export function useTranscriptionLiveKit({
   const { send } = useDataChannel('lk.transcription', onTranscriptionReceived);
 
   const startTranscription = useCallback(() => {
-    console.log('[uTLK] >> 📝 [LiveKit] Iniciando transcrição nativa...');
+    // Log removido
     setIsTranscribing(true);
     setIsConnected(true);
     
@@ -127,13 +107,13 @@ export function useTranscriptionLiveKit({
   }, [localParticipant.localParticipant]);
 
   const stopTranscription = useCallback(() => {
-    console.log('[uTLK] >> 📝 [LiveKit] Parando transcrição nativa...');
+    // Log removido
     setIsTranscribing(false);
     setIsConnected(false);
   }, []);
 
   const clearTranscriptions = useCallback(() => {
-    console.log('[uTLK] >> 📝 [LiveKit] Limpando transcrições...');
+    // Log removido
     setTranscriptions([]);
   }, []);
 

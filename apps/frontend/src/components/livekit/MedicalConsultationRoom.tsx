@@ -62,6 +62,29 @@ export function MedicalConsultationRoom({
   // Hook para transmissão de áudio para transcrição
   const micTransmitter = useMicTransmitter();
   
+  // Desabilitar logs do LiveKit em produção
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Sobrescrever console.log temporariamente para filtrar logs do LiveKit
+      const originalLog = console.log;
+      console.log = (...args) => {
+        const message = args.join(' ');
+        // Filtrar logs específicos do LiveKit que causam spam
+        if (message.includes('already connected to room') || 
+            message.includes('participant:') || 
+            message.includes('roomID:')) {
+          return; // Não exibir esses logs
+        }
+        originalLog.apply(console, args);
+      };
+
+      // Restaurar console.log original após 5 segundos (depois da inicialização)
+      setTimeout(() => {
+        console.log = originalLog;
+      }, 5000);
+    }
+  }, []);
+  
   // Logs de debug removidos para evitar spam no console
   // Handle connection events
   const handleConnected = async () => {
