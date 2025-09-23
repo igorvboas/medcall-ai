@@ -94,6 +94,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
       });
     } else {
       // Para sessões online, gerar tokens LiveKit
+      console.log(`🌐 PROCESSANDO SESSÃO ONLINE - roomName: ${roomName}`);
       const [doctorToken, patientToken] = await Promise.all([
         generateLiveKitToken(
           participants.doctor.id,

@@ -45,7 +45,7 @@ class LiveKitTranscriberAgentManager {
       });
     });
 
-    // Relay transcriptions back over DataChannel
+    // Relay transcriptions back over Text Stream
     const relay = ({ roomName: rn, segment }: any) => {
       if (rn !== roomName) return;
       try {
