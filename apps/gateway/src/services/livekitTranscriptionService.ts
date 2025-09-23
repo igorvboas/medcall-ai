@@ -106,6 +106,24 @@ export class LiveKitTranscriptionService extends EventEmitter {
   }
 
   /**
+   * Publicar transcrição via LiveKit DataChannel
+   */
+  async publishTranscription(roomName: string, transcriptionData: any): Promise<void> {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify(transcriptionData));
+
+      await this.livekitClient.sendData(roomName, data, DataPacket_Kind.RELIABLE);
+
+      console.log(`📤 Transcrição publicada via DataChannel para sala: ${roomName}`);
+      
+    } catch (error) {
+      console.error(`❌ Erro ao publicar transcrição via DataChannel para ${roomName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Obter estatísticas de transcrição
    */
   async getTranscriptionStats(roomName: string): Promise<any> {

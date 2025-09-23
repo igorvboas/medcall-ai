@@ -5,6 +5,7 @@ import cors from 'cors';
 import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
+import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,6 +30,9 @@ const io = new SocketIOServer(httpServer, {
   transports: ['websocket', 'polling']
 });
 
+// Configurar handler de WebSocket PCM para transcrição
+const pcmHandler = new PCMTranscriptionHandler();
+
 // Middlewares
 app.use(cors({
   origin: allowedOrigins,
@@ -49,6 +53,11 @@ console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Configurada' : 'N
 app.use('/api/transcription', transcriptionRoutes);
 app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
 app.use('/api/sessions', sessionsRoutes);
+
+// Endpoint para estatísticas de WebSocket PCM
+app.get('/api/pcm-transcription/stats', (req, res) => {
+  res.json(pcmHandler.getStats());
+});
 
 // Suas outras rotas existentes podem ser adicionadas aqui
 // app.use('/api/sessions', sessionRoutes);
@@ -92,17 +101,24 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
+// Configurar upgrade para WebSocket PCM
+httpServer.on('upgrade', (request, socket, head) => {
+  pcmHandler.handleUpgrade(request, socket, head);
+});
+
 httpServer.listen(PORT, () => {
   console.log('🚀 Gateway server running on port', PORT);
   console.log('📝 Transcription service available at /api/transcription');
   console.log('🌍 Health check available at /api/health');
   console.log('🎤 LiveKit native transcription integrated');
+  console.log('🎙️ PCM WebSocket transcription available at /ws/transcribe');
   console.log('CORS configurado para:', allowedOrigins);
 });
 
 // Tratamento de sinais de encerramento
 process.on('SIGTERM', () => {
   console.log('📴 SIGTERM recebido, encerrando servidor...');
+  pcmHandler.destroy();
   httpServer.close(() => {
     console.log('✅ Servidor encerrado com sucesso');
     process.exit(0);
@@ -111,6 +127,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('📴 SIGINT recebido, encerrando servidor...');
+  pcmHandler.destroy();
   httpServer.close(() => {
     console.log('✅ Servidor encerrado com sucesso');  
     process.exit(0);

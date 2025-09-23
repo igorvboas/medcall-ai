@@ -8,6 +8,7 @@ import {
   ConnectionStateToast,
 } from '@livekit/components-react'; 
 import { TranscriptionDisplay } from './TranscriptionDisplay';
+import { useMicTransmitter } from '../../hooks/useMicTransmitter';
 
 interface MedicalConsultationRoomProps {
   // Room configuration
@@ -56,25 +57,62 @@ export function MedicalConsultationRoom({
   onShareConsultation,
 }: MedicalConsultationRoomProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isLiveKitConnected, setIsLiveKitConnected] = useState(false);
+  
+  // Hook para transmissão de áudio para transcrição
+  const micTransmitter = useMicTransmitter();
+  
   console.log('MedicalConsultationRoom renderizado!');
   console.log('MedicalConsultationRoom props:', { roomName, participantName, userRole, sessionId, serverUrl, token, patientName, videoCaptureDefaults, audioCaptureDefaults, onConnected, onDisconnected, onError, onEndCall, onShareConsultation });
   // Handle connection events
   const handleConnected = async () => {
     console.log('✅ Connected to room');
     setConnectionError(null);
+    setIsLiveKitConnected(true);
+    
+    // Iniciar transmissão de áudio para transcrição
+    try {
+      await micTransmitter.start({
+        sessionId,
+        participantId: participantName,
+      });
+      console.log('✅ Mic transmitter started for transcription');
+    } catch (error) {
+      console.error('❌ Failed to start mic transmitter:', error);
+    }
+    
     onConnected?.();
   };
 
   const handleDisconnected = () => {
     console.log('❌ Disconnected from room');
+    setIsLiveKitConnected(false);
+    
+    // Parar transmissão de áudio
+    micTransmitter.stop();
+    console.log('🔇 Mic transmitter stopped');
+    
     onDisconnected?.();
   };
 
   const handleError = (error: Error) => {
     console.error('❌ Room error:', error);
     setConnectionError(error.message);
+    
+    // Parar transmissão de áudio em caso de erro
+    if (isLiveKitConnected) {
+      micTransmitter.stop();
+    }
+    
     onError?.(error);
   };
+
+  // Cleanup mic transmitter on unmount
+  useEffect(() => {
+    return () => {
+      micTransmitter.stop();
+    };
+  }, [micTransmitter]);
 
   // Validate required props
   if (!serverUrl || !token) {
