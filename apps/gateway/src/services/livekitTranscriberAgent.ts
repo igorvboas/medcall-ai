@@ -19,6 +19,8 @@ class LiveKitTranscriberAgentManager {
     const token = await this.createAccessToken(roomName);
 
     const room = new Room();
+    // Garantir auto-subscribe para tracks remotas
+    try { (room as any).setAutoSubscribe?.(true); } catch {}
     await room.connect(url, token);
 
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
@@ -27,7 +29,9 @@ class LiveKitTranscriberAgentManager {
         participant: participant?.identity,
         sid: (track as any)?.sid,
       });
-      if (track.kind !== 'audio' as any) return;
+      const kind = (track as any)?.kind;
+      // Aceitar 'audio' (browser) ou 1 (enum numérico no Node bindings)
+      if (!(kind === 'audio' || kind === 1)) return;
       const audioTrack = track as RemoteAudioTrack;
       // createAudioStream is provided by @livekit/rtc-node at runtime,
       // but it's not in the TypeScript typings of livekit-client.
