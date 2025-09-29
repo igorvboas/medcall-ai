@@ -34,6 +34,10 @@ export function ConsultationRoom({
   const [isTranscriptionActive, setIsTranscriptionActive] = useState(false);
   const [showAnswerButton, setShowAnswerButton] = useState(false);
   
+  // Estados para modal do paciente - igual ao projeto original
+  const [showParticipantModal, setShowParticipantModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   // Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -149,52 +153,118 @@ export function ConsultationRoom({
     };
   }, [userName]);
 
-  // Determinar nome do usuário baseado no role
+  // Determinar nome do usuário baseado no userType - igual ao projeto original
   useEffect(() => {
-    if (role === 'host') {
-      // Host - usar nome salvo ou solicitar
-      const savedHostName = localStorage.getItem('hostName');
+    if (userType === 'doctor') {
+      // Médico: usar nome salvo ou prompt
+      let savedHostName = localStorage.getItem('hostName');
+      if (!savedHostName) {
+        const prompted = prompt('Digite seu nome (Médico):');
+        if (prompted && prompted.trim()) {
+          savedHostName = prompted.trim();
+          localStorage.setItem('hostName', savedHostName);
+        }
+      }
+      
       if (savedHostName) {
         setUserName(savedHostName);
       } else {
-        const prompted = prompt('Digite seu nome (Host):');
-        if (prompted && prompted.trim()) {
-          setUserName(prompted.trim());
-          localStorage.setItem('hostName', prompted.trim());
-        }
+        alert('Erro: Nome do médico não informado. Recarregue a página.');
       }
-    } else {
-      // Participante - solicitar nome
-      const name = prompt('Digite seu nome:');
-      if (name && name.trim()) {
-        setUserName(name.trim());
-      }
+    } else if (userType === 'patient') {
+      // Paciente: mostrar modal para digitar nome - igual ao projeto original
+      setShowParticipantModal(true);
     }
-  }, [role]);
+  }, [userType]);
 
-  // Inicializar setup automático para pacientes quando socket conectar
+  // Inicializar conexão Socket.IO quando userName for definido
   useEffect(() => {
-    if (userName && userType === 'patient' && isConnected) {
-      console.log('🩺 [PACIENTE] Socket conectado, iniciando setup automático...');
-      initializeMediaForPatient();
+    if (userName && !socketRef.current) {
+      loadSocketIO();
+    }
+  }, [userName]);
+
+  // Entrar na sala quando conectar como médico
+  useEffect(() => {
+    if (userName && userType === 'doctor' && isConnected) {
+      joinRoomAsHost();
     }
   }, [userName, userType, isConnected]);
 
-  const initializeMediaForPatient = async () => {
-    try {
-      console.log('🩺 [PACIENTE] Inicializando setup completo automaticamente...');
-      
-      // 1. Obter mídia (câmera/mic) - igual ao fetchUserMedia do Answer
-      await fetchUserMedia();
-      
-      // 2. Ativar transcrição automaticamente para participante
-      if (userType === 'patient') {
-        await autoActivateTranscriptionForParticipant();
+  // Função para entrar como médico (host) - igual ao projeto original
+  const joinRoomAsHost = async () => {
+    console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
+    
+    if (socketRef.current) {
+      socketRef.current.emit('joinRoom', {
+        roomId: roomId,
+        participantName: userName
+      }, (response: any) => {
+        if (response.success) {
+          setUserRole(response.role);
+          setRoomData(response.roomData);
+          console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
+          initializeTranscription();
+        } else {
+          alert('Erro ao entrar na sala: ' + response.error);
+        }
+      });
+    }
+  };
+
+  // Função para entrar como paciente (participant) - igual ao projeto original
+  const joinRoomAsParticipant = async (participantName: string) => {
+    console.log('🩺 [PACIENTE] Entrando como PARTICIPANTE:', participantName);
+    setUserName(participantName);
+    
+    if (socketRef.current) {
+      socketRef.current.emit('joinRoom', {
+        roomId: roomId,
+        participantName: participantName
+      }, (response: any) => {
+        if (response.success) {
+          setUserRole(response.role);
+          setRoomData(response.roomData);
+          setShowParticipantModal(false);
+          console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
+          
+          // Inicializar transcrição e ativar automaticamente
+          initializeTranscription().then(() => {
+            if (response.role === 'participant') {
+              autoActivateTranscriptionForParticipant();
+            }
+          });
+        } else {
+          setErrorMessage(response.error);
+        }
+      });
+    }
+  };
+
+  // Função para inicializar transcrição - igual ao projeto original
+  const initializeTranscription = () => {
+    return new Promise((resolve) => {
+      if (transcriptionManagerRef.current && socketRef.current) {
+        transcriptionManagerRef.current.setSocket(socketRef.current);
+        
+        // Definir variáveis globais para transcription.js acessar
+        (window as any).userName = userName;
+        (window as any).currentRoomId = roomId;
+        
+        resolve(true);
+      } else {
+        resolve(false);
       }
-      
-      console.log('🩺 [PACIENTE] ✅ Setup completo finalizado - pronto para receber chamadas');
-    } catch (error) {
-      console.error('🩺 [PACIENTE] ❌ Erro no setup automático:', error);
+    });
+  };
+
+  // Função para lidar com o clique no botão "Entrar na Sala"
+  const handleJoinRoom = () => {
+    const name = participantName.trim();
+    if (name) {
+      joinRoomAsParticipant(name);
+    } else {
+      setErrorMessage('Por favor, digite seu nome');
     }
   };
 
@@ -318,13 +388,13 @@ export function ConsultationRoom({
       setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
     });
 
-    // Para pacientes: mostrar botão Answer quando receber oferta
+    // Para pacientes: processar oferta automaticamente - igual ao projeto original
     socketRef.current.on('newOffer', (data: any) => {
       if (userType === 'patient') {
-        setShowAnswerButton(true);
+        console.log('🩺 [PACIENTE] Oferta recebida, processando automaticamente...');
+        // Processar oferta automaticamente (sem botão Answer)
+        answerOffer(data);
       }
-      // Processar oferta normalmente
-      answerOffer(data);
     });
   };
 
@@ -425,49 +495,39 @@ export function ConsultationRoom({
   };
 
   const answerOffer = async (offerData: any) => {
-    console.log('🩺 [PACIENTE] Processando oferta recebida...');
-    console.log('🩺 [PACIENTE] Stream local disponível:', !!localStreamRef.current);
-    console.log('🩺 [PACIENTE] Tracks do stream local:', localStreamRef.current?.getTracks().length || 0);
+    console.log('🩺 [PACIENTE] Processando oferta recebida automaticamente...');
     
-    // Não precisa fazer fetchUserMedia novamente - já foi feito automaticamente
-    await createPeerConnection({ offer: offerData.offer });
-    
-    // ✅ CORREÇÃO: Garantir que o stream local seja adicionado ao peerConnection
-    if (localStreamRef.current && peerConnectionRef.current) {
-      console.log('🩺 [PACIENTE] Adicionando stream local ao peerConnection...');
-      const tracks = localStreamRef.current.getTracks();
-      console.log('🩺 [PACIENTE] Tracks para adicionar:', tracks.length);
+    try {
+      // 1. fetchUserMedia - igual ao projeto original
+      await fetchUserMedia();
       
-      tracks.forEach((track, index) => {
-        console.log(`🩺 [PACIENTE] Adicionando track ${index}:`, track.kind, track.enabled);
-        peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+      // 2. createPeerConnection - igual ao projeto original
+      await createPeerConnection({ offer: offerData.offer });
+      
+      // 3. Criar e enviar resposta - igual ao projeto original
+      const answer = await peerConnectionRef.current!.createAnswer({});
+      await peerConnectionRef.current!.setLocalDescription(answer);
+      
+      setRemoteUserName(offerData.offererUserName);
+      console.log('🩺 [PACIENTE] Peer remoto identificado:', offerData.offererUserName);
+      
+      // Processar ICE candidates pendentes
+      processPendingIceCandidates();
+      
+      // Enviar resposta com roomId - igual ao projeto original
+      socketRef.current.emit('newAnswer', {
+        roomId: roomId,
+        answer: answer
+      }, (offerIceCandidates: any[]) => {
+        offerIceCandidates.forEach(c => {
+          addIceCandidate(c);
+        });
       });
       
-      // Verificar se tracks foram adicionados
-      const senders = peerConnectionRef.current.getSenders();
-      console.log('🩺 [PACIENTE] Senders no peerConnection:', senders.length);
+      console.log('🩺 [PACIENTE] ✅ Oferta processada e resposta criada automaticamente');
+    } catch (error) {
+      console.error('🩺 [PACIENTE] ❌ Erro ao processar oferta:', error);
     }
-    
-    const answer = await peerConnectionRef.current!.createAnswer({});
-    await peerConnectionRef.current!.setLocalDescription(answer);
-    
-    setRemoteUserName(offerData.offererUserName);
-    console.log('🩺 [PACIENTE] Peer remoto identificado:', offerData.offererUserName);
-    
-    // Processar ICE candidates pendentes após definir localDescription
-    processPendingIceCandidates();
-    
-    // Enviar resposta com roomId
-    socketRef.current.emit('newAnswer', {
-      roomId: roomId,
-      answer: answer
-    }, (offerIceCandidates: any[]) => {
-      offerIceCandidates.forEach(c => {
-        addIceCandidate(c);
-      });
-    });
-    
-    console.log('🩺 [PACIENTE] ✅ Oferta processada e resposta criada');
   };
 
   const addIceCandidate = async (iceCandidate: any) => {
@@ -860,6 +920,34 @@ export function ConsultationRoom({
           </div>
         )}
       </div>
+
+      {/* Modal do participante - igual ao projeto original */}
+      {showParticipantModal && (
+        <div className="participant-form">
+          <div className="participant-form-content">
+            <h3>Digite seu nome para entrar na sala</h3>
+            <input
+              type="text"
+              placeholder="Seu nome"
+              value={participantName}
+              onChange={(e) => setParticipantName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleJoinRoom();
+                }
+              }}
+            />
+            <button onClick={handleJoinRoom}>
+              Entrar na Sala
+            </button>
+            {errorMessage && (
+              <div className="error-message" style={{ display: 'block' }}>
+                {errorMessage}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
