@@ -68,9 +68,8 @@ export function ConsultationRoom({
     ]
   };
 
-  // Carregar Socket.IO dinamicamente
-  useEffect(() => {
-    const loadSocketIO = async () => {
+  // Função para carregar Socket.IO dinamicamente
+  const loadSocketIO = async () => {
       try {
         // Se Socket.IO já está carregado, usar diretamente
         if (window.io) {
@@ -97,7 +96,7 @@ export function ConsultationRoom({
       }
     };
 
-    const connectSocket = () => {
+  const connectSocket = () => {
       if (window.io) {
         console.log('Conectando ao servidor Socket.IO...');
         socketRef.current = window.io.connect(
@@ -132,11 +131,8 @@ export function ConsultationRoom({
       }
     };
 
-    if (userName) {
-      loadSocketIO();
-    }
-
-    // Cleanup ao desmontar componente
+  // Cleanup ao desmontar componente
+  useEffect(() => {
     return () => {
       if (transcriptionManagerRef.current) {
         transcriptionManagerRef.current.disconnect();
@@ -151,7 +147,7 @@ export function ConsultationRoom({
         socketRef.current.disconnect();
       }
     };
-  }, [userName]);
+  }, []);
 
   // Determinar nome do usuário baseado no userType - igual ao projeto original
   useEffect(() => {
