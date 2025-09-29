@@ -329,6 +329,21 @@
   background: #c0392b;
 }
 
+.btn-answer {
+  background: #4caf50;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-answer:hover {
+  background: #45a049;
+}
+
 .video-layout {
   display: flex;
   gap: 16px;
@@ -426,6 +441,7 @@
   background: #c0392b;
 }
 
+.suggestions-box,
 .transcription-box {
   background: #1a1a1a;
   border-radius: 12px;
@@ -435,6 +451,28 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+.suggestions-box h6,
+.transcription-box h6 {
+  color: #d4a574;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.suggestions-content {
+  flex: 1;
+  overflow-y: auto;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.suggestions-content p {
+  margin: 0;
+  color: #888;
 }
 
 .transcription-header {

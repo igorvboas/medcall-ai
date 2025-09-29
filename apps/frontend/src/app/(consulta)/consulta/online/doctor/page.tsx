@@ -36,6 +36,7 @@ function DoctorConsultationContent() {
       <ConsultationRoom 
         roomId={roomId}
         role={role as 'host' | 'participant'}
+        userType="doctor"
         patientId={patientId || undefined}
         patientName={patientName || undefined}
         onEndCall={() => {

@@ -8,6 +8,7 @@ import { TranscriptionManager } from './TranscriptionManager';
 interface ConsultationRoomProps {
   roomId: string;
   role?: 'host' | 'participant';
+  userType?: 'doctor' | 'patient';
   patientId?: string;
   patientName?: string;
   onEndCall?: () => void;
@@ -16,8 +17,9 @@ interface ConsultationRoomProps {
 export function ConsultationRoom({ 
   roomId, 
   role, 
+  userType = 'doctor',
   patientId, 
-  patientName,
+  patientName, 
   onEndCall 
 }: ConsultationRoomProps) {
   const router = useRouter();
@@ -30,6 +32,7 @@ export function ConsultationRoom({
   const [transcriptionText, setTranscriptionText] = useState('');
   const [transcriptionStatus, setTranscriptionStatus] = useState('Desconectado');
   const [isTranscriptionActive, setIsTranscriptionActive] = useState(false);
+  const [showAnswerButton, setShowAnswerButton] = useState(false);
   
   // Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -170,6 +173,15 @@ export function ConsultationRoom({
       console.log('Transcrição recebida de', data.from, ':', data.transcription);
       setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
     });
+
+    // Para pacientes: mostrar botão Answer quando receber oferta
+    socketRef.current.on('newOffer', (data: any) => {
+      if (userType === 'patient') {
+        setShowAnswerButton(true);
+      }
+      // Processar oferta normalmente
+      answerOffer(data);
+    });
   };
 
   const joinRoom = () => {
@@ -206,6 +218,7 @@ export function ConsultationRoom({
       const offer = await peerConnectionRef.current!.createOffer();
       await peerConnectionRef.current!.setLocalDescription(offer);
       setDidIOffer(true);
+      setIsCallActive(true);
       
       // Enviar oferta com roomId
       socketRef.current.emit('newOffer', {
@@ -214,6 +227,29 @@ export function ConsultationRoom({
       });
     } catch(err) {
       console.error(err);
+    }
+  };
+
+  const answer = async () => {
+    if (!socketRef.current || !localStreamRef.current) return;
+    
+    setIsCallActive(true);
+    setShowAnswerButton(false);
+    
+    // O peerConnection já foi criado quando recebeu a oferta
+    if (peerConnectionRef.current && localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+      });
+      
+      const answer = await peerConnectionRef.current.createAnswer();
+      await peerConnectionRef.current.setLocalDescription(answer);
+      
+      socketRef.current.emit('newAnswer', {
+        answer: answer,
+        roomId: roomId,
+        from: userName
+      });
     }
   };
 
@@ -428,13 +464,13 @@ export function ConsultationRoom({
         </div>
         
         <div className="room-controls">
-          {userRole === 'host' && !isCallActive && (
+          {userType === 'doctor' && !isCallActive && (
             <button className="btn-call" onClick={call}>
               Call
             </button>
           )}
           
-          {userRole === 'host' && (
+          {userType === 'doctor' && (
             <button 
               className="btn-transcription" 
               onClick={toggleTranscription}
@@ -443,9 +479,15 @@ export function ConsultationRoom({
             </button>
           )}
           
-          {userRole === 'host' && (
+          {userType === 'doctor' && (
             <button className="btn-end-room" onClick={endRoom}>
               Finalizar Sala
+            </button>
+          )}
+
+          {userType === 'patient' && showAnswerButton && (
+            <button className="btn-answer" onClick={answer}>
+              Answer
             </button>
           )}
         </div>
@@ -503,10 +545,18 @@ export function ConsultationRoom({
           </div>
         </div>
 
-        {/* Sidebar */}
-        {userRole === 'host' && (
+        {/* Sidebar - Apenas para médicos */}
+        {userType === 'doctor' && (
           <div className="video-sidebar">
-            {/* Status da transcrição */}
+            {/* Section de Sugestões */}
+            <div className="suggestions-box">
+              <h6>Sugestões</h6>
+              <div className="suggestions-content">
+                <p className="text-muted">As sugestões médicas aparecerão aqui baseadas na transcrição da consulta.</p>
+              </div>
+            </div>
+
+            {/* Section de Transcrição */}
             <div className="transcription-box">
               <div className="transcription-header">
                 <h6>
