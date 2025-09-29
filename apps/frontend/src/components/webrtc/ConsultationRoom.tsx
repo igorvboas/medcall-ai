@@ -45,6 +45,7 @@ export function ConsultationRoom({
   const socketRef = useRef<any>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   
   // Refs para transcrição
   const audioProcessorRef = useRef<AudioProcessor | null>(null);
@@ -633,6 +634,12 @@ export function ConsultationRoom({
     console.log('🔗 [WEBRTC] Criando PeerConnection...');
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
     
+    // ✅ CORREÇÃO: Criar remoteStream igual ao projeto original
+    remoteStreamRef.current = new MediaStream();
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    }
+    
     if (localStreamRef.current) {
       const tracks = localStreamRef.current.getTracks();
       console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
@@ -660,15 +667,17 @@ export function ConsultationRoom({
       }
     });
     
+    // ✅ CORREÇÃO: Event 'track' igual ao projeto original
     peerConnectionRef.current.addEventListener('track', e => {
       console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, e.track.enabled);
       console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
       
-      if (remoteVideoRef.current && e.streams[0]) {
-        console.log('🔗 [WEBRTC] Definindo stream remoto no elemento de vídeo');
-        remoteVideoRef.current.srcObject = e.streams[0];
-      } else {
-        console.log('🔗 [WEBRTC] ❌ Elemento de vídeo remoto não encontrado ou sem streams');
+      // Adicionar tracks ao remoteStream igual ao projeto original
+      if (e.streams[0] && remoteStreamRef.current) {
+        e.streams[0].getTracks().forEach(track => {
+          console.log('🔗 [WEBRTC] Adicionando track remoto:', track.kind);
+          remoteStreamRef.current!.addTrack(track);
+        });
       }
     });
 
