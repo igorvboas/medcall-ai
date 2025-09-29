@@ -1,5 +1,7 @@
 // TranscriptionManager.ts - Gerenciador de transcrição em tempo real (usando proxy backend)
 // Baseado no transcription.js funcional
+import { AudioProcessor } from './AudioProcessor';
+
 
 export class TranscriptionManager {
   private socket: any = null;

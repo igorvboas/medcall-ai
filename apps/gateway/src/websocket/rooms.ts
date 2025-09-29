@@ -411,6 +411,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       });
 
       openAIWs.on('message', (data) => {
+        const message = data.toString();        
+        // Log específico para transcrições
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.type === 'conversation.item.input_audio_transcription.completed') {
+            console.log(`[${userName}] 📝 TRANSCRIÇÃO:`, parsed.transcript);
+          }
+        } catch (e) {
+          // Ignorar erros de parsing
+        }
         socket.emit('transcription:message', data.toString());
       });
 

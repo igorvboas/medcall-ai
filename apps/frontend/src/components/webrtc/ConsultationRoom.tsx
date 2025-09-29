@@ -172,19 +172,86 @@ export function ConsultationRoom({
     }
   }, [role]);
 
-  // Inicializar mídia automaticamente para pacientes (para transcrição)
+  // Inicializar setup automático para pacientes quando socket conectar
   useEffect(() => {
-    if (userName && userType === 'patient') {
+    if (userName && userType === 'patient' && isConnected) {
+      console.log('🩺 [PACIENTE] Socket conectado, iniciando setup automático...');
       initializeMediaForPatient();
     }
-  }, [userName, userType]);
+  }, [userName, userType, isConnected]);
 
   const initializeMediaForPatient = async () => {
     try {
-      console.log('Inicializando mídia para paciente (transcrição)...');
+      console.log('🩺 [PACIENTE] Inicializando setup completo automaticamente...');
+      
+      // 1. Obter mídia (câmera/mic) - igual ao fetchUserMedia do Answer
       await fetchUserMedia();
+      
+      // 2. Ativar transcrição automaticamente para participante
+      if (userType === 'patient') {
+        await autoActivateTranscriptionForParticipant();
+      }
+      
+      console.log('🩺 [PACIENTE] ✅ Setup completo finalizado - pronto para receber chamadas');
     } catch (error) {
-      console.error('Erro ao inicializar mídia para paciente:', error);
+      console.error('🩺 [PACIENTE] ❌ Erro no setup automático:', error);
+    }
+  };
+
+  const autoActivateTranscriptionForParticipant = async () => {
+    console.log('🎤 [PACIENTE] Ativando transcrição automaticamente...');
+    
+    try {
+      if (!transcriptionManagerRef.current) {
+        console.log('🎤 [PACIENTE] ❌ TranscriptionManager não inicializado');
+        return;
+      }
+
+      if (!socketRef.current || !socketRef.current.connected) {
+        console.log('🎤 [PACIENTE] ❌ Socket não conectado, aguardando...');
+        // Aguardar socket conectar
+        const waitForSocket = setInterval(() => {
+          if (socketRef.current && socketRef.current.connected) {
+            clearInterval(waitForSocket);
+            autoActivateTranscriptionForParticipant();
+          }
+        }, 500);
+        
+        setTimeout(() => clearInterval(waitForSocket), 10000);
+        return;
+      }
+
+      // Conectar à OpenAI
+      console.log('🎤 [PACIENTE] Conectando à OpenAI...');
+      const success = await transcriptionManagerRef.current.init();
+      
+      if (success) {
+        console.log('🎤 [PACIENTE] ✅ Transcrição conectada (aguardando AudioProcessor)');
+        setTranscriptionStatus('Conectado');
+        
+        // Verificar a cada 500ms se audioProcessor está pronto
+        const checkAudioProcessor = setInterval(() => {
+          if (audioProcessorRef.current && audioProcessorRef.current.getStatus().initialized) {
+            console.log('🎤 [PACIENTE] ✅ AudioProcessor pronto, iniciando transcrição...');
+            clearInterval(checkAudioProcessor);
+            
+            transcriptionManagerRef.current!.start();
+            setIsTranscriptionActive(true);
+            setTranscriptionStatus('Transcrevendo');
+          }
+        }, 500);
+        
+        // Timeout de 10 segundos
+        setTimeout(() => {
+          clearInterval(checkAudioProcessor);
+        }, 10000);
+      } else {
+        console.log('🎤 [PACIENTE] ❌ Falha ao conectar transcrição');
+        setTranscriptionStatus('Erro');
+      }
+    } catch (error) {
+      console.error('🎤 [PACIENTE] ❌ Erro ao ativar transcrição automática:', error);
+      setTranscriptionStatus('Erro');
     }
   };
 
@@ -301,20 +368,24 @@ export function ConsultationRoom({
     }
 
     if (!localStreamRef.current) {
-      alert('Erro: Stream de mídia não disponível');
+      alert('Erro: Stream de mídia não disponível. Recarregue a página.');
       return;
     }
     
+    console.log('🩺 [PACIENTE] Respondendo à chamada...');
     setIsCallActive(true);
     setShowAnswerButton(false);
     
     // O peerConnection já foi criado quando recebeu a oferta
+    // E o setup já foi feito automaticamente ao carregar a página
     if (peerConnectionRef.current && localStreamRef.current) {
       try {
+        // Adicionar tracks do stream local ao peerConnection
         localStreamRef.current.getTracks().forEach(track => {
           peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
         });
         
+        // Criar e enviar resposta
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
         
@@ -323,22 +394,26 @@ export function ConsultationRoom({
           roomId: roomId,
           from: userName
         });
+        
+        console.log('🩺 [PACIENTE] ✅ Resposta enviada - chamada estabelecida');
       } catch(err) {
-        console.error('Erro ao responder chamada:', err);
+        console.error('🩺 [PACIENTE] ❌ Erro ao responder chamada:', err);
         alert('Erro ao responder chamada: ' + err);
       }
     }
   };
 
   const answerOffer = async (offerData: any) => {
-    await fetchUserMedia();
+    console.log('🩺 [PACIENTE] Processando oferta recebida...');
+    
+    // Não precisa fazer fetchUserMedia novamente - já foi feito automaticamente
     await createPeerConnection({ offer: offerData.offer });
     
     const answer = await peerConnectionRef.current!.createAnswer({});
     await peerConnectionRef.current!.setLocalDescription(answer);
     
     setRemoteUserName(offerData.offererUserName);
-    console.log('Peer remoto identificado:', offerData.offererUserName);
+    console.log('🩺 [PACIENTE] Peer remoto identificado:', offerData.offererUserName);
     
     // Processar ICE candidates pendentes após definir localDescription
     processPendingIceCandidates();
@@ -352,6 +427,8 @@ export function ConsultationRoom({
         addIceCandidate(c);
       });
     });
+    
+    console.log('🩺 [PACIENTE] ✅ Oferta processada e resposta criada');
   };
 
   const addIceCandidate = async (iceCandidate: any) => {
