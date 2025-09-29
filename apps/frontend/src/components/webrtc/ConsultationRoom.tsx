@@ -284,26 +284,6 @@ export function ConsultationRoom({
     }
   };
 
-  const setupTranscriptionPeerSharing = () => {
-    if (!transcriptionManagerRef.current || !socketRef.current) return;
-    
-    // Configurar callback para enviar transcrições para o peer
-    transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
-      setTranscriptionText(transcript);
-      
-      // Enviar transcrição para o peer via socket
-      if (socketRef.current && roomId && userName) {
-        socketRef.current.emit('sendTranscriptionToPeer', {
-          roomId: roomId,
-          from: userName,
-          transcription: transcript, // ✅ CORREÇÃO: usar 'transcription' em vez de 'transcript'
-          timestamp: new Date().toISOString()
-        });
-      }
-    };
-    
-    console.log('🎤 [TRANSCRIÇÃO] Configurado para enviar transcrições para peer');
-  };
 
   const autoActivateTranscriptionForParticipant = async () => {
     console.log('🎤 [PACIENTE] Ativando transcrição automaticamente...');
@@ -631,13 +611,21 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
           
-          // Configurar callback para atualizar UI
+          // ✅ CORREÇÃO: Configurar callback único com ambas as funcionalidades
           transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
+            console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
             setTranscriptionText(transcript);
+            
+            // Enviar transcrição para o peer via socket
+            if (socketRef.current && roomId && userName) {
+              socketRef.current.emit('sendTranscriptionToPeer', {
+                roomId: roomId,
+                from: userName,
+                transcription: transcript,
+                timestamp: new Date().toISOString()
+              });
+            }
           };
-          
-          // ✅ CORREÇÃO: Configurar para enviar transcrições para o peer
-          setupTranscriptionPeerSharing();
         }
       } else {
         console.log('AudioProcessor já inicializado, reutilizando...');

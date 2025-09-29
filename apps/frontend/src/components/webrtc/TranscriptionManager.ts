@@ -21,12 +21,6 @@ export class TranscriptionManager {
    * Define a referência do socket.io
    */
   setSocket(socketInstance: any): void {
-    // ✅ PROTEÇÃO: Evitar múltiplos listeners
-    if (this.socket === socketInstance) {
-      console.log('🎤 [TRANSCRIPTION] Socket já configurado, ignorando...');
-      return;
-    }
-    
     this.socket = socketInstance;
     this.setupSocketListeners();
   }
