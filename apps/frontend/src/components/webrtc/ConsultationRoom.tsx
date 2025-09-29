@@ -205,7 +205,14 @@ export function ConsultationRoom({
           setUserRole(response.role);
           setRoomData(response.roomData);
           console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
-          initializeTranscription();
+          
+          // Inicializar mídia e transcrição
+          fetchUserMedia().then(() => {
+            console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído na entrada da sala');
+            return initializeTranscription();
+          }).then(() => {
+            console.log('👨‍⚕️ [MÉDICO] ✅ Transcrição inicializada');
+          });
         } else {
           alert('Erro ao entrar na sala: ' + response.error);
         }
@@ -229,8 +236,11 @@ export function ConsultationRoom({
           setShowParticipantModal(false);
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
-          // Inicializar transcrição e ativar automaticamente
-          initializeTranscription().then(() => {
+          // Inicializar mídia, transcrição e ativar automaticamente
+          fetchUserMedia().then(() => {
+            console.log('🩺 [PACIENTE] ✅ fetchUserMedia concluído na entrada da sala');
+            return initializeTranscription();
+          }).then(() => {
             if (response.role === 'participant') {
               autoActivateTranscriptionForParticipant();
             }
