@@ -172,6 +172,22 @@ export function ConsultationRoom({
     }
   }, [role]);
 
+  // Inicializar mídia automaticamente para pacientes (para transcrição)
+  useEffect(() => {
+    if (userName && userType === 'patient') {
+      initializeMediaForPatient();
+    }
+  }, [userName, userType]);
+
+  const initializeMediaForPatient = async () => {
+    try {
+      console.log('Inicializando mídia para paciente (transcrição)...');
+      await fetchUserMedia();
+    } catch (error) {
+      console.error('Erro ao inicializar mídia para paciente:', error);
+    }
+  };
+
   const setupSocketListeners = () => {
     if (!socketRef.current) return;
 
@@ -400,13 +416,15 @@ export function ConsultationRoom({
       }
       localStreamRef.current = stream;
       
-      // Inicializar AudioProcessor para transcrição
+      // Inicializar AudioProcessor para transcrição (apenas uma vez)
       if (!audioProcessorRef.current) {
+        console.log('Inicializando AudioProcessor...');
         audioProcessorRef.current = new AudioProcessor();
         await audioProcessorRef.current.init(stream);
         
-        // Inicializar TranscriptionManager
+        // Inicializar TranscriptionManager (apenas uma vez)
         if (!transcriptionManagerRef.current) {
+          console.log('Inicializando TranscriptionManager...');
           transcriptionManagerRef.current = new TranscriptionManager();
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
@@ -416,9 +434,11 @@ export function ConsultationRoom({
             setTranscriptionText(transcript);
           };
         }
+      } else {
+        console.log('AudioProcessor já inicializado, reutilizando...');
       }
     } catch(err) {
-      console.error(err);
+      console.error('Erro ao obter mídia:', err);
     }
   };
 
@@ -604,6 +624,15 @@ export function ConsultationRoom({
               Answer
             </button>
           )}
+
+          {userType === 'patient' && isCallActive && (
+            <button 
+              className="btn-transcription" 
+              onClick={toggleTranscription}
+            >
+              {isTranscriptionActive ? 'Parar Transcrição' : 'Ativar Transcrição'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -659,18 +688,20 @@ export function ConsultationRoom({
           </div>
         </div>
 
-        {/* Sidebar - Apenas para médicos */}
-        {userType === 'doctor' && (
+        {/* Sidebar - Médicos sempre veem, pacientes só durante chamada */}
+        {(userType === 'doctor' || (userType === 'patient' && isCallActive)) && (
           <div className="video-sidebar">
-            {/* Section de Sugestões */}
-            <div className="suggestions-box">
-              <h6>Sugestões</h6>
-              <div className="suggestions-content">
-                <p className="text-muted">As sugestões médicas aparecerão aqui baseadas na transcrição da consulta.</p>
+            {/* Section de Sugestões - Apenas para médicos */}
+            {userType === 'doctor' && (
+              <div className="suggestions-box">
+                <h6>Sugestões</h6>
+                <div className="suggestions-content">
+                  <p className="text-muted">As sugestões médicas aparecerão aqui baseadas na transcrição da consulta.</p>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Section de Transcrição */}
+            {/* Section de Transcrição - Para médicos e pacientes (quando chamada ativa) */}
             <div className="transcription-box">
               <div className="transcription-header">
                 <h6>
