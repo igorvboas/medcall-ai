@@ -45,6 +45,9 @@ export function ConsultationRoom({
   const audioProcessorRef = useRef<AudioProcessor | null>(null);
   const transcriptionManagerRef = useRef<TranscriptionManager | null>(null);
   
+  // Fila de ICE candidates pendentes
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  
   // Variáveis WebRTC
   const [didIOffer, setDidIOffer] = useState(false);
   const [remoteUserName, setRemoteUserName] = useState('');
@@ -201,9 +204,8 @@ export function ConsultationRoom({
     });
 
     socketRef.current.on('receivedIceCandidateFromServer', (iceCandidate: any) => {
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.addIceCandidate(iceCandidate);
-      }
+      console.log('ICE candidate recebido:', iceCandidate);
+      addIceCandidate(iceCandidate);
     });
 
     // Transcrição listeners
@@ -322,22 +324,67 @@ export function ConsultationRoom({
     setRemoteUserName(offerData.offererUserName);
     console.log('Peer remoto identificado:', offerData.offererUserName);
     
+    // Processar ICE candidates pendentes após definir localDescription
+    processPendingIceCandidates();
+    
     // Enviar resposta com roomId
     socketRef.current.emit('newAnswer', {
       roomId: roomId,
       answer: answer
     }, (offerIceCandidates: any[]) => {
       offerIceCandidates.forEach(c => {
-        if (peerConnectionRef.current) {
-          peerConnectionRef.current.addIceCandidate(c);
-        }
+        addIceCandidate(c);
       });
     });
+  };
+
+  const addIceCandidate = async (iceCandidate: any) => {
+    if (!peerConnectionRef.current) {
+      console.log('PeerConnection não existe, adicionando ICE candidate à fila');
+      pendingIceCandidatesRef.current.push(iceCandidate);
+      return;
+    }
+
+    // Verificar se remoteDescription foi definida
+    if (!peerConnectionRef.current.remoteDescription) {
+      console.log('RemoteDescription não definida, adicionando ICE candidate à fila');
+      pendingIceCandidatesRef.current.push(iceCandidate);
+      return;
+    }
+
+    try {
+      await peerConnectionRef.current.addIceCandidate(iceCandidate);
+      console.log('✅ ICE candidate adicionado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao adicionar ICE candidate:', error);
+    }
+  };
+
+  const processPendingIceCandidates = async () => {
+    if (!peerConnectionRef.current || pendingIceCandidatesRef.current.length === 0) {
+      return;
+    }
+
+    console.log(`Processando ${pendingIceCandidatesRef.current.length} ICE candidates pendentes`);
+    
+    for (const iceCandidate of pendingIceCandidatesRef.current) {
+      try {
+        await peerConnectionRef.current.addIceCandidate(iceCandidate);
+        console.log('✅ ICE candidate pendente processado');
+      } catch (error) {
+        console.error('❌ Erro ao processar ICE candidate pendente:', error);
+      }
+    }
+    
+    // Limpar fila
+    pendingIceCandidatesRef.current = [];
   };
 
   const addAnswer = async (data: any) => {
     if (peerConnectionRef.current) {
       await peerConnectionRef.current.setRemoteDescription(data.answer);
+      // Processar ICE candidates pendentes após definir remoteDescription
+      processPendingIceCandidates();
     }
   };
 
@@ -403,6 +450,8 @@ export function ConsultationRoom({
 
     if(offerObj) {
       await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
+      // Processar ICE candidates pendentes após definir remoteDescription
+      processPendingIceCandidates();
     }
   };
 
