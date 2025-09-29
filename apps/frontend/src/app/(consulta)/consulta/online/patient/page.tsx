@@ -1,10 +1,11 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { ConsultationRoom } from '@/components/webrtc/ConsultationRoom';
 import '@/components/webrtc/webrtc-styles.css';
 
-export default function PatientConsultationPage() {
+function PatientConsultationContent() {
   const searchParams = useSearchParams();
   
   const roomId = searchParams.get('roomId');
@@ -33,5 +34,35 @@ export default function PatientConsultationPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function PatientConsultationPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#0a0a0a',
+        color: '#fff'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #333',
+            borderTop: '4px solid #A6CE39',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <p>Carregando consulta...</p>
+        </div>
+      </div>
+    }>
+      <PatientConsultationContent />
+    </Suspense>
   );
 }

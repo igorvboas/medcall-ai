@@ -182,6 +182,12 @@
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .text-center {
   text-align: center;
 }
