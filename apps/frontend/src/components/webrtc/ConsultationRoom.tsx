@@ -65,25 +65,63 @@ export function ConsultationRoom({
   useEffect(() => {
     const loadSocketIO = async () => {
       try {
+        // Se Socket.IO já está carregado, usar diretamente
         if (window.io) {
-          socketRef.current = window.io.connect(
-            process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
-            {
-              auth: {
-                userName: userName || 'User-' + Math.floor(Math.random() * 100000),
-                password: "x"
-              }
-            }
-          );
-
-          socketRef.current.on('connect', () => {
-            console.log('Conexão estabelecida com o servidor');
-            setupSocketListeners();
-            joinRoom();
-          });
+          console.log('Socket.IO já disponível, conectando...');
+          connectSocket();
+        } else {
+          // Carregar Socket.IO do backend (mesmo domínio)
+          console.log('Carregando Socket.IO do servidor...');
+          const script = document.createElement('script');
+          script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
+          script.onload = () => {
+            console.log('Socket.IO carregado com sucesso');
+            connectSocket();
+          };
+          script.onerror = () => {
+            console.error('Erro ao carregar Socket.IO');
+            alert('Erro ao carregar Socket.IO do servidor. Verifique se o backend está rodando.');
+          };
+          document.head.appendChild(script);
         }
       } catch (error) {
         console.error('Erro ao carregar Socket.IO:', error);
+        alert('Erro ao carregar Socket.IO: ' + error);
+      }
+    };
+
+    const connectSocket = () => {
+      if (window.io) {
+        console.log('Conectando ao servidor Socket.IO...');
+        socketRef.current = window.io.connect(
+          process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
+          {
+            auth: {
+              userName: userName || 'User-' + Math.floor(Math.random() * 100000),
+              password: "x"
+            }
+          }
+        );
+
+        socketRef.current.on('connect', () => {
+          console.log('✅ Conexão estabelecida com o servidor');
+          setIsConnected(true);
+          setupSocketListeners();
+          joinRoom();
+        });
+
+        socketRef.current.on('connect_error', (error: any) => {
+          console.error('❌ Erro ao conectar:', error);
+          alert('Erro ao conectar com o servidor: ' + error.message);
+        });
+
+        socketRef.current.on('disconnect', () => {
+          console.log('🔌 Desconectado do servidor');
+          setIsConnected(false);
+        });
+      } else {
+        console.error('Socket.IO não está disponível após carregamento');
+        alert('Erro: Socket.IO não carregado. Recarregue a página.');
       }
     };
 
@@ -210,6 +248,12 @@ export function ConsultationRoom({
 
   // WebRTC Functions
   const call = async () => {
+    // Verificar se socket está conectado
+    if (!socketRef.current || !socketRef.current.connected) {
+      alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
+      return;
+    }
+
     await fetchUserMedia();
     await createPeerConnection();
 
@@ -227,29 +271,44 @@ export function ConsultationRoom({
       });
     } catch(err) {
       console.error(err);
+      alert('Erro ao iniciar chamada: ' + err);
     }
   };
 
   const answer = async () => {
-    if (!socketRef.current || !localStreamRef.current) return;
+    // Verificar se socket está conectado
+    if (!socketRef.current || !socketRef.current.connected) {
+      alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
+      return;
+    }
+
+    if (!localStreamRef.current) {
+      alert('Erro: Stream de mídia não disponível');
+      return;
+    }
     
     setIsCallActive(true);
     setShowAnswerButton(false);
     
     // O peerConnection já foi criado quando recebeu a oferta
     if (peerConnectionRef.current && localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
-      });
-      
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-      
-      socketRef.current.emit('newAnswer', {
-        answer: answer,
-        roomId: roomId,
-        from: userName
-      });
+      try {
+        localStreamRef.current.getTracks().forEach(track => {
+          peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+        });
+        
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        
+        socketRef.current.emit('newAnswer', {
+          answer: answer,
+          roomId: roomId,
+          from: userName
+        });
+      } catch(err) {
+        console.error('Erro ao responder chamada:', err);
+        alert('Erro ao responder chamada: ' + err);
+      }
     }
   };
 
@@ -459,8 +518,14 @@ export function ConsultationRoom({
       {/* Header */}
       <div className="room-header">
         <div className="room-info">
-          <h1>Consulta Online - {userRole === 'host' ? 'Médico' : 'Paciente'}</h1>
-          <p>Sala: {roomData?.roomName || roomId} | Paciente: {patientName || participantName}</p>
+          <h1>Consulta Online - {userType === 'doctor' ? 'Médico' : 'Paciente'}</h1>
+          <p>
+            Sala: {roomData?.roomName || roomId} | 
+            Paciente: {patientName || participantName} | 
+            Status: <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
+              {isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+            </span>
+          </p>
         </div>
         
         <div className="room-controls">

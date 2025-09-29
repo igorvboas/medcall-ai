@@ -344,6 +344,17 @@
   background: #45a049;
 }
 
+/* Status indicators */
+.status-connected {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.status-disconnected {
+  color: #f44336;
+  font-weight: 600;
+}
+
 .video-layout {
   display: flex;
   gap: 16px;
