@@ -611,12 +611,14 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
           
-          // ✅ CORREÇÃO: Configurar callback único com ambas as funcionalidades
+          // ✅ CORREÇÃO: Callback apenas para transcrições LOCAIS
           transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
-            console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
-            setTranscriptionText(transcript);
+            console.log('🎤 [TRANSCRIPTION] Recebido transcript LOCAL:', transcript);
             
-            // Enviar transcrição para o peer via socket
+            // Adicionar transcrição local ao texto
+            setTranscriptionText(prev => prev + `[${userName}]: ${transcript}\n`);
+            
+            // Enviar transcrição LOCAL para o peer via socket
             if (socketRef.current && roomId && userName) {
               socketRef.current.emit('sendTranscriptionToPeer', {
                 roomId: roomId,
