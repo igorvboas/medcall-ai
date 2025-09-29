@@ -240,12 +240,8 @@ export function ConsultationRoom({
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
           // Inicializar apenas transcrição - IGUAL AO PROJETO ORIGINAL
-          // Mídia será obtida apenas quando clicar "Answer"
-          initializeTranscription().then(() => {
-            if (response.role === 'participant') {
-              autoActivateTranscriptionForParticipant();
-            }
-          });
+          // Transcrição será ativada apenas quando clicar "Answer"
+          initializeTranscription();
         } else {
           setErrorMessage(response.error);
         }
@@ -311,6 +307,12 @@ export function ConsultationRoom({
 
   const autoActivateTranscriptionForParticipant = async () => {
     console.log('🎤 [PACIENTE] Ativando transcrição automaticamente...');
+    
+    // ✅ PROTEÇÃO: Evitar múltiplas ativações
+    if (isTranscriptionActive) {
+      console.log('🎤 [PACIENTE] ⚠️ Transcrição já ativa, ignorando...');
+      return;
+    }
     
     try {
       if (!transcriptionManagerRef.current) {
@@ -498,6 +500,10 @@ export function ConsultationRoom({
     try {
       // Usar dados da oferta armazenados - IGUAL AO PROJETO ORIGINAL
       await answerOffer(offerData);
+      
+      // Ativar transcrição automaticamente após Answer - IGUAL AO PROJETO ORIGINAL
+      autoActivateTranscriptionForParticipant();
+      
       setShowAnswerButton(false);
       setIsCallActive(true);
       console.log('🩺 [PACIENTE] ✅ Answer processado com sucesso');
@@ -513,40 +519,31 @@ export function ConsultationRoom({
     
     try {
       // 1. fetchUserMedia - igual ao projeto original
-      console.log('🩺 [PACIENTE] 1. Chamando fetchUserMedia...');
       await fetchUserMedia();
-      console.log('🩺 [PACIENTE] ✅ fetchUserMedia concluído');
       
       // 2. createPeerConnection - igual ao projeto original
-      console.log('🩺 [PACIENTE] 2. Chamando createPeerConnection...');
       await createPeerConnection({ offer: offerData.offer });
-      console.log('🩺 [PACIENTE] ✅ createPeerConnection concluído');
+  
       
       // 3. Criar e enviar resposta - igual ao projeto original
-      console.log('🩺 [PACIENTE] 3. Criando answer...');
       const answer = await peerConnectionRef.current!.createAnswer({});
       await peerConnectionRef.current!.setLocalDescription(answer);
-      console.log('🩺 [PACIENTE] ✅ Answer criado e setLocalDescription definido');
       
       setRemoteUserName(offerData.offererUserName);
-      console.log('🩺 [PACIENTE] Peer remoto identificado:', offerData.offererUserName);
       
       // Processar ICE candidates pendentes
       processPendingIceCandidates();
       
       // Enviar resposta com roomId - igual ao projeto original
-      console.log('🩺 [PACIENTE] 4. Enviando newAnswer...');
       socketRef.current.emit('newAnswer', {
         roomId: roomId,
         answer: answer
       }, (offerIceCandidates: any[]) => {
-        console.log('🩺 [PACIENTE] Recebendo ICE candidates do médico:', offerIceCandidates.length);
         offerIceCandidates.forEach(c => {
           addIceCandidate(c);
         });
       });
       
-      console.log('🩺 [PACIENTE] ✅ Oferta processada e resposta criada automaticamente');
     } catch (error) {
       console.error('🩺 [PACIENTE] ❌ Erro ao processar oferta:', error);
     }
@@ -603,7 +600,14 @@ export function ConsultationRoom({
   };
 
   const fetchUserMedia = async () => {
+    // ✅ PROTEÇÃO: Evitar múltiplas chamadas
+    if (localStreamRef.current) {
+      console.log('📹 [MÍDIA] Stream já existe, reutilizando...');
+      return;
+    }
+    
     try {
+      console.log('📹 [MÍDIA] Obtendo stream de mídia...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
@@ -854,14 +858,6 @@ export function ConsultationRoom({
             </button>
           )}
 
-          {userType === 'patient' && isCallActive && (
-            <button 
-              className="btn-transcription" 
-              onClick={toggleTranscription}
-            >
-              {isTranscriptionActive ? 'Parar Transcrição' : 'Ativar Transcrição'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -930,8 +926,9 @@ export function ConsultationRoom({
               </div>
             )}
 
-            {/* Section de Transcrição - Para médicos e pacientes (quando chamada ativa) */}
-            <div className="transcription-box">
+            {/* Section de Transcrição - APENAS para médicos */}
+            {userType === 'doctor' && (
+              <div className="transcription-box">
               <div className="transcription-header">
                 <h6>
                   Transcrição
@@ -949,7 +946,8 @@ export function ConsultationRoom({
               <div className="transcription-info">
                 {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
               </div>
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
