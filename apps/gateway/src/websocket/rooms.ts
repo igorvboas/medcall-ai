@@ -476,14 +476,23 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`[ROOM ${roomId}] ${from} -> ${to}: "${transcription}"`);
 
-      // Enviar para o host (apenas o host recebe todas as transcrições)
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('receiveTranscriptionFromPeer', {
-          roomId: roomId,
-          transcription: transcription,
-          from: from
-        });
-      }
+      // ✅ CORREÇÃO: Enviar para todos os participantes da sala
+      const participants = [
+        { socketId: room.hostSocketId, userName: room.hostUserName },
+        { socketId: room.participantSocketId, userName: room.participantUserName }
+      ].filter(p => p.socketId && p.userName); // Filtrar participantes válidos
+
+      participants.forEach(participant => {
+        if (participant.socketId !== socket.id) { // Não enviar para quem enviou
+          io.to(participant.socketId).emit('receiveTranscriptionFromPeer', {
+            roomId: roomId,
+            transcription: transcription,
+            from: from
+          });
+        }
+      });
+      
+      console.log(`[ROOM ${roomId}] 📝 Transcrição "${transcription}" enviada para ${participants.length - 1} participantes`);
     });
 
     // ==================== FINALIZAR SALA ====================

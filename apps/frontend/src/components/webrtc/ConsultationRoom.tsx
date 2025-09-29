@@ -198,6 +198,27 @@ export function ConsultationRoom({
     }
   };
 
+  const setupTranscriptionPeerSharing = () => {
+    if (!transcriptionManagerRef.current || !socketRef.current) return;
+    
+    // Configurar callback para enviar transcrições para o peer
+    transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
+      setTranscriptionText(transcript);
+      
+      // Enviar transcrição para o peer via socket
+      if (socketRef.current && roomId && userName) {
+        socketRef.current.emit('sendTranscriptionToPeer', {
+          roomId: roomId,
+          from: userName,
+          transcription: transcript, // ✅ CORREÇÃO: usar 'transcription' em vez de 'transcript'
+          timestamp: new Date().toISOString()
+        });
+      }
+    };
+    
+    console.log('🎤 [TRANSCRIÇÃO] Configurado para enviar transcrições para peer');
+  };
+
   const autoActivateTranscriptionForParticipant = async () => {
     console.log('🎤 [PACIENTE] Ativando transcrição automaticamente...');
     
@@ -405,9 +426,27 @@ export function ConsultationRoom({
 
   const answerOffer = async (offerData: any) => {
     console.log('🩺 [PACIENTE] Processando oferta recebida...');
+    console.log('🩺 [PACIENTE] Stream local disponível:', !!localStreamRef.current);
+    console.log('🩺 [PACIENTE] Tracks do stream local:', localStreamRef.current?.getTracks().length || 0);
     
     // Não precisa fazer fetchUserMedia novamente - já foi feito automaticamente
     await createPeerConnection({ offer: offerData.offer });
+    
+    // ✅ CORREÇÃO: Garantir que o stream local seja adicionado ao peerConnection
+    if (localStreamRef.current && peerConnectionRef.current) {
+      console.log('🩺 [PACIENTE] Adicionando stream local ao peerConnection...');
+      const tracks = localStreamRef.current.getTracks();
+      console.log('🩺 [PACIENTE] Tracks para adicionar:', tracks.length);
+      
+      tracks.forEach((track, index) => {
+        console.log(`🩺 [PACIENTE] Adicionando track ${index}:`, track.kind, track.enabled);
+        peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+      });
+      
+      // Verificar se tracks foram adicionados
+      const senders = peerConnectionRef.current.getSenders();
+      console.log('🩺 [PACIENTE] Senders no peerConnection:', senders.length);
+    }
     
     const answer = await peerConnectionRef.current!.createAnswer({});
     await peerConnectionRef.current!.setLocalDescription(answer);
@@ -510,6 +549,9 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
             setTranscriptionText(transcript);
           };
+          
+          // ✅ CORREÇÃO: Configurar para enviar transcrições para o peer
+          setupTranscriptionPeerSharing();
         }
       } else {
         console.log('AudioProcessor já inicializado, reutilizando...');
@@ -520,12 +562,23 @@ export function ConsultationRoom({
   };
 
   const createPeerConnection = async (offerObj?: any) => {
+    console.log('🔗 [WEBRTC] Criando PeerConnection...');
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
     
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
+      const tracks = localStreamRef.current.getTracks();
+      console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
+      
+      tracks.forEach((track, index) => {
+        console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled);
         peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
       });
+      
+      // Verificar senders após adicionar tracks
+      const senders = peerConnectionRef.current.getSenders();
+      console.log('🔗 [WEBRTC] Senders criados:', senders.length);
+    } else {
+      console.log('🔗 [WEBRTC] ❌ Stream local não disponível');
     }
 
     peerConnectionRef.current.addEventListener('icecandidate', e => {
@@ -540,8 +593,14 @@ export function ConsultationRoom({
     });
     
     peerConnectionRef.current.addEventListener('track', e => {
-      if (remoteVideoRef.current) {
+      console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, e.track.enabled);
+      console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
+      
+      if (remoteVideoRef.current && e.streams[0]) {
+        console.log('🔗 [WEBRTC] Definindo stream remoto no elemento de vídeo');
         remoteVideoRef.current.srcObject = e.streams[0];
+      } else {
+        console.log('🔗 [WEBRTC] ❌ Elemento de vídeo remoto não encontrado ou sem streams');
       }
     });
 
