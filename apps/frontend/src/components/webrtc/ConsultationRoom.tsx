@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AudioProcessor } from './AudioProcessor';
 import { TranscriptionManager } from './TranscriptionManager';
+import './webrtc-styles.css';
 
 interface ConsultationRoomProps {
   roomId: string;
@@ -99,11 +100,12 @@ export function ConsultationRoom({
   const connectSocket = () => {
       if (window.io) {
         console.log('Conectando ao servidor Socket.IO...');
+        const tempUserName = userName || 'Temp-' + Math.floor(Math.random() * 100000);
         socketRef.current = window.io.connect(
           process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
           {
             auth: {
-              userName: userName || 'User-' + Math.floor(Math.random() * 100000),
+              userName: tempUserName,
               password: "x"
             }
           }
@@ -113,7 +115,6 @@ export function ConsultationRoom({
           console.log('✅ Conexão estabelecida com o servidor');
           setIsConnected(true);
           setupSocketListeners();
-          joinRoom();
         });
 
         socketRef.current.on('connect_error', (error: any) => {
@@ -169,7 +170,10 @@ export function ConsultationRoom({
       }
     } else if (userType === 'patient') {
       // Paciente: mostrar modal para digitar nome - igual ao projeto original
+      console.log('🩺 [PACIENTE] Definindo showParticipantModal = true');
       setShowParticipantModal(true);
+      // Inicializar Socket.IO para paciente também
+      loadSocketIO();
     }
   }, [userType]);
 
@@ -234,6 +238,14 @@ export function ConsultationRoom({
           setErrorMessage(response.error);
         }
       });
+    } else {
+      setErrorMessage('Erro: Socket não conectado. Aguarde...');
+      // Tentar conectar novamente
+      setTimeout(() => {
+        if (socketRef.current) {
+          joinRoomAsParticipant(participantName);
+        }
+      }, 1000);
     }
   };
 
@@ -764,8 +776,8 @@ export function ConsultationRoom({
     }
   };
 
-  // Loading state
-  if (!userName) {
+  // Loading state - só mostrar se for médico sem nome
+  if (userType === 'doctor' && !userName) {
     return (
       <div className="consultation-room-loading">
         <div className="loading-spinner"></div>
