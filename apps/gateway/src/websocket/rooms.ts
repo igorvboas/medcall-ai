@@ -1,0 +1,532 @@
+import { Server as SocketIOServer } from 'socket.io';
+import crypto from 'crypto';
+
+// ==================== ESTRUTURAS DE DADOS ====================
+
+// Mapa de salas: roomId -> roomData
+const rooms = new Map();
+
+// Mapa de usuário para sala ativa: userName -> roomId
+const userToRoom = new Map();
+
+// Mapa de socket para sala: socketId -> roomId
+const socketToRoom = new Map();
+
+// Mapa de conexões OpenAI: userName -> WebSocket
+const openAIConnections = new Map();
+
+// Mapa separado para timers (não serializar com room data)
+const roomTimers = new Map(); // roomId -> Timeout
+
+// ==================== FUNÇÕES AUXILIARES ====================
+
+/**
+ * Gera um roomId único
+ */
+function generateRoomId(): string {
+  return 'room-' + crypto.randomBytes(6).toString('hex'); // Ex: room-a1b2c3d4e5f6
+}
+
+/**
+ * Limpa sala expirada (5 minutos de inatividade)
+ */
+function cleanExpiredRoom(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+
+  console.log(`🧹 Limpando sala expirada: ${roomId}`);
+  
+  // Remover usuários do mapeamento
+  if (room.hostUserName) userToRoom.delete(room.hostUserName);
+  if (room.participantUserName) userToRoom.delete(room.participantUserName);
+  
+  // Limpar timer do mapa separado
+  if (roomTimers.has(roomId)) {
+    clearTimeout(roomTimers.get(roomId));
+    roomTimers.delete(roomId);
+  }
+  
+  // Remover sala
+  rooms.delete(roomId);
+}
+
+/**
+ * Inicia timer de expiração de sala (5 minutos)
+ */
+function startRoomExpiration(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+
+  // Limpar timer anterior do mapa separado
+  if (roomTimers.has(roomId)) {
+    clearTimeout(roomTimers.get(roomId));
+  }
+
+  // Criar novo timer de 5 minutos e armazenar no mapa separado
+  const timer = setTimeout(() => {
+    cleanExpiredRoom(roomId);
+  }, 5 * 60 * 1000); // 5 minutos
+
+  roomTimers.set(roomId, timer);
+}
+
+/**
+ * Reseta timer de expiração (chamado em atividade)
+ */
+function resetRoomExpiration(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+
+  room.lastActivity = new Date().toISOString();
+  startRoomExpiration(roomId); // Reinicia o timer
+}
+
+/**
+ * Salva histórico de transcrições (simulado)
+ */
+function saveTranscriptionsToDatabase(roomId: string): any {
+  const room = rooms.get(roomId);
+  if (!room) return;
+
+  console.log(`💾 [SIMULADO] Salvando transcrições da sala ${roomId} no banco de dados...`);
+  console.log(`📝 Total de transcrições: ${room.transcriptions.length}`);
+  
+  // Aqui você implementaria a lógica real de salvar no banco
+  // Por enquanto, apenas simula
+  
+  return {
+    success: true,
+    roomId: roomId,
+    transcriptionsCount: room.transcriptions.length,
+    transcriptions: room.transcriptions
+  };
+}
+
+// ==================== SOCKET.IO HANDLERS ====================
+
+export function setupRoomsWebSocket(io: SocketIOServer): void {
+  console.log('🔧 Configurando handlers de salas WebSocket...');
+
+  io.on('connection', (socket) => {
+    const userName = socket.handshake.auth.userName;
+    const password = socket.handshake.auth.password;
+
+    if (password !== "x") {
+      socket.disconnect(true);
+      return;
+    }
+
+    console.log(`[${userName}] conectado - Socket: ${socket.id}`);
+
+    // ==================== CRIAR SALA ====================
+    
+    socket.on('createRoom', (data, callback) => {
+      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone } = data;
+      
+      // Verificar se usuário já está em outra sala
+      if (userToRoom.has(hostName)) {
+        const existingRoom = userToRoom.get(hostName);
+        callback({ 
+          success: false, 
+          error: 'Você já está em outra sala ativa',
+          existingRoomId: existingRoom
+        });
+        return;
+      }
+
+      const roomId = generateRoomId();
+      
+      // Criar sala
+      const room = {
+        roomId: roomId,
+        roomName: roomName || 'Sala sem nome',
+        hostUserName: hostName,
+        hostSocketId: socket.id,
+        participantUserName: null,
+        participantSocketId: null,
+        status: 'waiting', // waiting | active | ended
+        offer: null,
+        answer: null,
+        offerIceCandidates: [],
+        answererIceCandidates: [],
+        transcriptions: [],
+        createdAt: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        // Dados médicos integrados
+        patientId: patientId,
+        patientName: patientName,
+        patientEmail: patientEmail,
+        patientPhone: patientPhone
+      };
+
+      rooms.set(roomId, room);
+      userToRoom.set(hostName, roomId);
+      socketToRoom.set(socket.id, roomId);
+
+      // Iniciar timer de expiração
+      startRoomExpiration(roomId);
+
+      console.log(`✅ Sala criada: ${roomId} por ${hostName}`);
+
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      callback({ 
+        success: true, 
+        roomId: roomId,
+        roomUrl: `${FRONTEND_URL}/consulta/online/patient?roomId=${roomId}`
+      });
+    });
+    
+    // ==================== ENTRAR EM SALA ====================
+    
+    socket.on('joinRoom', (data, callback) => {
+      const { roomId, participantName } = data;
+      
+      const room = rooms.get(roomId);
+      
+      // Verificar se sala existe
+      if (!room) {
+        callback({ 
+          success: false, 
+          error: 'Sala não encontrada ou expirada' 
+        });
+        return;
+      }
+
+      // Verificar se é reconexão do host
+      if (participantName === room.hostUserName) {
+        console.log(`🔄 Reconexão do host: ${participantName} na sala ${roomId}`);
+        room.hostSocketId = socket.id;
+        socketToRoom.set(socket.id, roomId);
+        resetRoomExpiration(roomId);
+        
+        callback({ 
+          success: true, 
+          role: 'host',
+          roomData: room
+        });
+
+        // Se já tem participante E já tem oferta, reenviar para o participante
+        if (room.participantSocketId && room.offer) {
+          console.log(`🔄 Reenviando oferta para participante após reconexão do host`);
+          io.to(room.participantSocketId).emit('newOfferAwaiting', {
+            roomId: roomId,
+            offer: room.offer,
+            offererUserName: room.hostUserName
+          });
+        }
+        
+        return;
+      }
+
+      // Verificar se usuário já está em outra sala
+      if (userToRoom.has(participantName)) {
+        const existingRoom = userToRoom.get(participantName);
+        
+        // Se é a mesma sala, é reconexão
+        if (existingRoom === roomId) {
+          console.log(`🔄 Reconexão do participante: ${participantName} na sala ${roomId}`);
+          room.participantSocketId = socket.id;
+          socketToRoom.set(socket.id, roomId);
+          resetRoomExpiration(roomId);
+          
+          callback({ 
+            success: true, 
+            role: 'participant',
+            roomData: room
+          });
+          return;
+        }
+        
+        callback({ 
+          success: false, 
+          error: 'Você já está em outra sala ativa' 
+        });
+        return;
+      }
+
+      // Verificar se sala já tem participante
+      if (room.participantUserName && room.participantUserName !== participantName) {
+        callback({ 
+          success: false, 
+          error: 'Esta sala já está cheia' 
+        });
+        return;
+      }
+
+      // Adicionar participante à sala
+      room.participantUserName = participantName;
+      room.participantSocketId = socket.id;
+      room.status = 'active';
+      
+      userToRoom.set(participantName, roomId);
+      socketToRoom.set(socket.id, roomId);
+      
+      resetRoomExpiration(roomId);
+
+      console.log(`✅ ${participantName} entrou na sala ${roomId}`);
+
+      callback({ 
+        success: true, 
+        role: 'participant',
+        roomData: room
+      });
+
+      // Notificar host que participante entrou
+      io.to(room.hostSocketId).emit('participantJoined', {
+        participantName: participantName
+      });
+
+      // Enviar oferta pendente se existir
+      if (room.offer) {
+        console.log(`📤 Enviando oferta pendente para ${participantName} na sala ${roomId}`);
+        io.to(socket.id).emit('newOfferAwaiting', {
+          roomId: roomId,
+          offer: room.offer,
+          offererUserName: room.hostUserName
+        });
+      }
+    });
+
+    // ==================== WEBRTC COM ROOMS ====================
+    
+    socket.on('newOffer', (data) => {
+      const { roomId, offer } = data;
+      const room = rooms.get(roomId);
+      
+      if (!room) {
+        console.log(`❌ Oferta rejeitada: sala ${roomId} não existe`);
+        return;
+      }
+
+      // Salvar oferta APENAS nesta sala específica
+      room.offer = offer;
+      room.offererUserName = userName;
+      resetRoomExpiration(roomId);
+
+      console.log(`📤 Nova oferta salva na sala ${roomId}`);
+
+      // Enviar oferta APENAS para o participante DESTA sala
+      if (room.participantSocketId) {
+        io.to(room.participantSocketId).emit('newOfferAwaiting', {
+          roomId: roomId,
+          offer: offer,
+          offererUserName: room.hostUserName
+        });
+        console.log(`📨 Oferta enviada para participante da sala ${roomId}`);
+      } else {
+        console.log(`📦 Oferta salva, aguardando participante entrar na sala ${roomId}`);
+      }
+    });
+
+    socket.on('newAnswer', async (data, ackFunction) => {
+      const { roomId, answer } = data;
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        console.log(`❌ Resposta rejeitada: sala ${roomId} não existe`);
+        return;
+      }
+
+      room.answer = answer;
+      room.answererUserName = userName;
+      resetRoomExpiration(roomId);
+
+      console.log(`📥 Nova resposta na sala ${roomId}`);
+
+      // Enviar resposta para host
+      io.to(room.hostSocketId).emit('answerResponse', {
+        roomId: roomId,
+        answer: answer,
+        answererUserName: room.participantUserName
+      });
+
+      // Enviar ICE candidates do ofertante
+      ackFunction(room.offerIceCandidates);
+    });
+
+    socket.on('sendIceCandidateToSignalingServer', (data) => {
+      const { roomId, iceCandidate, didIOffer } = data;
+      const room = rooms.get(roomId);
+
+      if (!room) return;
+
+      resetRoomExpiration(roomId);
+
+      if (didIOffer) {
+        // ICE do host
+        room.offerIceCandidates.push(iceCandidate);
+        
+        if (room.participantSocketId && room.answererUserName) {
+          io.to(room.participantSocketId).emit('receivedIceCandidateFromServer', iceCandidate);
+        }
+      } else {
+        // ICE do participante
+        room.answererIceCandidates.push(iceCandidate);
+        
+        if (room.hostSocketId) {
+          io.to(room.hostSocketId).emit('receivedIceCandidateFromServer', iceCandidate);
+        }
+      }
+    });
+
+    // ==================== TRANSCRIÇÕES COM ROOMS ====================
+    
+    socket.on('transcription:connect', (data, callback) => {
+      const roomId = socketToRoom.get(socket.id);
+      
+      if (!roomId) {
+        callback({ success: false, error: 'Você não está em uma sala' });
+        return;
+      }
+
+      console.log(`[${userName}] Solicitando conexão OpenAI na sala ${roomId}`);
+
+      if (openAIConnections.has(userName)) {
+        callback({ success: true, message: 'Já conectado' });
+        return;
+      }
+
+      // TODO: Implementar conexão OpenAI Realtime
+      // Por enquanto, simular sucesso
+      callback({ success: true, message: 'Conexão simulada' });
+    });
+
+    socket.on('transcription:send', (data) => {
+      // TODO: Implementar envio para OpenAI
+      console.log(`[${userName}] Dados de transcrição recebidos:`, data.length, 'bytes');
+    });
+
+    socket.on('transcription:disconnect', () => {
+      // TODO: Implementar desconexão OpenAI
+      console.log(`[${userName}] Desconectando transcrição`);
+    });
+
+    socket.on('sendTranscriptionToPeer', (data) => {
+      const { roomId, transcription, from, to } = data;
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        console.log(`❌ Transcrição rejeitada: sala ${roomId} não existe`);
+        return;
+      }
+
+      // Salvar transcrição no histórico da sala
+      room.transcriptions.push({
+        speaker: from,
+        text: transcription,
+        timestamp: new Date().toISOString()
+      });
+
+      resetRoomExpiration(roomId);
+
+      console.log(`[ROOM ${roomId}] ${from} -> ${to}: "${transcription}"`);
+
+      // Enviar para o host (apenas o host recebe todas as transcrições)
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('receiveTranscriptionFromPeer', {
+          roomId: roomId,
+          transcription: transcription,
+          from: from
+        });
+      }
+    });
+
+    // ==================== FINALIZAR SALA ====================
+    
+    socket.on('endRoom', (data, callback) => {
+      const { roomId } = data;
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        callback({ success: false, error: 'Sala não encontrada' });
+        return;
+      }
+
+      // Verificar se quem está finalizando é o host
+      if (socket.id !== room.hostSocketId) {
+        callback({ success: false, error: 'Apenas o host pode finalizar a sala' });
+        return;
+      }
+
+      console.log(`🏁 Finalizando sala ${roomId}...`);
+
+      // Salvar transcrições (simulado)
+      const saveResult = saveTranscriptionsToDatabase(roomId);
+
+      // Notificar participante que sala foi finalizada
+      if (room.participantSocketId) {
+        io.to(room.participantSocketId).emit('roomEnded', {
+          roomId: roomId,
+          message: 'A sala foi finalizada pelo host'
+        });
+      }
+
+      // Limpar timer do mapa separado
+      if (roomTimers.has(roomId)) {
+        clearTimeout(roomTimers.get(roomId));
+        roomTimers.delete(roomId);
+      }
+
+      // Remover mapeamentos
+      if (room.hostUserName) userToRoom.delete(room.hostUserName);
+      if (room.participantUserName) userToRoom.delete(room.participantUserName);
+      socketToRoom.delete(room.hostSocketId);
+      if (room.participantSocketId) socketToRoom.delete(room.participantSocketId);
+
+      // Remover sala
+      rooms.delete(roomId);
+
+      console.log(`✅ Sala ${roomId} finalizada`);
+
+      callback({ 
+        success: true, 
+        message: 'Sala finalizada com sucesso',
+        saveResult: saveResult
+      });
+    });
+
+    // ==================== DESCONEXÃO ====================
+    
+    socket.on('disconnect', () => {
+      console.log(`[${userName}] desconectado - Socket: ${socket.id}`);
+
+      const roomId = socketToRoom.get(socket.id);
+      
+      if (roomId) {
+        const room = rooms.get(roomId);
+        
+        if (room) {
+          // Se host desconectou
+          if (socket.id === room.hostSocketId) {
+            console.log(`⚠️ Host desconectou da sala ${roomId}`);
+            room.hostSocketId = null;
+          }
+          
+          // Se participante desconectou
+          if (socket.id === room.participantSocketId) {
+            console.log(`⚠️ Participante desconectou da sala ${roomId}`);
+            room.participantSocketId = null;
+          }
+
+          // Continuar com timer de expiração (permite reconexão)
+          resetRoomExpiration(roomId);
+        }
+      }
+
+      // Limpar conexão OpenAI
+      const openAIWs = openAIConnections.get(userName);
+      if (openAIWs) {
+        // openAIWs.close();
+        openAIConnections.delete(userName);
+      }
+
+      socketToRoom.delete(socket.id);
+    });
+  });
+
+  console.log('✅ Handlers de salas WebSocket configurados');
+}
+
+// Exportar funções para uso em outras partes do sistema
+export { rooms, userToRoom, socketToRoom, openAIConnections };

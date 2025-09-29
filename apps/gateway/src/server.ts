@@ -5,7 +5,9 @@ import cors from 'cors';
 import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
+import roomsRoutes from './routes/rooms';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
+import { setupRoomsWebSocket } from './websocket/rooms';
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,6 +35,9 @@ const io = new SocketIOServer(httpServer, {
 // Configurar handler de WebSocket PCM para transcrição
 const pcmHandler = new PCMTranscriptionHandler();
 
+// Configurar handlers de salas WebRTC
+setupRoomsWebSocket(io);
+
 // Middlewares
 app.use(cors({
   origin: allowedOrigins,
@@ -53,6 +58,7 @@ console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Configurada' : 'N
 app.use('/api/transcription', transcriptionRoutes);
 app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
 app.use('/api/sessions', sessionsRoutes);
+app.use('/api/rooms', roomsRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM
 app.get('/api/pcm-transcription/stats', (req, res) => {
