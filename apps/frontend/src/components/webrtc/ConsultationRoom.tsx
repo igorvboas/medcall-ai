@@ -39,6 +39,9 @@ export function ConsultationRoom({
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
+  // Estados para botão Answer - igual ao projeto original
+  const [offerData, setOfferData] = useState<any>(null);
+  
   // Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -236,11 +239,9 @@ export function ConsultationRoom({
           setShowParticipantModal(false);
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
-          // Inicializar mídia, transcrição e ativar automaticamente
-          fetchUserMedia().then(() => {
-            console.log('🩺 [PACIENTE] ✅ fetchUserMedia concluído na entrada da sala');
-            return initializeTranscription();
-          }).then(() => {
+          // Inicializar apenas transcrição - IGUAL AO PROJETO ORIGINAL
+          // Mídia será obtida apenas quando clicar "Answer"
+          initializeTranscription().then(() => {
             if (response.role === 'participant') {
               autoActivateTranscriptionForParticipant();
             }
@@ -407,12 +408,12 @@ export function ConsultationRoom({
       setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
     });
 
-    // Para pacientes: processar oferta automaticamente - igual ao projeto original
+    // Para pacientes: criar botão Answer - IGUAL AO PROJETO ORIGINAL
     socketRef.current.on('newOfferAwaiting', (data: any) => {
       if (userType === 'patient') {
-        console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, processando automaticamente...');
-        // Processar oferta automaticamente (sem botão Answer)
-        answerOffer(data);
+        console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, criando botão Answer...');
+        // Criar botão Answer IGUAL AO PROJETO ORIGINAL
+        createAnswerButton(data);
       }
     });
   };
@@ -481,50 +482,33 @@ export function ConsultationRoom({
   };
 
   const answer = async () => {
+    console.log('🩺 [PACIENTE] Clicou no botão Answer - IGUAL AO PROJETO ORIGINAL');
+    
     // Verificar se socket está conectado
     if (!socketRef.current || !socketRef.current.connected) {
       alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
       return;
     }
 
-    if (!localStreamRef.current) {
-      alert('Erro: Stream de mídia não disponível. Recarregue a página.');
+    if (!offerData) {
+      console.error('❌ Dados da oferta não encontrados');
       return;
     }
-    
-    console.log('🩺 [PACIENTE] Respondendo à chamada...');
-    setIsCallActive(true);
-    setShowAnswerButton(false);
-    
-    // O peerConnection já foi criado quando recebeu a oferta
-    // E o setup já foi feito automaticamente ao carregar a página
-    if (peerConnectionRef.current && localStreamRef.current) {
-      try {
-        // Adicionar tracks do stream local ao peerConnection
-        localStreamRef.current.getTracks().forEach(track => {
-          peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
-        });
-        
-        // Criar e enviar resposta
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
-        
-        socketRef.current.emit('newAnswer', {
-          answer: answer,
-          roomId: roomId,
-          from: userName
-        });
-        
-        console.log('🩺 [PACIENTE] ✅ Resposta enviada - chamada estabelecida');
-      } catch(err) {
-        console.error('🩺 [PACIENTE] ❌ Erro ao responder chamada:', err);
-        alert('Erro ao responder chamada: ' + err);
-      }
+
+    try {
+      // Usar dados da oferta armazenados - IGUAL AO PROJETO ORIGINAL
+      await answerOffer(offerData);
+      setShowAnswerButton(false);
+      setIsCallActive(true);
+      console.log('🩺 [PACIENTE] ✅ Answer processado com sucesso');
+    } catch(err) {
+      console.error('❌ Erro ao responder chamada:', err);
+      alert('Erro ao responder chamada: ' + err);
     }
   };
 
   const answerOffer = async (offerData: any) => {
-    console.log('🩺 [PACIENTE] Processando oferta recebida automaticamente...');
+    console.log('🩺 [PACIENTE] Processando oferta - IGUAL AO PROJETO ORIGINAL...');
     console.log('🩺 [PACIENTE] OfferData:', offerData);
     
     try {
@@ -717,10 +701,13 @@ export function ConsultationRoom({
     }
   };
 
+  // Função IGUAL AO PROJETO ORIGINAL
   const createAnswerButton = (offerData: any) => {
-    // Esta função seria chamada para mostrar botão de resposta
-    // Por enquanto, vamos responder automaticamente
-    answerOffer(offerData);
+    console.log('🩺 [PACIENTE] Criando botão Answer para:', offerData.offererUserName);
+    setShowAnswerButton(true);
+    setRemoteUserName(offerData.offererUserName);
+    // Armazenar dados da oferta para usar quando clicar Answer
+    setOfferData(offerData);
   };
 
   // Controles de mídia
