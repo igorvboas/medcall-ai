@@ -398,9 +398,9 @@ export function ConsultationRoom({
     });
 
     // Para pacientes: processar oferta automaticamente - igual ao projeto original
-    socketRef.current.on('newOffer', (data: any) => {
+    socketRef.current.on('newOfferAwaiting', (data: any) => {
       if (userType === 'patient') {
-        console.log('🩺 [PACIENTE] Oferta recebida, processando automaticamente...');
+        console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, processando automaticamente...');
         // Processar oferta automaticamente (sem botão Answer)
         answerOffer(data);
       }
@@ -433,29 +433,39 @@ export function ConsultationRoom({
 
   // WebRTC Functions
   const call = async () => {
+    console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
+    
     // Verificar se socket está conectado
     if (!socketRef.current || !socketRef.current.connected) {
       alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
       return;
     }
 
+    console.log('👨‍⚕️ [MÉDICO] 1. Chamando fetchUserMedia...');
     await fetchUserMedia();
+    console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído');
+
+    console.log('👨‍⚕️ [MÉDICO] 2. Chamando createPeerConnection...');
     await createPeerConnection();
+    console.log('👨‍⚕️ [MÉDICO] ✅ createPeerConnection concluído');
 
     try {
-      console.log("Criando oferta para sala:", roomId);
+      console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
       const offer = await peerConnectionRef.current!.createOffer();
       await peerConnectionRef.current!.setLocalDescription(offer);
       setDidIOffer(true);
       setIsCallActive(true);
+      console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado e setLocalDescription definido');
       
       // Enviar oferta com roomId
+      console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
       socketRef.current.emit('newOffer', {
         roomId: roomId,
         offer: offer
       });
+      console.log('👨‍⚕️ [MÉDICO] ✅ newOffer enviado');
     } catch(err) {
-      console.error(err);
+      console.error('👨‍⚕️ [MÉDICO] ❌ Erro:', err);
       alert('Erro ao iniciar chamada: ' + err);
     }
   };
@@ -505,17 +515,24 @@ export function ConsultationRoom({
 
   const answerOffer = async (offerData: any) => {
     console.log('🩺 [PACIENTE] Processando oferta recebida automaticamente...');
+    console.log('🩺 [PACIENTE] OfferData:', offerData);
     
     try {
       // 1. fetchUserMedia - igual ao projeto original
+      console.log('🩺 [PACIENTE] 1. Chamando fetchUserMedia...');
       await fetchUserMedia();
+      console.log('🩺 [PACIENTE] ✅ fetchUserMedia concluído');
       
       // 2. createPeerConnection - igual ao projeto original
+      console.log('🩺 [PACIENTE] 2. Chamando createPeerConnection...');
       await createPeerConnection({ offer: offerData.offer });
+      console.log('🩺 [PACIENTE] ✅ createPeerConnection concluído');
       
       // 3. Criar e enviar resposta - igual ao projeto original
+      console.log('🩺 [PACIENTE] 3. Criando answer...');
       const answer = await peerConnectionRef.current!.createAnswer({});
       await peerConnectionRef.current!.setLocalDescription(answer);
+      console.log('🩺 [PACIENTE] ✅ Answer criado e setLocalDescription definido');
       
       setRemoteUserName(offerData.offererUserName);
       console.log('🩺 [PACIENTE] Peer remoto identificado:', offerData.offererUserName);
@@ -524,10 +541,12 @@ export function ConsultationRoom({
       processPendingIceCandidates();
       
       // Enviar resposta com roomId - igual ao projeto original
+      console.log('🩺 [PACIENTE] 4. Enviando newAnswer...');
       socketRef.current.emit('newAnswer', {
         roomId: roomId,
         answer: answer
       }, (offerIceCandidates: any[]) => {
+        console.log('🩺 [PACIENTE] Recebendo ICE candidates do médico:', offerIceCandidates.length);
         offerIceCandidates.forEach(c => {
           addIceCandidate(c);
         });
