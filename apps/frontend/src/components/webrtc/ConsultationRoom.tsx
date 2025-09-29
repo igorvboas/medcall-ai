@@ -384,11 +384,14 @@ export function ConsultationRoom({
       addIceCandidate(iceCandidate);
     });
 
-    // Transcrição listeners
-    socketRef.current.on('receiveTranscriptionFromPeer', (data: any) => {
-      console.log('Transcrição recebida de', data.from, ':', data.transcription);
-      setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
-    });
+   // ✅ IMPLEMENTAÇÃO IGUAL AO PROJETO ORIGINAL: Médico recebe transcrições do paciente
+    if (userType === 'doctor') {
+      socketRef.current.on('receiveTranscriptionFromPeer', (data: any) => {
+        console.log('👨‍⚕️ [MÉDICO] Transcrição recebida de', data.from, ':', data.transcription);
+        setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
+      });
+    }
+
 
     // Para pacientes: criar botão Answer - IGUAL AO PROJETO ORIGINAL
     socketRef.current.on('newOfferAwaiting', (data: any) => {
@@ -611,21 +614,29 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
           
-          // ✅ CORREÇÃO: Callback apenas para transcrições LOCAIS
+          // ✅ IMPLEMENTAÇÃO IGUAL AO PROJETO ORIGINAL: Lógica baseada em didIOffer
           transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
-            console.log('🎤 [TRANSCRIPTION] Recebido transcript LOCAL:', transcript);
+            console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
             
-            // Adicionar transcrição local ao texto
-            setTranscriptionText(prev => prev + `[${userName}]: ${transcript}\n`);
-            
-            // Enviar transcrição LOCAL para o peer via socket
-            if (socketRef.current && roomId && userName) {
-              socketRef.current.emit('sendTranscriptionToPeer', {
-                roomId: roomId,
-                from: userName,
-                transcription: transcript,
-                timestamp: new Date().toISOString()
-              });
+            // CASO 1: Sou o OFFERER (médico) - exibir localmente
+            if (didIOffer) {
+              console.log('✅ Sou OFFERER - exibindo localmente');
+              setTranscriptionText(prev => prev + `[${userName}]: ${transcript}\n`);
+            } 
+            // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
+            else if (userType === 'patient' && remoteUserName) {
+              console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserName);
+              
+              // Enviar transcrição para o peer via socket - IGUAL AO PROJETO ORIGINAL
+              if (socketRef.current && roomId && userName) {
+                socketRef.current.emit('sendTranscriptionToPeer', {
+                  roomId: roomId,
+                  from: userName,
+                  to: remoteUserName, // ✅ IGUAL AO PROJETO ORIGINAL
+                  transcription: transcript,
+                  timestamp: new Date().toISOString()
+                });
+              }
             }
           };
         }
