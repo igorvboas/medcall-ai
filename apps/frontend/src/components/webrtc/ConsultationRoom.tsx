@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { AudioProcessor } from './AudioProcessor';
+import { TranscriptionManager } from './TranscriptionManager';
 
 interface ConsultationRoomProps {
   roomId: string;
@@ -35,6 +37,10 @@ export function ConsultationRoom({
   const socketRef = useRef<any>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  
+  // Refs para transcrição
+  const audioProcessorRef = useRef<AudioProcessor | null>(null);
+  const transcriptionManagerRef = useRef<TranscriptionManager | null>(null);
   
   // Variáveis WebRTC
   const [didIOffer, setDidIOffer] = useState(false);
@@ -81,6 +87,22 @@ export function ConsultationRoom({
     if (userName) {
       loadSocketIO();
     }
+
+    // Cleanup ao desmontar componente
+    return () => {
+      if (transcriptionManagerRef.current) {
+        transcriptionManagerRef.current.disconnect();
+      }
+      if (audioProcessorRef.current) {
+        audioProcessorRef.current.cleanup();
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [userName]);
 
   // Determinar nome do usuário baseado no role
@@ -235,6 +257,24 @@ export function ConsultationRoom({
         localVideoRef.current.srcObject = stream;
       }
       localStreamRef.current = stream;
+      
+      // Inicializar AudioProcessor para transcrição
+      if (!audioProcessorRef.current) {
+        audioProcessorRef.current = new AudioProcessor();
+        await audioProcessorRef.current.init(stream);
+        
+        // Inicializar TranscriptionManager
+        if (!transcriptionManagerRef.current) {
+          transcriptionManagerRef.current = new TranscriptionManager();
+          transcriptionManagerRef.current.setSocket(socketRef.current);
+          transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
+          
+          // Configurar callback para atualizar UI
+          transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
+            setTranscriptionText(transcript);
+          };
+        }
+      }
     } catch(err) {
       console.error(err);
     }
@@ -297,6 +337,18 @@ export function ConsultationRoom({
   };
 
   const endCall = () => {
+    // Parar transcrição
+    if (transcriptionManagerRef.current) {
+      transcriptionManagerRef.current.stop();
+      transcriptionManagerRef.current.disconnect();
+    }
+    
+    // Limpar AudioProcessor
+    if (audioProcessorRef.current) {
+      audioProcessorRef.current.cleanup();
+    }
+    
+    // Parar streams
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -306,25 +358,36 @@ export function ConsultationRoom({
     }
     
     setIsCallActive(false);
+    setTranscriptionStatus('Desconectado');
+    setIsTranscriptionActive(false);
     onEndCall?.();
   };
 
   const toggleTranscription = async () => {
+    if (!transcriptionManagerRef.current) {
+      alert('Transcrição não inicializada. Faça a chamada primeiro.');
+      return;
+    }
+
     if (!isTranscriptionActive) {
       // Conectar transcrição
       setTranscriptionStatus('Conectando...');
       
-      socketRef.current.emit('transcription:connect', {}, (response: any) => {
-        if (response.success) {
-          setTranscriptionStatus('Conectado');
-          setIsTranscriptionActive(true);
-        } else {
-          setTranscriptionStatus('Erro');
-        }
-      });
+      const success = await transcriptionManagerRef.current.init();
+      
+      if (success) {
+        setTranscriptionStatus('Conectado');
+        setIsTranscriptionActive(true);
+        
+        // Iniciar transcrição automaticamente
+        transcriptionManagerRef.current.start();
+        setTranscriptionStatus('Transcrevendo');
+      } else {
+        setTranscriptionStatus('Erro');
+      }
     } else {
-      // Desconectar transcrição
-      socketRef.current.emit('transcription:disconnect');
+      // Parar transcrição
+      transcriptionManagerRef.current.stop();
       setTranscriptionStatus('Desconectado');
       setIsTranscriptionActive(false);
     }

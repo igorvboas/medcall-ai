@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
+import WebSocket from 'ws';
 
 // ==================== ESTRUTURAS DE DADOS ====================
 
@@ -387,19 +388,62 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         return;
       }
 
-      // TODO: Implementar conexão OpenAI Realtime
-      // Por enquanto, simular sucesso
-      callback({ success: true, message: 'Conexão simulada' });
+      const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      if (!OPENAI_API_KEY) {
+        callback({ success: false, error: 'OpenAI API Key não configurada' });
+        return;
+      }
+
+      const openAIWs = new WebSocket(
+        'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+        {
+          headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'OpenAI-Beta': 'realtime=v1'
+          }
+        }
+      );
+
+      openAIWs.on('open', () => {
+        console.log(`[${userName}] ✅ Conectado à OpenAI na sala ${roomId}`);
+        openAIConnections.set(userName, openAIWs);
+        callback({ success: true, message: 'Conectado com sucesso' });
+      });
+
+      openAIWs.on('message', (data) => {
+        socket.emit('transcription:message', data.toString());
+      });
+
+      openAIWs.on('error', (error) => {
+        console.error(`[${userName}] ❌ Erro OpenAI:`, error.message);
+        socket.emit('transcription:error', { error: error.message });
+        callback({ success: false, error: error.message });
+      });
+
+      openAIWs.on('close', () => {
+        console.log(`[${userName}] OpenAI WebSocket fechado`);
+        openAIConnections.delete(userName);
+        socket.emit('transcription:disconnected');
+      });
     });
 
     socket.on('transcription:send', (data) => {
-      // TODO: Implementar envio para OpenAI
-      console.log(`[${userName}] Dados de transcrição recebidos:`, data.length, 'bytes');
+      const openAIWs = openAIConnections.get(userName);
+      
+      if (!openAIWs || openAIWs.readyState !== WebSocket.OPEN) {
+        socket.emit('transcription:error', { error: 'Não conectado à OpenAI' });
+        return;
+      }
+
+      openAIWs.send(data);
     });
 
     socket.on('transcription:disconnect', () => {
-      // TODO: Implementar desconexão OpenAI
-      console.log(`[${userName}] Desconectando transcrição`);
+      const openAIWs = openAIConnections.get(userName);
+      if (openAIWs) {
+        openAIWs.close();
+        openAIConnections.delete(userName);
+      }
     });
 
     socket.on('sendTranscriptionToPeer', (data) => {

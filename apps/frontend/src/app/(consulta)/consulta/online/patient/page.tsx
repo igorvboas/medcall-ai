@@ -8,6 +8,15 @@ import '@/components/webrtc/webrtc-styles.css';
 function PatientConsultationContent() {
   const searchParams = useSearchParams();
   
+  if (!searchParams) {
+    return (
+      <div className="error-container">
+        <h2>Erro: Parâmetros não encontrados</h2>
+        <p>Por favor, acesse através do link correto.</p>
+      </div>
+    );
+  }
+  
   const roomId = searchParams.get('roomId');
   const role = searchParams.get('role') || 'participant';
   const patientId = searchParams.get('patientId');
