@@ -283,11 +283,24 @@ export class TranscriptionManager {
 
   /**
    * ✅ NOVO: Método público para adicionar transcrição à UI
-   * Usado pelo callback quando for offerer (médico)
+   * Adiciona uma linha completa (não incremental)
    */
   addTranscriptToUI(text: string, speaker: string): void {
     console.log(`[TRANSCRIPTION] 📝 Adicionando à UI: [${speaker}]: ${text}`);
-    this.displayTranscript(text, speaker, true);
+    
+    // ✅ CORREÇÃO: Adicionar como linha completa, não incremental
+    // Finalizar fala anterior se houver
+    if (this.currentSpeechText && this.lastSpeaker) {
+      this.currentTranscript += this.currentSpeechText + '\n';
+      this.currentSpeechText = '';
+    }
+    
+    // Adicionar nova linha completa
+    this.currentTranscript += `[${speaker}]: ${text}\n`;
+    this.lastSpeaker = speaker;
+    
+    // Atualizar UI
+    this.onUIUpdate?.(this.currentTranscript);
   }
 
   /**
