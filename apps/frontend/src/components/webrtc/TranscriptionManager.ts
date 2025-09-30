@@ -253,14 +253,19 @@ export class TranscriptionManager {
 
   /**
    * Processa a transcrição do usuário
+   * ✅ CORREÇÃO: Não exibe localmente - apenas repassa para o callback
    */
   private processUserTranscription(transcript: string): void {
     if (!transcript) return;
 
-    // Lógica de decisão: exibir ou enviar baseado no contexto
-    // Por enquanto, sempre exibir localmente
-    // TODO: Implementar lógica de offer/answer quando integrar com WebRTC
-    this.displayTranscript(transcript, 'Você', true);
+    console.log('[TRANSCRIPTION] 🎤 Transcrição processada:', transcript);
+    
+    // ✅ CORREÇÃO: Apenas chamar callback - deixar decisão para o componente
+    if (this.onTranscriptUpdate) {
+      this.onTranscriptUpdate(transcript);
+    } else {
+      console.warn('[TRANSCRIPTION] ⚠️ onTranscriptUpdate não definido');
+    }
   }
 
   /**
@@ -277,7 +282,16 @@ export class TranscriptionManager {
   }
 
   /**
-   * Exibe transcrição na UI de forma incremental
+   * ✅ NOVO: Método público para adicionar transcrição à UI
+   * Usado pelo callback quando for offerer (médico)
+   */
+  addTranscriptToUI(text: string, speaker: string): void {
+    console.log(`[TRANSCRIPTION] 📝 Adicionando à UI: [${speaker}]: ${text}`);
+    this.displayTranscript(text, speaker, true);
+  }
+
+  /**
+   * Exibe transcrição na UI de forma incremental (agora privado)
    */
   private displayTranscript(text: string, speaker: string, isLocal: boolean): void {
     const label = isLocal ? 'Você' : speaker;
@@ -298,8 +312,8 @@ export class TranscriptionManager {
       this.currentTranscript += `[${label}]: `;
     }
     
-    // Disparar evento customizado para atualizar UI
-    this.onTranscriptUpdate?.(this.currentTranscript + this.currentSpeechText);
+    // ✅ CORREÇÃO: Disparar callback de UI update (para transcrições de peers)
+    this.onUIUpdate?.(this.currentTranscript + this.currentSpeechText);
   }
 
   /**
@@ -412,6 +426,9 @@ export class TranscriptionManager {
     });
   }
 
-  // Callback para atualização da UI
+  // ✅ CORREÇÃO: Callback quando recebe nova transcrição (transcript puro)
   onTranscriptUpdate?: (transcript: string) => void;
+  
+  // ✅ NOVO: Callback para atualizar UI (texto completo formatado)
+  onUIUpdate?: (fullText: string) => void;
 }

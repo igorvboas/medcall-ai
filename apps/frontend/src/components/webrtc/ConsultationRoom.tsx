@@ -60,6 +60,12 @@ export function ConsultationRoom({
   // Variáveis WebRTC
   const [didIOffer, setDidIOffer] = useState(false);
   const [remoteUserName, setRemoteUserName] = useState('');
+  
+  // ✅ CORREÇÃO: Refs para valores sempre atualizados (evitar closure)
+  const didOfferRef = useRef<boolean>(false);
+  const userNameRef = useRef<string>('');
+  const remoteUserNameRef = useRef<string>('');
+  const roomIdRef = useRef<string>(roomId);
 
   // Configuração WebRTC
   const peerConfiguration = {
@@ -135,6 +141,76 @@ export function ConsultationRoom({
         alert('Erro: Socket.IO não carregado. Recarregue a página.');
       }
     };
+
+  // ✅ CORREÇÃO: Atualizar refs quando valores mudarem
+  useEffect(() => {
+    didOfferRef.current = didIOffer;
+    console.log('🔄 didOfferRef atualizado:', didOfferRef.current);
+  }, [didIOffer]);
+
+  useEffect(() => {
+    userNameRef.current = userName;
+    console.log('🔄 userNameRef atualizado:', userNameRef.current);
+  }, [userName]);
+
+  useEffect(() => {
+    remoteUserNameRef.current = remoteUserName;
+    console.log('🔄 remoteUserNameRef atualizado:', remoteUserNameRef.current);
+  }, [remoteUserName]);
+
+  // ✅ CORREÇÃO: useEffect para configurar callbacks de transcrição
+  useEffect(() => {
+    if (!transcriptionManagerRef.current) return;
+
+    console.log('🔧 [TRANSCRIPTION] Configurando callbacks...');
+    
+    // ✅ NOVO: Callback quando recebe nova transcrição (transcript puro)
+    transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
+      console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
+      console.log('🎤 [TRANSCRIPTION] didOfferRef.current:', didOfferRef.current);
+      console.log('🎤 [TRANSCRIPTION] userType:', userType);
+      console.log('🎤 [TRANSCRIPTION] userNameRef.current:', userNameRef.current);
+      console.log('🎤 [TRANSCRIPTION] remoteUserNameRef.current:', remoteUserNameRef.current);
+      
+      // CASO 1: Sou o OFFERER (médico) - exibir localmente
+      if (didOfferRef.current === true) {
+        console.log('✅ Sou OFFERER - exibindo localmente');
+        // Adicionar à UI usando método público do TranscriptionManager
+        if (transcriptionManagerRef.current) {
+          transcriptionManagerRef.current.addTranscriptToUI(transcript, userNameRef.current || 'Você');
+        }
+      } 
+      // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
+      else if (didOfferRef.current === false && remoteUserNameRef.current) {
+        console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserNameRef.current);
+        
+        // Enviar transcrição para o peer via socket
+        if (socketRef.current && roomIdRef.current && userNameRef.current) {
+          socketRef.current.emit('sendTranscriptionToPeer', {
+            roomId: roomIdRef.current,
+            from: userNameRef.current,
+            to: remoteUserNameRef.current,
+            transcription: transcript,
+            timestamp: new Date().toISOString()
+          });
+          console.log('📤 [TRANSCRIPTION] Enviado para peer');
+        } else {
+          console.error('❌ [TRANSCRIPTION] Socket, roomId ou userName não disponível');
+        }
+      } else {
+        console.warn('⚠️ [TRANSCRIPTION] Nenhuma condição atendida (possível erro de inicialização)');
+        console.warn('⚠️ [TRANSCRIPTION] didOfferRef:', didOfferRef.current, 'remoteUserNameRef:', remoteUserNameRef.current);
+      }
+    };
+    
+    // ✅ NOVO: Callback para atualizar UI (texto completo formatado)
+    transcriptionManagerRef.current.onUIUpdate = (fullText: string) => {
+      console.log('📝 [TRANSCRIPTION] Atualizando UI com texto completo');
+      setTranscriptionText(fullText);
+    };
+    
+    console.log('✅ [TRANSCRIPTION] Callbacks configurados');
+  }, []); // Executar apenas uma vez
 
   // Cleanup ao desmontar componente
   useEffect(() => {
@@ -384,23 +460,26 @@ export function ConsultationRoom({
       addIceCandidate(iceCandidate);
     });
 
-   // ✅ IMPLEMENTAÇÃO IGUAL AO PROJETO ORIGINAL: Médico recebe transcrições do paciente
+    // ✅ CORREÇÃO: Médico recebe transcrições e exibe usando método público
     if (userType === 'doctor') {
       socketRef.current.on('receiveTranscriptionFromPeer', (data: any) => {
         console.log('👨‍⚕️ [MÉDICO] Transcrição recebida de', data.from, ':', data.transcription);
-        setTranscriptionText(prev => prev + `[${data.from}]: ${data.transcription}\n`);
+        
+        // Adicionar à UI usando método público do TranscriptionManager
+        if (transcriptionManagerRef.current) {
+          transcriptionManagerRef.current.addTranscriptToUI(data.transcription, data.from);
+        }
       });
     }
 
-
     // Para pacientes: criar botão Answer - IGUAL AO PROJETO ORIGINAL
-    socketRef.current.on('newOfferAwaiting', (data: any) => {
-      if (userType === 'patient') {
+    if (userType === 'patient') {
+      socketRef.current.on('newOfferAwaiting', (data: any) => {
         console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, criando botão Answer...');
         // Criar botão Answer IGUAL AO PROJETO ORIGINAL
         createAnswerButton(data);
-      }
-    });
+      });
+    }
   };
 
   const joinRoom = () => {
@@ -449,9 +528,13 @@ export function ConsultationRoom({
       console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
       const offer = await peerConnectionRef.current!.createOffer();
       await peerConnectionRef.current!.setLocalDescription(offer);
+      
+      // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
       setDidIOffer(true);
+      didOfferRef.current = true;
       setIsCallActive(true);
-      console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado e setLocalDescription definido');
+      console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
+      console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
       
       // Enviar oferta com roomId
       console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
@@ -512,7 +595,11 @@ export function ConsultationRoom({
       const answer = await peerConnectionRef.current!.createAnswer({});
       await peerConnectionRef.current!.setLocalDescription(answer);
       
+      // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
       setRemoteUserName(offerData.offererUserName);
+      remoteUserNameRef.current = offerData.offererUserName;
+      console.log('🩺 [PACIENTE] ✅ remoteUserName definido:', offerData.offererUserName);
+      console.log('🩺 [PACIENTE] ✅ remoteUserNameRef.current:', remoteUserNameRef.current);
       
       // Processar ICE candidates pendentes
       processPendingIceCandidates();
@@ -614,31 +701,8 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
           
-          // ✅ IMPLEMENTAÇÃO IGUAL AO PROJETO ORIGINAL: Lógica baseada em didIOffer
-          transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
-            console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
-            
-            // CASO 1: Sou o OFFERER (médico) - exibir localmente
-            if (didIOffer) {
-              console.log('✅ Sou OFFERER - exibindo localmente');
-              setTranscriptionText(prev => prev + `[${userName}]: ${transcript}\n`);
-            } 
-            // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
-            else if (userType === 'patient' && remoteUserName) {
-              console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserName);
-              
-              // Enviar transcrição para o peer via socket - IGUAL AO PROJETO ORIGINAL
-              if (socketRef.current && roomId && userName) {
-                socketRef.current.emit('sendTranscriptionToPeer', {
-                  roomId: roomId,
-                  from: userName,
-                  to: remoteUserName, // ✅ IGUAL AO PROJETO ORIGINAL
-                  transcription: transcript,
-                  timestamp: new Date().toISOString()
-                });
-              }
-            }
-          };
+          // ✅ CORREÇÃO: Callback será definido em useEffect separado
+          // Não definir aqui para evitar closure com valores antigos
         }
       } else {
         console.log('AudioProcessor já inicializado, reutilizando...');
@@ -710,9 +774,15 @@ export function ConsultationRoom({
   const createAnswerButton = (offerData: any) => {
     console.log('🩺 [PACIENTE] Criando botão Answer para:', offerData.offererUserName);
     setShowAnswerButton(true);
+    
+    // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
     setRemoteUserName(offerData.offererUserName);
+    remoteUserNameRef.current = offerData.offererUserName;
+    
     // Armazenar dados da oferta para usar quando clicar Answer
     setOfferData(offerData);
+    
+    console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
   };
 
   // Controles de mídia
