@@ -1,6 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
 import WebSocket from 'ws';
+import { db } from '../config/database';
 
 // ==================== ESTRUTURAS DE DADOS ====================
 
@@ -83,24 +84,12 @@ function resetRoomExpiration(roomId: string): void {
 }
 
 /**
- * Salva histórico de transcrições (simulado)
+ * Calcula duração em segundos entre dois timestamps
  */
-function saveTranscriptionsToDatabase(roomId: string): any {
-  const room = rooms.get(roomId);
-  if (!room) return;
-
-  console.log(`💾 [SIMULADO] Salvando transcrições da sala ${roomId} no banco de dados...`);
-  console.log(`📝 Total de transcrições: ${room.transcriptions.length}`);
-  
-  // Aqui você implementaria a lógica real de salvar no banco
-  // Por enquanto, apenas simula
-  
-  return {
-    success: true,
-    roomId: roomId,
-    transcriptionsCount: room.transcriptions.length,
-    transcriptions: room.transcriptions
-  };
+function calculateDuration(startTime: string): number {
+  const start = new Date(startTime).getTime();
+  const end = new Date().getTime();
+  return Math.floor((end - start) / 1000); // retorna em segundos
 }
 
 // ==================== SOCKET.IO HANDLERS ====================
@@ -121,8 +110,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
     // ==================== CRIAR SALA ====================
     
-    socket.on('createRoom', (data, callback) => {
-      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone } = data;
+    socket.on('createRoom', async (data, callback) => {
+      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone, userAuth } = data;
       
       // Verificar se usuário já está em outra sala
       if (userToRoom.has(hostName)) {
@@ -138,7 +127,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       const roomId = generateRoomId();
       
       // Criar sala
-      const room = {
+      const room: any = {
         roomId: roomId,
         roomName: roomName || 'Sala sem nome',
         hostUserName: hostName,
@@ -157,7 +146,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         patientId: patientId,
         patientName: patientName,
         patientEmail: patientEmail,
-        patientPhone: patientPhone
+        patientPhone: patientPhone,
+        userAuth: userAuth, // ID do user autenticado (Supabase Auth)
+        callSessionId: null // Será preenchido após criar no banco
       };
 
       rooms.set(roomId, room);
@@ -166,6 +157,35 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       // Iniciar timer de expiração
       startRoomExpiration(roomId);
+
+      // ✅ CRIAR CALL_SESSION NO BANCO DE DADOS
+      try {
+        const callSession = await db.createCallSession({
+          livekit_room_id: roomId,
+          room_name: roomName || 'Sala sem nome',
+          session_type: 'online',
+          participants: {
+            host: hostName,
+            patient: patientName,
+            patientId: patientId
+          },
+          metadata: {
+            patientEmail: patientEmail,
+            patientPhone: patientPhone,
+            userAuth: userAuth
+          }
+        });
+
+        if (callSession) {
+          console.log(`💾 Call session criada no banco: ${callSession.id}`);
+          room.callSessionId = callSession.id; // Salvar referência
+        } else {
+          console.warn('⚠️ Falha ao criar call_session no banco (sala criada apenas em memória)');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao criar call_session:', error);
+        // Continuar mesmo se falhar (sala funciona em memória)
+      }
 
       console.log(`✅ Sala criada: ${roomId} por ${hostName}`);
 
@@ -497,7 +517,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
     // ==================== FINALIZAR SALA ====================
     
-    socket.on('endRoom', (data, callback) => {
+    socket.on('endRoom', async (data, callback) => {
       const { roomId } = data;
       const room = rooms.get(roomId);
 
@@ -514,8 +534,94 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`🏁 Finalizando sala ${roomId}...`);
 
-      // Salvar transcrições (simulado)
-      const saveResult = saveTranscriptionsToDatabase(roomId);
+      let saveResult: any = {
+        transcriptionsCount: room.transcriptions.length,
+        transcriptions: room.transcriptions
+      };
+
+      // ==================== SALVAR NO BANCO DE DADOS ====================
+      try {
+        // 1. Buscar doctor_id pelo userAuth
+        let doctorId = null;
+        if (room.userAuth) {
+          const doctor = await db.getDoctorByAuth(room.userAuth);
+          if (doctor) {
+            doctorId = doctor.id;
+            console.log(`👨‍⚕️ Médico encontrado: ${doctor.name} (${doctorId})`);
+          } else {
+            console.warn(`⚠️ Médico não encontrado para userAuth: ${room.userAuth}`);
+          }
+        }
+
+        // 2. Criar CONSULTATION (se temos doctor_id e patientId)
+        let consultationId = null;
+        if (doctorId && room.patientId) {
+          const consultation = await db.createConsultation({
+            doctor_id: doctorId,
+            patient_id: room.patientId,
+            patient_name: room.patientName,
+            consultation_type: 'TELEMEDICINA',
+            status: 'COMPLETED',
+            patient_context: `Consulta online via WebRTC - Sala: ${room.roomName}`
+          });
+
+          if (consultation) {
+            consultationId = consultation.id;
+            console.log(`📋 Consulta criada: ${consultationId}`);
+            saveResult.consultationId = consultationId;
+          } else {
+            console.warn('⚠️ Falha ao criar consulta no banco');
+          }
+        } else {
+          console.warn('⚠️ Consulta não criada - faltam doctor_id ou patientId');
+        }
+
+        // 3. Atualizar CALL_SESSION com consultation_id
+        if (room.callSessionId && consultationId) {
+          const updated = await db.updateCallSession(roomId, {
+            consultation_id: consultationId,
+            status: 'ended',
+            ended_at: new Date().toISOString(),
+            metadata: {
+              transcriptionsCount: room.transcriptions.length,
+              duration: calculateDuration(room.createdAt),
+              participantName: room.participantUserName
+            }
+          });
+
+          if (updated) {
+            console.log(`💾 Call session atualizada: ${room.callSessionId}`);
+          }
+        }
+
+        // 4. Salvar TRANSCRIÇÕES (raw_text completo)
+        if (consultationId && room.transcriptions.length > 0) {
+          // Juntar todas as transcrições em um único texto
+          const rawText = room.transcriptions
+            .map((t: any) => `[${t.speaker}] (${t.timestamp}): ${t.text}`)
+            .join('\n');
+
+          const transcription = await db.saveConsultationTranscription({
+            consultation_id: consultationId,
+            raw_text: rawText,
+            language: 'pt-BR',
+            model_used: 'gpt-4o-realtime-preview-2024-12-17'
+          });
+
+          if (transcription) {
+            console.log(`📝 Transcrição salva: ${transcription.id}`);
+            saveResult.transcriptionId = transcription.id;
+          } else {
+            console.warn('⚠️ Falha ao salvar transcrição no banco');
+          }
+        }
+
+        console.log(`✅ Dados salvos no banco de dados com sucesso`);
+      } catch (error) {
+        console.error('❌ Erro ao salvar no banco de dados:', error);
+        saveResult.error = 'Erro ao salvar alguns dados no banco';
+      }
+      // ================================================================
 
       // Notificar participante que sala foi finalizada
       if (room.participantSocketId) {

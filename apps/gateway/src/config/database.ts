@@ -266,6 +266,140 @@ export const db = {
     }
     return row;
   },
+
+  // ==================== FUNÇÕES PARA WEBRTC ROOMS ====================
+
+  /**
+   * Busca médico pelo user_auth (Supabase Auth ID)
+   */
+  async getDoctorByAuth(userAuthId: string): Promise<any | null> {
+    const { data: doctor, error } = await supabase
+      .from('medicos')
+      .select('*')
+      .eq('user_auth', userAuthId)
+      .single();
+    
+    if (error) {
+      console.error('Erro ao buscar médico:', error);
+      return null;
+    }
+    
+    return doctor;
+  },
+
+  /**
+   * Cria uma nova consulta
+   */
+  async createConsultation(data: {
+    doctor_id: string;
+    patient_id: string;
+    patient_name: string;
+    consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
+    status?: string;
+    patient_context?: string;
+  }): Promise<any | null> {
+    const { data: consultation, error } = await supabase
+      .from('consultations')
+      .insert({
+        ...data,
+        status: data.status || 'CREATED',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Erro ao criar consulta:', error);
+      return null;
+    }
+    
+    return consultation;
+  },
+
+  /**
+   * Atualiza call_session com consultation_id
+   */
+  async updateCallSession(roomId: string, data: {
+    consultation_id?: string;
+    status?: string;
+    ended_at?: string;
+    metadata?: any;
+  }): Promise<boolean> {
+    const { error } = await supabase
+      .from('call_sessions')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString()
+      })
+      .eq('livekit_room_id', roomId); // Buscar por livekit_room_id que é o roomId
+    
+    if (error) {
+      console.error('Erro ao atualizar call_session:', error);
+      return false;
+    }
+    
+    return true;
+  },
+
+  /**
+   * Cria call_session ao criar sala
+   */
+  async createCallSession(data: {
+    livekit_room_id: string;
+    room_name: string;
+    session_type: string;
+    participants: any;
+    metadata?: any;
+  }): Promise<any | null> {
+    const { data: session, error } = await supabase
+      .from('call_sessions')
+      .insert({
+        ...data,
+        status: 'active',
+        consent: true,
+        started_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Erro ao criar call_session:', error);
+      return null;
+    }
+    
+    return session;
+  },
+
+  /**
+   * Salva transcrição completa da consulta
+   */
+  async saveConsultationTranscription(data: {
+    consultation_id: string;
+    raw_text: string;
+    language?: string;
+    model_used?: string;
+  }): Promise<any | null> {
+    const { data: transcription, error } = await supabase
+      .from('transcriptions')
+      .insert({
+        ...data,
+        language: data.language || 'pt-BR',
+        model_used: data.model_used || 'gpt-4o-realtime-preview-2024-12-17',
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Erro ao salvar transcrição:', error);
+      return null;
+    }
+    
+    return transcription;
+  },
 };
 
 export default supabase;

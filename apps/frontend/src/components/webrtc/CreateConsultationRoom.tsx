@@ -113,6 +113,15 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
         throw new Error('Paciente não encontrado');
       }
 
+      // ✅ Obter user autenticado (para buscar doctor_id no backend)
+      const { getCurrentUser } = await import('@/lib/supabase');
+      const user = await getCurrentUser();
+      const userAuth = user?.id || null;
+
+      if (!userAuth) {
+        console.warn('⚠️ Usuário não autenticado - consulta será criada sem doctor_id');
+      }
+
       // Criar sala via Socket.IO
       if (socketRef.current) {
         socketRef.current.emit('createRoom', {
@@ -121,7 +130,8 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
           patientId: selectedPatient,
           patientName: selectedPatientData.name,
           patientEmail: selectedPatientData.email,
-          patientPhone: selectedPatientData.phone
+          patientPhone: selectedPatientData.phone,
+          userAuth: userAuth // ✅ ID do user autenticado (Supabase Auth)
         }, (response: any) => {
           setIsCreatingRoom(false);
 
