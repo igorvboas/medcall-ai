@@ -158,9 +158,12 @@ export function ConsultationRoom({
     console.log('🔄 remoteUserNameRef atualizado:', remoteUserNameRef.current);
   }, [remoteUserName]);
 
-  // ✅ CORREÇÃO: useEffect para configurar callbacks de transcrição
-  useEffect(() => {
-    if (!transcriptionManagerRef.current) return;
+  // ✅ CORREÇÃO: Função para configurar callbacks (será chamada após criar TranscriptionManager)
+  const setupTranscriptionCallbacks = () => {
+    if (!transcriptionManagerRef.current) {
+      console.warn('⚠️ [TRANSCRIPTION] TranscriptionManager não existe ainda');
+      return;
+    }
 
     console.log('🔧 [TRANSCRIPTION] Configurando callbacks...');
     
@@ -210,7 +213,7 @@ export function ConsultationRoom({
     };
     
     console.log('✅ [TRANSCRIPTION] Callbacks configurados');
-  }, []); // Executar apenas uma vez
+  };
 
   // Cleanup ao desmontar componente
   useEffect(() => {
@@ -701,8 +704,8 @@ export function ConsultationRoom({
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
           
-          // ✅ CORREÇÃO: Callback será definido em useEffect separado
-          // Não definir aqui para evitar closure com valores antigos
+          // ✅ CORREÇÃO: Configurar callbacks IMEDIATAMENTE após criar
+          setupTranscriptionCallbacks();
         }
       } else {
         console.log('AudioProcessor já inicializado, reutilizando...');
