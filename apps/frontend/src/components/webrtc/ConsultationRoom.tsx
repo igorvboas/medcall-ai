@@ -78,7 +78,8 @@ export function ConsultationRoom({
       }
     ]
   };
-
+  console.log('🟢 userName inicial:', userName);
+  
   // Função para carregar Socket.IO dinamicamente
   const loadSocketIO = async () => {
       try {
@@ -879,15 +880,8 @@ export function ConsultationRoom({
     }
   };
 
-  // Loading state - só mostrar se for médico sem nome
-  if (userType === 'doctor' && !userName) {
-    return (
-      <div className="consultation-room-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando...</p>
-      </div>
-    );
-  }
+  // ✅ CORREÇÃO: Removido early return - deixar useEffects executarem primeiro
+  // Loading state agora é controlado pelos useEffects
 
   return (
     <div className="consultation-room-container">

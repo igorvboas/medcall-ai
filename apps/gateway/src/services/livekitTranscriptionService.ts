@@ -23,7 +23,7 @@ export class LiveKitTranscriptionService extends EventEmitter {
       config.LIVEKIT_API_SECRET
     );
 
-    console.log('🎤 LiveKit Transcription Service inicializado');
+    // console.log('🎤 LiveKit Transcription Service inicializado');
   }
 
   /**

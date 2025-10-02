@@ -1,3 +1,7 @@
+// Carregar variáveis de ambiente primeiro
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -47,12 +51,7 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Log das variáveis de ambiente importantes
-console.log('🔧 Configurações do servidor:');
-console.log('- PORT:', process.env.PORT || 3001);
-console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('- NODE_ENV:', process.env.NODE_ENV);
-console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Configurada' : 'Não configurada');
+
 
 // Rotas da API
 app.use('/api/transcription', transcriptionRoutes);
@@ -133,7 +132,9 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 3001;
 
 // Configurar upgrade para WebSocket PCM com debug detalhado
+
 httpServer.on('upgrade', (request, socket, head) => {
+  /**
   console.log('🔄 [WS-UPGRADE] Request received:', {
     url: request.url,
     method: request.method,
@@ -145,7 +146,7 @@ httpServer.on('upgrade', (request, socket, head) => {
       origin: request.headers.origin
     }
   });
-
+  */
   try {
     pcmHandler.handleUpgrade(request, socket, head);
     console.log('✅ [WS-UPGRADE] Handled by PCM handler');
@@ -156,29 +157,7 @@ httpServer.on('upgrade', (request, socket, head) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log('🚀 ============================================');
-  console.log('🚀 MedCall Gateway Server Started');
-  console.log('🚀 ============================================');
-  console.log(`📍 Port: ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('');
-  console.log('🔗 Available Endpoints:');
-  console.log('  📝 Transcription API: /api/transcription');
-  console.log('  🎤 LiveKit API: /api/livekit/transcription');
-  console.log('  📋 Sessions API: /api/sessions');
-  console.log('  🎙️ PCM WebSocket: /ws/transcribe');
-  console.log('  ❤️ Health Check: /api/health');
-  console.log('  📊 PCM Stats: /api/pcm-transcription/stats');
-  console.log('  🔬 PCM Health: /api/pcm-transcription/health');
-  console.log('');
-  console.log('🛡️ CORS Origins:');
-  allowedOrigins.forEach(origin => console.log(`  ✅ ${origin}`));
-  console.log('');
-  console.log('🔧 Services Status:');
-  console.log('  🎤 LiveKit Agent: DISABLED (using PCM WebSocket)');
-  console.log('  🎙️ PCM WebSocket: ACTIVE');
-  console.log('  📡 LiveKit DataChannel: ACTIVE');
-  console.log('🚀 ============================================');
+  console.log('🚀 MedCall Gateway Server Started\n\n');
 });
 
 // Tratamento de sinais de encerramento

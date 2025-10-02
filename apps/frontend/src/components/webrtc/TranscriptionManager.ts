@@ -59,12 +59,8 @@ export class TranscriptionManager {
       this.isConnected = false;
     });
 
-    // Receber transcrição de outro peer
-    this.socket.on('receiveTranscriptionFromPeer', (data: any) => {
-      const { transcription, from } = data;
-      console.log('[TRANSCRIPTION] 📩 Transcrição recebida de', from, ':', transcription);
-      this.displayTranscript(transcription, from, false);
-    });
+    // ✅ CORREÇÃO: Removido listener duplicado - agora é gerenciado pelo ConsultationRoom
+    // this.socket.on('receiveTranscriptionFromPeer', ...) - REMOVIDO para evitar duplicação
   }
 
   /**
@@ -206,7 +202,8 @@ export class TranscriptionManager {
 
         case 'conversation.item.created':
           console.log('[TRANSCRIPTION] 💬 Item de conversa criado:', message.item);
-          this.handleTranscription(message.item);
+          // ✅ CORREÇÃO: Removido handleTranscription para evitar duplicação
+          // this.handleTranscription(message.item); - REMOVIDO
           break;
 
         case 'conversation.item.input_audio_transcription.completed':

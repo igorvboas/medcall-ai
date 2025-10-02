@@ -21,7 +21,6 @@ interface AudioData {
 // Setup dos handlers WebSocket
 export function setupWebSocketHandlers(io: SocketIOServer): void {
   const notifier = new SessionNotifier(io);
-  
   io.on('connection', (socket: Socket) => {
     if (isDevelopment) {
       console.log(`WebSocket conectado: ${socket.id}`);
@@ -62,6 +61,7 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
         role,
         timestamp: new Date().toISOString(),
       });
+
 
       if (isDevelopment) {
         console.log(`Usuario ${userId} (${role}) entrou na sessão ${sessionId}`);

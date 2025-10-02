@@ -95,9 +95,8 @@ function calculateDuration(startTime: string): number {
 // ==================== SOCKET.IO HANDLERS ====================
 
 export function setupRoomsWebSocket(io: SocketIOServer): void {
-  console.log('🔧 Configurando handlers de salas WebSocket...');
-
   io.on('connection', (socket) => {
+
     const userName = socket.handshake.auth.userName;
     const password = socket.handshake.auth.password;
 
@@ -150,7 +149,6 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         userAuth: userAuth, // ID do user autenticado (Supabase Auth)
         callSessionId: null // Será preenchido após criar no banco
       };
-
       rooms.set(roomId, room);
       userToRoom.set(hostName, roomId);
       socketToRoom.set(socket.id, roomId);
@@ -464,7 +462,6 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         socket.emit('transcription:error', { error: 'Não conectado à OpenAI' });
         return;
       }
-
       openAIWs.send(data);
     });
 
@@ -491,7 +488,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         text: transcription,
         timestamp: new Date().toISOString()
       });
-
+      console.log('[DEBUG] [sendTranscriptionToPeer]')
       resetRoomExpiration(roomId);
 
       console.log(`[ROOM ${roomId}] ${from} -> ${to}: "${transcription}"`);
@@ -694,7 +691,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     });
   });
 
-  console.log('✅ Handlers de salas WebSocket configurados');
+  // console.log('✅ Handlers de salas WebSocket configurados');
 }
 
 // Exportar funções para uso em outras partes do sistema
