@@ -46,6 +46,9 @@ export function ConsultationRoom({
   // Estados para sugestões de IA
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   
+  // Estado para modal de finalização
+  const [showFinishModal, setShowFinishModal] = useState(false);
+  
   // Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -443,8 +446,14 @@ export function ConsultationRoom({
 
     // Sala foi finalizada
     socketRef.current.on('roomEnded', (data: any) => {
-      alert(data.message);
-      router.push('/consulta/nova');
+      if (userType === 'doctor') {
+        // Médico: redireciona para nova consulta
+        alert(data.message);
+        router.push('/consulta/nova');
+      } else {
+        // Paciente: mostra modal de finalização
+        setShowFinishModal(true);
+      }
     });
 
     // WebRTC listeners
@@ -911,7 +920,7 @@ export function ConsultationRoom({
         <div className="room-controls">
           {userType === 'doctor' && !isCallActive && (
             <button className="btn-call" onClick={call}>
-              Call
+              Iniciar Consulta
             </button>
           )}
           
@@ -932,7 +941,7 @@ export function ConsultationRoom({
 
           {userType === 'patient' && showAnswerButton && (
             <button className="btn-answer" onClick={answer}>
-              Answer
+              Entrar na Conssulta
             </button>
           )}
 
@@ -985,31 +994,29 @@ export function ConsultationRoom({
           </div>
         </div>
 
-        {/* Sidebar - Médicos sempre veem, pacientes só durante chamada */}
-        {(userType === 'doctor' || (userType === 'patient' && isCallActive)) && (
+        {/* Sidebar - APENAS para médicos */}
+        {userType === 'doctor' && (
           <div className="video-sidebar">
             {/* Section de Transcrição - APENAS para médicos */}
-            {userType === 'doctor' && (
-              <div className="transcription-box">
-              <div className="transcription-header">
-                <h6>
-                  Transcrição
-                  <span className={`badge ${transcriptionStatus === 'Conectado' ? 'bg-success' : 'bg-secondary'}`}>
-                    {transcriptionStatus}
-                  </span>
-                </h6>
-              </div>
-              <textarea 
-                className="transcription-textarea"
-                value={transcriptionText}
-                readOnly
-                placeholder="A transcrição aparecerá aqui..."
-              />
-              <div className="transcription-info">
-                {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
-              </div>
-              </div>
-            )}
+            <div className="transcription-box">
+            <div className="transcription-header">
+              <h6>
+                Transcrição
+                <span className={`badge ${transcriptionStatus === 'Conectado' ? 'bg-success' : 'bg-secondary'}`}>
+                  {transcriptionStatus}
+                </span>
+              </h6>
+            </div>
+            <textarea 
+              className="transcription-textarea"
+              value={transcriptionText}
+              readOnly
+              placeholder="A transcrição aparecerá aqui..."
+            />
+            <div className="transcription-info">
+              {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
+            </div>
+            </div>
           </div>
         )}
       </div>
@@ -1059,6 +1066,23 @@ export function ConsultationRoom({
                 {errorMessage}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de finalização para paciente */}
+      {showFinishModal && (
+        <div className="finish-modal-overlay">
+          <div className="finish-modal-content">
+            <div className="finish-modal-icon">✅</div>
+            <h2>Consulta Finalizada</h2>
+            <p>Obrigado por participar da consulta. Você pode fechar esta página.</p>
+            <button 
+              className="finish-modal-button"
+              onClick={() => setShowFinishModal(false)}
+            >
+              Entendi
+            </button>
           </div>
         </div>
       )}
