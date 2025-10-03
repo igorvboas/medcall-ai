@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
 import WebSocket from 'ws';
 import { db } from '../config/database';
+import { suggestionService } from '../services/suggestionService';
 
 // ==================== ESTRUTURAS DE DADOS ====================
 
@@ -473,7 +474,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       }
     });
 
-    socket.on('sendTranscriptionToPeer', (data) => {
+    socket.on('sendTranscriptionToPeer', async (data) => {
       const { roomId, transcription, from, to } = data;
       const room = rooms.get(roomId);
 
@@ -510,6 +511,65 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       });
       
       console.log(`[ROOM ${roomId}] 📝 Transcrição "${transcription}" enviada para ${participants.length - 1} participantes`);
+
+      // 🤖 GERAÇÃO DE SUGESTÕES DE IA
+      // Disparar análise de IA a cada 5 transcrições
+      if (room.transcriptions.length % 5 === 0 && room.transcriptions.length > 0) {
+        console.log(`🤖 [ROOM ${roomId}] Disparando análise de IA (${room.transcriptions.length} transcrições)`);
+        
+        try {
+          // Calcular duração da sessão em minutos
+          const sessionDuration = Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (1000 * 60));
+          
+          // Preparar contexto para o suggestionService
+          const context = {
+            sessionId: room.callSessionId || roomId, // Usar callSessionId (UUID) se disponível
+            patientName: room.patientName || room.participantUserName || 'Paciente',
+            sessionDuration: sessionDuration,
+            consultationType: 'online',
+            utterances: room.transcriptions.map((t: any) => ({
+              speaker: t.speaker === room.hostUserName ? 'doctor' : 'patient',
+              text: t.text,
+              timestamp: t.timestamp
+            })),
+            specialty: 'clinica_geral'
+          };
+
+          // Gerar sugestões (executa em background)
+          console.log(`🤖 [ROOM ${roomId}] Iniciando geração de sugestões com sessionId: ${context.sessionId}`);
+          
+          suggestionService.generateSuggestions(context).then(result => {
+            console.log(`🤖 [ROOM ${roomId}] Resultado da IA:`, result ? `${result.suggestions.length} sugestões` : 'null');
+            
+            if (result && result.suggestions.length > 0) {
+              console.log(`✅ [ROOM ${roomId}] ${result.suggestions.length} sugestões geradas`);
+              
+              // Enviar sugestões APENAS para o MÉDICO (host)
+              if (room.hostSocketId) {
+                const suggestionData = {
+                  sessionId: roomId,
+                  suggestions: result.suggestions,
+                  context: result.context_analysis,
+                  count: result.suggestions.length,
+                  timestamp: new Date().toISOString()
+                };
+                
+                io.to(room.hostSocketId).emit('ai:suggestions', suggestionData);
+                console.log(`📤 [ROOM ${roomId}] Sugestões enviadas para o médico:`, suggestionData.suggestions.map(s => s.content.substring(0, 50) + '...'));
+              } else {
+                console.warn(`⚠️ [ROOM ${roomId}] Host socket não encontrado para enviar sugestões`);
+              }
+            } else {
+              console.log(`📭 [ROOM ${roomId}] Nenhuma sugestão gerada ou resultado nulo`);
+            }
+          }).catch(error => {
+            console.error(`❌ [ROOM ${roomId}] Erro ao gerar sugestões:`, error);
+          });
+          
+        } catch (error) {
+          console.error(`❌ [ROOM ${roomId}] Erro ao preparar contexto para IA:`, error);
+        }
+      }
     });
 
     // ==================== FINALIZAR SALA ====================

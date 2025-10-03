@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AudioProcessor } from './AudioProcessor';
 import { TranscriptionManager } from './TranscriptionManager';
+import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 interface ConsultationRoomProps {
@@ -41,6 +42,9 @@ export function ConsultationRoom({
   
   // Estados para botão Answer - igual ao projeto original
   const [offerData, setOfferData] = useState<any>(null);
+  
+  // Estados para sugestões de IA
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   
   // Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -473,6 +477,12 @@ export function ConsultationRoom({
         if (transcriptionManagerRef.current) {
           transcriptionManagerRef.current.addTranscriptToUI(data.transcription, data.from);
         }
+      });
+
+      // 🤖 SUGESTÕES DE IA: Médico recebe sugestões geradas pela IA
+      socketRef.current.on('ai:suggestions', (data: any) => {
+        console.log('🤖 [MÉDICO] Sugestões de IA recebidas:', data.suggestions.length);
+        setAiSuggestions(data.suggestions);
       });
     }
 
@@ -971,29 +981,13 @@ export function ConsultationRoom({
             >
               🎤
             </button>
-            <button 
-              className="media-btn end-call" 
-              onClick={endCall}
-              title="Desligar"
-            >
-              📞
-            </button>
+            
           </div>
         </div>
 
         {/* Sidebar - Médicos sempre veem, pacientes só durante chamada */}
         {(userType === 'doctor' || (userType === 'patient' && isCallActive)) && (
           <div className="video-sidebar">
-            {/* Section de Sugestões - Apenas para médicos */}
-            {userType === 'doctor' && (
-              <div className="suggestions-box">
-                <h6>Sugestões</h6>
-                <div className="suggestions-content">
-                  <p className="text-muted">As sugestões médicas aparecerão aqui baseadas na transcrição da consulta.</p>
-                </div>
-              </div>
-            )}
-
             {/* Section de Transcrição - APENAS para médicos */}
             {userType === 'doctor' && (
               <div className="transcription-box">
@@ -1019,6 +1013,27 @@ export function ConsultationRoom({
           </div>
         )}
       </div>
+
+      {/* 🤖 Painel de Sugestões de IA - Apenas para médicos */}
+      {userType === 'doctor' && aiSuggestions.length > 0 && (
+        <SuggestionsPanel
+          suggestions={aiSuggestions}
+          onUseSuggestion={(suggestionId) => {
+            console.log('Sugestão usada:', suggestionId);
+            // TODO: Marcar sugestão como usada no backend
+            if (socketRef.current) {
+              socketRef.current.emit('suggestion:used', {
+                suggestionId,
+                sessionId: roomId
+              });
+            }
+          }}
+          onDismissSuggestion={(suggestionId) => {
+            console.log('Sugestão descartada:', suggestionId);
+            setAiSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+          }}
+        />
+      )}
 
       {/* Modal do participante - igual ao projeto original */}
       {showParticipantModal && (

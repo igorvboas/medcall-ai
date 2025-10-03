@@ -660,12 +660,24 @@ class SuggestionService extends EventEmitter {
       } catch (parseError) {
         const err = parseError as Error;
         console.warn('⚠️ JSON inválido na geração de sugestões, usando fallback:', err.message);
-        console.warn('📝 Conteúdo recebido:', content.substring(0, 200) + '...');
+        console.warn('📝 Conteúdo recebido:', content.substring(0, 500) + '...');
         
-        // Fallback: sugestões básicas baseadas no contexto
-        result = {
-          suggestions: this.generateFallbackSuggestions(contextAnalysis)
-        };
+        // Tentar corrigir JSON comum
+        try {
+          // Corrigir vírgulas finais em arrays
+          content = content.replace(/,(\s*[}\]])/g, '$1');
+          // Corrigir vírgulas duplas
+          content = content.replace(/,+/g, ',');
+          result = JSON.parse(content);
+          console.log('✅ JSON corrigido com sucesso');
+        } catch (secondError) {
+          console.warn('⚠️ Falha na correção do JSON, usando fallback');
+          
+          // Fallback: sugestões básicas baseadas no contexto
+          result = {
+            suggestions: this.generateFallbackSuggestions(contextAnalysis)
+          };
+        }
       }
       
       // Converter para formato AISuggestion
