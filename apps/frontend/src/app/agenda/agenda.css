@@ -1,0 +1,522 @@
+/* Container principal */
+.agenda-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Header */
+.agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.agenda-title-section {
+  flex: 1;
+}
+
+.agenda-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.agenda-subtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.agenda-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4);
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Conteúdo principal */
+.agenda-content {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 32px;
+}
+
+/* Seção do calendário */
+.calendar-section {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  overflow: hidden;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  color: #6b7280;
+}
+
+.calendar-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  min-width: 200px;
+  text-align: center;
+}
+
+.view-mode-selector {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.view-mode-btn {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn.active {
+  background: white;
+  color: #1f2937;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Grid do calendário */
+.calendar-grid {
+  padding: 0;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.weekday-header {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-day {
+  min-height: 120px;
+  padding: 8px;
+  border-right: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.calendar-day:hover {
+  background-color: #f9fafb;
+}
+
+.calendar-day.selected {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.calendar-day.today {
+  background-color: #fef3c7;
+}
+
+.calendar-day.today.selected {
+  background-color: #dbeafe;
+}
+
+.calendar-day.other-month {
+  color: #d1d5db;
+  background-color: #fafafa;
+}
+
+.day-number {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.calendar-day.other-month .day-number {
+  color: #d1d5db;
+}
+
+.calendar-day.today .day-number {
+  color: #92400e;
+  font-weight: 700;
+}
+
+/* Eventos do dia */
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-event {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.day-event.status-scheduled {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-left: 3px solid #3b82f6;
+}
+
+.day-event.status-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+  border-left: 3px solid #10b981;
+}
+
+.day-event.status-cancelled {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-left: 3px solid #ef4444;
+}
+
+.event-time {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.event-patient {
+  opacity: 0.8;
+}
+
+.more-events {
+  font-size: 9px;
+  color: #6b7280;
+  font-weight: 500;
+  padding: 1px 6px;
+  text-align: center;
+}
+
+/* Sidebar */
+.agenda-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sidebar-section {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  padding: 24px;
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+}
+
+.sidebar-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+}
+
+/* Consultas do dia */
+.no-consultations {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.consultations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.consultation-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.consultation-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.consultation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.consultation-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.time-icon {
+  width: 14px;
+  height: 14px;
+  color: #6b7280;
+}
+
+.consultation-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.consultation-status.status-scheduled {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.consultation-status.status-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.consultation-status.status-cancelled {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.consultation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consultation-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.consultation-patient,
+.consultation-type,
+.consultation-duration {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.patient-icon,
+.event-type-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Resumo do mês */
+.month-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+  .agenda-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .agenda-sidebar {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 768px) {
+  .agenda-container {
+    padding: 24px 16px;
+  }
+  
+  .agenda-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .agenda-title {
+    font-size: 28px;
+  }
+  
+  .calendar-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .calendar-navigation {
+    justify-content: center;
+  }
+  
+  .calendar-day {
+    min-height: 80px;
+    padding: 4px;
+  }
+  
+  .day-event {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+  
+  .agenda-sidebar {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-day {
+    min-height: 60px;
+    padding: 2px;
+  }
+  
+  .day-number {
+    font-size: 12px;
+  }
+  
+  .day-event {
+    font-size: 8px;
+    padding: 1px 2px;
+  }
+  
+  .weekday-header {
+    padding: 12px 4px;
+    font-size: 10px;
+  }
+}
+

@@ -1,734 +1,1130 @@
-/* Dashboard Page Styles */
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
+/* Dashboard EXATO da imagem */
+.dashboard-exact {
+  background: #f7f2ec;
+  min-height: calc(100vh - 80px);
+  margin: -2rem;
+  padding: 2rem;
+  position: relative;
 }
 
-/* Grid de Estatísticas */
-.stats-grid {
+/* Layout limpo sem duplicações */
+
+/* Reset para evitar conflitos */
+.dashboard-exact * {
+  box-sizing: border-box;
+}
+
+/* Manter margem para respeitar o sidebar */
+
+/* Saudação do dashboard */
+.dashboard-greeting-section {
+  margin-bottom: 0; /* Remove espaço extra - usa o gap do main-content */
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.dashboard-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a !important;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  text-align: left; /* Alinha à esquerda */
+}
+
+/* Layout principal: conteúdo + painel direito */
+.dashboard-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: 1fr 300px; /* Painel direito um pouco menor */
+  gap: 20px; /* Gap menor */
+  align-items: start; /* Alinha no topo */
 }
 
-.stat-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
+/* Main Content */
+.main-content {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  flex-direction: column;
+  gap: 20px; /* Gap adequado entre seções */
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--accent-color);
-  border-radius: 12px;
+/* KPI Cards com espaçamento */
+.kpi-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+  gap: 12px; /* Gap menor entre KPIs */
+  margin-bottom: 18px; /* Menos espaço abaixo */
+}
+
+.kpi {
+  position: relative;
+  padding: 20px; /* Padding menor */
+  border-radius: 24px; /* Border radius menor */
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06); /* Sombra mais sutil */
+  color: #111;
+  font-family: 'Inter', sans-serif;
+  flex: 1;
+  z-index: 1;
+  overflow: visible;
+  min-height: 100px; /* Altura menor */
+}
+
+.kpi--cyan { 
+  background-image: url('/card-cyan.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+.kpi--amber { 
+  background-image: url('/card-amber.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+.kpi--lilac { 
+  background-image: url('/card-lilac.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+/* As imagens já contêm o efeito "dentes" */
+
+.kpi .title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.kpi .value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #111 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Cards Escuros com efeito 3D */
+.card-dark {
+  background: #121316;
+  border-radius: 20px; /* Border radius menor */
+  padding: 18px; /* Padding menor */
+  color: #fff;
+  box-shadow: 
+    0 6px 24px rgba(0,0,0,0.12), /* Sombra mais sutil */
+    0 2px 8px rgba(0,0,0,0.08),
+    inset 0 1px 2px rgba(255,255,255,0.05);
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-dark:hover {
+  transform: translateY(-2px) rotateX(2deg);
+  box-shadow: 
+    0 12px 32px rgba(0,0,0,0.18),
+    0 4px 12px rgba(0,0,0,0.12),
+    inset 0 1px 2px rgba(255,255,255,0.08);
+}
+
+/* Card específico do gráfico com padding reduzido */
+.chart-card {
+  padding: 12px; /* Padding reduzido de 18px para 12px */
+}
+
+/* Card do gráfico semanal */
+.weekly-chart {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
+.weekly-chart .card-title {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
   flex-shrink: 0;
 }
 
-.stat-content {
-  flex: 1;
+/* Card de Consultas com espaçamento menor */
+.consultations-table.card-dark {
+  padding: 14px; /* Padding ainda menor para consultas */
 }
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 0.25rem 0;
-  line-height: 1;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+/* Header do card de consultas com menos espaço */
+.consultations-table .card-header {
+  margin-bottom: 12px; /* Menos espaço abaixo do header */
+}
+
+/* Container da tabela com menos espaço */
+.consultations-table .table-container {
+  margin-top: 0; /* Remove margem superior */
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff !important;
   margin: 0;
-  font-weight: 500;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-/* Grid de Gráficos */
-.dashboard-charts {
-  margin-bottom: 2rem;
+.card-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
-.charts-grid {
+.year-select,
+.month-select {
+  background: #1f2024;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.btn-download,
+.btn-filter {
+  background: #ffd84d;
+  color: #111;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-btn {
+  background: transparent;
+  color: #ffd84d;
+  border: 1px solid rgba(255,216,77,0.3);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Data Row - Gráfico + Calendário */
+.data-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px; /* Gap menor */
+  margin-bottom: 18px; /* Menos espaço abaixo */
 }
 
-.chart-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-.chart-header {
-  margin-bottom: 1.5rem;
-}
-
-.chart-title {
+/* Chart Content */
+.chart-content {
+  min-height: 280px; /* Aumentado de 100px para 280px */
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
+  justify-content: center;
 }
 
-.chart-content {
-  min-height: 200px;
-}
-
-/* Gráfico de Barras */
-.bar-chart {
+/* Line Chart específico para Atendimentos */
+.line-chart {
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  height: 150px;
-  padding: 1rem 0;
-  margin-bottom: 1rem;
+  flex-direction: column;
 }
 
-.bar-group {
+.chart-legend-top {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 12px; /* Reduzido de 20px para 12px */
+}
+
+.chart-legend-top .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #aaa;
+}
+
+.legend-line {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-line.presencial {
+  background: #8b5cf6;
+}
+
+.legend-line.telemedicina {
+  background: #3b82f6;
+  background-image: repeating-linear-gradient(
+    90deg,
+    #3b82f6 0px,
+    #3b82f6 8px,
+    transparent 8px,
+    transparent 12px
+  );
+}
+
+.chart-area {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  padding: 6px 0; /* Padding reduzido */
+  min-height: 180px; /* Altura reduzida para 180px */
+  max-height: 180px; /* Altura máxima para controlar o tamanho */
+  perspective: 1500px; /* Perspectiva 3D aumentada */
+  perspective-origin: center center;
 }
 
-.bar-container {
-  width: 100%;
-  height: 100px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 1px;
-}
-
-.bar {
-  width: 100%;
-  transition: all 0.3s ease;
-  border-radius: 2px 2px 0 0;
-  min-height: 2px;
-}
-
-.bar.presencial {
-  background: var(--accent-color);
-}
-
-.bar.telemedicina {
-  background: #3b82f6;
-}
-
-.bar-label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.bar-value {
-  font-size: 0.75rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-/* Gráfico de Pizza */
-.pie-chart {
+.chart-area svg {
+  transform-style: preserve-3d;
+  transform: translateZ(0px); /* Gráfico reto, sem rotação */
+  filter: 
+    drop-shadow(0 8px 16px rgba(0,0,0,0.3))
+    drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 1.5rem;
 }
 
-.pie-chart-center {
+.chart-area svg:hover {
+  transform: translateZ(5px) scale(1.02); /* Apenas elevação e escala no hover */
+  filter: 
+    drop-shadow(0 12px 24px rgba(0,0,0,0.4))
+    drop-shadow(0 6px 12px rgba(0,0,0,0.3));
+}
+
+/* Efeito de plano de fundo 3D para o gráfico - RETO */
+.chart-area::before {
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-
-.pie-total {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.pie-label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-}
-
-.pie-segments {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.pie-segment {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--color) 0deg var(--percentage),
-    transparent var(--percentage) 360deg
+  width: 90%;
+  height: 80%;
+  background: linear-gradient(135deg, 
+    rgba(255,255,255,0.02) 0%, 
+    rgba(255,255,255,0.01) 50%, 
+    rgba(0,0,0,0.05) 100%
   );
-  transform: rotate(var(--rotation));
+  transform: translate(-50%, -50%) translateZ(-10px); /* Plano reto atrás do gráfico */
+  border-radius: 12px;
+  z-index: -1;
+  opacity: 0.5;
 }
 
-/* Gráfico de Barras Horizontais */
-.horizontal-bar-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+/* Estilos específicos para elementos 3D do SVG */
+.line-chart-3d .main-lines path {
+  transition: all 0.3s ease;
 }
 
-.horizontal-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.line-chart-3d .main-lines path:hover {
+  stroke-width: 5;
+  filter: url(#glow) brightness(1.2);
 }
 
-.horizontal-bar-label {
-  min-width: 80px;
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  font-weight: 500;
+.line-chart-3d .point-3d {
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.horizontal-bar-container {
-  flex: 1;
-  height: 24px;
-  background: var(--bg-secondary);
+.line-chart-3d .point-3d:hover {
+  r: 7;
+  filter: url(#shadow) brightness(1.3);
+  transform-origin: center;
+}
+
+.line-chart-3d .axis-labels text {
+  transition: all 0.2s ease;
+}
+
+.line-chart-3d .axis-labels text:hover {
+  fill: #fff;
+  font-size: 13px;
+}
+
+/* Animação das linhas */
+.line-presencial {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 2s ease-in-out forwards;
+}
+
+.line-telemedicina {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 2s ease-in-out 0.5s forwards;
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Estilos para o componente Chart3D */
+.chart-3d-container {
+  width: 100%;
+  height: 180px; /* Reduzido para 180px - tamanho mais compacto */
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden; /* Corrigir overflow para evitar sobreposição */
+  max-height: 180px; /* Garantir altura máxima */
+  padding: 2px; /* Pequeno padding para evitar cortes nas bordas */
+}
+
+.chart-3d-container > div {
+  border-radius: 12px;
+  background: transparent !important;
+}
+
+/* Ajustes para o Plotly dentro do tema escuro */
+.chart-3d-container .plotly-graph-div {
+  background: transparent !important;
+}
+
+.chart-3d-container .svg-container {
+  background: transparent !important;
+}
+
+.chart-3d-container .main-svg {
+  background: transparent !important;
+}
+
+/* Estilos para o Chart3D Fallback */
+.chart-3d-fallback {
+  width: 100%;
+  height: 220px; /* Aumentado para 220px */
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
+  max-height: 220px;
 }
 
-.horizontal-bar {
-  height: 100%;
-  transition: width 0.3s ease;
-  border-radius: 12px;
+.fallback-svg {
+  transform-style: preserve-3d;
+  transform: translateZ(0px);
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  transition: all 0.3s ease;
 }
 
-.horizontal-bar.presencial {
-  background: var(--accent-color);
+.fallback-svg:hover {
+  transform: translateZ(2px) scale(1.01);
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3));
 }
 
-.horizontal-bar.telemedicina {
-  background: #3b82f6;
+.line-animated {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLineFallback 2s ease-in-out forwards;
 }
 
-.horizontal-bar-value {
-  min-width: 60px;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  text-align: right;
-  font-weight: 500;
+.point-3d-fallback {
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-/* Legendas */
-.chart-legend {
+.point-3d-fallback:hover {
+  r: 6;
+  filter: url(#shadowEffect) brightness(1.3);
+}
+
+@keyframes drawLineFallback {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Calendário */
+.calendar-content {
+  padding: 16px;
+}
+
+.dashboard-calendar {
+  width: 100%;
+}
+
+/* Ajustes específicos para o calendário no dashboard */
+.calendar-card .calendar-month-title {
+  font-size: 15px;
+}
+
+.calendar-card .calendar-cell {
+  height: 32px;
+}
+
+.calendar-card .calendar-cell-number {
+  font-size: 13px;
+}
+
+.calendar-card .calendar-nav-btn {
+  width: 28px;
+  height: 28px;
+}
+
+/* Bottom Row - Atendimentos + Consultas */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px; /* Gap menor */
+}
+
+/* Gráfico de Barras 3D CSS - VERSÃO SIMPLIFICADA */
+.bar-chart-3d-css {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 160px;
+  padding: 20px 20px 20px 20px;
+  overflow: hidden;
+  margin-top: 10px;
+  gap: 8px;
+}
+
+.bar-group-3d {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.bar-container-3d {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.bar-3d {
+  position: relative;
+  width: 100%;
+  max-width: 40px;
+  height: var(--bar-height);
+  background: var(--bar-color);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 
+    0 2px 4px rgba(0,0,0,0.2),
+    0 0 0 1px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  animation: barGrowth 1s ease-out;
+}
+
+.bar-3d:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 
+    0 4px 8px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(0,0,0,0.15);
+}
+
+/* Efeito 3D simples - apenas lado direito */
+.bar-3d::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    var(--bar-color) 0%, 
+    color-mix(in srgb, var(--bar-color) 70%, black) 100%);
+  border-radius: 0 2px 2px 0;
+  transform: skewY(-5deg);
+  transform-origin: left center;
+}
+
+/* Efeito 3D simples - apenas topo */
+.bar-3d::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(180deg, 
+    color-mix(in srgb, var(--bar-color) 120%, white) 0%, 
+    var(--bar-color) 100%);
+  border-radius: 2px 2px 0 0;
+  transform: skewX(-5deg);
+  transform-origin: bottom center;
+}
+
+.bar-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 4px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.bar-label-3d {
+  font-size: 12px;
+  color: #aaa;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* Animação de crescimento das barras */
+@keyframes barGrowth {
+  from {
+    height: 0;
+    transform: scaleY(0);
+  }
+  to {
+    height: var(--bar-height);
+    transform: scaleY(1);
+  }
+}
+
+/* Animações removidas - usando versão simplificada */
+
+/* Gráfico Simples com Recharts */
+.simple-bar-chart {
+  width: 100%;
+  height: 200px;
+  padding: 5px;
+  margin-top: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.simple-bar-chart .recharts-cartesian-grid-horizontal line,
+.simple-bar-chart .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.simple-bar-chart .recharts-bar {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.simple-bar-chart .recharts-bar:hover {
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+/* Responsividade para barras 3D */
+@media (max-width: 768px) {
+  .bar-chart-3d-css {
+    height: 120px;
+    padding: 15px 10px 15px 10px;
+    gap: 4px;
+  }
+  
+  .bar-3d {
+    max-width: 30px;
+  }
+  
+  .bar-3d::before {
+    right: -6px;
+    width: 6px;
+  }
+  
+  .bar-3d::after {
+    top: -6px;
+    height: 6px;
+  }
+  
+  .bar-value {
+    font-size: 10px;
+  }
+  
+  .bar-label-3d {
+    font-size: 10px;
+  }
+}
+
+/* Gráfico de Barras Semanal - 3D */
+.bar-chart-weekly {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 240px; /* Altura maior para as barras */
+  padding: 20px 16px 30px; /* Menos padding inferior */
+  gap: 8px;
+  position: relative;
+  perspective: 1000px; /* Adiciona perspectiva 3D */
+}
+
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 28px;
+  border-radius: 14px 14px 6px 6px;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 20px;
+  transform-style: preserve-3d;
+  transform: rotateX(15deg) rotateY(-10deg);
+  box-shadow: 
+    0 4px 16px rgba(0,0,0,0.3),
+    inset 0 2px 4px rgba(255,255,255,0.2),
+    0 0 0 1px rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+.bar:hover {
+  transform: rotateX(20deg) rotateY(-15deg) scale(1.05);
+  box-shadow: 
+    0 8px 24px rgba(0,0,0,0.4),
+    inset 0 3px 6px rgba(255,255,255,0.3),
+    0 0 0 2px rgba(255,255,255,0.15);
+}
+
+.bar::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: inherit;
+  border-radius: 14px;
+  transform: translateZ(10px);
+  filter: brightness(1.3);
+}
+
+.bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -8px;
+  bottom: 0;
+  width: 8px;
+  background: inherit;
+  transform: rotateY(90deg) translateZ(4px);
+  transform-origin: left center;
+  filter: brightness(0.7);
+  border-radius: 0 6px 6px 0;
+}
+
+/* Cores VIBRANTES das barras */
+.bar-orange { 
+  background: linear-gradient(180deg, #ff8c42 0%, #ff6b1a 100%);
+  box-shadow: 0 4px 16px rgba(255, 140, 66, 0.4);
+}
+
+.bar-pink { 
+  background: linear-gradient(180deg, #ff6b9d 0%, #e91e63 100%);
+  box-shadow: 0 4px 16px rgba(255, 107, 157, 0.4);
+}
+
+.bar-yellow { 
+  background: linear-gradient(180deg, #ffd84d 0%, #ffb300 100%);
+  box-shadow: 0 4px 16px rgba(255, 216, 77, 0.4);
+}
+
+.bar-green { 
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  box-shadow: 0 4px 16px rgba(74, 222, 128, 0.4);
+}
+
+.bar-red { 
+  background: linear-gradient(180deg, #ff4757 0%, #ff3742 100%);
+  box-shadow: 0 4px 16px rgba(255, 71, 87, 0.4);
+}
+
+.bar-gray { 
+  background: linear-gradient(180deg, #9ca3af 0%, #6b7280 100%);
+  box-shadow: 0 4px 16px rgba(156, 163, 175, 0.3);
+}
+
+.bar-label {
+  font-size: 14px;
+  color: #aaa;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+/* Tabela de Consultas */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px; /* Menos espaço entre linhas */
+}
+
+.table thead th {
+  color: #aaa;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 14px 8px; /* Menos padding */
+  text-align: left;
+}
+
+.table tbody tr {
+  background: #0f1013;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.table tbody td {
+  padding: 12px 14px; /* Menos padding nas células */
+  font-size: 14px; /* Fonte menor */
+  color: #fff;
+}
+
+.table tbody td:first-child {
+  border-radius: 16px 0 0 16px;
+}
+
+.table tbody td:last-child {
+  border-radius: 0 16px 16px 0;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-created { 
+  background: rgba(255,164,71,0.15); 
+  color: #ffa447; 
+}
+
+.status-progress { 
+  background: rgba(79,162,255,0.15); 
+  color: #4fa2ff; 
+}
+
+.status-done { 
+  background: rgba(101,246,177,0.15); 
+  color: #65f6b1; 
+}
+
+/* Right Panel - Layout Melhorado */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  width: 320px; /* Largura ligeiramente maior para o novo componente */
+  height: 100%; /* Altura total disponível */
+  gap: 16px; /* Gap entre componentes */
+}
+
+.unified-card {
+  background: #121316;
+  border-radius: 18px;
+  padding: 20px;
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* Remove gap automático - usa divisores */
+}
+
+/* Seções do card unificado */
+.status-section {
+  padding: 0;
+  flex: 1; /* Status ocupa mais espaço */
+  display: flex;
+  flex-direction: column;
+  min-height: 280px; /* Altura mínima para o gráfico */
+  margin-bottom: 0; /* Remove margem - usa divisor */
+}
+
+.status-section .card-title {
+  margin-bottom: 16px; /* Espaçamento uniforme */
+  font-size: 16px;
+}
+
+/* Títulos das seções do painel direito */
+.unified-card .card-title {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: #fff !important;
+}
+
+.date-section,
+.metrics-section {
+  padding: 16px 0; /* Padding uniforme */
+}
+
+.duration-section {
+  padding: 16px 0 40px 0; /* Padding inferior adicionado para melhor espaçamento */
+}
+
+/* Divisores entre seções */
+.section-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 20px 0; /* Espaçamento uniforme */
+}
+
+/* Gráfico de Pizza 3D */
+.pie-chart-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 16px 0;
+  flex: 1; /* Ocupa espaço disponível */
+  perspective: 800px; /* Perspectiva 3D para o container */
+}
+
+.pie-chart {
+  width: 100px; /* Tamanho menor */
+  height: 100px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ffa447 0deg 120deg,
+    #4fa2ff 120deg 240deg,
+    #65f6b1 240deg 360deg
+  );
+  position: relative;
+  display: flex;
+  flex-shrink: 0; /* Não encolhe */
+  align-items: center;
   justify-content: center;
-  margin-top: 1rem;
+  transform-style: preserve-3d;
+  transform: rotateX(45deg) rotateY(-15deg);
+  box-shadow: 
+    0 8px 24px rgba(0,0,0,0.4),
+    0 4px 8px rgba(0,0,0,0.2),
+    inset 0 2px 4px rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pie-chart:hover {
+  transform: rotateX(50deg) rotateY(-20deg) scale(1.05);
+  box-shadow: 
+    0 12px 32px rgba(0,0,0,0.5),
+    0 6px 12px rgba(0,0,0,0.3),
+    inset 0 3px 6px rgba(255,255,255,0.15);
+}
+
+.pie-chart::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: inherit;
+  transform: translateZ(-8px);
+  filter: brightness(0.6);
+}
+
+.pie-chart::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    rgba(255,255,255,0.3) 0%, 
+    rgba(255,255,255,0.1) 50%, 
+    rgba(0,0,0,0.1) 100%
+  );
+  transform: translateZ(1px);
+}
+
+.pie-center {
+  width: 60px;
+  height: 60px;
+  background: #121316;
+  border-radius: 50%;
+  transform: translateZ(2px);
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.5),
+    inset 0 2px 4px rgba(255,255,255,0.1);
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1; /* Ocupa espaço restante */
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-primary);
+  justify-content: flex-start; /* Alinha à esquerda */
+  gap: 10px; /* Gap entre dot e texto */
+  font-size: 13px; /* Fonte menor */
 }
 
-.legend-color {
-  width: 12px;
-  height: 12px;
+.legend-dot {
+  width: 10px; /* Tamanho menor */
+  height: 10px;
   border-radius: 2px;
+  flex-shrink: 0; /* Não encolhe */
 }
 
-.legend-color.presencial {
-  background: var(--accent-color);
-}
+.legend-created { background: #ffa447; }
+.legend-progress { background: #4fa2ff; }
+.legend-done { background: #65f6b1; }
 
-.legend-color.telemedicina {
-  background: #3b82f6;
-}
-
-/* Estado Vazio */
-.empty-chart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 150px;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Atividades */
-.dashboard-activities {
-  margin-bottom: 2rem;
-}
-
-.activities-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
-}
-
-.activity-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+/* Date Range Select */
+.date-range-select {
+  width: 100%;
+  background: #1f2024;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  padding: 12px;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  font-size: 14px;
 }
 
-.activity-header {
+/* Metrics Card */
+.metric-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 16px; /* Espaçamento uniforme */
 }
 
-.activity-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1.125rem;
+.metric-item:last-child {
+  margin-bottom: 0;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.metric-value {
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
+  color: #fff;
 }
 
-.activity-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--accent-color);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: color 0.2s ease;
+.metric-change {
+  font-size: 14px;
+  margin-left: 8px;
 }
 
-.activity-link:hover {
-  color: var(--primary-hover);
+.metric-change.positive {
+  color: #65f6b1;
 }
 
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+/* Duration Card */
+.duration-item {
+  margin-bottom: 16px;
 }
 
-.activity-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+.duration-item:last-child {
+  margin-bottom: 0;
 }
 
-.activity-item-content {
-  flex: 1;
+.duration-label {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 4px;
 }
 
-.activity-patient {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
+.duration-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
 }
 
-.activity-meta {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+.progress-bar {
+  height: 8px;
+  background: #2b2c33;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.activity-type,
-.activity-date,
-.activity-time {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 
-/* Status Badges */
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
+.progress-purple {
+  background: linear-gradient(90deg, #8b7cff 0%, #2b1947 100%);
 }
 
-.status-completed {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-}
-
-.status-recording {
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
-}
-
-.status-processing {
-  background: rgba(168, 85, 247, 0.1);
-  color: #9333ea;
-}
-
-.status-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
-.status-cancelled {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
-}
-
-.status-created {
-  background: rgba(251, 191, 36, 0.1);
-  color: #d97706;
-}
-
-/* Ações Rápidas */
-.quick-actions {
-  margin-bottom: 2rem;
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 1.5rem 0;
-}
-
-.quick-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.quick-action-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  text-decoration: none;
-  color: var(--text-primary);
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-.quick-action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
-  border-color: var(--accent-color);
-}
-
-.quick-action-card span {
-  font-weight: 500;
-  text-align: center;
-}
-
-.quick-action-card .w-6 {
-  color: var(--accent-color);
+.progress-blue {
+  background: linear-gradient(90deg, #6aa9ff 0%, #1f3d7a 100%);
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  
-  .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+@media (max-width: 1400px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
   }
   
-  .stat-card {
+  .right-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-exact {
+    margin: -1rem;
     padding: 1rem;
   }
   
-  .stat-value {
-    font-size: 1.5rem;
+  .kpi-row {
+    flex-direction: column;
+    gap: 16px;
   }
   
-  .charts-grid {
+  .kpi {
+    border-radius: 28px !important;
+    margin: 0 !important;
+  }
+  
+  .data-row,
+  .bottom-row {
     grid-template-columns: 1fr;
   }
   
-  .activities-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .quick-actions-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .bar-chart {
-    height: 120px;
-  }
-  
-  .pie-chart {
-    width: 120px;
-    height: 120px;
-  }
-  
-  .pie-total {
-    font-size: 1.25rem;
-  }
-}
-
-/* =====================================================
-   ESTILOS PARA SUGESTÕES DE IA
-   ===================================================== */
-
-.suggestions-panel {
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 1px solid var(--border-color);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.suggestions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.suggestions-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.suggestions-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.suggestions-content {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.no-suggestions {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: var(--text-secondary);
-}
-
-.suggestion-hint {
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  opacity: 0.7;
-}
-
-.suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.suggestion {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.suggestion:hover {
-  border-color: var(--accent-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.suggestion.used {
-  opacity: 0.6;
-  background: var(--bg-tertiary);
-}
-
-.suggestion-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.suggestion-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.suggestion .type {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--accent-color);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.suggestion .priority {
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.priority-critical {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.priority-high {
-  background: rgba(249, 115, 22, 0.1);
-  color: #f97316;
-  border: 1px solid rgba(249, 115, 22, 0.2);
-}
-
-.priority-medium {
-  background: rgba(234, 179, 8, 0.1);
-  color: #eab308;
-  border: 1px solid rgba(234, 179, 8, 0.2);
-}
-
-.priority-low {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-}
-
-.suggestion-confidence {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.suggestion-text {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--text-primary);
-  margin-bottom: 0.75rem;
-}
-
-.suggestion-source {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-  font-style: italic;
-}
-
-.suggestion-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.suggestion-used {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Tipos específicos de sugestões */
-.suggestion.question {
-  border-left: 4px solid #3b82f6;
-}
-
-.suggestion.protocol {
-  border-left: 4px solid #8b5cf6;
-}
-
-.suggestion.alert {
-  border-left: 4px solid #ef4444;
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.suggestion.followup {
-  border-left: 4px solid #f59e0b;
-}
-
-.suggestion.assessment {
-  border-left: 4px solid #10b981;
-}
-
-.suggestion.insight {
-  border-left: 4px solid #06b6d4;
-}
-
-.suggestion.warning {
-  border-left: 4px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.05);
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-  .suggestions-header {
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: stretch;
-  }
-  
-  .suggestions-actions {
-    justify-content: center;
-  }
-  
-  .suggestion-header {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .suggestion-meta {
-    flex-direction: row;
-    gap: 0.5rem;
+  .greeting {
+    font-size: 24px;
   }
 }

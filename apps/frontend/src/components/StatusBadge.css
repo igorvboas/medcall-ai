@@ -1,0 +1,259 @@
+/* Status Badge Component */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-transform: capitalize;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sizes */
+.status-badge-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+  gap: 4px;
+  border-radius: 12px;
+}
+
+.status-badge-md {
+  padding: 6px 12px;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.status-badge-lg {
+  padding: 8px 16px;
+  font-size: 14px;
+  gap: 8px;
+  border-radius: 24px;
+}
+
+/* Variants */
+.status-badge-default {
+  background-color: var(--status-bg);
+  color: var(--status-text);
+  border: 1px solid transparent;
+}
+
+.status-badge-minimal {
+  background-color: transparent;
+  color: var(--status-text);
+  border: none;
+}
+
+.status-badge-outlined {
+  background-color: transparent;
+  color: var(--status-text);
+  border: 1.5px solid var(--status-border);
+}
+
+/* Icon styles */
+.status-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.status-icon-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Text */
+.status-text {
+  font-weight: inherit;
+  line-height: 1;
+}
+
+/* Color variants with enhanced styling */
+.status-success {
+  --status-bg: #d1fae5;
+  --status-text: #065f46;
+  --status-border: #10b981;
+}
+
+.status-success.status-badge-default {
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+}
+
+.status-success.status-badge-default:hover {
+  background-color: #a7f3d0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.status-warning {
+  --status-bg: #fef3c7;
+  --status-text: #92400e;
+  --status-border: #f59e0b;
+}
+
+.status-warning.status-badge-default {
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
+}
+
+.status-warning.status-badge-default:hover {
+  background-color: #fde68a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+}
+
+.status-danger {
+  --status-bg: #fee2e2;
+  --status-text: #991b1b;
+  --status-border: #ef4444;
+}
+
+.status-danger.status-badge-default {
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.1);
+}
+
+.status-danger.status-badge-default:hover {
+  background-color: #fecaca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.status-info {
+  --status-bg: #dbeafe;
+  --status-text: #1e40af;
+  --status-border: #3b82f6;
+}
+
+.status-info.status-badge-default {
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+}
+
+.status-info.status-badge-default:hover {
+  background-color: #bfdbfe;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.status-neutral {
+  --status-bg: #f3f4f6;
+  --status-text: #374151;
+  --status-border: #6b7280;
+}
+
+.status-neutral.status-badge-default {
+  box-shadow: 0 1px 3px rgba(107, 114, 128, 0.1);
+}
+
+.status-neutral.status-badge-default:hover {
+  background-color: #e5e7eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.15);
+}
+
+.status-recording {
+  --status-bg: #fef3c7;
+  --status-text: #92400e;
+  --status-border: #f59e0b;
+  position: relative;
+}
+
+.status-recording.status-badge-default::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.1), transparent);
+  animation: shimmer 2s infinite;
+}
+
+.status-processing {
+  --status-bg: #e0e7ff;
+  --status-text: #3730a3;
+  --status-border: #6366f1;
+}
+
+.status-processing.status-badge-default {
+  background: linear-gradient(45deg, #e0e7ff, #c7d2fe);
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Pulse animation for active states */
+.status-badge.status-in-progress .status-icon,
+.status-badge.status-recording .status-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .status-badge-lg {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .status-badge-md {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .status-badge-sm {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .status-success {
+    --status-bg: rgba(16, 185, 129, 0.2);
+    --status-text: #6ee7b7;
+  }
+  
+  .status-warning {
+    --status-bg: rgba(245, 158, 11, 0.2);
+    --status-text: #fbbf24;
+  }
+  
+  .status-danger {
+    --status-bg: rgba(239, 68, 68, 0.2);
+    --status-text: #f87171;
+  }
+  
+  .status-info {
+    --status-bg: rgba(59, 130, 246, 0.2);
+    --status-text: #60a5fa;
+  }
+  
+  .status-neutral {
+    --status-bg: rgba(107, 114, 128, 0.2);
+    --status-text: #d1d5db;
+  }
+}
+
+

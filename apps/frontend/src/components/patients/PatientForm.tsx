@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import './PatientForm.css';
 
 // Tipos locais para pacientes
 interface Patient {
@@ -10,8 +11,6 @@ interface Patient {
   name: string;
   email?: string;
   phone?: string;
-  city?: string;
-  state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
   cpf?: string;
@@ -30,8 +29,6 @@ interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
-  city?: string;
-  state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
   cpf?: string;
@@ -56,8 +53,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     name: '',
     email: '',
     phone: '',
-    city: '',
-    state: '',
     birth_date: '',
     gender: undefined,
     cpf: '',
@@ -80,8 +75,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         name: patient.name,
         email: patient.email || '',
         phone: patient.phone || '',
-        city: patient.city || '',
-        state: patient.state || '',
         birth_date: patient.birth_date || '',
         gender: patient.gender,
         cpf: patient.cpf || '',
@@ -146,16 +139,19 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     
     try {
       // Limpar campos vazios antes de enviar
-      const cleanedData = Object.fromEntries(
-        Object.entries(formData).filter(([_, value]) => 
-          value !== '' && value !== undefined && value !== null
+      const cleanedData: CreatePatientData = {
+        name: formData.name,
+        ...Object.fromEntries(
+          Object.entries(formData).filter(([key, value]) => 
+            key !== 'name' && value !== '' && value !== undefined && value !== null
+          )
         )
-      );
+      } as CreatePatientData;
       
       console.log('📋 Dados do formulário antes do envio:', formData);
       console.log('🧹 Dados limpos para envio:', cleanedData);
       
-      await onSubmit(cleanedData);
+      onSubmit(cleanedData);
     } catch (error) {
       console.error('Erro ao submeter formulário:', error);
     } finally {
@@ -269,7 +265,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
               <input
                 id="birth_date"
                 type="date"
-                value={formData.birth_date}
+                value={formData.birth_date ? new Date(formData.birth_date).toISOString().split('T')[0] : ''}
                 onChange={(e) => handleChange('birth_date', e.target.value)}
                 className={`form-input ${errors.birth_date ? 'error' : ''}`}
               />
@@ -333,34 +329,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
               />
             </div>
 
-            <div className="form-field">
-              <label htmlFor="city" className="field-label">
-                Cidade
-              </label>
-              <input
-                id="city"
-                type="text"
-                value={formData.city}
-                onChange={(e) => handleChange('city', e.target.value)}
-                className="form-input"
-                placeholder="Nome da cidade"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="state" className="field-label">
-                Estado
-              </label>
-              <input
-                id="state"
-                type="text"
-                value={formData.state}
-                onChange={(e) => handleChange('state', e.target.value.toUpperCase())}
-                className="form-input"
-                placeholder="UF"
-                maxLength={2}
-              />
-            </div>
           </div>
         </div>
 

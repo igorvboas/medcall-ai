@@ -21,21 +21,46 @@ body {
 
 /* CSS Variables for Theme Colors */
 :root {
-  /* Light Mode */
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #F8F8F8;
-  --text-primary: #333333;
-  --text-secondary: #7A7A7A;
-  --text-tertiary: #999999;
+  /* Light Mode - Novo tema bege do design01 */
+  --bg-primary: #F7F2EC;
+  --bg-secondary: #EFE8DF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #5B5B5B;
+  --text-tertiary: #7A7A7A;
   --primary-color: #A6CE39;
   --primary-hover: #95B832;
   --accent-color: #A6CE39;
-  --logo-color: #AAAAAA;
-  --border-color: #E5E5E5;
+  --logo-color: #8C8C8C;
+  --border-color: #E8E2DA;
   --card-bg: #FFFFFF;
-  --hover-bg: #F5F5F5;
-  --input-bg: #F8F8F8;
+  --hover-bg: #F1EBE4;
+  --input-bg: #F3EEE7;
   --error-color: #EF4444;
+
+  /* Aliases do design01.md */
+  --bg: var(--bg-primary);
+  --surface: var(--card-bg);
+  --ink: var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --card-dark: #121316;
+  --card-dark-2: #1A1B1F;
+  --cyan: #21E6D6;
+  --amber: #FFD64D;
+  --lilac: #E8A8FF;
+  --green: #65F6B1;
+  --blue: #4FA2FF;
+  --orange: #FFA447;
+  --line-purple: #8B7CFF;
+  --line-mint: #6BE29A;
+  --progress-purple: #7B5CFF;
+  --progress-blue: #6AA9FF;
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 4px 14px rgba(0,0,0,.08);
+  --shadow-md: 0 10px 30px rgba(0,0,0,.12);
+  --shadow-lg: 0 18px 44px rgba(0,0,0,.18);
 }
 
 .dark {
@@ -66,7 +91,7 @@ body {
 
 .main-content {
   flex: 1;
-  margin-left: 60px;
+  margin-left: 84px;
   transition: margin-left 0.3s ease;
 }
 
@@ -74,9 +99,13 @@ body {
   margin-left: 240px;
 }
 
+/* Header funciona normalmente com o sidebar */
+
 .page-content {
   padding: 2rem;
 }
+
+/* Header visível normalmente */
 
 /* Sidebar Styles */
 .sidebar {
@@ -84,22 +113,32 @@ body {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 60px;
-  background: var(--bg-primary);
+  width: 84px;
+  background: #FFFFFF;
   color: var(--text-primary);
-  border-right: 1px solid var(--border-color);
+  border-radius: 0 24px 24px 0;
   transition: width 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar.expanded {
   width: 240px;
+  padding: 18px 16px;
+  align-items: flex-start;
 }
 
-.sidebar-logo {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
+.sidebar .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .sidebar-logo-content {
@@ -108,17 +147,13 @@ body {
   gap: 0.75rem;
 }
 
-.sidebar-logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--accent-color);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.125rem;
-  color: #FFFFFF;
+.sidebar-logo-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
+  filter: contrast(1.2) brightness(1.1);
 }
 
 .sidebar-logo-text {
@@ -137,79 +172,177 @@ body {
   color: var(--text-secondary);
 }
 
-.sidebar-nav {
-  flex: 1;
-  padding: 1rem 0;
-}
-
-.sidebar-menu {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sidebar-menu-item {
-  display: flex;
+.nav { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+  margin-top: 14px; 
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: var(--text-secondary);
+  width: 100%;
+}
+
+.sidebar.expanded .nav {
+  align-items: stretch;
+}
+
+/* Estado compacto da sidebar */
+.nav-btn { 
+  width: 60px; 
+  height: 48px; 
+  border-radius: 12px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  color: #262626; 
+  background: transparent; 
+  border: 0; 
+  cursor: pointer; 
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  box-sizing: border-box;
 }
 
-.sidebar-menu-item:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+/* Estado expandido da sidebar */
+.sidebar.expanded .nav-btn {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0 16px;
+  gap: 12px;
 }
 
-.sidebar-menu-item.active {
-  background: var(--accent-color);
-  color: #FFFFFF;
+/* Resetar posicionamento dos ícones no estado expandido */
+.sidebar.expanded .nav-btn svg {
+  position: static !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
 }
 
-.sidebar-menu-icon {
+.sidebar.expanded .bottom .nav-btn svg {
+  position: static !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+.nav-btn:hover { background: #F5EEE6; }
+.nav-btn.is-active { background: #F1E6DA; color: #1e1e1e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+
+.nav-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+/* Garantir que os ícones sejam sempre visíveis e alinhados */
+.nav-btn svg {
+  flex-shrink: 0;
   width: 20px;
   height: 20px;
-  flex-shrink: 0;
+  display: block;
+  margin: 0;
 }
 
-.sidebar-menu-label {
-  font-size: 0.875rem;
-  font-weight: 500;
+/* Forçar centralização absoluta dos ícones no estado compacto */
+.sidebar:not(.expanded) .nav-btn {
+  position: relative !important;
 }
 
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--border-color);
+.sidebar:not(.expanded) .nav-btn svg {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
 }
 
-.sidebar-logout {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+/* Mostrar labels quando expandido */
+.sidebar.expanded .nav-label {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.bottom { margin-top:auto; display:flex; flex-direction:column; gap:8px; align-items:center; }
+
+.sidebar.expanded .bottom {
+  align-items: stretch;
+}
+
+/* Botão de logout segue o mesmo padrão dos nav-btn */
+.bottom .nav-btn {
+  width: 60px;
+}
+
+.sidebar.expanded .bottom .nav-btn {
   width: 100%;
-  padding: 0.75rem;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.sidebar-logout:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
+/* Centralizar ícone do logout no estado compacto */
+.sidebar:not(.expanded) .bottom .nav-btn {
+  position: relative !important;
+}
+
+.sidebar:not(.expanded) .bottom .nav-btn svg {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+}
+.toggle-darkmode { 
+  width: 46px; 
+  height: 26px; 
+  border-radius: 999px; 
+  background: #EDE7DF; 
+  position: relative; 
+  align-self: center; 
+  margin-top: 8px; 
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-darkmode:hover {
+  background: #E0D5CC;
+}
+
+.toggle-darkmode span { 
+  position: absolute; 
+  left: 4px; 
+  top: 4px; 
+  width: 18px; 
+  height: 18px; 
+  border-radius: 50%; 
+  background: #C8BFB4; 
+  transition: all 0.3s ease;
+}
+
+.toggle-darkmode span.dark-mode {
+  left: 24px;
+  background: #8B7355;
 }
 
 /* Header Styles */
 .header {
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 1.5rem;
+  padding: 0 2rem;
   height: 64px;
   display: flex;
   align-items: center;
+  position: relative;
+  width: 100%;
+  z-index: 100; /* Menor que o sidebar para não sobrepor */
 }
 
 .header-content {
@@ -225,6 +358,7 @@ body {
   min-width: 300px;
   margin-right: 2rem;
 }
+
 
 .search-container {
   position: relative;
@@ -256,6 +390,12 @@ body {
   border-color: var(--accent-color);
   background: var(--bg-primary);
   box-shadow: 0 0 0 3px rgba(166, 206, 57, 0.1);
+}
+
+/* Garantir que a barra de pesquisa não entre no menu */
+.header-search .search-container {
+  min-width: 280px;
+  margin-left: 0;
 }
 
 .search-input::placeholder {
@@ -353,11 +493,11 @@ body {
 .user-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px;
+  gap: 12px;
+  padding: 8px 12px;
   border: none;
   background: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -366,18 +506,72 @@ body {
   background: var(--hover-bg);
 }
 
+.user-info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-name-email {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.user-full-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.user-email-header {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  margin: 0;
+}
+
 .user-avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   background: var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-avatar .theme-icon {
+  color: var(--text-secondary);
+}
+
+.user-initials {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--accent-color);
+  color: white;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.user-avatar .theme-icon {
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
   color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.user-button:hover .dropdown-icon {
+  transform: rotate(180deg);
 }
 
 .user-name {

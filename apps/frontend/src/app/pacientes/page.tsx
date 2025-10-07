@@ -86,18 +86,24 @@ export default function PatientsPage() {
       if (search) params.append('search', search);
       if (status !== 'all') params.append('status', status);
 
+      console.log('🔍 Buscando pacientes...', `/api/patients?${params}`);
+
       const response = await fetch(`/api/patients?${params}`, {
         credentials: 'include',
       });
+      
+      console.log('📡 Resposta da API:', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar pacientes');
       }
 
       const data: PatientsResponse = await response.json();
+      console.log('📋 Dados recebidos:', data);
       setPatients(data.patients);
       setPagination(data.pagination);
     } catch (err) {
+      console.error('❌ Erro ao buscar pacientes:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
@@ -254,72 +260,10 @@ export default function PatientsPage() {
 
   return (
     <div className="patients-page">
-      {/* Header da Página */}
-      <div className="page-header">
-        <div className="page-header-content">
-          <div className="page-title-section">
-            <h1 className="page-title">Pacientes</h1>
-            <p className="page-subtitle">
-              Gerencie seus pacientes e suas informações médicas
-            </p>
-          </div>
-          
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn btn-primary"
-          >
-            <Plus className="btn-icon" />
-            Novo Paciente
-          </button>
-        </div>
-      </div>
-
-      {/* Filtros e Busca */}
-      <div className="filters-section">
-        <div className="search-container">
-          <Search className="search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar pacientes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
-        <div className="filters-right">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="filter-select"
-          >
-            <option value="all">Todos os status</option>
-            <option value="active">Ativos</option>
-            <option value="inactive">Inativos</option>
-            <option value="archived">Arquivados</option>
-          </select>
-
-          <div className="view-toggle">
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`view-btn ${viewMode === 'cards' ? 'active' : ''}`}
-              title="Visualização em cards"
-            >
-              <Grid3X3 className="view-icon" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-              title="Visualização em lista"
-            >
-              <List className="view-icon" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Conteúdo Principal */}
-      <div className="content-area">
+      {/* Lista de Pacientes - Design da Imagem */}
+      <div className="patients-list-design">
+        <h1 className="patients-list-title">Lista de Pacientes</h1>
+        
         {loading ? (
           <div className="loading-state">
             <div className="loading-spinner"></div>
@@ -345,251 +289,123 @@ export default function PatientsPage() {
             </div>
             <h3 className="empty-title">Nenhum Paciente Registrado</h3>
             <p className="empty-description">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Nenhum paciente encontrado com os filtros aplicados. Tente ajustar os critérios de busca.'
-                : 'Você ainda não possui pacientes cadastrados. Comece adicionando seu primeiro paciente para gerenciar suas consultas.'
-              }
+              Você ainda não possui pacientes cadastrados.
             </p>
-            {!searchTerm && statusFilter === 'all' && (
-              <button 
-                onClick={() => setShowForm(true)}
-                className="btn btn-primary"
-              >
-                <Plus className="btn-icon" />
-                Cadastrar Primeiro Paciente
-              </button>
-            )}
-          </div>
-        ) : viewMode === 'cards' ? (
-          <div className="patients-grid">
-            {patients.map((patient) => {
-              const age = calculateAge(patient.birth_date);
-              
-              return (
-                <div key={patient.id} className="patient-card">
-                  {/* Header do Card */}
-                  <div className="card-header">
-                    <div className="patient-info">
-                      <h3 className="patient-name">
-                        {patient.name}
-                      </h3>
-                      <div className="patient-meta">
-                        {patient.gender && (
-                          <span className="meta-item">
-                            {patient.gender === 'M' ? 'Masculino' : 
-                             patient.gender === 'F' ? 'Feminino' : 'Outro'}
-                          </span>
-                        )}
-                        {age && (
-                          <span className="meta-item">{age} anos</span>
-                        )}
-                        {patient.city && (
-                          <span className="meta-item location">
-                            <MapPin className="meta-icon" />
-                            {patient.city}{patient.state && `, ${patient.state}`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="card-actions">
-                      <span className={`status-badge status-${patient.status}`}>
-                        {getStatusText(patient.status)}
-                      </span>
-                      
-                      <div className="action-menu">
-                        <button className="menu-trigger">
-                          <MoreVertical className="menu-icon" />
-                        </button>
-                        <div className="menu-dropdown">
-                          <button 
-                            onClick={() => setEditingPatient(patient)}
-                            className="menu-item"
-                          >
-                            <Edit className="menu-item-icon" />
-                            Editar
-                          </button>
-                          <button 
-                            onClick={() => handleDeletePatient(patient.id)}
-                            className="menu-item delete"
-                          >
-                            <Trash2 className="menu-item-icon" />
-                            Deletar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contatos */}
-                  <div className="patient-contacts">
-                    {patient.phone && (
-                      <div className="contact-item">
-                        <Phone className="contact-icon" />
-                        <span>{patient.phone}</span>
-                      </div>
-                    )}
-                    {patient.email && (
-                      <div className="contact-item">
-                        <Mail className="contact-icon" />
-                        <span>{patient.email}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Informações Médicas */}
-                  {(patient.medical_history || patient.allergies) && (
-                    <div className="medical-info">
-                      {patient.medical_history && (
-                        <div className="info-section">
-                          <h4 className="info-title">Histórico Médico</h4>
-                          <p className="info-content">{patient.medical_history}</p>
-                        </div>
-                      )}
-
-                      {patient.allergies && (
-                        <div className="info-section">
-                          <h4 className="info-title">Alergias</h4>
-                          <p className="info-content">{patient.allergies}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Footer */}
-                  <div className="card-footer">
-                    <div className="patient-date">
-                      <Calendar className="date-icon" />
-                      <span>Cadastrado em {new Date(patient.created_at).toLocaleDateString('pt-BR')}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <button 
+              onClick={() => setShowForm(true)}
+              className="btn btn-primary"
+            >
+              <Plus className="btn-icon" />
+              Cadastrar Primeiro Paciente
+            </button>
           </div>
         ) : (
-          <div className="patients-list">
-            <div className="list-header">
-              <div className="list-cell name">Nome</div>
-              <div className="list-cell contact">Contato</div>
-              <div className="list-cell location">Localização</div>
-              <div className="list-cell status">Status</div>
-              <div className="list-cell date">Data</div>
-              <div className="list-cell actions">Ações</div>
-            </div>
-            {patients.map((patient) => {
-              const age = calculateAge(patient.birth_date);
-              
-              return (
-                <div key={patient.id} className="list-row">
-                  <div className="list-cell name">
-                    <div className="patient-name-list">
-                      <h4>{patient.name}</h4>
-                      <div className="patient-meta-list">
-                        {patient.gender && (
-                          <span className="meta-item">
-                            {patient.gender === 'M' ? 'Masculino' : 
-                             patient.gender === 'F' ? 'Feminino' : 'Outro'}
-                          </span>
-                        )}
-                        {age && (
-                          <span className="meta-item">{age} anos</span>
-                        )}
-                      </div>
-                    </div>
+          <>
+            {patients.map((patient) => (
+              <div 
+                key={patient.id} 
+                className="patient-item"
+                onClick={() => setEditingPatient(patient)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="patient-avatar">
+                  {patient.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="patient-info">
+                  <div className="patient-details">
+                    <div className="patient-name">{patient.name}</div>
+                    <div className="patient-condition">{patient.medical_history || 'Infectious disease'}</div>
                   </div>
-                  
-                  <div className="list-cell contact">
-                    <div className="contact-list">
-                      {patient.phone && (
-                        <div className="contact-item-list">
-                          <Phone className="contact-icon" />
-                          <span>{patient.phone}</span>
-                        </div>
-                      )}
-                      {patient.email && (
-                        <div className="contact-item-list">
-                          <Mail className="contact-icon" />
-                          <span>{patient.email}</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="patient-date">
+                    {patient.created_at ? new Date(patient.created_at).toLocaleDateString('pt-BR', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    }) : 'N/A'}
                   </div>
-                  
-                  <div className="list-cell location">
-                    {patient.city && (
-                      <div className="location-list">
-                        <MapPin className="location-icon" />
-                        <span>{patient.city}{patient.state && `, ${patient.state}`}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="list-cell status">
-                    <span className={`status-badge status-${patient.status}`}>
-                      {getStatusText(patient.status)}
-                    </span>
-                  </div>
-                  
-                  <div className="list-cell date">
-                    <Calendar className="date-icon" />
-                    <span>{new Date(patient.created_at).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  
-                  <div className="list-cell actions">
-                    <div className="action-menu">
-                      <button className="menu-trigger">
-                        <MoreVertical className="menu-icon" />
-                      </button>
-                      <div className="menu-dropdown">
-                        <button 
-                          onClick={() => setEditingPatient(patient)}
-                          className="menu-item"
-                        >
-                          <Edit className="menu-item-icon" />
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleDeletePatient(patient.id)}
-                          className="menu-item delete"
-                        >
-                          <Trash2 className="menu-item-icon" />
-                          Deletar
-                        </button>
-                      </div>
-                    </div>
+                  <div className="patient-specialty">{(patient as any).specialty || 'Geriatrician'}</div>
+                  <div className="patient-actions">
+                    <button 
+                      className="patient-menu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Aqui você pode implementar um dropdown menu se necessário
+                        console.log('Menu clicked for patient:', patient.name);
+                      }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Paginação */}
-        {pagination.totalPages > 1 && (
-          <div className="pagination">
-            <button
-              onClick={() => fetchPatients(pagination.page - 1, searchTerm, statusFilter)}
-              disabled={pagination.page === 1}
-              className="btn btn-secondary"
-            >
-              Anterior
-            </button>
+              </div>
+            ))}
             
-            <span className="pagination-info">
-              Página {pagination.page} de {pagination.totalPages}
-            </span>
-            
-            <button
-              onClick={() => fetchPatients(pagination.page + 1, searchTerm, statusFilter)}
-              disabled={pagination.page === pagination.totalPages}
-              className="btn btn-secondary"
-            >
-              Próxima
-            </button>
-          </div>
+            {/* Paginação */}
+            {pagination.totalPages > 1 && (
+              <div className="pagination-design">
+                <button 
+                  className="pagination-btn" 
+                  disabled={pagination.page === 1}
+                  onClick={() => fetchPatients(pagination.page - 1, searchTerm, statusFilter)}
+                >
+                  <span>‹</span>
+                </button>
+                
+                {/* Primeira página */}
+                {pagination.page > 3 && (
+                  <>
+                    <button 
+                      className="pagination-number"
+                      onClick={() => fetchPatients(1, searchTerm, statusFilter)}
+                    >
+                      1
+                    </button>
+                    {pagination.page > 4 && <span className="pagination-dots">...</span>}
+                  </>
+                )}
+                
+                {/* Páginas ao redor da atual */}
+                {Array.from({ length: Math.min(3, pagination.totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(pagination.totalPages - 2, pagination.page - 1)) + i;
+                  if (pageNum > pagination.totalPages) return null;
+                  
+                  return (
+                    <button 
+                      key={pageNum}
+                      className={`pagination-number ${pageNum === pagination.page ? 'active' : ''}`}
+                      onClick={() => fetchPatients(pageNum, searchTerm, statusFilter)}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                
+                {/* Última página */}
+                {pagination.page < pagination.totalPages - 2 && (
+                  <>
+                    {pagination.page < pagination.totalPages - 3 && <span className="pagination-dots">...</span>}
+                    <button 
+                      className="pagination-number"
+                      onClick={() => fetchPatients(pagination.totalPages, searchTerm, statusFilter)}
+                    >
+                      {pagination.totalPages}
+                    </button>
+                  </>
+                )}
+                
+                <button 
+                  className="pagination-btn"
+                  disabled={pagination.page === pagination.totalPages}
+                  onClick={() => fetchPatients(pagination.page + 1, searchTerm, statusFilter)}
+                >
+                  <span>›</span>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
+
 
       {/* Modal de Formulário */}
       {showForm && (

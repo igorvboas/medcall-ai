@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, MoreVertical, Eye, Calendar, Clock, User, Phone, Video, Mic, FileText, Grid3X3, List, Plus } from 'lucide-react';
-import { ConsultaModal } from '@/components/consultas/ConsultaModal';
-import Link from 'next/link';
+import { MoreVertical, Calendar, Video, User, AlertCircle } from 'lucide-react';
+import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
 
-// Tipos locais para consultas
+// Tipos para consultas da API
 interface Consultation {
   id: string;
   doctor_id: string;
@@ -42,343 +41,293 @@ interface ConsultationsResponse {
   };
 }
 
+// Função para buscar consultas da API
+async function fetchConsultations(page: number = 1, limit: number = 20): Promise<ConsultationsResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+
+  const response = await fetch(`/api/consultations?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Erro ao buscar consultas');
+  }
+
+  return response.json();
+}
+
 export default function ConsultasPage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [selectedConsulta, setSelectedConsulta] = useState<Consultation | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0
-  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalConsultations, setTotalConsultations] = useState(0);
 
+  // Carregar consultas ao montar o componente
   useEffect(() => {
-    fetchConsultations();
-  }, [searchTerm, statusFilter, typeFilter, pagination.page]);
+    loadConsultations();
+  }, [currentPage]);
 
-  const fetchConsultations = async () => {
+  const loadConsultations = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-      });
-
-      if (searchTerm) params.append('search', searchTerm);
-      if (statusFilter) params.append('status', statusFilter);
-      if (typeFilter) params.append('type', typeFilter);
-
-      const response = await fetch(`/api/consultations?${params}`);
+      setError(null);
+      const response = await fetchConsultations(currentPage, 20);
       
-      if (!response.ok) {
-        throw new Error('Erro ao carregar consultas');
-      }
-      
-      const data: ConsultationsResponse = await response.json();
-      setConsultations(data.consultations);
-      setPagination(data.pagination);
+      setConsultations(response.consultations);
+      setTotalPages(response.pagination.totalPages);
+      setTotalConsultations(response.pagination.total);
     } catch (err) {
+      console.error('Erro ao carregar consultas:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPagination(prev => ({ ...prev, page: 1 }));
-    fetchConsultations();
-  };
-
-  const handleFilterChange = (filterType: string, value: string) => {
-    if (filterType === 'status') {
-      setStatusFilter(value);
-    } else if (filterType === 'type') {
-      setTypeFilter(value);
-    }
-    setPagination(prev => ({ ...prev, page: 1 }));
-  };
-
-  const handleViewConsulta = (consulta: Consultation) => {
-    setSelectedConsulta(consulta);
-    setModalOpen(true);
-  };
-
+  // Função para formatar data
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
+    if (diffDays === 1) {
+      return 'Hoje, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 2) {
+      return 'Ontem, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     } else {
-      return `${secs}s`;
+      return date.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return 'status-completed';
-      case 'RECORDING': return 'status-recording';
-      case 'PROCESSING': return 'status-processing';
-      case 'ERROR': return 'status-error';
-      case 'CANCELLED': return 'status-cancelled';
-      default: return 'status-created';
-    }
+  // Função para mapear status do backend para frontend
+  const mapStatusToFrontend = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'CREATED': 'scheduled',
+      'RECORDING': 'in-progress', 
+      'PROCESSING': 'in-progress',
+      'COMPLETED': 'completed',
+      'ERROR': 'cancelled',
+      'CANCELLED': 'cancelled'
+    };
+    return statusMap[status] || 'scheduled';
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'CREATED': return 'Criada';
-      case 'RECORDING': return 'Gravando';
-      case 'PROCESSING': return 'Processando';
-      case 'COMPLETED': return 'Concluída';
-      case 'ERROR': return 'Erro';
-      case 'CANCELLED': return 'Cancelada';
-      default: return status;
-    }
+  // Função para mapear tipo de consulta
+  const mapConsultationType = (type: string) => {
+    return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
   };
 
   const getTypeIcon = (type: string) => {
-    return type === 'PRESENCIAL' ? <User className="w-4 h-4" /> : <Video className="w-4 h-4" />;
+    return type === 'TELEMEDICINA' ? <Video className="type-icon" /> : <User className="type-icon" />;
   };
 
-  const getTypeText = (type: string) => {
-    return type === 'PRESENCIAL' ? 'Presencial' : 'Telemedicina';
-  };
-
-  if (loading && consultations.length === 0) {
+  const generateAvatar = (name: string) => {
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+      '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+    ];
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const colorIndex = name.length % colors.length;
+    
     return (
-      <>
-        <div className="page-header">
-          <h1 className="page-title">Consultas</h1>
-          <p className="page-subtitle">Gerenciando suas consultas médicas</p>
+      <div 
+        className="avatar-placeholder" 
+        style={{ backgroundColor: colors[colorIndex] }}
+      >
+        {initials}
+      </div>
+    );
+  };
+
+  // Renderizar loading
+  if (loading) {
+    return (
+      <div className="consultas-container">
+        <div className="consultas-header">
+          <h1 className="consultas-title">Lista de Consultas</h1>
         </div>
-        
-        <div className="loading-indicator">
-          <div className="loading-icon"></div>
-          <span>Carregando consultas...</span>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Carregando consultas...</p>
         </div>
-      </>
+      </div>
+    );
+  }
+
+  // Renderizar erro
+  if (error) {
+    return (
+      <div className="consultas-container">
+        <div className="consultas-header">
+          <h1 className="consultas-title">Lista de Consultas</h1>
+        </div>
+        <div className="error-container">
+          <AlertCircle className="error-icon" />
+          <h3>Erro ao carregar consultas</h3>
+          <p>{error}</p>
+          <button 
+            className="retry-button"
+            onClick={() => loadConsultations()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="page-header">
-        <div className="page-header-content">
-          <div>
-            <h1 className="page-title">Consultas</h1>
-            <p className="page-subtitle">Gerenciando suas consultas médicas</p>
-          </div>
-          <Link href="/consulta/nova" className="btn btn-primary">
-            <Plus className="w-4 h-4" />
-            Nova Consulta
-          </Link>
+    <div className="consultas-container">
+      <div className="consultas-header">
+        <h1 className="consultas-title">Lista de Consultas</h1>
+        <div className="consultas-stats">
+          <span>{totalConsultations} consultas encontradas</span>
         </div>
       </div>
 
-      {/* Filtros e Busca */}
-      <div className="filters-section">
-        <form onSubmit={handleSearch} className="search-form">
-          <div className="search-container">
-            <Search className="search-icon" />
-            <input
-              type="text"
-              placeholder="Buscar por paciente, contexto ou notas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-        </form>
-
-        <div className="filters-row">
-          <div className="filter-group">
-            <label htmlFor="status-filter" className="filter-label">Status</label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Todos os status</option>
-              <option value="CREATED">Criada</option>
-              <option value="RECORDING">Gravando</option>
-              <option value="PROCESSING">Processando</option>
-              <option value="COMPLETED">Concluída</option>
-              <option value="ERROR">Erro</option>
-              <option value="CANCELLED">Cancelada</option>
-            </select>
+      <div className="consultas-table-container">
+        <div className="consultas-table">
+          {/* Header da tabela */}
+          <div className="table-header">
+            <div className="header-cell patient-header">Paciente</div>
+            <div className="header-cell date-header">Data Consulta</div>
+            <div className="header-cell type-header">Tipo de Consulta</div>
+            <div className="header-cell status-header">Status</div>
+            <div className="header-cell actions-header"></div>
           </div>
 
-          <div className="filter-group">
-            <label htmlFor="type-filter" className="filter-label">Tipo</label>
-            <select
-              id="type-filter"
-              value={typeFilter}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Todos os tipos</option>
-              <option value="PRESENCIAL">Presencial</option>
-              <option value="TELEMEDICINA">Telemedicina</option>
-            </select>
-          </div>
-
-          <div className="view-controls">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`view-button ${viewMode === 'list' ? 'active' : ''}`}
-              title="Visualização em lista"
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`view-button ${viewMode === 'grid' ? 'active' : ''}`}
-              title="Visualização em grade"
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista de Consultas */}
-      {error && (
-        <div className="error-message">
-          {error}
-        </div>
-      )}
-
-      {consultations.length === 0 && !loading ? (
-        <div className="empty-state">
-          <Calendar className="empty-icon" />
-          <h3>Nenhuma consulta encontrada</h3>
-          <p>Não há consultas que correspondam aos filtros aplicados.</p>
-        </div>
-      ) : (
-        <div className={`consultations-container ${viewMode === 'grid' ? 'grid-view' : 'list-view'}`}>
-          {consultations.map((consulta) => (
-            <div key={consulta.id} className="consulta-card">
-              <div className="consulta-header">
-                <div className="consulta-info">
-                  <h3 className="consulta-patient">{consulta.patient_name}</h3>
-                  <div className="consulta-meta">
-                    <span className="consulta-type">
-                      {getTypeIcon(consulta.consultation_type)}
-                      {getTypeText(consulta.consultation_type)}
-                    </span>
-                    <span className="consulta-date">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(consulta.created_at)}
-                    </span>
+          {/* Linhas da tabela */}
+          <div className="table-body">
+            {consultations.length === 0 ? (
+              <div className="empty-state">
+                <Calendar className="empty-icon" />
+                <h3>Nenhuma consulta encontrada</h3>
+                <p>Você ainda não possui consultas cadastradas.</p>
+              </div>
+            ) : (
+              consultations.map((consultation) => (
+                <div key={consultation.id} className="table-row">
+                  <div className="table-cell patient-cell">
+                    <div className="patient-info">
+                      {generateAvatar(consultation.patient_name)}
+                      <div className="patient-details">
+                        <div className="patient-name">{consultation.patient_name}</div>
+                        <div className="patient-condition">
+                          {consultation.patient_context || 'Consulta médica'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="table-cell date-cell">
+                    {formatDate(consultation.created_at)}
+                  </div>
+                  
+                  <div className="table-cell type-cell">
+                    <div className="consultation-type">
+                      {getTypeIcon(consultation.consultation_type)}
+                      <span>{mapConsultationType(consultation.consultation_type)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="table-cell status-cell">
+                    <StatusBadge 
+                      status={mapBackendStatus(mapStatusToFrontend(consultation.status))}
+                      size="md"
+                      showIcon={true}
+                      variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' ? 'outlined' : 'default'}
+                    />
+                  </div>
+                  
+                  <div className="table-cell actions-cell">
+                    <button className="actions-button">
+                      <MoreVertical className="actions-icon" />
+                    </button>
                   </div>
                 </div>
-                <div className="consulta-actions">
-                  <span className={`status-badge ${getStatusColor(consulta.status)}`}>
-                    {getStatusText(consulta.status)}
-                  </span>
-                  <button
-                    onClick={() => handleViewConsulta(consulta)}
-                    className="action-button"
-                    title="Ver detalhes"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {consulta.patient_context && (
-                <div className="consulta-context">
-                  <p>{consulta.patient_context}</p>
-                </div>
-              )}
-
-              <div className="consulta-footer">
-                <div className="consulta-stats">
-                  {consulta.duration && (
-                    <span className="stat">
-                      <Clock className="w-4 h-4" />
-                      {formatDuration(consulta.duration)}
-                    </span>
-                  )}
-                  {consulta.recording_url && (
-                    <span className="stat">
-                      <Mic className="w-4 h-4" />
-                      Áudio
-                    </span>
-                  )}
-                  {consulta.notes && (
-                    <span className="stat">
-                      <FileText className="w-4 h-4" />
-                      Notas
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+              ))
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Paginação */}
-      {pagination.totalPages > 1 && (
-        <div className="pagination">
-          <button
-            onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-            disabled={pagination.page === 1}
-            className="pagination-button"
+      {totalPages > 1 && (
+        <div className="pagination-container">
+          <button 
+            className="pagination-arrow"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
           >
-            Anterior
+            ‹
           </button>
           
-          <span className="pagination-info">
-            Página {pagination.page} de {pagination.totalPages}
-          </span>
+          {/* Primeira página */}
+          {currentPage > 3 && (
+            <>
+              <button 
+                className="pagination-number"
+                onClick={() => setCurrentPage(1)}
+              >
+                1
+              </button>
+              {currentPage > 4 && <span className="pagination-dots">...</span>}
+            </>
+          )}
           
-          <button
-            onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-            disabled={pagination.page === pagination.totalPages}
-            className="pagination-button"
+          {/* Páginas ao redor da atual */}
+          {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+            const pageNum = Math.max(1, Math.min(totalPages - 2, currentPage - 1)) + i;
+            if (pageNum > totalPages) return null;
+            
+            return (
+              <button 
+                key={pageNum}
+                className={`pagination-number ${pageNum === currentPage ? 'active' : ''}`}
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          
+          {/* Última página */}
+          {currentPage < totalPages - 2 && (
+            <>
+              {currentPage < totalPages - 3 && <span className="pagination-dots">...</span>}
+              <button 
+                className="pagination-number"
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+          
+          <button 
+            className="pagination-arrow"
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
           >
-            Próxima
+            ›
           </button>
         </div>
       )}
-
-      {/* Modal de Detalhes */}
-      {modalOpen && selectedConsulta && (
-        <ConsultaModal
-          consulta={selectedConsulta}
-          isOpen={modalOpen}
-          onClose={() => {
-            setModalOpen(false);
-            setSelectedConsulta(null);
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 }

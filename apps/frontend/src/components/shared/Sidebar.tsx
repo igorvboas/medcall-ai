@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  UserPlus, 
-  Users, 
-  FileText, 
-  Settings, 
-  LogOut 
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
+import {
+  Home,
+  FileText,
+  MessageCircle,
+  Calendar,
+  User,
+  Settings,
+  Plus,
+  LogOut,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,90 +21,69 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  {
-    icon: Home,
-    label: 'Home',
-    href: '/dashboard',
-  },
-  {
-    icon: UserPlus,
-    label: 'Nova Consulta',
-    href: '/consulta/nova',
-  },
-  {
-    icon: Users,
-    label: 'Consultas',
-    href: '/consultas',
-  },
-  {
-    icon: FileText,
-    label: 'Pacientes',
-    href: '/pacientes',
-  },
-  {
-    icon: Settings,
-    label: 'Configurações',
-    href: '/configuracoes',
-  },
+  { icon: Home, label: 'Home', href: '/dashboard' },
+  { icon: FileText, label: 'Nova Consulta', href: '/consulta/nova' },
+  { icon: MessageCircle, label: 'Consultas', href: '/consultas' },
+  { icon: Calendar, label: 'Agenda', href: '/agenda' },
+  { icon: User, label: 'Pacientes', href: '/pacientes' },
+  { icon: Plus, label: 'Cadastrar Paciente', href: '/pacientes/cadastro' },
+  { icon: Settings, label: 'Configurações', href: '/configuracoes' },
 ];
 
 export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Aguarda a hidratação para evitar erro de mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Função para alternar tema de forma segura
+  const toggleTheme = () => {
+    if (mounted) {
+      setTheme(theme === 'dark' ? 'light' : 'dark');
+    }
+  };
 
   return (
-    <div
+    <aside
       className={`sidebar ${expanded ? 'expanded' : ''}`}
       onMouseEnter={() => onExpandedChange(true)}
       onMouseLeave={() => onExpandedChange(false)}
     >
-      {/* Logo */}
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-content">
-          <div className="sidebar-logo-icon">
-            <span>T</span>
-          </div>
-          {expanded && (
-            <div className="sidebar-logo-text">
-              <span className="sidebar-logo-title">TRIA</span>
-              <span className="sidebar-logo-beta">BETA</span>
-            </div>
-          )}
-        </div>
+      <div className="logo">
+        <img src="/logo-eva.png" alt="Eva Logo" className="sidebar-logo-image" />
       </div>
 
-      {/* Menu Items */}
-      <nav className="sidebar-nav">
-        <ul className="sidebar-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
-                >
-                  <Icon className="sidebar-menu-icon" />
-                  {expanded && (
-                    <span className="sidebar-menu-label">{item.label}</span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <nav className="nav">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link key={item.href} href={item.href} className={`nav-btn ${isActive ? 'is-active' : ''}`}>
+              <Icon size={20} />
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Footer */}
-      <div className="sidebar-footer">
-        <button className="sidebar-logout">
-          <LogOut className="sidebar-menu-icon" />
-          {expanded && (
-            <span className="sidebar-menu-label">Sair</span>
-          )}
+      <div className="bottom">
+        <button className="nav-btn" aria-label="Sair">
+          <LogOut size={20} />
+          <span className="nav-label">Sair</span>
+        </button>
+        <button 
+          className="toggle-darkmode" 
+          onClick={toggleTheme}
+          title={mounted ? (theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro') : 'Alternar tema'}
+          aria-label="Alternar tema"
+        >
+          <span className={mounted && theme === 'dark' ? 'dark-mode' : ''}></span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

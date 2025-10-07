@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText } from 'lucide-react';
+import './configuracoes.css';
 
 interface MedicoData {
   id: string;
@@ -130,25 +131,25 @@ export default function ConfiguracoesPage() {
 
   if (loading) {
     return (
-      <>
-        <div className="page-header">
-          <h1 className="page-title">Configurações</h1>
-          <p className="page-subtitle">Gerenciando suas informações pessoais</p>
+      <div className="configuracoes-container">
+        <div className="configuracoes-header">
+          <h1 className="configuracoes-title">Configurações</h1>
+          <p className="configuracoes-subtitle">Gerenciando suas informações pessoais</p>
         </div>
         
         <div className="loading-indicator">
           <div className="loading-icon"></div>
           <span>Carregando dados...</span>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h1 className="page-title">Configurações</h1>
-        <p className="page-subtitle">Gerenciando suas informações pessoais</p>
+    <div className="configuracoes-container">
+      <div className="configuracoes-header">
+        <h1 className="configuracoes-title">Configurações</h1>
+        <p className="configuracoes-subtitle">Gerenciando suas informações pessoais</p>
       </div>
 
       <div className="consultation-form">
@@ -297,27 +298,13 @@ export default function ConfiguracoesPage() {
           </div>
 
           {error && (
-            <div className="error-message" style={{ 
-              color: 'var(--error-color)', 
-              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-              padding: '1rem', 
-              borderRadius: '6px', 
-              marginTop: '1rem',
-              border: '1px solid rgba(239, 68, 68, 0.2)'
-            }}>
+            <div className="error-message">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="success-message" style={{ 
-              color: 'var(--primary-color)', 
-              backgroundColor: 'rgba(166, 206, 57, 0.1)', 
-              padding: '1rem', 
-              borderRadius: '6px', 
-              marginTop: '1rem',
-              border: '1px solid rgba(166, 206, 57, 0.2)'
-            }}>
+            <div className="success-message">
               {success}
             </div>
           )}
@@ -340,6 +327,6 @@ export default function ConfiguracoesPage() {
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }

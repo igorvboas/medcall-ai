@@ -1,29 +1,21 @@
 'use client';
 
-import { Search, Bell, User, Moon, Sun, LogOut } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { Search, Bell, User, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  const isDashboard = pathname === '/dashboard';
 
-  // Aguarda a hidratação para evitar erro de mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Função para alternar tema de forma segura
-  const toggleTheme = () => {
-    if (mounted) {
-      setTheme(theme === 'dark' ? 'light' : 'dark');
-    }
-  };
+  // Extrair dados do usuário diretamente do useAuth
+  const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
+  const email = user?.email || '';
 
   // Função para fazer logout
   const handleLogout = async () => {
@@ -34,15 +26,15 @@ export function Header() {
 
 
   return (
-    <header className="header">
-      <div className="header-content">
-        {/* Search */}
+    <header className="header main-header">
+      <div className="header-content main-header-content">
+        {/* Search sempre visível */}
         <div className="header-search">
           <div className="search-container">
             <Search className="search-icon" />
             <input
               type="text"
-              placeholder="Encontre pacientes ou funcionalidades do sistema"
+              placeholder="Pesquisar"
               className="search-input"
             />
           </div>
@@ -55,20 +47,6 @@ export function Header() {
             Hoje
           </button>
 
-          {/* Theme Switcher */}
-          <button 
-            className="theme-toggle-button"
-            onClick={toggleTheme}
-            title={mounted ? (theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro') : 'Alternar tema'}
-          >
-            {!mounted ? (
-              <Moon className="theme-icon" />
-            ) : theme === 'dark' ? (
-              <Sun className="theme-icon" />
-            ) : (
-              <Moon className="theme-icon" />
-            )}
-          </button>
 
           {/* Notifications */}
           <button className="notification-button">
@@ -82,18 +60,32 @@ export function Header() {
               className="user-button"
               onClick={() => setShowUserMenu(!showUserMenu)}
             >
-              <div className="user-avatar">
-                <User className="theme-icon" />
+              <div className="user-info-header">
+                <div className="user-name-email">
+                  <span className="user-full-name">
+                    {loading ? 'Carregando...' : displayName}
+                  </span>
+                  <span className="user-email-header">
+                    {loading ? 'Carregando...' : email}
+                  </span>
+                </div>
+                <div className="user-avatar">
+                  {displayName && displayName !== 'Usuário' && displayName !== 'Carregando...' ? (
+                    <div className="user-initials">
+                      {displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                  ) : (
+                    <User className="theme-icon" />
+                  )}
+                </div>
+                <ChevronDown className="dropdown-icon" />
               </div>
-              <span className="user-name">
-                {user?.email?.split('@')[0] || 'Usuário'}
-              </span>
             </button>
             
             {showUserMenu && (
               <div className="user-dropdown">
                 <div className="user-info">
-                  <p className="user-email">{user?.email}</p>
+                  <p className="user-email">{email}</p>
                 </div>
                 <button 
                   className="logout-button"
