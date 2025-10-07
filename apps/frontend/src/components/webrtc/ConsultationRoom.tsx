@@ -124,6 +124,7 @@ export function ConsultationRoom({
           {
             auth: {
               userName: tempUserName,
+              role: userType === 'doctor' ? 'host' : 'participant',
               password: "x"
             }
           }

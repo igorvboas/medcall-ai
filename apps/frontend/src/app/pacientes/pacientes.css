@@ -141,7 +141,7 @@
   
   .patients-page .search-input:focus {
     outline: none !important;
-    border-color: #A6CE39 !important;
+    border-color: #bd986b !important;
     box-shadow: 0 0 0 3px rgba(166, 206, 57, 0.2) !important;
   }
   

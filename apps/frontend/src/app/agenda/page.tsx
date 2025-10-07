@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus } from 'lucide-react';
 import './agenda.css';
 
@@ -195,10 +196,10 @@ export default function AgendaPage() {
         </div>
         
         <div className="agenda-actions">
-          <button className="btn btn-primary">
+          <Link href="/consulta/nova" className="btn btn-primary">
             <Plus className="btn-icon" />
             Nova Consulta
-          </button>
+          </Link>
         </div>
       </div>
 

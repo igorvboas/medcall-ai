@@ -436,7 +436,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn btn-primary"
+            className={`btn ${patient ? 'btn-update' : 'btn-primary'}`}
           >
             {isSubmitting ? (
               <>

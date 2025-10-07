@@ -10,8 +10,7 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  
-  const isDashboard = pathname === '/dashboard';
+
 
   // Extrair dados do usuário diretamente do useAuth
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';

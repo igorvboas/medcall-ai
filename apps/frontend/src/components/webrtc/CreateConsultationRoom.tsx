@@ -41,34 +41,41 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
   
   const socketRef = useRef<any>(null);
 
-  // Carregar Socket.IO dinamicamente
+  // Carregar script do Socket.IO (apenas o script)
   useEffect(() => {
-    const loadSocketIO = async () => {
-      try {
-        // Carregar Socket.IO do backend (mesmo domínio)
-        const script = document.createElement('script');
-        script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
-        script.onload = () => {
-          if (window.io) {
-            socketRef.current = window.io.connect(
-              process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
-              {
-                auth: {
-                  userName: hostName || 'Host-' + Math.floor(Math.random() * 100000),
-                  password: "x"
-                }
-              }
-            );
-          }
-        };
-        document.head.appendChild(script);
-      } catch (error) {
-        console.error('Erro ao carregar Socket.IO:', error);
+    const script = document.createElement('script');
+    script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
+    document.head.appendChild(script);
+    return () => {
+      // cleanup conexão se existir
+      if (socketRef.current) {
+        try { socketRef.current.disconnect(); } catch {}
+        socketRef.current = null;
       }
     };
-
-    loadSocketIO();
   }, []);
+
+  // Conectar ao Socket.IO somente após ter o hostName carregado
+  useEffect(() => {
+    if (!window || !(window as any).io) return;
+    if (!hostName) return; // aguarda carregar nome do médico
+    if (socketRef.current) return; // já conectado
+
+    try {
+      socketRef.current = (window as any).io.connect(
+        process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
+        {
+          auth: {
+            userName: hostName,
+            role: 'host',
+            password: 'x'
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Erro ao conectar Socket.IO:', error);
+    }
+  }, [hostName]);
 
   // Carregar dados do médico logado
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MoreVertical, Calendar, Video, User, AlertCircle } from 'lucide-react';
+import { ConsultaModal } from '../../components/consultas/ConsultaModal';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
 
@@ -70,6 +71,7 @@ export default function ConsultasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalConsultations, setTotalConsultations] = useState(0);
+  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
 
   // Carregar consultas ao montar o componente
   useEffect(() => {
@@ -221,7 +223,12 @@ export default function ConsultasPage() {
               </div>
             ) : (
               consultations.map((consultation) => (
-                <div key={consultation.id} className="table-row">
+                <div 
+                  key={consultation.id} 
+                  className="table-row"
+                  onClick={() => setSelectedConsultation(consultation)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="table-cell patient-cell">
                     <div className="patient-info">
                       {generateAvatar(consultation.patient_name)}
@@ -255,7 +262,7 @@ export default function ConsultasPage() {
                   </div>
                   
                   <div className="table-cell actions-cell">
-                    <button className="actions-button">
+                    <button className="actions-button" onClick={(e) => { e.stopPropagation(); }}>
                       <MoreVertical className="actions-icon" />
                     </button>
                   </div>
@@ -327,6 +334,15 @@ export default function ConsultasPage() {
             ›
           </button>
         </div>
+      )}
+
+      {/* Modal de Detalhes da Consulta */}
+      {selectedConsultation && (
+        <ConsultaModal 
+          consulta={selectedConsultation} 
+          isOpen={true} 
+          onClose={() => setSelectedConsultation(null)} 
+        />
       )}
     </div>
   );

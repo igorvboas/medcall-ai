@@ -213,8 +213,11 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         return;
       }
 
-      // Verificar se é reconexão do host
-      if (participantName === room.hostUserName) {
+      // Verificar se é host pela role (independente do nome) ou reconexão por nome igual
+      const requesterRole = (socket.handshake && socket.handshake.auth && socket.handshake.auth.role) || null;
+      const isHostByRole = requesterRole === 'host' || requesterRole === 'doctor';
+
+      if (isHostByRole || participantName === room.hostUserName) {
         console.log(`🔄 Reconexão do host: ${participantName} na sala ${roomId}`);
         room.hostSocketId = socket.id;
         socketToRoom.set(socket.id, roomId);
@@ -265,6 +268,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         return;
       }
 
+      console.log("[DEBUG-IGOR] participantName", participantName)
+      console.log("[DEBUG-IGOR] room.participantUserName", room.participantUserName)
       // Verificar se sala já tem participante
       if (room.participantUserName && room.participantUserName !== participantName) {
         callback({ 
@@ -585,8 +590,20 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       // Verificar se quem está finalizando é o host
       if (socket.id !== room.hostSocketId) {
-        callback({ success: false, error: 'Apenas o host pode finalizar a sala' });
-        return;
+        const requester = (socket.handshake && socket.handshake.auth) || {};
+        const requesterName = requester.userName || null;
+        const requesterRole = requester.role || null;
+
+        const isHostByIdentity = Boolean(requesterName && requesterName === room.hostUserName);
+        const isHostByRole = requesterRole === 'host' || requesterRole === 'doctor';
+
+        if (isHostByIdentity || isHostByRole) {
+          console.log(`🔄 Reatando host ao novo socket para finalizar sala ${roomId}`);
+          room.hostSocketId = socket.id;
+        } else {
+          callback({ success: false, error: 'Apenas o host pode finalizar a sala' });
+          return;
+        }
       }
 
       console.log(`🏁 Finalizando sala ${roomId}...`);
@@ -732,6 +749,11 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           // Se participante desconectou
           if (socket.id === room.participantSocketId) {
             console.log(`⚠️ Participante desconectou da sala ${roomId}`);
+            // Liberar vaga do participante para evitar sala ficar "cheia"
+            if (room.participantUserName) {
+              userToRoom.delete(room.participantUserName);
+            }
+            room.participantUserName = null;
             room.participantSocketId = null;
           }
 
