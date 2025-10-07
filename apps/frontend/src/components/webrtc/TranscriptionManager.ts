@@ -352,7 +352,7 @@ export class TranscriptionManager {
       audio: audioBase64
     };
 
-    console.log('[TRANSCRIPTION] 🎵 Enviando chunk de áudio...', audioBase64.length, 'bytes');
+    // console.log('[TRANSCRIPTION] 🎵 Enviando chunk de áudio...', audioBase64.length, 'bytes');
     return this.send(audioMessage);
   }
 

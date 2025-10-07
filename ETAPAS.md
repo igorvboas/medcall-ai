@@ -5,9 +5,10 @@
 - [BUG.] ✅ Ao criar médico não estrá criando na tabela `medicos`
 - [BUG.] ✅ Remover header duplicado no "/dashboard"
 - [BUG.] ✅ Resolver problema de sala. Médico está reconectadocom nome diferente e ocupando slotdo paciente
+- [BUG.] RETORNO A SALA. Seo usuário ou médico sairda pagina sem querer eles devem conseguir retornar para a mesma conexão
 
 - [IMP.] ✅ Excluir .next automaticamente sempre que rodar npm run dev no front
-- [IMP.] 👀 Mover funções do botão "Answer" para o "iniciar" da página "../paciente/..."
+- [IMP.] ✅ Mover funções do botão "Answer" para o "iniciar" da página "../paciente/..."
 - [IMP.] ✅ Mover funções do botão "Iniciar Consulta" para o "iniciar" da página "../medico/..."
 - [IMP.] ✅ Remover popup do paciente ao entrar na consulta para que traga o nome automaticamente
 - [IMP.] Trazer dados dinâmicos em "/dashboard"

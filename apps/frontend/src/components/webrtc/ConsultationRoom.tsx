@@ -274,8 +274,14 @@ export function ConsultationRoom({
         try {
           let resolvedName = fallbackName;
           if (!resolvedName && urlPatientId) {
-            const fetchedName = await getPatientNameById(urlPatientId);
-            resolvedName = fetchedName || '';
+            try {
+              const fetchedName = await getPatientNameById(urlPatientId);
+              resolvedName = fetchedName || '';
+            } catch (err) {
+              // ✅ Silenciar erro de busca de nome (não crítico)
+              console.warn('⚠️ Não foi possível buscar nome do paciente no banco. Usando fallback.');
+              resolvedName = '';
+            }
           }
 
           if (!resolvedName) {
@@ -366,16 +372,21 @@ export function ConsultationRoom({
       socketRef.current.emit('joinRoom', {
         roomId: roomId,
         participantName: participantName
-      }, (response: any) => {
+      }, async (response: any) => {
         if (response.success) {
           setUserRole(response.role);
           setRoomData(response.roomData);
           setShowParticipantModal(false);
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
-          // Inicializar apenas transcrição - IGUAL AO PROJETO ORIGINAL
-          // Transcrição será ativada apenas quando clicar "Answer"
-          initializeTranscription();
+          // ✅ FIX: Inicializar mídia E transcrição para o paciente
+          console.log('🩺 [PACIENTE] Inicializando mídia...');
+          await fetchUserMedia();
+          console.log('🩺 [PACIENTE] ✅ Mídia inicializada');
+          
+          // Inicializar transcrição
+          await initializeTranscription();
+          console.log('🩺 [PACIENTE] ✅ Transcrição inicializada');
         } else {
           setErrorMessage(response.error);
         }
@@ -733,9 +744,23 @@ export function ConsultationRoom({
 
   const addAnswer = async (data: any) => {
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(data.answer);
-      // Processar ICE candidates pendentes após definir remoteDescription
-      processPendingIceCandidates();
+      const currentState = peerConnectionRef.current.signalingState;
+      console.log('👨‍⚕️ [MÉDICO] addAnswer - Estado atual:', currentState);
+      
+      // ✅ PROTEÇÃO: Só definir remoteDescription se estiver no estado correto
+      if (currentState === 'have-local-offer') {
+        console.log('👨‍⚕️ [MÉDICO] ✅ Estado correto (have-local-offer), definindo answer...');
+        await peerConnectionRef.current.setRemoteDescription(data.answer);
+        console.log('👨‍⚕️ [MÉDICO] ✅ Answer definido com sucesso');
+        console.log('👨‍⚕️ [MÉDICO] Novo estado:', peerConnectionRef.current.signalingState);
+        
+        // Processar ICE candidates pendentes após definir remoteDescription
+        processPendingIceCandidates();
+      } else if (currentState === 'stable') {
+        console.log('👨‍⚕️ [MÉDICO] ⚠️ Conexão já está estabelecida (stable), ignorando answer duplicado');
+      } else {
+        console.warn('👨‍⚕️ [MÉDICO] ⚠️ Estado inesperado ao receber answer:', currentState);
+      }
     }
   };
 
@@ -753,8 +778,14 @@ export function ConsultationRoom({
         audio: true,
       });
       
+      console.log('📹 [MÍDIA] Stream obtido:', stream);
+      console.log('📹 [MÍDIA] Tracks:', stream.getTracks().map(t => `${t.kind} - ${t.enabled}`));
+      
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
+      } else {
+        console.warn('📹 [MÍDIA] ⚠️ localVideoRef.current não existe!');
       }
       localStreamRef.current = stream;
       
@@ -784,32 +815,54 @@ export function ConsultationRoom({
 
   const createPeerConnection = async (offerObj?: any) => {
     console.log('🔗 [WEBRTC] Criando PeerConnection...');
+    console.log('🔗 [WEBRTC] Local video ref existe?', !!localVideoRef.current);
+    console.log('🔗 [WEBRTC] Remote video ref existe?', !!remoteVideoRef.current);
+    
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
     
-    // ✅ CORREÇÃO: Criar remoteStream igual ao projeto original
+    // ✅ Monitorar estado da conexão
+    peerConnectionRef.current.onconnectionstatechange = () => {
+      console.log('🔗 [WEBRTC] Connection state:', peerConnectionRef.current?.connectionState);
+    };
+    
+    peerConnectionRef.current.oniceconnectionstatechange = () => {
+      console.log('🔗 [WEBRTC] ICE connection state:', peerConnectionRef.current?.iceConnectionState);
+    };
+    
+    peerConnectionRef.current.onsignalingstatechange = () => {
+      console.log('🔗 [WEBRTC] Signaling state:', peerConnectionRef.current?.signalingState);
+    };
+    
+    // ✅ CORREÇÃO: Criar remoteStream vazio (será preenchido quando receber tracks)
     remoteStreamRef.current = new MediaStream();
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStreamRef.current;
-    }
+    console.log('🔗 [WEBRTC] RemoteStream criado (vazio inicialmente)');
     
     if (localStreamRef.current) {
       const tracks = localStreamRef.current.getTracks();
       console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
+      console.log('🔗 [WEBRTC] userType:', userType);
       
       tracks.forEach((track, index) => {
-        console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled);
-        peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+        console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled, 'readyState:', track.readyState);
+        const sender = peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
+        console.log(`🔗 [WEBRTC] ✅ Sender criado para track ${track.kind}:`, sender);
       });
       
       // Verificar senders após adicionar tracks
       const senders = peerConnectionRef.current.getSenders();
-      console.log('🔗 [WEBRTC] Senders criados:', senders.length);
+      console.log('🔗 [WEBRTC] Total de senders criados:', senders.length);
+      senders.forEach((sender, idx) => {
+        console.log(`🔗 [WEBRTC] Sender ${idx}:`, sender.track?.kind, 'enabled:', sender.track?.enabled);
+      });
     } else {
-      console.log('🔗 [WEBRTC] ❌ Stream local não disponível');
+      console.error('🔗 [WEBRTC] ❌ Stream local NÃO disponível!');
+      console.error('🔗 [WEBRTC] localStreamRef.current:', localStreamRef.current);
     }
 
-    peerConnectionRef.current.addEventListener('icecandidate', e => {
+    // ✅ CORREÇÃO: Usar onicecandidate ao invés de addEventListener
+    peerConnectionRef.current.onicecandidate = (e) => {
       if(e.candidate) {
+        console.log('🔗 [ICE] Enviando ICE candidate:', e.candidate.type);
         socketRef.current.emit('sendIceCandidateToSignalingServer', {
           roomId: roomId,
           iceCandidate: e.candidate,
@@ -817,42 +870,140 @@ export function ConsultationRoom({
           didIOffer,
         });
       }
-    });
+    };
     
-    // ✅ CORREÇÃO: Event 'track' igual ao projeto original
-    peerConnectionRef.current.addEventListener('track', e => {
-      console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, e.track.enabled);
+    // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
+    peerConnectionRef.current.ontrack = (e) => {
+      console.log('🔗 [WEBRTC] 🎉 TRACK EVENTO DISPARADO!');
+      console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, 'enabled:', e.track.enabled, 'readyState:', e.track.readyState);
       console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
+      console.log('🔗 [WEBRTC] Stream[0]:', e.streams[0]);
+      console.log('🔗 [WEBRTC] userType:', userType);
       
-      // Adicionar tracks ao remoteStream igual ao projeto original
-      if (e.streams[0] && remoteStreamRef.current) {
-        e.streams[0].getTracks().forEach(track => {
-          console.log('🔗 [WEBRTC] Adicionando track remoto:', track.kind);
-          remoteStreamRef.current!.addTrack(track);
-        });
+      // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
+      if (e.streams && e.streams[0]) {
+        console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
+        console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
+        
+        if (remoteVideoRef.current) {
+          // ✅ FIX: Só atribuir se for um stream diferente
+          const currentStream = remoteVideoRef.current.srcObject as MediaStream;
+          if (!currentStream || currentStream.id !== e.streams[0].id) {
+            console.log('🔗 [WEBRTC] Atribuindo novo stream (id:', e.streams[0].id, ')');
+            remoteVideoRef.current.srcObject = e.streams[0];
+            remoteStreamRef.current = e.streams[0];
+            
+            // Forçar reprodução após um pequeno delay
+            setTimeout(() => {
+              if (remoteVideoRef.current) {
+                remoteVideoRef.current.play().then(() => {
+                  console.log('🔗 [WEBRTC] ✅ Vídeo remoto começou a reproduzir');
+                }).catch(err => {
+                  console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
+                  // Tentar novamente
+                  setTimeout(() => {
+                    remoteVideoRef.current?.play().catch(e => console.error('Retry falhou:', e));
+                  }, 100);
+                });
+              }
+            }, 100);
+            
+            console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
+          } else {
+            console.log('🔗 [WEBRTC] ℹ️ Stream já está atribuído (mesmo ID)');
+          }
+        } else {
+          console.error('🔗 [WEBRTC] ❌ remoteVideoRef.current não existe!');
+        }
+      } else {
+        console.warn('🔗 [WEBRTC] ⚠️ Nenhum stream recebido no evento track');
       }
-    });
+    };
 
     if(offerObj) {
-      await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
+      // ✅ PROTEÇÃO: Verificar estado antes de setRemoteDescription
+      const currentState = peerConnectionRef.current.signalingState;
+      console.log('🔗 [WEBRTC] Estado atual da conexão:', currentState);
+      console.log('🔗 [WEBRTC] Tipo de oferta:', offerObj.offer?.type);
+      
+      // ✅ CORREÇÃO: Para ANSWERER, só definir remoteDescription se estiver em 'stable' (estado inicial)
+      // Se já estiver em 'have-remote-offer', significa que já foi definido
+      if (currentState === 'stable') {
+        console.log('🔗 [WEBRTC] ✅ Estado correto (stable), definindo remoteDescription...');
+        await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
+        console.log('🔗 [WEBRTC] ✅ remoteDescription definido com sucesso');
+        console.log('🔗 [WEBRTC] Novo estado:', peerConnectionRef.current.signalingState);
+      } else if (currentState === 'have-remote-offer') {
+        console.log('🔗 [WEBRTC] ⚠️ remoteDescription já está definido (estado: have-remote-offer)');
+      } else {
+        console.warn('🔗 [WEBRTC] ⚠️ Estado inesperado:', currentState);
+      }
+      
       // Processar ICE candidates pendentes após definir remoteDescription
       processPendingIceCandidates();
     }
   };
 
-  // Função IGUAL AO PROJETO ORIGINAL
+  // ✅ MODIFICADO: Auto-executar Answer automaticamente
   const createAnswerButton = (offerData: any) => {
-    console.log('🩺 [PACIENTE] Criando botão Answer para:', offerData.offererUserName);
-    setShowAnswerButton(true);
+    console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
+    console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
+    
+    // ✅ PROTEÇÃO: Evitar processar múltiplas ofertas
+    if (isCallActive) {
+      console.warn('⚠️ [AUTO-ANSWER] Chamada já está ativa, ignorando nova oferta');
+      return;
+    }
+    
+    // ✅ PROTEÇÃO: Verificar se já existe uma PeerConnection ativa
+    if (peerConnectionRef.current && peerConnectionRef.current.connectionState !== 'closed') {
+      console.warn('⚠️ [AUTO-ANSWER] PeerConnection já existe, ignorando nova oferta');
+      return;
+    }
     
     // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
     setRemoteUserName(offerData.offererUserName);
     remoteUserNameRef.current = offerData.offererUserName;
     
-    // Armazenar dados da oferta para usar quando clicar Answer
+    // Armazenar dados da oferta
     setOfferData(offerData);
     
     console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
+    
+    // 🚀 AUTO-EXECUTAR: Chamar answer() automaticamente após pequeno delay
+    // O delay garante que todos os estados foram atualizados
+    setTimeout(async () => {
+      console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
+      
+      // Verificar se socket está conectado
+      if (!socketRef.current || !socketRef.current.connected) {
+        console.error('❌ [AUTO-ANSWER] Socket não conectado');
+        // Tentar novamente após 1 segundo
+        setTimeout(() => createAnswerButton(offerData), 1000);
+        return;
+      }
+
+      if (!offerData) {
+        console.error('❌ [AUTO-ANSWER] Dados da oferta não encontrados');
+        return;
+      }
+
+      try {
+        // Executar o mesmo fluxo do botão Answer
+        await answerOffer(offerData);
+        
+        // Ativar transcrição automaticamente
+        autoActivateTranscriptionForParticipant();
+        
+        setShowAnswerButton(false);
+        setIsCallActive(true);
+        console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
+      } catch(err) {
+        console.error('❌ [AUTO-ANSWER] Erro ao responder chamada automaticamente:', err);
+        // Em caso de erro, mostrar botão manual como fallback
+        setShowAnswerButton(true);
+      }
+    }, 500); // 500ms de delay para garantir que tudo está pronto
   };
 
   // Controles de mídia
@@ -973,6 +1124,14 @@ export function ConsultationRoom({
             </div>
           )}
           
+          {/* ✅ Indicador de auto-entrada para o paciente */}
+          {userType === 'patient' && !isCallActive && !showAnswerButton && (
+            <div className="auto-start-indicator">
+              <div className="spinner"></div>
+              <span>Entrando na consulta automaticamente...</span>
+            </div>
+          )}
+          
           {userType === 'doctor' && (
             <button 
               className="btn-transcription" 
@@ -988,9 +1147,10 @@ export function ConsultationRoom({
             </button>
           )}
 
+          {/* ✅ Botão manual de Answer como fallback (caso auto-answer falhe) */}
           {userType === 'patient' && showAnswerButton && (
             <button className="btn-answer" onClick={answer}>
-              Entrar na Conssulta
+              Entrar na Consulta
             </button>
           )}
 
