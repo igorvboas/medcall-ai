@@ -6,6 +6,7 @@
 - [BUG.] ✅ Remover header duplicado no "/dashboard"
 - [BUG.] ✅ Resolver problema de sala. Médico está reconectadocom nome diferente e ocupando slotdo paciente
 
+- [IMP.] ✅ Remover popup de add nome do paciente
 - [IMP.] Mover funções do botão "Answer" para o "iniciar" da página
 - [IMP.] Remover popup do paciente ao entrar na consulta para que traga o nome automaticamente
 - [IMP.] Trazer dados dinâmicos em "/dashboard"

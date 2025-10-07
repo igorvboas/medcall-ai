@@ -166,6 +166,33 @@ export async function getPatients() {
   }
 }
 
+// Buscar nome do paciente por ID (para auto-join do paciente)
+export async function getPatientNameById(patientId: string): Promise<string | null> {
+  try {
+    const isConfigured = getSupabaseConfigStatus();
+    if (!isConfigured) {
+      console.warn('⚠️ Supabase não configurado, retornando nome mock para paciente');
+      return 'Paciente';
+    }
+
+    const { data, error } = await supabase
+      .from('patients')
+      .select('name')
+      .eq('id', patientId)
+      .single();
+
+    if (error) {
+      console.error('❌ Erro ao buscar paciente por ID:', error);
+      return null;
+    }
+
+    return data?.name || null;
+  } catch (err) {
+    console.error('💥 Erro inesperado ao buscar paciente por ID:', err);
+    return null;
+  }
+}
+
 // Função para criar nova consulta
 export async function createConsultation(consultationData: {
   patient_id: string;

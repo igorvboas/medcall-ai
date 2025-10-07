@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AudioProcessor } from './AudioProcessor';
 import { TranscriptionManager } from './TranscriptionManager';
 import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
+import { getPatientNameById } from '@/lib/supabase';
 
 interface ConsultationRoomProps {
   roomId: string;
@@ -73,6 +74,7 @@ export function ConsultationRoom({
   const userNameRef = useRef<string>('');
   const remoteUserNameRef = useRef<string>('');
   const roomIdRef = useRef<string>(roomId);
+  const searchParams = useSearchParams();
 
   // Configuração WebRTC
   const peerConfiguration = {
@@ -242,7 +244,7 @@ export function ConsultationRoom({
     };
   }, []);
 
-  // Determinar nome do usuário baseado no userType - igual ao projeto original
+  // Determinar nome do usuário baseado no userType
   useEffect(() => {
     if (userType === 'doctor') {
       // Médico: usar nome salvo ou prompt
@@ -261,11 +263,42 @@ export function ConsultationRoom({
         alert('Erro: Nome do médico não informado. Recarregue a página.');
       }
     } else if (userType === 'patient') {
-      // Paciente: mostrar modal para digitar nome - igual ao projeto original
-      console.log('🩺 [PACIENTE] Definindo showParticipantModal = true');
-      setShowParticipantModal(true);
-      // Inicializar Socket.IO para paciente também
+      // Paciente: auto-join lendo o id do paciente da URL e buscando nome
+      console.log('🩺 [PACIENTE] Auto-join habilitado');
       loadSocketIO();
+
+      const urlPatientId = searchParams?.get('id_paciente') || searchParams?.get('patientId') || patientId || '';
+      const fallbackName = searchParams?.get('patientName') || patientName || '';
+
+      (async () => {
+        try {
+          let resolvedName = fallbackName;
+          if (!resolvedName && urlPatientId) {
+            const fetchedName = await getPatientNameById(urlPatientId);
+            resolvedName = fetchedName || '';
+          }
+
+          if (!resolvedName) {
+            console.warn('⚠️ Nome do paciente não encontrado. Usando "Paciente".');
+            resolvedName = 'Paciente';
+          }
+
+          setParticipantName(resolvedName);
+          // Aguardar pequeno tempo para garantir que o socket conecte
+          const tryJoin = () => {
+            if (socketRef.current) {
+              joinRoomAsParticipant(resolvedName);
+            } else {
+              setTimeout(tryJoin, 200);
+            }
+          };
+          tryJoin();
+        } catch (e) {
+          console.error('❌ Erro no auto-join do paciente:', e);
+          setErrorMessage('Erro ao preparar a participação na sala. Recarregue a página.');
+          setShowParticipantModal(true);
+        }
+      })();
     }
   }, [userType]);
 
