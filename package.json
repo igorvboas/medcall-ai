@@ -66,6 +66,7 @@
     "@livekit/components-react": "^2.9.14",
     "@livekit/components-styles": "^1.1.6",
     "@livekit/rtc-node": "^0.13.19",
-    "dotenv": "^17.2.2"
+    "dotenv": "^17.2.2",
+    "ogl": "^1.0.11"
   }
 }

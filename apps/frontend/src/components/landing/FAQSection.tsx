@@ -16,7 +16,7 @@ export function FAQSection() {
     },
     {
       question: "Preciso de equipamentos especiais?",
-      answer: "Não! O TRIA funciona com qualquer computador, tablet ou smartphone. Você só precisa de um microfone (que já vem com a maioria dos dispositivos) e uma conexão com a internet. A configuração é feita em menos de 5 minutos."
+      answer: "Não! A EVA funciona com qualquer computador, tablet ou smartphone. Você só precisa de um microfone (que já vem com a maioria dos dispositivos) e uma conexão com a internet. A configuração é feita em menos de 5 minutos."
     },
     {
       question: "Posso usar o sistema offline?",
@@ -28,7 +28,7 @@ export function FAQSection() {
     },
     {
       question: "Posso integrar com meu sistema atual?",
-      answer: "Sim! O TRIA oferece APIs e integrações com os principais sistemas de gestão médica. Nossa equipe técnica ajuda na configuração e customização conforme suas necessidades específicas."
+      answer: "Sim! A EVA oferece APIs e integrações com os principais sistemas de gestão médica. Nossa equipe técnica ajuda na configuração e customização conforme suas necessidades específicas."
     },
     {
       question: "Há limite de consultas?",
@@ -44,7 +44,7 @@ export function FAQSection() {
     },
     {
       question: "O sistema funciona para todas as especialidades médicas?",
-      answer: "Sim! O TRIA foi desenvolvido para funcionar com qualquer especialidade médica. Nossas sugestões clínicas são adaptadas conforme a especialidade e podem ser customizadas para protocolos específicos da sua área."
+      answer: "Sim! A EVA foi desenvolvida para funcionar com qualquer especialidade médica. Nossas sugestões clínicas são adaptadas conforme a especialidade e podem ser customizadas para protocolos específicos da sua área."
     }
   ];
 
@@ -58,7 +58,7 @@ export function FAQSection() {
         <div className="faq-header">
           <h2 className="section-title">Perguntas Frequentes</h2>
           <p className="section-subtitle">
-            Tire suas dúvidas sobre o TRIA
+            Tire suas dúvidas sobre a EVA
           </p>
         </div>
 
