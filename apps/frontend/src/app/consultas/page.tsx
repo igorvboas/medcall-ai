@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MoreVertical, Calendar, Video, User, AlertCircle } from 'lucide-react';
-import { ConsultaModal } from '../../components/consultas/ConsultaModal';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { 
+  MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
+  Clock, Phone, FileText, Stethoscope, Mic, Download, Play
+} from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
 
@@ -29,7 +32,53 @@ interface Consultation {
     name: string;
     email?: string;
     phone?: string;
+    birth_date?: string;
+    gender?: string;
+    cpf?: string;
+    address?: string;
+    emergency_contact?: string;
+    emergency_phone?: string;
+    medical_history?: string;
+    allergies?: string;
+    current_medications?: string;
   };
+  transcription?: {
+    id: string;
+    raw_text: string;
+    summary?: string;
+    key_points?: string[];
+    diagnosis?: string;
+    treatment?: string;
+    observations?: string;
+    confidence?: number;
+    processing_time?: number;
+    language?: string;
+    model_used?: string;
+    created_at: string;
+  };
+  audioFiles?: Array<{
+    id: string;
+    filename: string;
+    original_name?: string;
+    mime_type: string;
+    size: number;
+    duration?: number;
+    storage_path: string;
+    storage_bucket: string;
+    is_processed: boolean;
+    processing_status: string;
+    uploaded_at: string;
+  }>;
+  documents?: Array<{
+    id: string;
+    title: string;
+    content?: string;
+    type: string;
+    format: string;
+    storage_path?: string;
+    storage_bucket?: string;
+    created_at: string;
+  }>;
 }
 
 interface ConsultationsResponse {
@@ -65,19 +114,37 @@ async function fetchConsultations(page: number = 1, limit: number = 20): Promise
   return response.json();
 }
 
-export default function ConsultasPage() {
+function ConsultasPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const consultaId = searchParams.get('consulta_id');
+
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalConsultations, setTotalConsultations] = useState(0);
-  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
+  
+  // Estados para visualização de detalhes
+  const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Carregar consultas ao montar o componente
   useEffect(() => {
-    loadConsultations();
-  }, [currentPage]);
+    if (!consultaId) {
+      loadConsultations();
+    }
+  }, [currentPage, consultaId]);
+
+  // Carregar detalhes quando houver consulta_id na URL
+  useEffect(() => {
+    if (consultaId) {
+      fetchConsultaDetails(consultaId);
+    } else {
+      setConsultaDetails(null);
+    }
+  }, [consultaId]);
 
   const loadConsultations = async () => {
     try {
@@ -96,7 +163,35 @@ export default function ConsultasPage() {
     }
   };
 
-  // Função para formatar data
+  const fetchConsultaDetails = async (id: string) => {
+    try {
+      setLoadingDetails(true);
+      setError(null);
+      const response = await fetch(`/api/consultations/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar detalhes da consulta');
+      }
+      
+      const data = await response.json();
+      setConsultaDetails(data.consultation);
+    } catch (err) {
+      console.error('Erro ao carregar detalhes:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes da consulta');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleConsultationClick = (consultation: Consultation) => {
+    router.push(`/consultas?consulta_id=${consultation.id}`);
+  };
+
+  const handleBackToList = () => {
+    router.push('/consultas');
+  };
+
+  // Funções de formatação para lista
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -117,9 +212,63 @@ export default function ConsultasPage() {
     }
   };
 
-  // Removido mapeamento intermediário de status; usar diretamente mapBackendStatus
+  // Funções de formatação para detalhes
+  const formatFullDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  // Função para mapear tipo de consulta
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return 'status-completed';
+      case 'RECORDING': return 'status-recording';
+      case 'PROCESSING': return 'status-processing';
+      case 'ERROR': return 'status-error';
+      case 'CANCELLED': return 'status-cancelled';
+      default: return 'status-created';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'CREATED': return 'Criada';
+      case 'RECORDING': return 'Gravando';
+      case 'PROCESSING': return 'Processando';
+      case 'COMPLETED': return 'Concluída';
+      case 'ERROR': return 'Erro';
+      case 'CANCELLED': return 'Cancelada';
+      default: return status;
+    }
+  };
+
   const mapConsultationType = (type: string) => {
     return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
   };
@@ -147,15 +296,17 @@ export default function ConsultasPage() {
   };
 
   // Renderizar loading
-  if (loading) {
+  if (loading || loadingDetails) {
     return (
       <div className="consultas-container">
         <div className="consultas-header">
-          <h1 className="consultas-title">Lista de Consultas</h1>
+          <h1 className="consultas-title">
+            {consultaId ? 'Detalhes da Consulta' : 'Lista de Consultas'}
+          </h1>
         </div>
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Carregando consultas...</p>
+          <p>{consultaId ? 'Carregando detalhes...' : 'Carregando consultas...'}</p>
         </div>
       </div>
     );
@@ -166,23 +317,299 @@ export default function ConsultasPage() {
     return (
       <div className="consultas-container">
         <div className="consultas-header">
-          <h1 className="consultas-title">Lista de Consultas</h1>
+          <h1 className="consultas-title">
+            {consultaId ? 'Detalhes da Consulta' : 'Lista de Consultas'}
+          </h1>
         </div>
         <div className="error-container">
           <AlertCircle className="error-icon" />
-          <h3>Erro ao carregar consultas</h3>
+          <h3>{consultaId ? 'Erro ao carregar detalhes' : 'Erro ao carregar consultas'}</h3>
           <p>{error}</p>
           <button 
             className="retry-button"
-            onClick={() => loadConsultations()}
+            onClick={() => consultaId ? fetchConsultaDetails(consultaId) : loadConsultations()}
           >
             Tentar novamente
           </button>
+          {consultaId && (
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginTop: '10px' }}
+            >
+              <ArrowLeft className="w-4 h-4 inline mr-2" />
+              Voltar para lista
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
+  // Renderizar detalhes da consulta
+  if (consultaId && consultaDetails) {
+    return (
+      <div className="consultas-container">
+        <div className="consultas-header">
+          <button 
+            className="back-button"
+            onClick={handleBackToList}
+            style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Voltar
+          </button>
+          <h1 className="consultas-title">Detalhes da Consulta</h1>
+        </div>
+
+        <div className="modal-body">
+          {/* Informações Básicas */}
+          <div className="modal-section">
+            <h3 className="section-title">
+              <Calendar className="w-5 h-5" />
+              Informações da Consulta
+            </h3>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="info-label">Paciente:</span>
+                <span className="info-value">{consultaDetails.patient_name}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Tipo:</span>
+                <span className="info-value">
+                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
+                    <><User className="w-4 h-4 inline mr-1" /> Presencial</>
+                  ) : (
+                    <><Video className="w-4 h-4 inline mr-1" /> Telemedicina</>
+                  )}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Status:</span>
+                <span className={`status-badge ${getStatusColor(consultaDetails.status)}`}>
+                  {getStatusText(consultaDetails.status)}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Data/Hora:</span>
+                <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Duração:</span>
+                <span className="info-value">
+                  <Clock className="w-4 h-4 inline mr-1" />
+                  {formatDuration(consultaDetails.duration)}
+                </span>
+              </div>
+              {consultaDetails.next_appointment && (
+                <div className="info-item">
+                  <span className="info-label">Próxima Consulta:</span>
+                  <span className="info-value">{formatFullDate(consultaDetails.next_appointment)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Contexto do Paciente */}
+          {consultaDetails.patient_context && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <User className="w-5 h-5" />
+                Contexto do Paciente
+              </h3>
+              <div className="section-content">
+                <p>{consultaDetails.patient_context}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Informações do Paciente */}
+          {consultaDetails.patients && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <User className="w-5 h-5" />
+                Dados do Paciente
+              </h3>
+              <div className="info-grid">
+                {consultaDetails.patients.email && (
+                  <div className="info-item">
+                    <span className="info-label">Email:</span>
+                    <span className="info-value">{consultaDetails.patients.email}</span>
+                  </div>
+                )}
+                {consultaDetails.patients.phone && (
+                  <div className="info-item">
+                    <span className="info-label">Telefone:</span>
+                    <span className="info-value">{consultaDetails.patients.phone}</span>
+                  </div>
+                )}
+                {consultaDetails.patients.birth_date && (
+                  <div className="info-item">
+                    <span className="info-label">Data de Nascimento:</span>
+                    <span className="info-value">{formatFullDate(consultaDetails.patients.birth_date)}</span>
+                  </div>
+                )}
+                {consultaDetails.patients.gender && (
+                  <div className="info-item">
+                    <span className="info-label">Gênero:</span>
+                    <span className="info-value">{consultaDetails.patients.gender}</span>
+                  </div>
+                )}
+                {consultaDetails.patients.cpf && (
+                  <div className="info-item">
+                    <span className="info-label">CPF:</span>
+                    <span className="info-value">{consultaDetails.patients.cpf}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Transcrição */}
+          {consultaDetails.transcription && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <FileText className="w-5 h-5" />
+                Transcrição
+              </h3>
+              <div className="section-content">
+                {consultaDetails.transcription.summary && (
+                  <div className="transcription-summary">
+                    <h4>Resumo:</h4>
+                    <p>{consultaDetails.transcription.summary}</p>
+                  </div>
+                )}
+                
+                {consultaDetails.transcription.key_points && consultaDetails.transcription.key_points.length > 0 && (
+                  <div className="key-points">
+                    <h4>Pontos Principais:</h4>
+                    <ul>
+                      {consultaDetails.transcription.key_points.map((point, index) => (
+                        <li key={index}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {consultaDetails.transcription.raw_text && (
+                  <div className="raw-transcription">
+                    <h4>Transcrição Completa:</h4>
+                    <p>{consultaDetails.transcription.raw_text}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Diagnóstico e Tratamento */}
+          {(consultaDetails.diagnosis || consultaDetails.treatment || consultaDetails.prescription) && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <Stethoscope className="w-5 h-5" />
+                Diagnóstico e Tratamento
+              </h3>
+              <div className="section-content">
+                {consultaDetails.diagnosis && (
+                  <div className="medical-info">
+                    <h4>Diagnóstico:</h4>
+                    <p>{consultaDetails.diagnosis}</p>
+                  </div>
+                )}
+                
+                {consultaDetails.treatment && (
+                  <div className="medical-info">
+                    <h4>Tratamento:</h4>
+                    <p>{consultaDetails.treatment}</p>
+                  </div>
+                )}
+                
+                {consultaDetails.prescription && (
+                  <div className="medical-info">
+                    <h4>Prescrição:</h4>
+                    <p>{consultaDetails.prescription}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Notas */}
+          {consultaDetails.notes && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <FileText className="w-5 h-5" />
+                Notas
+              </h3>
+              <div className="section-content">
+                <p>{consultaDetails.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Arquivos de Áudio */}
+          {consultaDetails.audioFiles && consultaDetails.audioFiles.length > 0 && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <Mic className="w-5 h-5" />
+                Arquivos de Áudio
+              </h3>
+              <div className="audio-files">
+                {consultaDetails.audioFiles.map((file) => (
+                  <div key={file.id} className="audio-file">
+                    <div className="file-info">
+                      <span className="file-name">{file.original_name || file.filename}</span>
+                      <span className="file-size">{formatFileSize(file.size)}</span>
+                      {file.duration && (
+                        <span className="file-duration">{formatDuration(file.duration)}</span>
+                      )}
+                    </div>
+                    <div className="file-actions">
+                      <button className="action-button" title="Reproduzir">
+                        <Play className="w-4 h-4" />
+                      </button>
+                      <button className="action-button" title="Download">
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Documentos */}
+          {consultaDetails.documents && consultaDetails.documents.length > 0 && (
+            <div className="modal-section">
+              <h3 className="section-title">
+                <FileText className="w-5 h-5" />
+                Documentos
+              </h3>
+              <div className="documents">
+                {consultaDetails.documents.map((doc) => (
+                  <div key={doc.id} className="document">
+                    <div className="document-info">
+                      <span className="document-title">{doc.title}</span>
+                      <span className="document-type">{doc.type}</span>
+                    </div>
+                    <div className="document-actions">
+                      <button className="action-button" title="Visualizar">
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      <button className="action-button" title="Download">
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Renderizar lista de consultas
   return (
     <div className="consultas-container">
       <div className="consultas-header">
@@ -216,7 +643,7 @@ export default function ConsultasPage() {
                 <div 
                   key={consultation.id} 
                   className="table-row"
-                  onClick={() => setSelectedConsultation(consultation)}
+                  onClick={() => handleConsultationClick(consultation)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="table-cell patient-cell">
@@ -326,14 +753,30 @@ export default function ConsultasPage() {
         </div>
       )}
 
-      {/* Modal de Detalhes da Consulta */}
-      {selectedConsultation && (
-        <ConsultaModal 
-          consulta={selectedConsultation} 
-          isOpen={true} 
-          onClose={() => setSelectedConsultation(null)} 
-        />
-      )}
     </div>
+  );
+}
+
+// Loading component para o Suspense
+function ConsultasPageLoading() {
+  return (
+    <div className="consultas-container">
+      <div className="consultas-header">
+        <h1 className="consultas-title">Lista de Consultas</h1>
+      </div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Carregando...</p>
+      </div>
+    </div>
+  );
+}
+
+// Wrapper com Suspense
+export default function ConsultasPage() {
+  return (
+    <Suspense fallback={<ConsultasPageLoading />}>
+      <ConsultasPageContent />
+    </Suspense>
   );
 }
