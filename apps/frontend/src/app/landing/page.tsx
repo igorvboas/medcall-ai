@@ -1,6 +1,7 @@
 import './landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { StatsSection } from '@/components/landing/StatsSection';
 import { ProblemSolutionSection } from '@/components/landing/ProblemSolutionSection';
 import { BenefitsSection } from '@/components/landing/BenefitsSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
@@ -15,6 +16,7 @@ export default function LandingPage() {
       <LandingHeader />
       <main className="landing-main">
         <HeroSection />
+        <StatsSection />
         <ProblemSolutionSection />
         <BenefitsSection />
         <FeaturesSection />

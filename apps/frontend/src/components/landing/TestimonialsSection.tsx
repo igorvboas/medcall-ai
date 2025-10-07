@@ -5,7 +5,7 @@ export function TestimonialsSection() {
         <div className="testimonials-header">
           <h2 className="section-title">O que nossos médicos dizem</h2>
           <p className="section-subtitle">
-            Mais de 500 médicos já transformaram sua prática com o TRIA
+            Mais de 500 médicos já transformaram sua prática com a EVA
           </p>
         </div>
 
@@ -30,7 +30,7 @@ export function TestimonialsSection() {
                 </svg>
               </div>
               <blockquote className="testimonial-quote">
-                "O TRIA revolucionou minha prática. Agora consigo focar 100% no paciente 
+                "A EVA revolucionou minha prática. Agora consigo focar 100% no paciente 
                 sem me preocupar com anotações. A transcrição é perfeita e as sugestões 
                 clínicas são muito úteis."
               </blockquote>

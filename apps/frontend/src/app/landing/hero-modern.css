@@ -1,0 +1,447 @@
+/* Hero Section - Modern Two Column Layout */
+.hero-section {
+  padding: 120px 0 80px;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.hero-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  min-height: 600px;
+}
+
+.hero-text {
+  max-width: 600px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #1a202c;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.hero-title-accent {
+  color: #A6CE39;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: #718096;
+  margin: 0 0 2rem 0;
+  max-width: 500px;
+}
+
+.hero-cta {
+  margin-bottom: 3rem;
+}
+
+.hero-cta-primary {
+  background: #A6CE39;
+  color: white;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  display: inline-block;
+  box-shadow: 0 4px 20px rgba(166, 206, 57, 0.3);
+}
+
+.hero-cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(166, 206, 57, 0.4);
+  background: #94b832;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stat-item {
+  text-align: left;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1a202c;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.hero-visual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.hero-image-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  height: 400px;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.hero-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #f7fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Container para as máscaras */
+.mask-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Imagem única de fundo com máscara */
+.background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+  /* Máscara com múltiplas formas arredondadas */
+  mask: 
+    radial-gradient(ellipse 60px 40px at 90px 60px, black 0%, transparent 100%),
+    radial-gradient(ellipse 50px 30px at 130px 90px, black 0%, transparent 100%),
+    radial-gradient(ellipse 55px 35px at 105px 150px, black 0%, transparent 100%),
+    radial-gradient(ellipse 45px 32px at 65px 180px, black 0%, transparent 100%),
+    radial-gradient(ellipse 52px 37px at 115px 210px, black 0%, transparent 100%),
+    radial-gradient(ellipse 47px 30px at 85px 270px, black 0%, transparent 100%);
+  -webkit-mask: 
+    radial-gradient(ellipse 60px 40px at 90px 60px, black 0%, transparent 100%),
+    radial-gradient(ellipse 50px 30px at 130px 90px, black 0%, transparent 100%),
+    radial-gradient(ellipse 55px 35px at 105px 150px, black 0%, transparent 100%),
+    radial-gradient(ellipse 45px 32px at 65px 180px, black 0%, transparent 100%),
+    radial-gradient(ellipse 52px 37px at 115px 210px, black 0%, transparent 100%),
+    radial-gradient(ellipse 47px 30px at 85px 270px, black 0%, transparent 100%);
+  mask-composite: add;
+  -webkit-mask-composite: add;
+}
+
+/* Formas de máscara individuais para controle fino */
+.mask-shape {
+  position: absolute;
+  background: #ffffff;
+  z-index: 2;
+  border-radius: 50px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.mask-shape-1 {
+  top: 20px;
+  left: 30px;
+  width: 120px;
+  height: 80px;
+  border-radius: 60px;
+}
+
+.mask-shape-2 {
+  top: 60px;
+  left: 80px;
+  width: 100px;
+  height: 60px;
+  border-radius: 50px;
+}
+
+.mask-shape-3 {
+  top: 100px;
+  left: 50px;
+  width: 110px;
+  height: 70px;
+  border-radius: 55px;
+}
+
+.mask-shape-4 {
+  top: 140px;
+  left: 20px;
+  width: 90px;
+  height: 65px;
+  border-radius: 45px;
+}
+
+.mask-shape-5 {
+  top: 180px;
+  left: 60px;
+  width: 105px;
+  height: 75px;
+  border-radius: 52px;
+}
+
+.mask-shape-6 {
+  top: 220px;
+  left: 40px;
+  width: 95px;
+  height: 60px;
+  border-radius: 47px;
+}
+
+/* Bolhas decorativas */
+.decorative-bubbles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.bubble-1 {
+  top: 30px;
+  right: 40px;
+  width: 20px;
+  height: 20px;
+  background: #4299e1;
+}
+
+.bubble-2 {
+  top: 80px;
+  right: 20px;
+  width: 15px;
+  height: 15px;
+  background: #ed8936;
+}
+
+.bubble-3 {
+  bottom: 100px;
+  right: 60px;
+  width: 25px;
+  height: 25px;
+  background: #38b2ac;
+}
+
+.bubble-4 {
+  bottom: 50px;
+  right: 30px;
+  width: 18px;
+  height: 18px;
+  background: #9f7aea;
+}
+
+.bubble-5 {
+  top: 150px;
+  right: 10px;
+  width: 12px;
+  height: 12px;
+  background: #ed8936;
+}
+
+/* Blob decorativo grande */
+.blob-shape {
+  position: absolute;
+  top: 200px;
+  right: -50px;
+  width: 120px;
+  height: 80px;
+  background: #4299e1;
+  border-radius: 60px 40px 60px 40px;
+  opacity: 0.8;
+  z-index: 1;
+}
+
+.decorative-shapes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 20px;
+  opacity: 0.1;
+}
+
+.shape-1 {
+  top: 20px;
+  left: 20px;
+  width: 120px;
+  height: 60px;
+  background: #A6CE39;
+  transform: rotate(-15deg);
+}
+
+.shape-2 {
+  top: 80px;
+  right: 30px;
+  width: 80px;
+  height: 40px;
+  background: #4299e1;
+  transform: rotate(25deg);
+}
+
+.shape-3 {
+  bottom: 60px;
+  left: 40px;
+  width: 100px;
+  height: 50px;
+  background: #ed8936;
+  transform: rotate(-10deg);
+}
+
+.shape-4 {
+  top: 150px;
+  left: 10px;
+  width: 60px;
+  height: 60px;
+  background: #9f7aea;
+  border-radius: 50%;
+}
+
+.shape-5 {
+  bottom: 100px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: #38b2ac;
+  border-radius: 50%;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .hero-content {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    text-align: center;
+  }
+  
+  .hero-text {
+    max-width: none;
+    order: 1;
+  }
+  
+  .hero-visual {
+    order: 2;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+  }
+  
+  .hero-stats {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 100px 0 60px;
+    min-height: auto;
+  }
+  
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.1rem;
+  }
+  
+  .hero-stats {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .hero-image-container {
+    height: 300px;
+  }
+  
+  .medical-professionals {
+    gap: 1rem;
+  }
+  
+  .doctor-avatar,
+  .nurse-avatar {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .avatar-placeholder {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-cta-primary {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .hero-stats {
+    flex-direction: row;
+    justify-content: space-around;
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    min-width: 80px;
+  }
+}
