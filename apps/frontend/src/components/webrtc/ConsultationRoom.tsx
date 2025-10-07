@@ -316,6 +316,19 @@ export function ConsultationRoom({
     }
   }, [userName, userType, isConnected]);
 
+  // ✅ AUTO-INICIAR: Iniciar chamada automaticamente quando médico entrar na sala
+  useEffect(() => {
+    if (userType === 'doctor' && userRole === 'host' && !isCallActive && !didIOffer && socketRef.current?.connected) {
+      console.log('🚀 [AUTO-INICIAR] Iniciando chamada automaticamente para o médico...');
+      // Aguardar um momento para garantir que tudo está pronto
+      const timer = setTimeout(() => {
+        call();
+      }, 1500); // 1.5 segundos de delay para garantir que mídia e conexão estão prontas
+      
+      return () => clearTimeout(timer);
+    }
+  }, [userType, userRole, isCallActive, didIOffer]);
+
   // Função para entrar como médico (host) - igual ao projeto original
   const joinRoomAsHost = async () => {
     console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
@@ -952,10 +965,12 @@ export function ConsultationRoom({
         </div>
         
         <div className="room-controls">
+          {/* ✅ Indicador de auto-início para o médico */}
           {userType === 'doctor' && !isCallActive && (
-            <button className="btn-call" onClick={call}>
-              Iniciar Consulta
-            </button>
+            <div className="auto-start-indicator">
+              <div className="spinner"></div>
+              <span>Iniciando consulta automaticamente...</span>
+            </div>
           )}
           
           {userType === 'doctor' && (

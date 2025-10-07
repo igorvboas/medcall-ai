@@ -267,6 +267,27 @@
   font-weight: 500;
 }
 
+/* ✅ Estilos para indicador de auto-início */
+.auto-start-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(212, 165, 116, 0.1);
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  border-radius: 8px;
+  color: #d4a574;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auto-start-indicator .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(212, 165, 116, 0.2);
+  border-top-color: #d4a574;
+}
+
 /* Estilos para CreateConsultationRoom - Baseados no create-room.html original */
 
 .create-room-container {
