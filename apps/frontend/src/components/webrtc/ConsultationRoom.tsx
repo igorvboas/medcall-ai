@@ -181,14 +181,14 @@ export function ConsultationRoom({
     // ✅ NOVO: Callback quando recebe nova transcrição (transcript puro)
     transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
       console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
-      console.log('🎤 [TRANSCRIPTION] didOfferRef.current:', didOfferRef.current);
-      console.log('🎤 [TRANSCRIPTION] userType:', userType);
-      console.log('🎤 [TRANSCRIPTION] userNameRef.current:', userNameRef.current);
-      console.log('🎤 [TRANSCRIPTION] remoteUserNameRef.current:', remoteUserNameRef.current);
+      //console.log('🎤 [TRANSCRIPTION] didOfferRef.current:', didOfferRef.current);
+      //console.log('🎤 [TRANSCRIPTION] userType:', userType);
+      //console.log('🎤 [TRANSCRIPTION] userNameRef.current:', userNameRef.current);
+      //console.log('🎤 [TRANSCRIPTION] remoteUserNameRef.current:', remoteUserNameRef.current);
       
       // CASO 1: Sou o OFFERER (médico) - exibir localmente
       if (didOfferRef.current === true) {
-        console.log('✅ Sou OFFERER - exibindo localmente');
+        //console.log('✅ Sou OFFERER - exibindo localmente');
         // Adicionar à UI usando método público do TranscriptionManager
         if (transcriptionManagerRef.current) {
           transcriptionManagerRef.current.addTranscriptToUI(transcript, userNameRef.current || 'Você');
@@ -196,7 +196,7 @@ export function ConsultationRoom({
       } 
       // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
       else if (didOfferRef.current === false && remoteUserNameRef.current) {
-        console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserNameRef.current);
+        //console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserNameRef.current);
         
         // Enviar transcrição para o peer via socket
         if (socketRef.current && roomIdRef.current && userNameRef.current) {
@@ -223,7 +223,7 @@ export function ConsultationRoom({
       setTranscriptionText(fullText);
     };
     
-    console.log('✅ [TRANSCRIPTION] Callbacks configurados');
+    //console.log('✅ [TRANSCRIPTION] Callbacks configurados');
   };
 
   // Cleanup ao desmontar componente
@@ -337,7 +337,7 @@ export function ConsultationRoom({
 
   // Função para entrar como médico (host) - igual ao projeto original
   const joinRoomAsHost = async () => {
-    console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
+    //console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
     
     if (socketRef.current) {
       socketRef.current.emit('joinRoom', {
@@ -556,7 +556,7 @@ export function ConsultationRoom({
     // Para pacientes: criar botão Answer - IGUAL AO PROJETO ORIGINAL
     if (userType === 'patient') {
       socketRef.current.on('newOfferAwaiting', (data: any) => {
-        console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, criando botão Answer...');
+        //console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, criando botão Answer...');
         // Criar botão Answer IGUAL AO PROJETO ORIGINAL
         createAnswerButton(data);
       });
@@ -589,7 +589,7 @@ export function ConsultationRoom({
 
   // WebRTC Functions
   const call = async () => {
-    console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
+    //console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
     
     // Verificar se socket está conectado
     if (!socketRef.current || !socketRef.current.connected) {
@@ -597,16 +597,16 @@ export function ConsultationRoom({
       return;
     }
 
-    console.log('👨‍⚕️ [MÉDICO] 1. Chamando fetchUserMedia...');
+    //console.log('👨‍⚕️ [MÉDICO] 1. Chamando fetchUserMedia...');
     await fetchUserMedia();
-    console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído');
+    //console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído');
 
-    console.log('👨‍⚕️ [MÉDICO] 2. Chamando createPeerConnection...');
+    //console.log('👨‍⚕️ [MÉDICO] 2. Chamando createPeerConnection...');
     await createPeerConnection();
-    console.log('👨‍⚕️ [MÉDICO] ✅ createPeerConnection concluído');
+    //console.log('👨‍⚕️ [MÉDICO] ✅ createPeerConnection concluído');
 
     try {
-      console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
+      //console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
       const offer = await peerConnectionRef.current!.createOffer();
       await peerConnectionRef.current!.setLocalDescription(offer);
       
@@ -614,11 +614,11 @@ export function ConsultationRoom({
       setDidIOffer(true);
       didOfferRef.current = true;
       setIsCallActive(true);
-      console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
-      console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
+      //console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
+      //console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
       
       // Enviar oferta com roomId
-      console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
+      //console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
       socketRef.current.emit('newOffer', {
         roomId: roomId,
         offer: offer
@@ -631,7 +631,7 @@ export function ConsultationRoom({
   };
 
   const answer = async () => {
-    console.log('🩺 [PACIENTE] Clicou no botão Answer - IGUAL AO PROJETO ORIGINAL');
+    //console.log('🩺 [PACIENTE] Clicou no botão Answer - IGUAL AO PROJETO ORIGINAL');
     
     // Verificar se socket está conectado
     if (!socketRef.current || !socketRef.current.connected) {
@@ -653,7 +653,7 @@ export function ConsultationRoom({
       
       setShowAnswerButton(false);
       setIsCallActive(true);
-      console.log('🩺 [PACIENTE] ✅ Answer processado com sucesso');
+      //console.log('🩺 [PACIENTE] ✅ Answer processado com sucesso');
     } catch(err) {
       console.error('❌ Erro ao responder chamada:', err);
       alert('Erro ao responder chamada: ' + err);
@@ -661,8 +661,8 @@ export function ConsultationRoom({
   };
 
   const answerOffer = async (offerData: any) => {
-    console.log('🩺 [PACIENTE] Processando oferta - IGUAL AO PROJETO ORIGINAL...');
-    console.log('🩺 [PACIENTE] OfferData:', offerData);
+    //console.log('🩺 [PACIENTE] Processando oferta - IGUAL AO PROJETO ORIGINAL...');
+    //console.log('🩺 [PACIENTE] OfferData:', offerData);
     
     try {
       // 1. fetchUserMedia - igual ao projeto original
@@ -679,8 +679,8 @@ export function ConsultationRoom({
       // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
       setRemoteUserName(offerData.offererUserName);
       remoteUserNameRef.current = offerData.offererUserName;
-      console.log('🩺 [PACIENTE] ✅ remoteUserName definido:', offerData.offererUserName);
-      console.log('🩺 [PACIENTE] ✅ remoteUserNameRef.current:', remoteUserNameRef.current);
+      //console.log('🩺 [PACIENTE] ✅ remoteUserName definido:', offerData.offererUserName);
+      //console.log('🩺 [PACIENTE] ✅ remoteUserNameRef.current:', remoteUserNameRef.current);
       
       // Processar ICE candidates pendentes
       processPendingIceCandidates();
@@ -745,14 +745,14 @@ export function ConsultationRoom({
   const addAnswer = async (data: any) => {
     if (peerConnectionRef.current) {
       const currentState = peerConnectionRef.current.signalingState;
-      console.log('👨‍⚕️ [MÉDICO] addAnswer - Estado atual:', currentState);
+      //console.log('👨‍⚕️ [MÉDICO] addAnswer - Estado atual:', currentState);
       
       // ✅ PROTEÇÃO: Só definir remoteDescription se estiver no estado correto
       if (currentState === 'have-local-offer') {
-        console.log('👨‍⚕️ [MÉDICO] ✅ Estado correto (have-local-offer), definindo answer...');
+        //console.log('👨‍⚕️ [MÉDICO] ✅ Estado correto (have-local-offer), definindo answer...');
         await peerConnectionRef.current.setRemoteDescription(data.answer);
-        console.log('👨‍⚕️ [MÉDICO] ✅ Answer definido com sucesso');
-        console.log('👨‍⚕️ [MÉDICO] Novo estado:', peerConnectionRef.current.signalingState);
+        //console.log('👨‍⚕️ [MÉDICO] ✅ Answer definido com sucesso');
+        //console.log('👨‍⚕️ [MÉDICO] Novo estado:', peerConnectionRef.current.signalingState);
         
         // Processar ICE candidates pendentes após definir remoteDescription
         processPendingIceCandidates();
@@ -772,13 +772,13 @@ export function ConsultationRoom({
     }
     
     try {
-      console.log('📹 [MÍDIA] Obtendo stream de mídia...');
+      //console.log('📹 [MÍDIA] Obtendo stream de mídia...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       
-      console.log('📹 [MÍDIA] Stream obtido:', stream);
+      //console.log('📹 [MÍDIA] Stream obtido:', stream);
       console.log('📹 [MÍDIA] Tracks:', stream.getTracks().map(t => `${t.kind} - ${t.enabled}`));
       
       if (localVideoRef.current) {
@@ -791,13 +791,13 @@ export function ConsultationRoom({
       
       // Inicializar AudioProcessor para transcrição (apenas uma vez)
       if (!audioProcessorRef.current) {
-        console.log('Inicializando AudioProcessor...');
+        //console.log('Inicializando AudioProcessor...');
         audioProcessorRef.current = new AudioProcessor();
         await audioProcessorRef.current.init(stream);
         
         // Inicializar TranscriptionManager (apenas uma vez)
         if (!transcriptionManagerRef.current) {
-          console.log('Inicializando TranscriptionManager...');
+          //console.log('Inicializando TranscriptionManager...');
           transcriptionManagerRef.current = new TranscriptionManager();
           transcriptionManagerRef.current.setSocket(socketRef.current);
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
@@ -806,7 +806,7 @@ export function ConsultationRoom({
           setupTranscriptionCallbacks();
         }
       } else {
-        console.log('AudioProcessor já inicializado, reutilizando...');
+        //console.log('AudioProcessor já inicializado, reutilizando...');
       }
     } catch(err) {
       console.error('Erro ao obter mídia:', err);
@@ -814,9 +814,6 @@ export function ConsultationRoom({
   };
 
   const createPeerConnection = async (offerObj?: any) => {
-    console.log('🔗 [WEBRTC] Criando PeerConnection...');
-    console.log('🔗 [WEBRTC] Local video ref existe?', !!localVideoRef.current);
-    console.log('🔗 [WEBRTC] Remote video ref existe?', !!remoteVideoRef.current);
     
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
     
@@ -839,20 +836,20 @@ export function ConsultationRoom({
     
     if (localStreamRef.current) {
       const tracks = localStreamRef.current.getTracks();
-      console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
-      console.log('🔗 [WEBRTC] userType:', userType);
+      // console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
+      //console.log('🔗 [WEBRTC] userType:', userType);
       
       tracks.forEach((track, index) => {
-        console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled, 'readyState:', track.readyState);
+        //console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled, 'readyState:', track.readyState);
         const sender = peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
-        console.log(`🔗 [WEBRTC] ✅ Sender criado para track ${track.kind}:`, sender);
+        //console.log(`🔗 [WEBRTC] ✅ Sender criado para track ${track.kind}:`, sender);
       });
       
       // Verificar senders após adicionar tracks
       const senders = peerConnectionRef.current.getSenders();
-      console.log('🔗 [WEBRTC] Total de senders criados:', senders.length);
+      //console.log('🔗 [WEBRTC] Total de senders criados:', senders.length);
       senders.forEach((sender, idx) => {
-        console.log(`🔗 [WEBRTC] Sender ${idx}:`, sender.track?.kind, 'enabled:', sender.track?.enabled);
+        //console.log(`🔗 [WEBRTC] Sender ${idx}:`, sender.track?.kind, 'enabled:', sender.track?.enabled);
       });
     } else {
       console.error('🔗 [WEBRTC] ❌ Stream local NÃO disponível!');
@@ -862,7 +859,7 @@ export function ConsultationRoom({
     // ✅ CORREÇÃO: Usar onicecandidate ao invés de addEventListener
     peerConnectionRef.current.onicecandidate = (e) => {
       if(e.candidate) {
-        console.log('🔗 [ICE] Enviando ICE candidate:', e.candidate.type);
+        //console.log('🔗 [ICE] Enviando ICE candidate:', e.candidate.type);
         socketRef.current.emit('sendIceCandidateToSignalingServer', {
           roomId: roomId,
           iceCandidate: e.candidate,
@@ -874,16 +871,16 @@ export function ConsultationRoom({
     
     // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
     peerConnectionRef.current.ontrack = (e) => {
-      console.log('🔗 [WEBRTC] 🎉 TRACK EVENTO DISPARADO!');
-      console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, 'enabled:', e.track.enabled, 'readyState:', e.track.readyState);
-      console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
-      console.log('🔗 [WEBRTC] Stream[0]:', e.streams[0]);
-      console.log('🔗 [WEBRTC] userType:', userType);
+      //console.log('🔗 [WEBRTC] 🎉 TRACK EVENTO DISPARADO!');
+      //console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, 'enabled:', e.track.enabled, 'readyState:', e.track.readyState);
+      //console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
+      //console.log('🔗 [WEBRTC] Stream[0]:', e.streams[0]);
+      //console.log('🔗 [WEBRTC] userType:', userType);
       
       // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
       if (e.streams && e.streams[0]) {
-        console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
-        console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
+        //console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
+        //console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
         
         if (remoteVideoRef.current) {
           // ✅ FIX: Só atribuir se for um stream diferente
@@ -923,16 +920,16 @@ export function ConsultationRoom({
     if(offerObj) {
       // ✅ PROTEÇÃO: Verificar estado antes de setRemoteDescription
       const currentState = peerConnectionRef.current.signalingState;
-      console.log('🔗 [WEBRTC] Estado atual da conexão:', currentState);
-      console.log('🔗 [WEBRTC] Tipo de oferta:', offerObj.offer?.type);
+      //console.log('🔗 [WEBRTC] Estado atual da conexão:', currentState);
+      //console.log('🔗 [WEBRTC] Tipo de oferta:', offerObj.offer?.type);
       
       // ✅ CORREÇÃO: Para ANSWERER, só definir remoteDescription se estiver em 'stable' (estado inicial)
       // Se já estiver em 'have-remote-offer', significa que já foi definido
       if (currentState === 'stable') {
-        console.log('🔗 [WEBRTC] ✅ Estado correto (stable), definindo remoteDescription...');
+        //console.log('🔗 [WEBRTC] ✅ Estado correto (stable), definindo remoteDescription...');
         await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
-        console.log('🔗 [WEBRTC] ✅ remoteDescription definido com sucesso');
-        console.log('🔗 [WEBRTC] Novo estado:', peerConnectionRef.current.signalingState);
+        //console.log('🔗 [WEBRTC] ✅ remoteDescription definido com sucesso');
+        //console.log('🔗 [WEBRTC] Novo estado:', peerConnectionRef.current.signalingState);
       } else if (currentState === 'have-remote-offer') {
         console.log('🔗 [WEBRTC] ⚠️ remoteDescription já está definido (estado: have-remote-offer)');
       } else {
@@ -946,8 +943,8 @@ export function ConsultationRoom({
 
   // ✅ MODIFICADO: Auto-executar Answer automaticamente
   const createAnswerButton = (offerData: any) => {
-    console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
-    console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
+    //console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
+    //console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
     
     // ✅ PROTEÇÃO: Evitar processar múltiplas ofertas
     if (isCallActive) {
@@ -968,12 +965,12 @@ export function ConsultationRoom({
     // Armazenar dados da oferta
     setOfferData(offerData);
     
-    console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
+    //console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
     
     // 🚀 AUTO-EXECUTAR: Chamar answer() automaticamente após pequeno delay
     // O delay garante que todos os estados foram atualizados
     setTimeout(async () => {
-      console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
+      //console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
       
       // Verificar se socket está conectado
       if (!socketRef.current || !socketRef.current.connected) {
@@ -997,7 +994,7 @@ export function ConsultationRoom({
         
         setShowAnswerButton(false);
         setIsCallActive(true);
-        console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
+        //console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
       } catch(err) {
         console.error('❌ [AUTO-ANSWER] Erro ao responder chamada automaticamente:', err);
         // Em caso de erro, mostrar botão manual como fallback
