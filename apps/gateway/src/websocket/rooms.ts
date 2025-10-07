@@ -636,7 +636,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             patient_name: room.patientName,
             consultation_type: 'TELEMEDICINA',
             status: 'COMPLETED',
-            patient_context: `Consulta online via WebRTC - Sala: ${room.roomName}`
+            patient_context: `Consulta online - Sala: ${room.roomName}`
           });
 
           if (consultation) {

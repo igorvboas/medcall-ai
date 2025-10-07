@@ -46,22 +46,24 @@ export class PCMTranscriptionHandler {
   handleUpgrade(request: IncomingMessage, socket: any, head: Buffer): void {
     const url = new URL(request.url!, `http://${request.headers.host}`);
     
+    /** 
     console.log('🔍 [PCM-UPGRADE] Analyzing request:', {
       pathname: url.pathname,
       search: url.search,
       expectedPath: '/ws/transcribe',
       matches: url.pathname === '/ws/transcribe'
     });
+    */
     
     if (url.pathname === '/ws/transcribe') {
-      console.log('✅ [PCM-UPGRADE] Path matches, upgrading...');
+      // console.log('✅ [PCM-UPGRADE] Path matches, upgrading...');
       
       this.wss.handleUpgrade(request, socket, head, (ws) => {
         console.log('🔗 [PCM-UPGRADE] WebSocket upgrade successful, emitting connection event');
         this.wss.emit('connection', ws, request);
       });
     } else {
-      console.log('❌ [PCM-UPGRADE] Path does not match, rejecting upgrade');
+      //console.log('❌ [PCM-UPGRADE] Path does not match, rejecting upgrade');
       socket.destroy();
     }
   }

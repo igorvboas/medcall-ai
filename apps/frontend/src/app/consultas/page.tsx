@@ -54,6 +54,7 @@ async function fetchConsultations(page: number = 1, limit: number = 20): Promise
     headers: {
       'Content-Type': 'application/json',
     },
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -116,18 +117,7 @@ export default function ConsultasPage() {
     }
   };
 
-  // Função para mapear status do backend para frontend
-  const mapStatusToFrontend = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'CREATED': 'scheduled',
-      'RECORDING': 'in-progress', 
-      'PROCESSING': 'in-progress',
-      'COMPLETED': 'completed',
-      'ERROR': 'cancelled',
-      'CANCELLED': 'cancelled'
-    };
-    return statusMap[status] || 'scheduled';
-  };
+  // Removido mapeamento intermediário de status; usar diretamente mapBackendStatus
 
   // Função para mapear tipo de consulta
   const mapConsultationType = (type: string) => {
@@ -254,7 +244,7 @@ export default function ConsultasPage() {
                   
                   <div className="table-cell status-cell">
                     <StatusBadge 
-                      status={mapBackendStatus(mapStatusToFrontend(consultation.status))}
+                      status={mapBackendStatus(consultation.status)}
                       size="md"
                       showIcon={true}
                       variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' ? 'outlined' : 'default'}

@@ -27,25 +27,10 @@ export function Header() {
   return (
     <header className="header main-header">
       <div className="header-content main-header-content">
-        {/* Search sempre visível */}
-        <div className="header-search">
-          <div className="search-container">
-            <Search className="search-icon" />
-            <input
-              type="text"
-              placeholder="Pesquisar"
-              className="search-input"
-            />
-          </div>
-        </div>
+
 
         {/* Right Side Actions */}
         <div className="header-actions">
-          {/* Help */}
-          <button className="today-button">
-            Hoje
-          </button>
-
 
           {/* Notifications */}
           <button className="notification-button">

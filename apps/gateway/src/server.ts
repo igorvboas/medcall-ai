@@ -149,7 +149,7 @@ httpServer.on('upgrade', (request, socket, head) => {
   */
   try {
     pcmHandler.handleUpgrade(request, socket, head);
-    console.log('✅ [WS-UPGRADE] Handled by PCM handler');
+    // console.log('✅ [WS-UPGRADE] Handled by PCM handler');
   } catch (error) {
     console.error('❌ [WS-UPGRADE] Error in handler:', error);
     socket.destroy();
