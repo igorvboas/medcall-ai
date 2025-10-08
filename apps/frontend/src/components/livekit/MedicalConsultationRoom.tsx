@@ -156,6 +156,104 @@ export function MedicalConsultationRoom({
     onError?.(error);
   };
 
+  // ✅ NOVO: Função para enviar transcrição ao webhook
+  const sendTranscriptionToWebhook = async () => {
+    try {
+      // Buscar ID do médico e da consulta do banco de dados
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      );
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Tentar obter doctorId da tabela medicos se houver sessão; caso contrário, continuar
+      let doctorId: string | null = null;
+      if (session?.user?.id) {
+        const { data: medico } = await supabase
+          .from('medicos')
+          .select('id')
+          .eq('user_auth', session.user.id)
+          .single();
+        doctorId = medico?.id || null;
+      }
+
+      // ✅ 2. Buscar consultation_id da tabela call_sessions usando sessionId ou roomName
+      const { data: callSession } = await supabase
+        .from('call_sessions')
+        .select('consultation_id')
+        .or(`room_name.eq.${roomName},livekit_room_id.eq.${roomName},id.eq.${sessionId}`)
+        .single();
+
+      let consultationId = callSession?.consultation_id;
+
+      // Se não encontrou na call_sessions, buscar direto na consultations
+      if (!consultationId) {
+        // Tentar buscar última consulta do médico apenas se tivermos doctorId
+        if (doctorId) {
+          const { data: consultation } = await supabase
+            .from('consultations')
+            .select('id')
+            .eq('doctor_id', doctorId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          consultationId = consultation?.id || null;
+        }
+        // Fallback para sessionId se ainda não encontrado
+        if (!consultationId) {
+          consultationId = sessionId;
+        }
+      }
+
+      // ✅ 3. Buscar transcrição completa (TODO: implementar busca real)
+      const transcriptionText = `Transcrição da consulta LiveKit (sessionId: ${sessionId})`;
+
+      // ✅ 4. Enviar para o webhook
+      const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-transcricao';
+      const webhookData = {
+        consultationId: consultationId,
+        doctorId: doctorId || undefined,
+        patientId: patientName || 'unknown', // TODO: Usar ID real do paciente
+        transcription: transcriptionText
+      };
+
+      console.log('📦 Dados do webhook:', webhookData);
+
+      const webhookResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+        keepalive: true
+      });
+
+      if (webhookResponse.ok) {
+        console.log('✅ Transcrição enviada para webhook com sucesso');
+      } else {
+        console.error('❌ Erro ao enviar para webhook:', webhookResponse.status, await webhookResponse.text());
+      }
+    } catch (webhookError) {
+      console.error('❌ Erro ao enviar transcrição para webhook:', webhookError);
+      // Não bloquear o fluxo se o webhook falhar
+    }
+  };
+
+  // ✅ NOVO: Função para finalizar consulta com webhook
+  const handleEndCallWithWebhook = async () => {
+    // Enviar transcrição ANTES do redirect para garantir execução
+    if (userRole === 'doctor') {
+      try {
+        await sendTranscriptionToWebhook();
+      } catch (_) {}
+    }
+
+    // Chamar callback original
+    onEndCall?.();
+  };
+
   // Cleanup mic transmitter on unmount
   useEffect(() => {
     return () => {
@@ -277,7 +375,7 @@ export function MedicalConsultationRoom({
           
           {onEndCall && (
             <button 
-              onClick={onEndCall}
+              onClick={handleEndCallWithWebhook}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#f56565',

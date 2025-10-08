@@ -21,7 +21,7 @@
 - [IMP.] Quando finalizar consulta enviar a trancrição daconsulta com os ids para o n8n
 - [IMP.] Implementação ANAMNESE
     - ✅ Alterar popup para pagina (/consultas?consulta_id=123456) de quando clicar em uma consulta. Ao clicar mandar o id da consulta para a url e as informações serão mostradas na pagina
-    - Desenhar página com detalhes da consulta e anamnese
+    - ✅ Desenhar página com detalhes da consulta e anamnese
 
 
 

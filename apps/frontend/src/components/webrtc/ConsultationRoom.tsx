@@ -1949,7 +1949,7 @@ export function ConsultationRoom({
 
 
 
-  const endRoom = () => {
+  const endRoom = async () => {
 
     if (confirm('Tem certeza que deseja finalizar esta sala? As transcrições serão salvas.')) {
 
@@ -1957,9 +1957,66 @@ export function ConsultationRoom({
 
         roomId: roomId
 
-      }, (response: any) => {
+      }, async (response: any) => {
 
         if (response.success) {
+
+          // ✅ Enviar transcrição para o webhook ANTES do redirect (aguardar envio)
+          try {
+              // Usar o cliente Supabase já configurado do app (mantém sessão/cookies)
+              const { supabase } = await import('@/lib/supabase');
+              const { data: { session } } = await supabase.auth.getSession();
+
+              // Tentar obter doctorId via tabela medicos com o usuário autenticado
+              let doctorId: string | null = null;
+              if (session?.user?.id) {
+                const { data: medico } = await supabase
+                  .from('medicos')
+                  .select('id')
+                  .eq('user_auth', session.user.id)
+                  .single();
+                doctorId = medico?.id || null;
+              }
+
+              // Resolver consultationId pela call_sessions; fallback para última do médico; por fim roomId
+              let consultationId: string | null = null;
+              const { data: callSession } = await supabase
+                .from('call_sessions')
+                .select('consultation_id')
+                .or(`room_name.eq.${roomId},livekit_room_id.eq.${roomId}`)
+                .single();
+              consultationId = callSession?.consultation_id || null;
+
+              if (!consultationId && doctorId) {
+                const { data: consultation } = await supabase
+                  .from('consultations')
+                  .select('id')
+                  .eq('doctor_id', doctorId)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+                consultationId = consultation?.id || null;
+              }
+
+              if (!consultationId) consultationId = roomId;
+
+              const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-transcricao';
+              const webhookData = {
+                consultationId,
+                doctorId: doctorId || null,
+                patientId: patientId || 'unknown',
+                transcription: transcriptionText
+              };
+
+              await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(webhookData),
+                keepalive: true
+              }).catch(() => {});
+            } catch (_) {
+              // Silenciar erros (não bloquear UI)
+            }
 
           alert('✅ Sala finalizada!\n\n💾 Transcrições salvas no banco de dados\n📝 Total: ' + response.saveResult.transcriptionsCount + ' transcrições');
 
