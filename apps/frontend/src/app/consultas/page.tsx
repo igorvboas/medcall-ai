@@ -91,6 +91,20 @@ interface ConsultationsResponse {
   };
 }
 
+// Tipos para dados de anamnese
+interface AnamneseData {
+  cadastro_prontuario: any;
+  objetivos_queixas: any;
+  historico_risco: any;
+  observacao_clinica_lab: any;
+  historia_vida: any;
+  setenios_eventos: any;
+  ambiente_contexto: any;
+  sensacao_emocoes: any;
+  preocupacoes_crencas: any;
+  reino_miasma: any;
+}
+
 // Função para buscar consultas da API
 async function fetchConsultations(page: number = 1, limit: number = 20): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
@@ -112,6 +126,673 @@ async function fetchConsultations(page: number = 1, limit: number = 20): Promise
   }
 
   return response.json();
+}
+
+// Componente de Seção Colapsável
+function CollapsibleSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="collapsible-section">
+      <button 
+        className="collapsible-header"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="collapsible-title">{title}</span>
+        <ArrowLeft 
+          className={`collapsible-icon ${isOpen ? 'open' : ''}`}
+          style={{ transform: isOpen ? 'rotate(-90deg)' : 'rotate(180deg)' }}
+        />
+      </button>
+      {isOpen && (
+        <div className="collapsible-content">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para renderizar campo de dados
+function DataField({ label, value }: { label: string; value: any }) {
+  const renderValue = () => {
+    // Se não houver valor, mostrar campo vazio
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      return <p className="data-value data-value-empty">—</p>;
+    }
+
+    // Se for array, renderizar lista
+    if (Array.isArray(value)) {
+      return (
+        <ul className="data-list">
+          {value.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    // Renderizar valor normal
+    return <p className="data-value">{String(value)}</p>;
+  };
+
+  return (
+    <div className="data-field">
+      <label className="data-label">{label}:</label>
+      {renderValue()}
+    </div>
+  );
+}
+
+// Componente da seção de Anamnese
+function AnamneseSection({ consultaId }: { consultaId: string }) {
+  const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAnamneseData();
+  }, [consultaId]);
+
+  const fetchAnamneseData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Buscar dados de todas as tabelas de anamnese
+      console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
+      const response = await fetch(`/api/anamnese/${consultaId}`);
+      
+      console.log('📡 Status da resposta:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Erro da API:', errorData);
+        throw new Error(errorData.error || 'Erro ao carregar dados da anamnese');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Dados da anamnese recebidos:', data);
+      setAnamneseData(data);
+    } catch (err) {
+      console.error('❌ Erro ao carregar anamnese:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar anamnese');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mostrar loading apenas no primeiro carregamento
+  if (loading && !error) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando anamnese...</p>
+      </div>
+    );
+  }
+
+  // Extrair dados (podem ser null) - sempre renderizar campos mesmo com erro
+  const { 
+    cadastro_prontuario, 
+    objetivos_queixas, 
+    historico_risco,
+    observacao_clinica_lab,
+    historia_vida,
+    setenios_eventos,
+    ambiente_contexto,
+    sensacao_emocoes,
+    preocupacoes_crencas,
+    reino_miasma
+  } = anamneseData || {};
+
+  return (
+    <div className="anamnese-sections">
+      {/* Alerta de erro discreto - não bloqueia a visualização */}
+      {error && (
+        <div className="anamnese-warning-banner">
+          <AlertCircle className="w-5 h-5" />
+          <div>
+            <strong>Atenção:</strong> {error}. Os campos estão sendo exibidos vazios.
+          </div>
+        </div>
+      )}
+
+      {/* Dados do Paciente */}
+      <CollapsibleSection title="Dados do Paciente" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Identificação</h4>
+            <DataField label="Nome Completo" value={cadastro_prontuario?.identificacao_nome_completo} />
+            <DataField label="Nome Social" value={cadastro_prontuario?.identificacao_nome_social} />
+            <DataField label="Data de Nascimento" value={cadastro_prontuario?.identificacao_data_nascimento} />
+            <DataField label="Idade Atual" value={cadastro_prontuario?.identificacao_idade_atual} />
+            <DataField label="Sexo Biológico" value={cadastro_prontuario?.identificacao_sexo_biologico} />
+            <DataField label="Gênero" value={cadastro_prontuario?.identificacao_genero} />
+            <DataField label="Naturalidade" value={cadastro_prontuario?.identificacao_naturalidade} />
+            <DataField label="Nacionalidade" value={cadastro_prontuario?.identificacao_nacionalidade} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Dados Sociodemográficos</h4>
+            <DataField label="Estado Civil" value={cadastro_prontuario?.dados_sociodemograficos_estado_civil} />
+            <DataField label="Número de Filhos" value={cadastro_prontuario?.dados_sociodemograficos_numero_filhos} />
+            <DataField label="Idade dos Filhos" value={cadastro_prontuario?.dados_sociodemograficos_idade_filhos} />
+            <DataField label="Escolaridade" value={cadastro_prontuario?.dados_sociodemograficos_escolaridade} />
+            <DataField label="Profissão" value={cadastro_prontuario?.dados_sociodemograficos_profissao} />
+            <DataField label="Exerce a Profissão" value={cadastro_prontuario?.dados_sociodemograficos_exerce_profissao} />
+            <DataField label="Situação de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_situacao_trabalho} />
+            <DataField label="Carga Horária de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_carga_horaria_trabalho} />
+            <DataField label="Condição Social" value={cadastro_prontuario?.dados_sociodemograficos_condicao_social} />
+            <DataField label="Renda Familiar" value={cadastro_prontuario?.dados_sociodemograficos_renda_familiar} />
+            <DataField label="Pessoas na Residência" value={cadastro_prontuario?.dados_sociodemograficos_pessoas_residencia} />
+            <DataField label="Responsável Financeiro" value={cadastro_prontuario?.dados_sociodemograficos_responsavel_financeiro} />
+            <DataField label="Seguro Saúde" value={cadastro_prontuario?.dados_sociodemograficos_seguro_saude} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Documentos</h4>
+            <DataField label="CPF" value={cadastro_prontuario?.doc_cpf} />
+            <DataField label="RG" value={cadastro_prontuario?.doc_rg} />
+            <DataField label="CNS" value={cadastro_prontuario?.doc_cns} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Endereço</h4>
+            <DataField label="Logradouro" value={cadastro_prontuario?.endereco_logradouro} />
+            <DataField label="Número" value={cadastro_prontuario?.endereco_numero} />
+            <DataField label="Complemento" value={cadastro_prontuario?.endereco_complemento} />
+            <DataField label="Bairro" value={cadastro_prontuario?.endereco_bairro} />
+            <DataField label="Cidade" value={cadastro_prontuario?.endereco_cidade} />
+            <DataField label="Estado" value={cadastro_prontuario?.endereco_estado} />
+            <DataField label="CEP" value={cadastro_prontuario?.endereco_cep} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Contato</h4>
+            <DataField label="Celular" value={cadastro_prontuario?.telefone_celular} />
+            <DataField label="Telefone Residencial" value={cadastro_prontuario?.telefone_residencial} />
+            <DataField label="Telefone para Recado" value={cadastro_prontuario?.telefone_recado} />
+            <DataField label="Email" value={cadastro_prontuario?.email} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Objetivos e Queixas */}
+      <CollapsibleSection title="Objetivos e Queixas">
+          <div className="anamnese-subsection">
+            <h4>Saúde Geral Percebida</h4>
+            <DataField label="Como Descreve a Saúde" value={objetivos_queixas?.saude_geral_percebida_como_descreve_saude} />
+            <DataField label="Como Define Bem-Estar" value={objetivos_queixas?.saude_geral_percebida_como_define_bem_estar} />
+            <DataField label="Avaliação da Saúde Emocional/Mental" value={objetivos_queixas?.saude_geral_percebida_avaliacao_saude_emocional_mental} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Queixas</h4>
+            <DataField label="Queixa Principal" value={objetivos_queixas?.queixa_principal} />
+            <DataField label="Sub-queixas" value={objetivos_queixas?.sub_queixas} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Impacto das Queixas na Vida</h4>
+            <DataField label="Como Afeta a Vida Diária" value={objetivos_queixas?.impacto_queixas_vida_como_afeta_vida_diaria} />
+            <DataField label="Limitações Causadas" value={objetivos_queixas?.impacto_queixas_vida_limitacoes_causadas} />
+            <DataField label="Áreas Impactadas" value={objetivos_queixas?.impacto_queixas_vida_areas_impactadas} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Objetivos e Expectativas</h4>
+            <DataField label="Problemas Deseja Resolver" value={objetivos_queixas?.problemas_deseja_resolver} />
+            <DataField label="Expectativa Específica" value={objetivos_queixas?.expectativas_tratamento_expectativa_especifica} />
+            <DataField label="Já Buscou Tratamentos Similares" value={objetivos_queixas?.expectativas_tratamento_ja_buscou_tratamentos_similares} />
+            <DataField label="Tratamentos Anteriores" value={objetivos_queixas?.expectativas_tratamento_quais_tratamentos_anteriores} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Compreensão sobre a Causa</h4>
+            <DataField label="Compreensão do Paciente" value={objetivos_queixas?.compreensao_sobre_causa_compreensao_paciente} />
+            <DataField label="Fatores Externos Influenciando" value={objetivos_queixas?.compreensao_sobre_causa_fatores_externos_influenciando} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Projeto de Vida</h4>
+            <DataField label="Corporal" value={objetivos_queixas?.projeto_de_vida_corporal} />
+            <DataField label="Espiritual" value={objetivos_queixas?.projeto_de_vida_espiritual} />
+            <DataField label="Familiar" value={objetivos_queixas?.projeto_de_vida_familiar} />
+            <DataField label="Profissional" value={objetivos_queixas?.projeto_de_vida_profissional} />
+            <DataField label="Sonhos" value={objetivos_queixas?.projeto_de_vida_sonhos} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Motivação e Mudança</h4>
+            <DataField label="Nível de Motivação" value={objetivos_queixas?.nivel_motivacao} />
+            <DataField label="Prontidão para Mudança" value={objetivos_queixas?.prontidao_para_mudanca} />
+            <DataField label="Mudanças Considera Necessárias" value={objetivos_queixas?.mudancas_considera_necessarias} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Histórico de Risco */}
+      <CollapsibleSection title="Histórico de Risco">
+          <div className="anamnese-subsection">
+            <h4>Doenças Atuais e Passadas</h4>
+            <DataField label="Doenças Atuais Confirmadas" value={historico_risco?.doencas_atuais_confirmadas} />
+            <DataField label="Doenças na Infância/Adolescência" value={historico_risco?.doencas_infancia_adolescencia} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Antecedentes Familiares</h4>
+            <DataField label="Pai" value={historico_risco?.antecedentes_familiares_pai} />
+            <DataField label="Mãe" value={historico_risco?.antecedentes_familiares_mae} />
+            <DataField label="Irmãos" value={historico_risco?.antecedentes_familiares_irmaos} />
+            <DataField label="Avós Paternos" value={historico_risco?.antecedentes_familiares_avos_paternos} />
+            <DataField label="Avós Maternos" value={historico_risco?.antecedentes_familiares_avos_maternos} />
+            <DataField label="Causas de Morte dos Avós" value={historico_risco?.antecedentes_familiares_causas_morte_avos} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Condições e Tratamentos</h4>
+            <DataField label="Condições Genéticas Conhecidas" value={historico_risco?.condicoes_geneticas_conhecidas} />
+            <DataField label="Cirurgias/Procedimentos" value={historico_risco?.cirurgias_procedimentos} />
+            <DataField label="Medicações Atuais" value={historico_risco?.medicacoes_atuais} />
+            <DataField label="Medicações Contínuas" value={historico_risco?.medicacoes_continuas} />
+            <DataField label="Já Usou Corticoides" value={historico_risco?.ja_usou_corticoides} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Alergias e Exposições</h4>
+            <DataField label="Alergias/Intolerâncias Conhecidas" value={historico_risco?.alergias_intolerancias_conhecidas} />
+            <DataField label="Alergias/Intolerâncias Suspeitas" value={historico_risco?.alergias_intolerancias_suspeitas} />
+            <DataField label="Exposição Tóxica" value={historico_risco?.exposicao_toxica} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Histórico de Peso</h4>
+            <DataField label="Variação ao Longo da Vida" value={historico_risco?.historico_peso_variacao_ao_longo_vida} />
+            <DataField label="Peso Máximo Atingido" value={historico_risco?.historico_peso_peso_maximo_atingido} />
+            <DataField label="Peso Mínimo Atingido" value={historico_risco?.historico_peso_peso_minimo_atingido} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Tratamentos Anteriores</h4>
+            <DataField label="Tentativas de Tratamento Anteriores" value={historico_risco?.tentativas_tratamento_anteriores} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Observação Clínica e Laboratorial */}
+      <CollapsibleSection title="Observação Clínica e Laboratorial">
+          <div className="anamnese-subsection">
+            <h4>Sintomas e Padrões</h4>
+            <DataField label="Quando os Sintomas Começaram" value={observacao_clinica_lab?.quando_sintomas_comecaram} />
+            <DataField label="Padrão Temporal" value={observacao_clinica_lab?.ha_algum_padrao_temporal} />
+            <DataField label="Eventos que Agravaram" value={observacao_clinica_lab?.eventos_que_agravaram} />
+            <DataField label="Intensidade de Dor/Desconforto" value={observacao_clinica_lab?.intensidade_dor_desconforto} />
+            <DataField label="Nível de Energia Diária" value={observacao_clinica_lab?.nivel_energia_diaria} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sistema Gastrointestinal</h4>
+            <DataField label="Intestino" value={observacao_clinica_lab?.sistema_gastrointestinal_intestino} />
+            <DataField label="Hábito Intestinal" value={observacao_clinica_lab?.sistema_gastrointestinal_habito_intestinal} />
+            <DataField label="Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_disbiose} />
+            <DataField label="Língua" value={observacao_clinica_lab?.sistema_gastrointestinal_lingua} />
+            <DataField label="Digestão" value={observacao_clinica_lab?.sistema_gastrointestinal_digestao} />
+            <DataField label="Gases" value={observacao_clinica_lab?.sistema_gastrointestinal_gases} />
+            <DataField label="Suspeita de Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_suspeita_disbiose} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sistema Musculoesquelético</h4>
+            <DataField label="Dores" value={observacao_clinica_lab?.sistema_musculoesqueletico_dores} />
+            <DataField label="Localização" value={observacao_clinica_lab?.sistema_musculoesqueletico_localizacao} />
+            <DataField label="Postura" value={observacao_clinica_lab?.sistema_musculoesqueletico_postura} />
+            <DataField label="Tônus Muscular" value={observacao_clinica_lab?.sistema_musculoesqueletico_tono_muscular} />
+            <DataField label="Mobilidade" value={observacao_clinica_lab?.sistema_musculoesqueletico_mobilidade} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Pele e Fâneros</h4>
+            <DataField label="Pele" value={observacao_clinica_lab?.pele_faneros_pele} />
+            <DataField label="Cabelo" value={observacao_clinica_lab?.pele_faneros_cabelo} />
+            <DataField label="Unhas" value={observacao_clinica_lab?.pele_faneros_unhas} />
+            <DataField label="Hidratação" value={observacao_clinica_lab?.pele_faneros_hidratacao} />
+            <DataField label="Ingestão de Água (ml/dia)" value={observacao_clinica_lab?.pele_faneros_ingestao_agua_ml_dia} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sistema Neurológico/Mental</h4>
+            <DataField label="Memória" value={observacao_clinica_lab?.sistema_neurologico_mental_memoria} />
+            <DataField label="Concentração" value={observacao_clinica_lab?.sistema_neurologico_mental_concentracao} />
+            <DataField label="Qualidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_qualidade} />
+            <DataField label="Latência do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_latencia} />
+            <DataField label="Manutenção do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_manutencao} />
+            <DataField label="Profundidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_profundidade} />
+            <DataField label="Duração do Sono (horas)" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_duracao_horas} />
+            <DataField label="Despertar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_despertar} />
+            <DataField label="Acorda Quantas Vezes" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_quantas_vezes} />
+            <DataField label="Acorda para Urinar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_para_urinar} />
+            <DataField label="Energia" value={observacao_clinica_lab?.sistema_neurologico_mental_energia} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sistema Endócrino</h4>
+            <h5>Tireoide</h5>
+            <DataField label="TSH" value={observacao_clinica_lab?.sistema_endocrino_tireoide_tsh} />
+            <DataField label="Anti-TPO" value={observacao_clinica_lab?.sistema_endocrino_tireoide_anti_tpo} />
+            <DataField label="T3 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t3_livre} />
+            <DataField label="T4 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t4_livre} />
+            <DataField label="Suspeita" value={observacao_clinica_lab?.sistema_endocrino_tireoide_suspeita} />
+            
+            <h5>Insulina</h5>
+            <DataField label="Valor" value={observacao_clinica_lab?.sistema_endocrino_insulina_valor} />
+            <DataField label="Glicemia" value={observacao_clinica_lab?.sistema_endocrino_insulina_glicemia} />
+            <DataField label="Hemoglobina Glicada" value={observacao_clinica_lab?.sistema_endocrino_insulina_hemoglobina_glicada} />
+            <DataField label="HOMA-IR" value={observacao_clinica_lab?.sistema_endocrino_insulina_homa_ir} />
+            <DataField label="Diagnóstico" value={observacao_clinica_lab?.sistema_endocrino_insulina_diagnostico} />
+            
+            <h5>Outros Hormônios</h5>
+            <DataField label="Cortisol" value={observacao_clinica_lab?.sistema_endocrino_cortisol} />
+            <DataField label="Estrogênio" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_estrogeno} />
+            <DataField label="Progesterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_progesterona} />
+            <DataField label="Testosterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_testosterona} />
+            <DataField label="Impacto" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_impacto} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Medidas Antropométricas</h4>
+            <DataField label="Peso Atual" value={observacao_clinica_lab?.medidas_antropometricas_peso_atual} />
+            <DataField label="Altura" value={observacao_clinica_lab?.medidas_antropometricas_altura} />
+            <DataField label="IMC" value={observacao_clinica_lab?.medidas_antropometricas_imc} />
+            <DataField label="Circunferência da Cintura" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_cintura} />
+            <DataField label="Circunferência do Quadril" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_quadril} />
+            <DataField label="Circunferência do Pescoço" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_pescoco} />
+            <DataField label="Relação Cintura/Quadril" value={observacao_clinica_lab?.medidas_antropometricas_relacao_cintura_quadril} />
+            
+            <h5>Bioimpedância</h5>
+            <DataField label="Gordura (%)" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_percentual} />
+            <DataField label="Massa Muscular" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_massa_muscular} />
+            <DataField label="Água Corporal" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_agua_corporal} />
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_visceral} />
+            
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_gordura_visceral} />
+            <DataField label="Esteatose Hepática" value={observacao_clinica_lab?.medidas_antropometricas_esteatose_hepatica} />
+            <DataField label="Pressão Arterial" value={observacao_clinica_lab?.medidas_antropometricas_pressao_arterial} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sinais Vitais Relatados</h4>
+            <DataField label="Disposição ao Acordar" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_acordar} />
+            <DataField label="Disposição ao Longo do Dia" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_longo_dia} />
+            <DataField label="Libido" value={observacao_clinica_lab?.sinais_vitais_relatados_libido} />
+            <DataField label="Regulação Térmica" value={observacao_clinica_lab?.sinais_vitais_relatados_regulacao_termica} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Hábitos Alimentares</h4>
+            <DataField label="Recordatório 24h" value={observacao_clinica_lab?.habitos_alimentares_recordatorio_24h} />
+            <DataField label="Frequência de Ultraprocessados" value={observacao_clinica_lab?.habitos_alimentares_frequencia_ultraprocessados} />
+            <DataField label="Horários das Refeições" value={observacao_clinica_lab?.habitos_alimentares_horarios_refeicoes} />
+            <DataField label="Come Assistindo TV/Trabalhando" value={observacao_clinica_lab?.habitos_alimentares_come_assistindo_tv_trabalhando} />
+          </div>
+        </CollapsibleSection>
+
+      {/* História de Vida */}
+      <CollapsibleSection title="História de Vida">
+          <div className="anamnese-subsection">
+            <h4>Narrativa e Eventos</h4>
+            <DataField label="Síntese da Narrativa" value={historia_vida?.narrativa_sintese} />
+            <DataField label="Eventos de Vida Marcantes" value={historia_vida?.eventos_vida_marcantes} />
+            <DataField label="Episódios de Estresse Extremo/Trauma" value={historia_vida?.episodios_estresse_extremo_trauma} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Trilha do Conflito</h4>
+            <DataField label="Concepção/Gestação" value={historia_vida?.trilha_do_conflito_concepcao_gestacao} />
+            <DataField label="0-7 anos" value={historia_vida?.trilha_do_conflito_0_7_anos} />
+            <DataField label="7-14 anos" value={historia_vida?.trilha_do_conflito_7_14_anos} />
+            <DataField label="14-21 anos" value={historia_vida?.trilha_do_conflito_14_21_anos} />
+            <DataField label="21-28 anos" value={historia_vida?.trilha_do_conflito_21_28_anos} />
+            <DataField label="28+ anos" value={historia_vida?.trilha_do_conflito_28_mais_anos} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Padrões e Traumas</h4>
+            <DataField label="Pontos Traumáticos" value={historia_vida?.pontos_traumaticos} />
+            <DataField label="Padrões Repetitivos" value={historia_vida?.padroes_repetitivos} />
+            <DataField label="Saúde da Mãe na Gestação" value={historia_vida?.saude_mae_gestacao} />
+            <DataField label="Traços/Comportamentos Repetitivos" value={historia_vida?.tracos_comportamentos_repetitivos_ao_longo_vida} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Superação e Identidade</h4>
+            <DataField label="Experiência de Virada" value={historia_vida?.experiencia_considera_virada} />
+            <DataField label="Identifica com Superação ou Defesa" value={historia_vida?.identifica_com_superacao_ou_defesa} />
+            <DataField label="Conexão com Identidade e Propósito" value={historia_vida?.conexao_identidade_proposito} />
+            <DataField label="Algo da Infância que Lembra com Emoção Intensa" value={historia_vida?.algo_infancia_lembra_com_emocao_intensa} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Tentativas Anteriores</h4>
+            <DataField label="Já Tentou Resolver Antes" value={historia_vida?.tentativas_anteriores_similares_ja_tentou_resolver_antes} />
+            <DataField label="Quantas Vezes" value={historia_vida?.tentativas_anteriores_similares_quantas_vezes} />
+            <DataField label="Métodos Utilizados" value={historia_vida?.tentativas_anteriores_similares_metodos_utilizados} />
+            <DataField label="Máximo Resultado Alcançado" value={historia_vida?.tentativas_anteriores_similares_maximo_resultado_alcancado} />
+            <DataField label="Resultado Recuperado" value={historia_vida?.tentativas_anteriores_similares_resultado_recuperado} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Setênios e Eventos */}
+      <CollapsibleSection title="Setênios e Eventos">
+          <div className="anamnese-subsection">
+            <h4>Concepção e Gestação</h4>
+            <DataField label="Planejamento" value={setenios_eventos?.concepcao_gestacao_planejamento} />
+            <DataField label="Ambiente Gestacional" value={setenios_eventos?.concepcao_gestacao_ambiente_gestacional} />
+            <DataField label="Saúde da Mãe" value={setenios_eventos?.concepcao_gestacao_saude_mae_gestacao} />
+            <DataField label="Tipo de Parto" value={setenios_eventos?.concepcao_gestacao_parto} />
+            <DataField label="Houve Trauma de Parto" value={setenios_eventos?.concepcao_gestacao_houve_trauma_parto} />
+            <DataField label="Foi Desejada/Planejada" value={setenios_eventos?.concepcao_gestacao_foi_desejada_planejada} />
+            <DataField label="Impacto" value={setenios_eventos?.concepcao_gestacao_impacto} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Primeiro Setênio (0-7 anos)</h4>
+            <DataField label="Ambiente" value={setenios_eventos?.primeiro_setenio_0_7_ambiente} />
+            <DataField label="Figuras Parentais - Pai" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_pai} />
+            <DataField label="Figuras Parentais - Mãe" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_mae} />
+            <DataField label="Aprendizados" value={setenios_eventos?.primeiro_setenio_0_7_aprendizados} />
+            <DataField label="Trauma Central" value={setenios_eventos?.primeiro_setenio_0_7_trauma_central} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Segundo Setênio (7-14 anos)</h4>
+            <DataField label="Eventos" value={setenios_eventos?.segundo_setenio_7_14_eventos} />
+            <DataField label="Desenvolvimento" value={setenios_eventos?.segundo_setenio_7_14_desenvolvimento} />
+            <DataField label="Corpo Físico" value={setenios_eventos?.segundo_setenio_7_14_corpo_fisico} />
+            <DataField label="Impacto" value={setenios_eventos?.segundo_setenio_7_14_impacto} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Terceiro Setênio (14-21 anos)</h4>
+            <DataField label="Escolhas" value={setenios_eventos?.terceiro_setenio_14_21_escolhas} />
+            <DataField label="Motivação" value={setenios_eventos?.terceiro_setenio_14_21_motivacao} />
+            <DataField label="Cumeeira da Casa" value={setenios_eventos?.terceiro_setenio_14_21_cumeeira_da_casa} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Quarto Setênio (21-28 anos)</h4>
+            <DataField label="Eventos Significativos" value={setenios_eventos?.quarto_setenio_21_28_eventos_significativos} />
+            <DataField label="Formação Profissional" value={setenios_eventos?.quarto_setenio_21_28_formacao_profissional} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Decênios (28-40+ anos)</h4>
+            <DataField label="Climatério/Menopausa" value={setenios_eventos?.decenios_28_40_mais_climaterio_menopausa} />
+            <DataField label="Pausas Hormonais" value={setenios_eventos?.decenios_28_40_mais_pausas_hormonais} />
+            <DataField label="Acumulação" value={setenios_eventos?.decenios_28_40_mais_acumulacao} />
+            <DataField label="Estado Atual" value={setenios_eventos?.decenios_28_40_mais_estado_atual} />
+            <DataField label="Episódios de Estresse Extremo" value={setenios_eventos?.decenios_28_40_mais_episodios_estresse_extremo} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Observações Gerais</h4>
+            <DataField label="Eventos Críticos Identificados" value={setenios_eventos?.eventos_criticos_identificados} />
+            <DataField label="Experiência de Virada" value={setenios_eventos?.experiencia_considera_virada} />
+            <DataField label="Diferenças Sazonais/Climáticas nos Sintomas" value={setenios_eventos?.diferencas_sazonais_climaticas_sintomas} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Ambiente e Contexto */}
+      <CollapsibleSection title="Ambiente e Contexto">
+          <div className="anamnese-subsection">
+            <h4>Contexto Familiar</h4>
+            <DataField label="Estado Civil" value={ambiente_contexto?.contexto_familiar_estado_civil} />
+            <DataField label="Filhos" value={ambiente_contexto?.contexto_familiar_filhos} />
+            <DataField label="Dinâmica Familiar" value={ambiente_contexto?.contexto_familiar_dinamica_familiar} />
+            <DataField label="Suporte Familiar" value={ambiente_contexto?.contexto_familiar_suporte_familiar} />
+            <DataField label="Relacionamento Conjugal" value={ambiente_contexto?.contexto_familiar_relacionamento_conjugal} />
+            <DataField label="Divisão de Tarefas Domésticas" value={ambiente_contexto?.contexto_familiar_divisao_tarefas_domesticas} />
+            <DataField label="Vida Sexual Ativa" value={ambiente_contexto?.contexto_familiar_vida_sexual_ativa} />
+            <DataField label="Diálogo sobre Sobrecarga" value={ambiente_contexto?.contexto_familiar_dialogo_sobre_sobrecarga} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Contexto Profissional</h4>
+            <DataField label="Área" value={ambiente_contexto?.contexto_profissional_area} />
+            <DataField label="Carga Horária" value={ambiente_contexto?.contexto_profissional_carga_horaria} />
+            <DataField label="Nível de Estresse" value={ambiente_contexto?.contexto_profissional_nivel_estresse} />
+            <DataField label="Satisfação" value={ambiente_contexto?.contexto_profissional_satisfacao} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Ambiente Físico</h4>
+            <DataField label="Sedentarismo" value={ambiente_contexto?.ambiente_fisico_sedentarismo} />
+            <DataField label="Exposição ao Sol" value={ambiente_contexto?.ambiente_fisico_exposicao_sol} />
+            <DataField label="Pratica Atividade Física" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_pratica} />
+            <DataField label="Tipo de Atividade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tipo} />
+            <DataField label="Frequência" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_frequencia} />
+            <DataField label="Intensidade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_intensidade} />
+            <DataField label="Tem Acompanhamento Profissional" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Hábitos de Vida</h4>
+            <DataField label="Sono" value={ambiente_contexto?.habitos_vida_sono} />
+            <DataField label="Alimentação" value={ambiente_contexto?.habitos_vida_alimentacao} />
+            <DataField label="Lazer" value={ambiente_contexto?.habitos_vida_lazer} />
+            <DataField label="Espiritualidade" value={ambiente_contexto?.habitos_vida_espiritualidade} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Suporte Social</h4>
+            <DataField label="Tem Rede de Apoio" value={ambiente_contexto?.suporte_social_tem_rede_apoio} />
+            <DataField label="Participa de Grupos Sociais" value={ambiente_contexto?.suporte_social_participa_grupos_sociais} />
+            <DataField label="Tem com Quem Desabafar" value={ambiente_contexto?.suporte_social_tem_com_quem_desabafar} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Fatores de Risco</h4>
+            <DataField label="Fatores Estressores" value={ambiente_contexto?.fatores_estressores} />
+            <DataField label="Fatores Externos à Saúde" value={ambiente_contexto?.fatores_externos_saude} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Sensação e Emoções */}
+      <CollapsibleSection title="Sensação e Emoções">
+          <div className="anamnese-subsection">
+            <h4>Emoções e Sensações</h4>
+            <DataField label="Emoções Predominantes" value={sensacao_emocoes?.emocoes_predominantes} />
+            <DataField label="Sensações Corporais" value={sensacao_emocoes?.sensacoes_corporais} />
+            <DataField label="Palavras-chave Emocionais" value={sensacao_emocoes?.palavras_chave_emocionais} />
+            <DataField label="Intensidade Emocional" value={sensacao_emocoes?.intensidade_emocional} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Gatilhos Emocionais</h4>
+            <DataField label="Consegue Identificar Gatilhos" value={sensacao_emocoes?.consegue_identificar_gatilhos_emocionais} />
+            <DataField label="Gatilhos Identificados" value={sensacao_emocoes?.gatilhos_identificados} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Regulação Emocional</h4>
+            <DataField label="Capacidade de Regulação" value={sensacao_emocoes?.regulacao_emocional_capacidade_regulacao} />
+            <DataField label="Forma de Expressão" value={sensacao_emocoes?.regulacao_emocional_forma_expressao} />
+            <DataField label="Como Gerencia Estresse/Ansiedade" value={sensacao_emocoes?.regulacao_emocional_como_gerencia_estresse_ansiedade} />
+            <DataField label="Memória Afetiva" value={sensacao_emocoes?.memoria_afetiva} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Sensações Específicas do Reino</h4>
+            <DataField label="Usa Palavras Como" value={sensacao_emocoes?.sensacoes_especificas_reino_usa_palavras_como} />
+            <DataField label="Descreve Sensações Como" value={sensacao_emocoes?.sensacoes_especificas_reino_descreve_sensacoes_como} />
+            <DataField label="Padrões de Discurso" value={sensacao_emocoes?.sensacoes_especificas_reino_padroes_discurso} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Conexão Corpo-Mente</h4>
+            <DataField label="Percebe Manifestações Corporais das Emoções" value={sensacao_emocoes?.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes} />
+            <DataField label="Exemplos" value={sensacao_emocoes?.conexao_corpo_mente_exemplos} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Preocupações e Crenças */}
+      <CollapsibleSection title="Preocupações e Crenças">
+          <div className="anamnese-subsection">
+            <h4>Percepção do Problema</h4>
+            <DataField label="Como Percebe o Problema" value={preocupacoes_crencas?.como_percebe_problema} />
+            <DataField label="Compreensão sobre Causa dos Sintomas" value={preocupacoes_crencas?.compreensao_sobre_causa_sintomas} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Crenças e Preocupações</h4>
+            <DataField label="Crenças Limitantes" value={preocupacoes_crencas?.crencas_limitantes} />
+            <DataField label="Preocupações Explícitas" value={preocupacoes_crencas?.preocupacoes_explicitas} />
+            <DataField label="Preocupações Implícitas" value={preocupacoes_crencas?.preocupacoes_implicitas} />
+            <DataField label="Ganhos Secundários" value={preocupacoes_crencas?.ganhos_secundarios} />
+            <DataField label="Resistências Possíveis" value={preocupacoes_crencas?.resistencias_possiveis} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Expectativas e Insight</h4>
+            <DataField label="Condições Genéticas na Família" value={preocupacoes_crencas?.condicoes_geneticas_familia} />
+            <DataField label="Expectativas Irrealistas" value={preocupacoes_crencas?.expectativas_irrealistas} />
+            <DataField label="Nível de Insight/Autoconsciência" value={preocupacoes_crencas?.nivel_insight_autoconsciencia} />
+            <DataField label="Abertura para Mudança" value={preocupacoes_crencas?.abertura_para_mudanca} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Barreiras e Desafios</h4>
+            <DataField label="Barreiras Percebidas ao Tratamento" value={preocupacoes_crencas?.barreiras_percebidas_tratamento} />
+            <DataField label="Aspectos do Plano que Parecem Desafiadores" value={preocupacoes_crencas?.aspectos_plano_parecem_desafiadores} />
+          </div>
+        </CollapsibleSection>
+
+      {/* Reino e Miasma */}
+      <CollapsibleSection title="Reino e Miasma">
+          <div className="anamnese-subsection">
+            <h4>Reino Predominante</h4>
+            <DataField label="Reino" value={reino_miasma?.reino_predominante} />
+            <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Análise Detalhada - Reino Animal</h4>
+            <DataField label="Palavras Usadas" value={reino_miasma?.analise_detalhada_reino_animal_palavras_usadas} />
+            <DataField label="Descreve Sensações Como" value={reino_miasma?.analise_detalhada_reino_animal_descreve_sensacoes_como} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Implicações Terapêuticas</h4>
+            <DataField label="Comunicação" value={reino_miasma?.implicacoes_terapeuticas_comunicacao} />
+            <DataField label="Abordagem" value={reino_miasma?.implicacoes_terapeuticas_abordagem} />
+            <DataField label="Outras Terapias Alinhadas" value={reino_miasma?.implicacoes_terapeuticas_outras_terapias_alinhadas} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Observações Comportamentais</h4>
+            <DataField label="Maneira de Vestir" value={reino_miasma?.maneira_vestir} />
+            <DataField label="Tipo de Profissão Escolhida" value={reino_miasma?.tipo_profissao_escolhida} />
+            <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} />
+          </div>
+        </CollapsibleSection>
+    </div>
+  );
 }
 
 function ConsultasPageContent() {
@@ -349,7 +1030,7 @@ function ConsultasPageContent() {
   // Renderizar detalhes da consulta
   if (consultaId && consultaDetails) {
     return (
-      <div className="consultas-container">
+      <div className="consultas-container consultas-details-container">
         <div className="consultas-header">
           <button 
             className="back-button"
@@ -362,248 +1043,147 @@ function ConsultasPageContent() {
           <h1 className="consultas-title">Detalhes da Consulta</h1>
         </div>
 
-        <div className="modal-body">
-          {/* Informações Básicas */}
-          <div className="modal-section">
-            <h3 className="section-title">
-              <Calendar className="w-5 h-5" />
-              Informações da Consulta
-            </h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <span className="info-label">Paciente:</span>
+        {/* Informações da Consulta - Card no Topo */}
+        <div className="consultation-info-card">
+          <div className="consultation-info-grid">
+            <div className="info-block">
+              <div className="info-icon-wrapper">
+                <User className="w-5 h-5" />
+              </div>
+              <div className="info-content">
+                <span className="info-label">Paciente</span>
                 <span className="info-value">{consultaDetails.patient_name}</span>
               </div>
-              <div className="info-item">
-                <span className="info-label">Tipo:</span>
-                <span className="info-value">
-                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                    <><User className="w-4 h-4 inline mr-1" /> Presencial</>
-                  ) : (
-                    <><Video className="w-4 h-4 inline mr-1" /> Telemedicina</>
-                  )}
-                </span>
+            </div>
+
+            <div className="info-block">
+              <div className="info-icon-wrapper">
+                <Calendar className="w-5 h-5" />
               </div>
-              <div className="info-item">
-                <span className="info-label">Status:</span>
-                <span className={`status-badge ${getStatusColor(consultaDetails.status)}`}>
-                  {getStatusText(consultaDetails.status)}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Data/Hora:</span>
+              <div className="info-content">
+                <span className="info-label">Data/Hora</span>
                 <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
               </div>
-              <div className="info-item">
-                <span className="info-label">Duração:</span>
-                <span className="info-value">
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  {formatDuration(consultaDetails.duration)}
-                </span>
+            </div>
+
+            <div className="info-block">
+              <div className="info-icon-wrapper">
+                {consultaDetails.consultation_type === 'PRESENCIAL' ? (
+                  <User className="w-5 h-5" />
+                ) : (
+                  <Video className="w-5 h-5" />
+                )}
               </div>
-              {consultaDetails.next_appointment && (
-                <div className="info-item">
-                  <span className="info-label">Próxima Consulta:</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.next_appointment)}</span>
-                </div>
-              )}
+              <div className="info-content">
+                <span className="info-label">Tipo</span>
+                <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
+              </div>
+            </div>
+
+            <div className="info-block">
+              <div className="info-icon-wrapper">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="info-content">
+                <span className="info-label">Duração</span>
+                <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
+              </div>
+            </div>
+
+            <div className="info-block">
+              <div className="info-icon-wrapper status-icon">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="info-content">
+                <span className="info-label">Status</span>
+                <StatusBadge 
+                  status={mapBackendStatus(consultaDetails.status)}
+                  size="md"
+                  showIcon={true}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Contexto do Paciente */}
-          {consultaDetails.patient_context && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <User className="w-5 h-5" />
-                Contexto do Paciente
-              </h3>
-              <div className="section-content">
-                <p>{consultaDetails.patient_context}</p>
-              </div>
-            </div>
-          )}
 
-          {/* Informações do Paciente */}
-          {consultaDetails.patients && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <User className="w-5 h-5" />
-                Dados do Paciente
-              </h3>
-              <div className="info-grid">
-                {consultaDetails.patients.email && (
-                  <div className="info-item">
-                    <span className="info-label">Email:</span>
-                    <span className="info-value">{consultaDetails.patients.email}</span>
-                  </div>
-                )}
-                {consultaDetails.patients.phone && (
-                  <div className="info-item">
-                    <span className="info-label">Telefone:</span>
-                    <span className="info-value">{consultaDetails.patients.phone}</span>
-                  </div>
-                )}
-                {consultaDetails.patients.birth_date && (
-                  <div className="info-item">
-                    <span className="info-label">Data de Nascimento:</span>
-                    <span className="info-value">{formatFullDate(consultaDetails.patients.birth_date)}</span>
-                  </div>
-                )}
-                {consultaDetails.patients.gender && (
-                  <div className="info-item">
-                    <span className="info-label">Gênero:</span>
-                    <span className="info-value">{consultaDetails.patients.gender}</span>
-                  </div>
-                )}
-                {consultaDetails.patients.cpf && (
-                  <div className="info-item">
-                    <span className="info-label">CPF:</span>
-                    <span className="info-value">{consultaDetails.patients.cpf}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        </div>
 
-          {/* Transcrição */}
-          {consultaDetails.transcription && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <FileText className="w-5 h-5" />
-                Transcrição
-              </h3>
-              <div className="section-content">
-                {consultaDetails.transcription.summary && (
-                  <div className="transcription-summary">
-                    <h4>Resumo:</h4>
-                    <p>{consultaDetails.transcription.summary}</p>
-                  </div>
-                )}
-                
-                {consultaDetails.transcription.key_points && consultaDetails.transcription.key_points.length > 0 && (
-                  <div className="key-points">
-                    <h4>Pontos Principais:</h4>
-                    <ul>
-                      {consultaDetails.transcription.key_points.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {consultaDetails.transcription.raw_text && (
-                  <div className="raw-transcription">
-                    <h4>Transcrição Completa:</h4>
-                    <p>{consultaDetails.transcription.raw_text}</p>
-                  </div>
-                )}
+        <div className="details-two-column-layout">
+          {/* Coluna Esquerda - Chat com IA */}
+          <div className="chat-column">
+            <div className="chat-container">
+              <div className="chat-header">
+                <h3>Anamnese Integrativa - Identificação e Avaliação Inicial</h3>
               </div>
-            </div>
-          )}
+              
+              <div className="chat-messages">
+                {/* Mensagens mockadas */}
+                <div className="message ai-message">
+                  <div className="message-avatar ai-avatar">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="message-content">
+                    <p>Hello! I've been thinking about developing some new skills. Any suggestions on where to start?</p>
+                  </div>
+                </div>
 
-          {/* Diagnóstico e Tratamento */}
-          {(consultaDetails.diagnosis || consultaDetails.treatment || consultaDetails.prescription) && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <Stethoscope className="w-5 h-5" />
-                Diagnóstico e Tratamento
-              </h3>
-              <div className="section-content">
-                {consultaDetails.diagnosis && (
-                  <div className="medical-info">
-                    <h4>Diagnóstico:</h4>
-                    <p>{consultaDetails.diagnosis}</p>
+                <div className="message user-message">
+                  <div className="message-avatar user-avatar">
+                    <User className="w-5 h-5" />
                   </div>
-                )}
-                
-                {consultaDetails.treatment && (
-                  <div className="medical-info">
-                    <h4>Tratamento:</h4>
-                    <p>{consultaDetails.treatment}</p>
+                  <div className="message-content">
+                    <p>Hi there! That's great to hear. The first step is to identify your interests. What areas are you passionate about or curious to explore?</p>
                   </div>
-                )}
-                
-                {consultaDetails.prescription && (
-                  <div className="medical-info">
-                    <h4>Prescrição:</h4>
-                    <p>{consultaDetails.prescription}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
 
-          {/* Notas */}
-          {consultaDetails.notes && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <FileText className="w-5 h-5" />
-                Notas
-              </h3>
-              <div className="section-content">
-                <p>{consultaDetails.notes}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Arquivos de Áudio */}
-          {consultaDetails.audioFiles && consultaDetails.audioFiles.length > 0 && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <Mic className="w-5 h-5" />
-                Arquivos de Áudio
-              </h3>
-              <div className="audio-files">
-                {consultaDetails.audioFiles.map((file) => (
-                  <div key={file.id} className="audio-file">
-                    <div className="file-info">
-                      <span className="file-name">{file.original_name || file.filename}</span>
-                      <span className="file-size">{formatFileSize(file.size)}</span>
-                      {file.duration && (
-                        <span className="file-duration">{formatDuration(file.duration)}</span>
-                      )}
-                    </div>
-                    <div className="file-actions">
-                      <button className="action-button" title="Reproduzir">
-                        <Play className="w-4 h-4" />
-                      </button>
-                      <button className="action-button" title="Download">
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
+                <div className="message ai-message">
+                  <div className="message-avatar ai-avatar">
+                    <User className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Documentos */}
-          {consultaDetails.documents && consultaDetails.documents.length > 0 && (
-            <div className="modal-section">
-              <h3 className="section-title">
-                <FileText className="w-5 h-5" />
-                Documentos
-              </h3>
-              <div className="documents">
-                {consultaDetails.documents.map((doc) => (
-                  <div key={doc.id} className="document">
-                    <div className="document-info">
-                      <span className="document-title">{doc.title}</span>
-                      <span className="document-type">{doc.type}</span>
-                    </div>
-                    <div className="document-actions">
-                      <button className="action-button" title="Visualizar">
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      <button className="action-button" title="Download">
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <div className="message-content">
+                    <p>I've always been interested in graphic design, but I'm not sure where to start.</p>
                   </div>
-                ))}
+                </div>
+
+                <div className="message user-message">
+                  <div className="message-avatar user-avatar">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="message-content">
+                    <p>Graphic design is a fantastic choice! To start, you might want to learn the basics of design principles and software tools. There are many online platforms offering free Adobe Creative Cloud tutorials or design courses. Then, do you have access or plans to obtain design software like Illustrator or Sketch? Here are a few you could consider trying...</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="chat-input-area">
+                <input 
+                  type="text" 
+                  placeholder="Message" 
+                  className="chat-input"
+                  disabled
+                />
+                <button className="chat-send-button" disabled>
+                  <FileText className="w-5 h-5" />
+                </button>
+                <button className="chat-send-button" disabled>
+                  <Mic className="w-5 h-5" />
+                </button>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Coluna Direita - Anamnese */}
+          <div className="anamnese-column">
+            <div className="anamnese-container">
+              <div className="anamnese-header">
+                <h2>Anamnese Integrativa - Identificação e Avaliação Inicial</h2>
+              </div>
+
+              <div className="anamnese-content">
+                <AnamneseSection consultaId={consultaId} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

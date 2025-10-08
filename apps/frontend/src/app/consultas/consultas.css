@@ -811,6 +811,439 @@
   color: #374151;
 }
 
+/* Layout de 2 Colunas - Chat + Anamnese */
+.consultas-details-container {
+  max-width: 100%;
+  padding: 24px;
+}
+
+/* Card de Informações da Consulta */
+.consultation-info-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.consultation-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.info-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.info-block:hover {
+  background: #f3f4f6;
+  transform: translateY(-2px);
+}
+
+.info-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.info-icon-wrapper.status-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.info-content .info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-content .info-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.patient-context-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 12px;
+  border: 1px solid #fbbf24;
+}
+
+.context-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #78350f;
+  margin-bottom: 8px;
+}
+
+.context-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #92400e;
+  margin: 0;
+}
+
+.details-two-column-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 0;
+}
+
+/* Coluna do Chat */
+.chat-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+
+.chat-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  border-radius: 16px 16px 0 0;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.message.user-message {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.message-avatar.ai-avatar {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.message-avatar.user-avatar {
+  background-color: #e0e7ff;
+  color: #4c1d95;
+}
+
+.message-content {
+  max-width: 70%;
+  background: #f3f4f6;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.user-message .message-content {
+  background: #dbeafe;
+}
+
+.message-content p {
+  margin: 0;
+}
+
+.chat-input-area {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: #3b82f6;
+}
+
+.chat-send-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chat-send-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.chat-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Coluna da Anamnese */
+.anamnese-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.anamnese-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+
+.anamnese-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.anamnese-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #78350f;
+}
+
+.anamnese-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.anamnese-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Banner de aviso/alerta na anamnese */
+.anamnese-warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.anamnese-warning-banner strong {
+  font-weight: 600;
+}
+
+/* Seções Colapsáveis */
+.collapsible-section {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.collapsible-header {
+  width: 100%;
+  padding: 16px 24px;
+  background: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: left;
+}
+
+.collapsible-header:hover {
+  background: #f9fafb;
+}
+
+.collapsible-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.collapsible-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  transition: transform 0.3s ease;
+}
+
+.collapsible-icon.open {
+  transform: rotate(-90deg) !important;
+}
+
+.collapsible-content {
+  padding: 16px 24px 24px;
+  background: #f9fafb;
+}
+
+.anamnese-subsection {
+  margin-bottom: 20px;
+}
+
+.anamnese-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.anamnese-subsection h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.anamnese-subsection h5 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 16px 0 8px 0;
+}
+
+/* Data Fields */
+.data-field {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #e5e7eb;
+}
+
+.data-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-value {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.data-value-empty {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.data-list {
+  list-style-type: disc;
+  margin: 4px 0 0 0;
+  padding-left: 20px;
+}
+
+.data-list li {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+/* Estados de Loading e Erro na Anamnese */
+.anamnese-loading,
+.anamnese-error,
+.anamnese-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.anamnese-error {
+  color: #dc2626;
+}
+
+.anamnese-empty {
+  color: #6b7280;
+}
+
 /* Responsive Modal */
 @media (max-width: 768px) {
   .modal-overlay {
@@ -848,5 +1281,34 @@
   .file-actions,
   .document-actions {
     align-self: flex-end;
+  }
+
+  /* Layout responsivo - empilhar colunas */
+  .details-two-column-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-container,
+  .anamnese-container {
+    height: 600px;
+  }
+
+  /* Card de informações responsivo */
+  .consultation-info-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .consultation-info-card {
+    padding: 16px;
+  }
+
+  .info-block {
+    padding: 10px;
+  }
+
+  .info-icon-wrapper {
+    width: 36px;
+    height: 36px;
   }
 }
