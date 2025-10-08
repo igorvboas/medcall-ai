@@ -262,17 +262,12 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
   if (roomCreated && roomData) {
     return (
       <div className="create-room-container">
-        <div className="create-room-header">
-          <h1>Sala de Consulta Criada</h1>
-          <p>Paciente: {roomData.patientName}</p>
-        </div>
-
         <div className="link-container show">
-          <h5 className="text-center mb-3">✅ Sala Criada com Sucesso!</h5>
+          <h5 className="text-center mb-3">Sala Criada com Sucesso!</h5>
           
           {/* Link do Paciente */}
           <p className="text-muted small text-center mb-2">
-            <strong>Link para o Paciente:</strong><br />
+            <strong>Link para o Paciente:</strong>
             (Compartilhe este link)
           </p>
 
@@ -280,7 +275,7 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
             className="btn btn-copy"
             onClick={() => handleCopyLink(roomData.participantRoomUrl)}
           >
-            📋 Copiar Link do Paciente
+            Copiar Link do Paciente
           </button>
           
           {/* Link do Médico */}
@@ -292,11 +287,11 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
             className="btn btn-enter"
             onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
           >
-            🚪 Entrar na Consulta
+            Entrar na Consulta
           </button>
 
           <p className="text-muted small text-center mt-3">
-            ⏱️ A sala expira em 5 minutos se ninguém entrar
+            A sala expira em 5 minutos se ninguém entrar
           </p>
 
           <div className="mt-4 text-center">

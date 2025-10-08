@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import './signin.css';
 
 export default function SignInPage() {
@@ -47,14 +48,7 @@ export default function SignInPage() {
 
 
   if (authLoading) {
-    return (
-      <div className="loading-wrapper">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Carregando...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Carregando..." />;
   }
 
   return (
