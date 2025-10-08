@@ -22,6 +22,7 @@ import BarChart3D from '../../../components/BarChart3D';
 import { Calendar } from '../../../components/Calendar';
 import { StatusBadge, mapBackendStatus } from '../../../components/StatusBadge';
 import { ConsultationStatusChart } from '../../../components/ConsultationStatusChart';
+import { LoadingScreen } from '../../../components/shared/LoadingScreen';
 import '../../../components/Calendar.css';
 
 interface DashboardData {
@@ -216,12 +217,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="loading-indicator">
-        <div className="loading-icon"></div>
-        <span>Carregando dashboard...</span>
-      </div>
-    );
+    return <LoadingScreen message="Carregando dashboard..." />;
   }
 
   if (error || !dashboardData) {

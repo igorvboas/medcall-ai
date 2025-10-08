@@ -2061,9 +2061,8 @@ export function ConsultationRoom({
             Paciente: {patientName || participantName} | 
 
             Status: <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
-
-              {isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
-
+              <span className={isConnected ? 'status-indicator status-indicator-connected' : 'status-indicator status-indicator-disconnected'}></span>
+              {isConnected ? 'Conectado' : 'Desconectado'}
             </span>
 
           </p>
