@@ -313,6 +313,7 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
           fieldPath,
           value: newValue,
           consultaId,
+          origem: 'manual',
         }),
       });
 
@@ -452,21 +453,21 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
 
           <div className="anamnese-subsection">
             <h4>Endereço</h4>
-            <DataField label="Logradouro" value={cadastro_prontuario?.endereco_logradouro} />
-            <DataField label="Número" value={cadastro_prontuario?.endereco_numero} />
-            <DataField label="Complemento" value={cadastro_prontuario?.endereco_complemento} />
-            <DataField label="Bairro" value={cadastro_prontuario?.endereco_bairro} />
-            <DataField label="Cidade" value={cadastro_prontuario?.endereco_cidade} />
-            <DataField label="Estado" value={cadastro_prontuario?.endereco_estado} />
-            <DataField label="CEP" value={cadastro_prontuario?.endereco_cep} />
+            <DataField label="Logradouro" value={cadastro_prontuario?.endereco_logradouro} fieldPath="cadastro_prontuario.endereco_logradouro" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Número" value={cadastro_prontuario?.endereco_numero} fieldPath="cadastro_prontuario.endereco_numero" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Complemento" value={cadastro_prontuario?.endereco_complemento} fieldPath="cadastro_prontuario.endereco_complemento" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Bairro" value={cadastro_prontuario?.endereco_bairro} fieldPath="cadastro_prontuario.endereco_bairro" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Cidade" value={cadastro_prontuario?.endereco_cidade} fieldPath="cadastro_prontuario.endereco_cidade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Estado" value={cadastro_prontuario?.endereco_estado} fieldPath="cadastro_prontuario.endereco_estado" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="CEP" value={cadastro_prontuario?.endereco_cep} fieldPath="cadastro_prontuario.endereco_cep" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Contato</h4>
-            <DataField label="Celular" value={cadastro_prontuario?.telefone_celular} />
-            <DataField label="Telefone Residencial" value={cadastro_prontuario?.telefone_residencial} />
-            <DataField label="Telefone para Recado" value={cadastro_prontuario?.telefone_recado} />
-            <DataField label="Email" value={cadastro_prontuario?.email} />
+            <DataField label="Celular" value={cadastro_prontuario?.telefone_celular} fieldPath="cadastro_prontuario.telefone_celular" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Telefone Residencial" value={cadastro_prontuario?.telefone_residencial} fieldPath="cadastro_prontuario.telefone_residencial" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Telefone para Recado" value={cadastro_prontuario?.telefone_recado} fieldPath="cadastro_prontuario.telefone_recado" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Email" value={cadastro_prontuario?.email} fieldPath="cadastro_prontuario.email" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -474,52 +475,52 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Objetivos e Queixas">
           <div className="anamnese-subsection">
             <h4>Saúde Geral Percebida</h4>
-            <DataField label="Como Descreve a Saúde" value={objetivos_queixas?.saude_geral_percebida_como_descreve_saude} />
-            <DataField label="Como Define Bem-Estar" value={objetivos_queixas?.saude_geral_percebida_como_define_bem_estar} />
-            <DataField label="Avaliação da Saúde Emocional/Mental" value={objetivos_queixas?.saude_geral_percebida_avaliacao_saude_emocional_mental} />
+            <DataField label="Como Descreve a Saúde" value={objetivos_queixas?.saude_geral_percebida_como_descreve_saude} fieldPath="objetivos_queixas.saude_geral_percebida_como_descreve_saude" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Como Define Bem-Estar" value={objetivos_queixas?.saude_geral_percebida_como_define_bem_estar} fieldPath="objetivos_queixas.saude_geral_percebida_como_define_bem_estar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Avaliação da Saúde Emocional/Mental" value={objetivos_queixas?.saude_geral_percebida_avaliacao_saude_emocional_mental} fieldPath="objetivos_queixas.saude_geral_percebida_avaliacao_saude_emocional_mental" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Queixas</h4>
-            <DataField label="Queixa Principal" value={objetivos_queixas?.queixa_principal} />
-            <DataField label="Sub-queixas" value={objetivos_queixas?.sub_queixas} />
+            <DataField label="Queixa Principal" value={objetivos_queixas?.queixa_principal} fieldPath="objetivos_queixas.queixa_principal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Sub-queixas" value={objetivos_queixas?.sub_queixas} fieldPath="objetivos_queixas.sub_queixas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Impacto das Queixas na Vida</h4>
-            <DataField label="Como Afeta a Vida Diária" value={objetivos_queixas?.impacto_queixas_vida_como_afeta_vida_diaria} />
-            <DataField label="Limitações Causadas" value={objetivos_queixas?.impacto_queixas_vida_limitacoes_causadas} />
-            <DataField label="Áreas Impactadas" value={objetivos_queixas?.impacto_queixas_vida_areas_impactadas} />
+            <DataField label="Como Afeta a Vida Diária" value={objetivos_queixas?.impacto_queixas_vida_como_afeta_vida_diaria} fieldPath="objetivos_queixas.impacto_queixas_vida_como_afeta_vida_diaria" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Limitações Causadas" value={objetivos_queixas?.impacto_queixas_vida_limitacoes_causadas} fieldPath="objetivos_queixas.impacto_queixas_vida_limitacoes_causadas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Áreas Impactadas" value={objetivos_queixas?.impacto_queixas_vida_areas_impactadas} fieldPath="objetivos_queixas.impacto_queixas_vida_areas_impactadas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Objetivos e Expectativas</h4>
-            <DataField label="Problemas Deseja Resolver" value={objetivos_queixas?.problemas_deseja_resolver} />
-            <DataField label="Expectativa Específica" value={objetivos_queixas?.expectativas_tratamento_expectativa_especifica} />
-            <DataField label="Já Buscou Tratamentos Similares" value={objetivos_queixas?.expectativas_tratamento_ja_buscou_tratamentos_similares} />
-            <DataField label="Tratamentos Anteriores" value={objetivos_queixas?.expectativas_tratamento_quais_tratamentos_anteriores} />
+            <DataField label="Problemas Deseja Resolver" value={objetivos_queixas?.problemas_deseja_resolver} fieldPath="objetivos_queixas.problemas_deseja_resolver" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Expectativa Específica" value={objetivos_queixas?.expectativas_tratamento_expectativa_especifica} fieldPath="objetivos_queixas.expectativas_tratamento_expectativa_especifica" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Já Buscou Tratamentos Similares" value={objetivos_queixas?.expectativas_tratamento_ja_buscou_tratamentos_similares} fieldPath="objetivos_queixas.expectativas_tratamento_ja_buscou_tratamentos_similares" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tratamentos Anteriores" value={objetivos_queixas?.expectativas_tratamento_quais_tratamentos_anteriores} fieldPath="objetivos_queixas.expectativas_tratamento_quais_tratamentos_anteriores" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Compreensão sobre a Causa</h4>
-            <DataField label="Compreensão do Paciente" value={objetivos_queixas?.compreensao_sobre_causa_compreensao_paciente} />
-            <DataField label="Fatores Externos Influenciando" value={objetivos_queixas?.compreensao_sobre_causa_fatores_externos_influenciando} />
+            <DataField label="Compreensão do Paciente" value={objetivos_queixas?.compreensao_sobre_causa_compreensao_paciente} fieldPath="objetivos_queixas.compreensao_sobre_causa_compreensao_paciente" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Fatores Externos Influenciando" value={objetivos_queixas?.compreensao_sobre_causa_fatores_externos_influenciando} fieldPath="objetivos_queixas.compreensao_sobre_causa_fatores_externos_influenciando" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Projeto de Vida</h4>
-            <DataField label="Corporal" value={objetivos_queixas?.projeto_de_vida_corporal} />
-            <DataField label="Espiritual" value={objetivos_queixas?.projeto_de_vida_espiritual} />
-            <DataField label="Familiar" value={objetivos_queixas?.projeto_de_vida_familiar} />
-            <DataField label="Profissional" value={objetivos_queixas?.projeto_de_vida_profissional} />
-            <DataField label="Sonhos" value={objetivos_queixas?.projeto_de_vida_sonhos} />
+            <DataField label="Corporal" value={objetivos_queixas?.projeto_de_vida_corporal} fieldPath="objetivos_queixas.projeto_de_vida_corporal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Espiritual" value={objetivos_queixas?.projeto_de_vida_espiritual} fieldPath="objetivos_queixas.projeto_de_vida_espiritual" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Familiar" value={objetivos_queixas?.projeto_de_vida_familiar} fieldPath="objetivos_queixas.projeto_de_vida_familiar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Profissional" value={objetivos_queixas?.projeto_de_vida_profissional} fieldPath="objetivos_queixas.projeto_de_vida_profissional" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Sonhos" value={objetivos_queixas?.projeto_de_vida_sonhos} fieldPath="objetivos_queixas.projeto_de_vida_sonhos" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Motivação e Mudança</h4>
-            <DataField label="Nível de Motivação" value={objetivos_queixas?.nivel_motivacao} />
-            <DataField label="Prontidão para Mudança" value={objetivos_queixas?.prontidao_para_mudanca} />
-            <DataField label="Mudanças Considera Necessárias" value={objetivos_queixas?.mudancas_considera_necessarias} />
+            <DataField label="Nível de Motivação" value={objetivos_queixas?.nivel_motivacao} fieldPath="objetivos_queixas.nivel_motivacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Prontidão para Mudança" value={objetivos_queixas?.prontidao_para_mudanca} fieldPath="objetivos_queixas.prontidao_para_mudanca" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Mudanças Considera Necessárias" value={objetivos_queixas?.mudancas_considera_necessarias} fieldPath="objetivos_queixas.mudancas_considera_necessarias" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -527,46 +528,46 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Histórico de Risco">
           <div className="anamnese-subsection">
             <h4>Doenças Atuais e Passadas</h4>
-            <DataField label="Doenças Atuais Confirmadas" value={historico_risco?.doencas_atuais_confirmadas} />
-            <DataField label="Doenças na Infância/Adolescência" value={historico_risco?.doencas_infancia_adolescencia} />
+            <DataField label="Doenças Atuais Confirmadas" value={historico_risco?.doencas_atuais_confirmadas} fieldPath="historico_risco.doencas_atuais_confirmadas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Doenças na Infância/Adolescência" value={historico_risco?.doencas_infancia_adolescencia} fieldPath="historico_risco.doencas_infancia_adolescencia" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Antecedentes Familiares</h4>
-            <DataField label="Pai" value={historico_risco?.antecedentes_familiares_pai} />
-            <DataField label="Mãe" value={historico_risco?.antecedentes_familiares_mae} />
-            <DataField label="Irmãos" value={historico_risco?.antecedentes_familiares_irmaos} />
-            <DataField label="Avós Paternos" value={historico_risco?.antecedentes_familiares_avos_paternos} />
-            <DataField label="Avós Maternos" value={historico_risco?.antecedentes_familiares_avos_maternos} />
-            <DataField label="Causas de Morte dos Avós" value={historico_risco?.antecedentes_familiares_causas_morte_avos} />
+            <DataField label="Pai" value={historico_risco?.antecedentes_familiares_pai} fieldPath="historico_risco.antecedentes_familiares_pai" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Mãe" value={historico_risco?.antecedentes_familiares_mae} fieldPath="historico_risco.antecedentes_familiares_mae" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Irmãos" value={historico_risco?.antecedentes_familiares_irmaos} fieldPath="historico_risco.antecedentes_familiares_irmaos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Avós Paternos" value={historico_risco?.antecedentes_familiares_avos_paternos} fieldPath="historico_risco.antecedentes_familiares_avos_paternos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Avós Maternos" value={historico_risco?.antecedentes_familiares_avos_maternos} fieldPath="historico_risco.antecedentes_familiares_avos_maternos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Causas de Morte dos Avós" value={historico_risco?.antecedentes_familiares_causas_morte_avos} fieldPath="historico_risco.antecedentes_familiares_causas_morte_avos" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Condições e Tratamentos</h4>
-            <DataField label="Condições Genéticas Conhecidas" value={historico_risco?.condicoes_geneticas_conhecidas} />
-            <DataField label="Cirurgias/Procedimentos" value={historico_risco?.cirurgias_procedimentos} />
-            <DataField label="Medicações Atuais" value={historico_risco?.medicacoes_atuais} />
-            <DataField label="Medicações Contínuas" value={historico_risco?.medicacoes_continuas} />
-            <DataField label="Já Usou Corticoides" value={historico_risco?.ja_usou_corticoides} />
+            <DataField label="Condições Genéticas Conhecidas" value={historico_risco?.condicoes_geneticas_conhecidas} fieldPath="historico_risco.condicoes_geneticas_conhecidas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Cirurgias/Procedimentos" value={historico_risco?.cirurgias_procedimentos} fieldPath="historico_risco.cirurgias_procedimentos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Medicações Atuais" value={historico_risco?.medicacoes_atuais} fieldPath="historico_risco.medicacoes_atuais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Medicações Contínuas" value={historico_risco?.medicacoes_continuas} fieldPath="historico_risco.medicacoes_continuas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Já Usou Corticoides" value={historico_risco?.ja_usou_corticoides} fieldPath="historico_risco.ja_usou_corticoides" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Alergias e Exposições</h4>
-            <DataField label="Alergias/Intolerâncias Conhecidas" value={historico_risco?.alergias_intolerancias_conhecidas} />
-            <DataField label="Alergias/Intolerâncias Suspeitas" value={historico_risco?.alergias_intolerancias_suspeitas} />
-            <DataField label="Exposição Tóxica" value={historico_risco?.exposicao_toxica} />
+            <DataField label="Alergias/Intolerâncias Conhecidas" value={historico_risco?.alergias_intolerancias_conhecidas} fieldPath="historico_risco.alergias_intolerancias_conhecidas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Alergias/Intolerâncias Suspeitas" value={historico_risco?.alergias_intolerancias_suspeitas} fieldPath="historico_risco.alergias_intolerancias_suspeitas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Exposição Tóxica" value={historico_risco?.exposicao_toxica} fieldPath="historico_risco.exposicao_toxica" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Histórico de Peso</h4>
-            <DataField label="Variação ao Longo da Vida" value={historico_risco?.historico_peso_variacao_ao_longo_vida} />
-            <DataField label="Peso Máximo Atingido" value={historico_risco?.historico_peso_peso_maximo_atingido} />
-            <DataField label="Peso Mínimo Atingido" value={historico_risco?.historico_peso_peso_minimo_atingido} />
+            <DataField label="Variação ao Longo da Vida" value={historico_risco?.historico_peso_variacao_ao_longo_vida} fieldPath="historico_risco.historico_peso_variacao_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Peso Máximo Atingido" value={historico_risco?.historico_peso_peso_maximo_atingido} fieldPath="historico_risco.historico_peso_peso_maximo_atingido" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Peso Mínimo Atingido" value={historico_risco?.historico_peso_peso_minimo_atingido} fieldPath="historico_risco.historico_peso_peso_minimo_atingido" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Tratamentos Anteriores</h4>
-            <DataField label="Tentativas de Tratamento Anteriores" value={historico_risco?.tentativas_tratamento_anteriores} />
+            <DataField label="Tentativas de Tratamento Anteriores" value={historico_risco?.tentativas_tratamento_anteriores} fieldPath="historico_risco.tentativas_tratamento_anteriores" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -574,116 +575,116 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Observação Clínica e Laboratorial">
           <div className="anamnese-subsection">
             <h4>Sintomas e Padrões</h4>
-            <DataField label="Quando os Sintomas Começaram" value={observacao_clinica_lab?.quando_sintomas_comecaram} />
-            <DataField label="Padrão Temporal" value={observacao_clinica_lab?.ha_algum_padrao_temporal} />
-            <DataField label="Eventos que Agravaram" value={observacao_clinica_lab?.eventos_que_agravaram} />
-            <DataField label="Intensidade de Dor/Desconforto" value={observacao_clinica_lab?.intensidade_dor_desconforto} />
-            <DataField label="Nível de Energia Diária" value={observacao_clinica_lab?.nivel_energia_diaria} />
+            <DataField label="Quando os Sintomas Começaram" value={observacao_clinica_lab?.quando_sintomas_comecaram} fieldPath="observacao_clinica_lab.quando_sintomas_comecaram" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Padrão Temporal" value={observacao_clinica_lab?.ha_algum_padrao_temporal} fieldPath="observacao_clinica_lab.ha_algum_padrao_temporal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Eventos que Agravaram" value={observacao_clinica_lab?.eventos_que_agravaram} fieldPath="observacao_clinica_lab.eventos_que_agravaram" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Intensidade de Dor/Desconforto" value={observacao_clinica_lab?.intensidade_dor_desconforto} fieldPath="observacao_clinica_lab.intensidade_dor_desconforto" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Nível de Energia Diária" value={observacao_clinica_lab?.nivel_energia_diaria} fieldPath="observacao_clinica_lab.nivel_energia_diaria" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sistema Gastrointestinal</h4>
-            <DataField label="Intestino" value={observacao_clinica_lab?.sistema_gastrointestinal_intestino} />
-            <DataField label="Hábito Intestinal" value={observacao_clinica_lab?.sistema_gastrointestinal_habito_intestinal} />
-            <DataField label="Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_disbiose} />
-            <DataField label="Língua" value={observacao_clinica_lab?.sistema_gastrointestinal_lingua} />
-            <DataField label="Digestão" value={observacao_clinica_lab?.sistema_gastrointestinal_digestao} />
-            <DataField label="Gases" value={observacao_clinica_lab?.sistema_gastrointestinal_gases} />
-            <DataField label="Suspeita de Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_suspeita_disbiose} />
+            <DataField label="Intestino" value={observacao_clinica_lab?.sistema_gastrointestinal_intestino} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_intestino" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Hábito Intestinal" value={observacao_clinica_lab?.sistema_gastrointestinal_habito_intestinal} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_habito_intestinal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_disbiose} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_disbiose" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Língua" value={observacao_clinica_lab?.sistema_gastrointestinal_lingua} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_lingua" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Digestão" value={observacao_clinica_lab?.sistema_gastrointestinal_digestao} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_digestao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Gases" value={observacao_clinica_lab?.sistema_gastrointestinal_gases} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_gases" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Suspeita de Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_suspeita_disbiose} fieldPath="observacao_clinica_lab.sistema_gastrointestinal_suspeita_disbiose" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sistema Musculoesquelético</h4>
-            <DataField label="Dores" value={observacao_clinica_lab?.sistema_musculoesqueletico_dores} />
-            <DataField label="Localização" value={observacao_clinica_lab?.sistema_musculoesqueletico_localizacao} />
-            <DataField label="Postura" value={observacao_clinica_lab?.sistema_musculoesqueletico_postura} />
-            <DataField label="Tônus Muscular" value={observacao_clinica_lab?.sistema_musculoesqueletico_tono_muscular} />
-            <DataField label="Mobilidade" value={observacao_clinica_lab?.sistema_musculoesqueletico_mobilidade} />
+            <DataField label="Dores" value={observacao_clinica_lab?.sistema_musculoesqueletico_dores} fieldPath="observacao_clinica_lab.sistema_musculoesqueletico_dores" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Localização" value={observacao_clinica_lab?.sistema_musculoesqueletico_localizacao} fieldPath="observacao_clinica_lab.sistema_musculoesqueletico_localizacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Postura" value={observacao_clinica_lab?.sistema_musculoesqueletico_postura} fieldPath="observacao_clinica_lab.sistema_musculoesqueletico_postura" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tônus Muscular" value={observacao_clinica_lab?.sistema_musculoesqueletico_tono_muscular} fieldPath="observacao_clinica_lab.sistema_musculoesqueletico_tono_muscular" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Mobilidade" value={observacao_clinica_lab?.sistema_musculoesqueletico_mobilidade} fieldPath="observacao_clinica_lab.sistema_musculoesqueletico_mobilidade" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Pele e Fâneros</h4>
-            <DataField label="Pele" value={observacao_clinica_lab?.pele_faneros_pele} />
-            <DataField label="Cabelo" value={observacao_clinica_lab?.pele_faneros_cabelo} />
-            <DataField label="Unhas" value={observacao_clinica_lab?.pele_faneros_unhas} />
-            <DataField label="Hidratação" value={observacao_clinica_lab?.pele_faneros_hidratacao} />
-            <DataField label="Ingestão de Água (ml/dia)" value={observacao_clinica_lab?.pele_faneros_ingestao_agua_ml_dia} />
+            <DataField label="Pele" value={observacao_clinica_lab?.pele_faneros_pele} fieldPath="observacao_clinica_lab.pele_faneros_pele" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Cabelo" value={observacao_clinica_lab?.pele_faneros_cabelo} fieldPath="observacao_clinica_lab.pele_faneros_cabelo" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Unhas" value={observacao_clinica_lab?.pele_faneros_unhas} fieldPath="observacao_clinica_lab.pele_faneros_unhas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Hidratação" value={observacao_clinica_lab?.pele_faneros_hidratacao} fieldPath="observacao_clinica_lab.pele_faneros_hidratacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Ingestão de Água (ml/dia)" value={observacao_clinica_lab?.pele_faneros_ingestao_agua_ml_dia} fieldPath="observacao_clinica_lab.pele_faneros_ingestao_agua_ml_dia" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sistema Neurológico/Mental</h4>
-            <DataField label="Memória" value={observacao_clinica_lab?.sistema_neurologico_mental_memoria} />
-            <DataField label="Concentração" value={observacao_clinica_lab?.sistema_neurologico_mental_concentracao} />
-            <DataField label="Qualidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_qualidade} />
-            <DataField label="Latência do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_latencia} />
-            <DataField label="Manutenção do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_manutencao} />
-            <DataField label="Profundidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_profundidade} />
-            <DataField label="Duração do Sono (horas)" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_duracao_horas} />
-            <DataField label="Despertar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_despertar} />
-            <DataField label="Acorda Quantas Vezes" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_quantas_vezes} />
-            <DataField label="Acorda para Urinar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_para_urinar} />
-            <DataField label="Energia" value={observacao_clinica_lab?.sistema_neurologico_mental_energia} />
+            <DataField label="Memória" value={observacao_clinica_lab?.sistema_neurologico_mental_memoria} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_memoria" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Concentração" value={observacao_clinica_lab?.sistema_neurologico_mental_concentracao} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_concentracao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Qualidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_qualidade} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_qualidade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Latência do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_latencia} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_latencia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Manutenção do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_manutencao} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_manutencao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Profundidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_profundidade} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_profundidade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Duração do Sono (horas)" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_duracao_horas} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_duracao_horas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Despertar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_despertar} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_despertar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Acorda Quantas Vezes" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_quantas_vezes} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_quantas_vezes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Acorda para Urinar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_para_urinar} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_para_urinar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Energia" value={observacao_clinica_lab?.sistema_neurologico_mental_energia} fieldPath="observacao_clinica_lab.sistema_neurologico_mental_energia" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sistema Endócrino</h4>
             <h5>Tireoide</h5>
-            <DataField label="TSH" value={observacao_clinica_lab?.sistema_endocrino_tireoide_tsh} />
-            <DataField label="Anti-TPO" value={observacao_clinica_lab?.sistema_endocrino_tireoide_anti_tpo} />
-            <DataField label="T3 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t3_livre} />
-            <DataField label="T4 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t4_livre} />
-            <DataField label="Suspeita" value={observacao_clinica_lab?.sistema_endocrino_tireoide_suspeita} />
+            <DataField label="TSH" value={observacao_clinica_lab?.sistema_endocrino_tireoide_tsh} fieldPath="observacao_clinica_lab.sistema_endocrino_tireoide_tsh" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Anti-TPO" value={observacao_clinica_lab?.sistema_endocrino_tireoide_anti_tpo} fieldPath="observacao_clinica_lab.sistema_endocrino_tireoide_anti_tpo" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="T3 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t3_livre} fieldPath="observacao_clinica_lab.sistema_endocrino_tireoide_t3_livre" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="T4 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t4_livre} fieldPath="observacao_clinica_lab.sistema_endocrino_tireoide_t4_livre" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Suspeita" value={observacao_clinica_lab?.sistema_endocrino_tireoide_suspeita} fieldPath="observacao_clinica_lab.sistema_endocrino_tireoide_suspeita" consultaId={consultaId} onSave={handleSaveField} />
             
             <h5>Insulina</h5>
-            <DataField label="Valor" value={observacao_clinica_lab?.sistema_endocrino_insulina_valor} />
-            <DataField label="Glicemia" value={observacao_clinica_lab?.sistema_endocrino_insulina_glicemia} />
-            <DataField label="Hemoglobina Glicada" value={observacao_clinica_lab?.sistema_endocrino_insulina_hemoglobina_glicada} />
-            <DataField label="HOMA-IR" value={observacao_clinica_lab?.sistema_endocrino_insulina_homa_ir} />
-            <DataField label="Diagnóstico" value={observacao_clinica_lab?.sistema_endocrino_insulina_diagnostico} />
+            <DataField label="Valor" value={observacao_clinica_lab?.sistema_endocrino_insulina_valor} fieldPath="observacao_clinica_lab.sistema_endocrino_insulina_valor" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Glicemia" value={observacao_clinica_lab?.sistema_endocrino_insulina_glicemia} fieldPath="observacao_clinica_lab.sistema_endocrino_insulina_glicemia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Hemoglobina Glicada" value={observacao_clinica_lab?.sistema_endocrino_insulina_hemoglobina_glicada} fieldPath="observacao_clinica_lab.sistema_endocrino_insulina_hemoglobina_glicada" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="HOMA-IR" value={observacao_clinica_lab?.sistema_endocrino_insulina_homa_ir} fieldPath="observacao_clinica_lab.sistema_endocrino_insulina_homa_ir" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Diagnóstico" value={observacao_clinica_lab?.sistema_endocrino_insulina_diagnostico} fieldPath="observacao_clinica_lab.sistema_endocrino_insulina_diagnostico" consultaId={consultaId} onSave={handleSaveField} />
             
             <h5>Outros Hormônios</h5>
-            <DataField label="Cortisol" value={observacao_clinica_lab?.sistema_endocrino_cortisol} />
-            <DataField label="Estrogênio" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_estrogeno} />
-            <DataField label="Progesterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_progesterona} />
-            <DataField label="Testosterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_testosterona} />
-            <DataField label="Impacto" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_impacto} />
+            <DataField label="Cortisol" value={observacao_clinica_lab?.sistema_endocrino_cortisol} fieldPath="observacao_clinica_lab.sistema_endocrino_cortisol" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Estrogênio" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_estrogeno} fieldPath="observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_estrogeno" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Progesterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_progesterona} fieldPath="observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_progesterona" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Testosterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_testosterona} fieldPath="observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_testosterona" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Impacto" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_impacto} fieldPath="observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_impacto" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Medidas Antropométricas</h4>
-            <DataField label="Peso Atual" value={observacao_clinica_lab?.medidas_antropometricas_peso_atual} />
-            <DataField label="Altura" value={observacao_clinica_lab?.medidas_antropometricas_altura} />
-            <DataField label="IMC" value={observacao_clinica_lab?.medidas_antropometricas_imc} />
-            <DataField label="Circunferência da Cintura" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_cintura} />
-            <DataField label="Circunferência do Quadril" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_quadril} />
-            <DataField label="Circunferência do Pescoço" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_pescoco} />
-            <DataField label="Relação Cintura/Quadril" value={observacao_clinica_lab?.medidas_antropometricas_relacao_cintura_quadril} />
+            <DataField label="Peso Atual" value={observacao_clinica_lab?.medidas_antropometricas_peso_atual} fieldPath="observacao_clinica_lab.medidas_antropometricas_peso_atual" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Altura" value={observacao_clinica_lab?.medidas_antropometricas_altura} fieldPath="observacao_clinica_lab.medidas_antropometricas_altura" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="IMC" value={observacao_clinica_lab?.medidas_antropometricas_imc} fieldPath="observacao_clinica_lab.medidas_antropometricas_imc" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Circunferência da Cintura" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_cintura} fieldPath="observacao_clinica_lab.medidas_antropometricas_circunferencias_cintura" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Circunferência do Quadril" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_quadril} fieldPath="observacao_clinica_lab.medidas_antropometricas_circunferencias_quadril" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Circunferência do Pescoço" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_pescoco} fieldPath="observacao_clinica_lab.medidas_antropometricas_circunferencias_pescoco" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Relação Cintura/Quadril" value={observacao_clinica_lab?.medidas_antropometricas_relacao_cintura_quadril} fieldPath="observacao_clinica_lab.medidas_antropometricas_relacao_cintura_quadril" consultaId={consultaId} onSave={handleSaveField} />
             
             <h5>Bioimpedância</h5>
-            <DataField label="Gordura (%)" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_percentual} />
-            <DataField label="Massa Muscular" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_massa_muscular} />
-            <DataField label="Água Corporal" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_agua_corporal} />
-            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_visceral} />
+            <DataField label="Gordura (%)" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_percentual} fieldPath="observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_percentual" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Massa Muscular" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_massa_muscular} fieldPath="observacao_clinica_lab.medidas_antropometricas_bioimpedancia_massa_muscular" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Água Corporal" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_agua_corporal} fieldPath="observacao_clinica_lab.medidas_antropometricas_bioimpedancia_agua_corporal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_visceral} fieldPath="observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} />
             
-            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_gordura_visceral} />
-            <DataField label="Esteatose Hepática" value={observacao_clinica_lab?.medidas_antropometricas_esteatose_hepatica} />
-            <DataField label="Pressão Arterial" value={observacao_clinica_lab?.medidas_antropometricas_pressao_arterial} />
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_gordura_visceral} fieldPath="observacao_clinica_lab.medidas_antropometricas_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Esteatose Hepática" value={observacao_clinica_lab?.medidas_antropometricas_esteatose_hepatica} fieldPath="observacao_clinica_lab.medidas_antropometricas_esteatose_hepatica" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Pressão Arterial" value={observacao_clinica_lab?.medidas_antropometricas_pressao_arterial} fieldPath="observacao_clinica_lab.medidas_antropometricas_pressao_arterial" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sinais Vitais Relatados</h4>
-            <DataField label="Disposição ao Acordar" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_acordar} />
-            <DataField label="Disposição ao Longo do Dia" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_longo_dia} />
-            <DataField label="Libido" value={observacao_clinica_lab?.sinais_vitais_relatados_libido} />
-            <DataField label="Regulação Térmica" value={observacao_clinica_lab?.sinais_vitais_relatados_regulacao_termica} />
+            <DataField label="Disposição ao Acordar" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_acordar} fieldPath="observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_acordar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Disposição ao Longo do Dia" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_longo_dia} fieldPath="observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_longo_dia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Libido" value={observacao_clinica_lab?.sinais_vitais_relatados_libido} fieldPath="observacao_clinica_lab.sinais_vitais_relatados_libido" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Regulação Térmica" value={observacao_clinica_lab?.sinais_vitais_relatados_regulacao_termica} fieldPath="observacao_clinica_lab.sinais_vitais_relatados_regulacao_termica" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Hábitos Alimentares</h4>
-            <DataField label="Recordatório 24h" value={observacao_clinica_lab?.habitos_alimentares_recordatorio_24h} />
-            <DataField label="Frequência de Ultraprocessados" value={observacao_clinica_lab?.habitos_alimentares_frequencia_ultraprocessados} />
-            <DataField label="Horários das Refeições" value={observacao_clinica_lab?.habitos_alimentares_horarios_refeicoes} />
-            <DataField label="Come Assistindo TV/Trabalhando" value={observacao_clinica_lab?.habitos_alimentares_come_assistindo_tv_trabalhando} />
+            <DataField label="Recordatório 24h" value={observacao_clinica_lab?.habitos_alimentares_recordatorio_24h} fieldPath="observacao_clinica_lab.habitos_alimentares_recordatorio_24h" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Frequência de Ultraprocessados" value={observacao_clinica_lab?.habitos_alimentares_frequencia_ultraprocessados} fieldPath="observacao_clinica_lab.habitos_alimentares_frequencia_ultraprocessados" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Horários das Refeições" value={observacao_clinica_lab?.habitos_alimentares_horarios_refeicoes} fieldPath="observacao_clinica_lab.habitos_alimentares_horarios_refeicoes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Come Assistindo TV/Trabalhando" value={observacao_clinica_lab?.habitos_alimentares_come_assistindo_tv_trabalhando} fieldPath="observacao_clinica_lab.habitos_alimentares_come_assistindo_tv_trabalhando" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -691,44 +692,44 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="História de Vida">
           <div className="anamnese-subsection">
             <h4>Narrativa e Eventos</h4>
-            <DataField label="Síntese da Narrativa" value={historia_vida?.narrativa_sintese} />
-            <DataField label="Eventos de Vida Marcantes" value={historia_vida?.eventos_vida_marcantes} />
-            <DataField label="Episódios de Estresse Extremo/Trauma" value={historia_vida?.episodios_estresse_extremo_trauma} />
+            <DataField label="Síntese da Narrativa" value={historia_vida?.narrativa_sintese} fieldPath="historia_vida.narrativa_sintese" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Eventos de Vida Marcantes" value={historia_vida?.eventos_vida_marcantes} fieldPath="historia_vida.eventos_vida_marcantes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Episódios de Estresse Extremo/Trauma" value={historia_vida?.episodios_estresse_extremo_trauma} fieldPath="historia_vida.episodios_estresse_extremo_trauma" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Trilha do Conflito</h4>
-            <DataField label="Concepção/Gestação" value={historia_vida?.trilha_do_conflito_concepcao_gestacao} />
-            <DataField label="0-7 anos" value={historia_vida?.trilha_do_conflito_0_7_anos} />
-            <DataField label="7-14 anos" value={historia_vida?.trilha_do_conflito_7_14_anos} />
-            <DataField label="14-21 anos" value={historia_vida?.trilha_do_conflito_14_21_anos} />
-            <DataField label="21-28 anos" value={historia_vida?.trilha_do_conflito_21_28_anos} />
-            <DataField label="28+ anos" value={historia_vida?.trilha_do_conflito_28_mais_anos} />
+            <DataField label="Concepção/Gestação" value={historia_vida?.trilha_do_conflito_concepcao_gestacao} fieldPath="historia_vida.trilha_do_conflito_concepcao_gestacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="0-7 anos" value={historia_vida?.trilha_do_conflito_0_7_anos} fieldPath="historia_vida.trilha_do_conflito_0_7_anos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="7-14 anos" value={historia_vida?.trilha_do_conflito_7_14_anos} fieldPath="historia_vida.trilha_do_conflito_7_14_anos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="14-21 anos" value={historia_vida?.trilha_do_conflito_14_21_anos} fieldPath="historia_vida.trilha_do_conflito_14_21_anos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="21-28 anos" value={historia_vida?.trilha_do_conflito_21_28_anos} fieldPath="historia_vida.trilha_do_conflito_21_28_anos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="28+ anos" value={historia_vida?.trilha_do_conflito_28_mais_anos} fieldPath="historia_vida.trilha_do_conflito_28_mais_anos" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Padrões e Traumas</h4>
-            <DataField label="Pontos Traumáticos" value={historia_vida?.pontos_traumaticos} />
-            <DataField label="Padrões Repetitivos" value={historia_vida?.padroes_repetitivos} />
-            <DataField label="Saúde da Mãe na Gestação" value={historia_vida?.saude_mae_gestacao} />
-            <DataField label="Traços/Comportamentos Repetitivos" value={historia_vida?.tracos_comportamentos_repetitivos_ao_longo_vida} />
+            <DataField label="Pontos Traumáticos" value={historia_vida?.pontos_traumaticos} fieldPath="historia_vida.pontos_traumaticos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Padrões Repetitivos" value={historia_vida?.padroes_repetitivos} fieldPath="historia_vida.padroes_repetitivos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Saúde da Mãe na Gestação" value={historia_vida?.saude_mae_gestacao} fieldPath="historia_vida.saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Traços/Comportamentos Repetitivos" value={historia_vida?.tracos_comportamentos_repetitivos_ao_longo_vida} fieldPath="historia_vida.tracos_comportamentos_repetitivos_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Superação e Identidade</h4>
-            <DataField label="Experiência de Virada" value={historia_vida?.experiencia_considera_virada} />
-            <DataField label="Identifica com Superação ou Defesa" value={historia_vida?.identifica_com_superacao_ou_defesa} />
-            <DataField label="Conexão com Identidade e Propósito" value={historia_vida?.conexao_identidade_proposito} />
-            <DataField label="Algo da Infância que Lembra com Emoção Intensa" value={historia_vida?.algo_infancia_lembra_com_emocao_intensa} />
+            <DataField label="Experiência de Virada" value={historia_vida?.experiencia_considera_virada} fieldPath="historia_vida.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Identifica com Superação ou Defesa" value={historia_vida?.identifica_com_superacao_ou_defesa} fieldPath="historia_vida.identifica_com_superacao_ou_defesa" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Conexão com Identidade e Propósito" value={historia_vida?.conexao_identidade_proposito} fieldPath="historia_vida.conexao_identidade_proposito" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Algo da Infância que Lembra com Emoção Intensa" value={historia_vida?.algo_infancia_lembra_com_emocao_intensa} fieldPath="historia_vida.algo_infancia_lembra_com_emocao_intensa" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Tentativas Anteriores</h4>
-            <DataField label="Já Tentou Resolver Antes" value={historia_vida?.tentativas_anteriores_similares_ja_tentou_resolver_antes} />
-            <DataField label="Quantas Vezes" value={historia_vida?.tentativas_anteriores_similares_quantas_vezes} />
-            <DataField label="Métodos Utilizados" value={historia_vida?.tentativas_anteriores_similares_metodos_utilizados} />
-            <DataField label="Máximo Resultado Alcançado" value={historia_vida?.tentativas_anteriores_similares_maximo_resultado_alcancado} />
-            <DataField label="Resultado Recuperado" value={historia_vida?.tentativas_anteriores_similares_resultado_recuperado} />
+            <DataField label="Já Tentou Resolver Antes" value={historia_vida?.tentativas_anteriores_similares_ja_tentou_resolver_antes} fieldPath="historia_vida.tentativas_anteriores_similares_ja_tentou_resolver_antes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Quantas Vezes" value={historia_vida?.tentativas_anteriores_similares_quantas_vezes} fieldPath="historia_vida.tentativas_anteriores_similares_quantas_vezes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Métodos Utilizados" value={historia_vida?.tentativas_anteriores_similares_metodos_utilizados} fieldPath="historia_vida.tentativas_anteriores_similares_metodos_utilizados" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Máximo Resultado Alcançado" value={historia_vida?.tentativas_anteriores_similares_maximo_resultado_alcancado} fieldPath="historia_vida.tentativas_anteriores_similares_maximo_resultado_alcancado" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Resultado Recuperado" value={historia_vida?.tentativas_anteriores_similares_resultado_recuperado} fieldPath="historia_vida.tentativas_anteriores_similares_resultado_recuperado" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -736,59 +737,59 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Setênios e Eventos">
           <div className="anamnese-subsection">
             <h4>Concepção e Gestação</h4>
-            <DataField label="Planejamento" value={setenios_eventos?.concepcao_gestacao_planejamento} />
-            <DataField label="Ambiente Gestacional" value={setenios_eventos?.concepcao_gestacao_ambiente_gestacional} />
-            <DataField label="Saúde da Mãe" value={setenios_eventos?.concepcao_gestacao_saude_mae_gestacao} />
-            <DataField label="Tipo de Parto" value={setenios_eventos?.concepcao_gestacao_parto} />
-            <DataField label="Houve Trauma de Parto" value={setenios_eventos?.concepcao_gestacao_houve_trauma_parto} />
-            <DataField label="Foi Desejada/Planejada" value={setenios_eventos?.concepcao_gestacao_foi_desejada_planejada} />
-            <DataField label="Impacto" value={setenios_eventos?.concepcao_gestacao_impacto} />
+            <DataField label="Planejamento" value={setenios_eventos?.concepcao_gestacao_planejamento} fieldPath="setenios_eventos.concepcao_gestacao_planejamento" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Ambiente Gestacional" value={setenios_eventos?.concepcao_gestacao_ambiente_gestacional} fieldPath="setenios_eventos.concepcao_gestacao_ambiente_gestacional" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Saúde da Mãe" value={setenios_eventos?.concepcao_gestacao_saude_mae_gestacao} fieldPath="setenios_eventos.concepcao_gestacao_saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tipo de Parto" value={setenios_eventos?.concepcao_gestacao_parto} fieldPath="setenios_eventos.concepcao_gestacao_parto" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Houve Trauma de Parto" value={setenios_eventos?.concepcao_gestacao_houve_trauma_parto} fieldPath="setenios_eventos.concepcao_gestacao_houve_trauma_parto" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Foi Desejada/Planejada" value={setenios_eventos?.concepcao_gestacao_foi_desejada_planejada} fieldPath="setenios_eventos.concepcao_gestacao_foi_desejada_planejada" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Impacto" value={setenios_eventos?.concepcao_gestacao_impacto} fieldPath="setenios_eventos.concepcao_gestacao_impacto" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Primeiro Setênio (0-7 anos)</h4>
-            <DataField label="Ambiente" value={setenios_eventos?.primeiro_setenio_0_7_ambiente} />
-            <DataField label="Figuras Parentais - Pai" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_pai} />
-            <DataField label="Figuras Parentais - Mãe" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_mae} />
-            <DataField label="Aprendizados" value={setenios_eventos?.primeiro_setenio_0_7_aprendizados} />
-            <DataField label="Trauma Central" value={setenios_eventos?.primeiro_setenio_0_7_trauma_central} />
+            <DataField label="Ambiente" value={setenios_eventos?.primeiro_setenio_0_7_ambiente} fieldPath="setenios_eventos.primeiro_setenio_0_7_ambiente" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Figuras Parentais - Pai" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_pai} fieldPath="setenios_eventos.primeiro_setenio_0_7_figuras_parentais_pai" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Figuras Parentais - Mãe" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_mae} fieldPath="setenios_eventos.primeiro_setenio_0_7_figuras_parentais_mae" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Aprendizados" value={setenios_eventos?.primeiro_setenio_0_7_aprendizados} fieldPath="setenios_eventos.primeiro_setenio_0_7_aprendizados" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Trauma Central" value={setenios_eventos?.primeiro_setenio_0_7_trauma_central} fieldPath="setenios_eventos.primeiro_setenio_0_7_trauma_central" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Segundo Setênio (7-14 anos)</h4>
-            <DataField label="Eventos" value={setenios_eventos?.segundo_setenio_7_14_eventos} />
-            <DataField label="Desenvolvimento" value={setenios_eventos?.segundo_setenio_7_14_desenvolvimento} />
-            <DataField label="Corpo Físico" value={setenios_eventos?.segundo_setenio_7_14_corpo_fisico} />
-            <DataField label="Impacto" value={setenios_eventos?.segundo_setenio_7_14_impacto} />
+            <DataField label="Eventos" value={setenios_eventos?.segundo_setenio_7_14_eventos} fieldPath="setenios_eventos.segundo_setenio_7_14_eventos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Desenvolvimento" value={setenios_eventos?.segundo_setenio_7_14_desenvolvimento} fieldPath="setenios_eventos.segundo_setenio_7_14_desenvolvimento" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Corpo Físico" value={setenios_eventos?.segundo_setenio_7_14_corpo_fisico} fieldPath="setenios_eventos.segundo_setenio_7_14_corpo_fisico" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Impacto" value={setenios_eventos?.segundo_setenio_7_14_impacto} fieldPath="setenios_eventos.segundo_setenio_7_14_impacto" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Terceiro Setênio (14-21 anos)</h4>
-            <DataField label="Escolhas" value={setenios_eventos?.terceiro_setenio_14_21_escolhas} />
-            <DataField label="Motivação" value={setenios_eventos?.terceiro_setenio_14_21_motivacao} />
-            <DataField label="Cumeeira da Casa" value={setenios_eventos?.terceiro_setenio_14_21_cumeeira_da_casa} />
+            <DataField label="Escolhas" value={setenios_eventos?.terceiro_setenio_14_21_escolhas} fieldPath="setenios_eventos.terceiro_setenio_14_21_escolhas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Motivação" value={setenios_eventos?.terceiro_setenio_14_21_motivacao} fieldPath="setenios_eventos.terceiro_setenio_14_21_motivacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Cumeeira da Casa" value={setenios_eventos?.terceiro_setenio_14_21_cumeeira_da_casa} fieldPath="setenios_eventos.terceiro_setenio_14_21_cumeeira_da_casa" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Quarto Setênio (21-28 anos)</h4>
-            <DataField label="Eventos Significativos" value={setenios_eventos?.quarto_setenio_21_28_eventos_significativos} />
-            <DataField label="Formação Profissional" value={setenios_eventos?.quarto_setenio_21_28_formacao_profissional} />
+            <DataField label="Eventos Significativos" value={setenios_eventos?.quarto_setenio_21_28_eventos_significativos} fieldPath="setenios_eventos.quarto_setenio_21_28_eventos_significativos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Formação Profissional" value={setenios_eventos?.quarto_setenio_21_28_formacao_profissional} fieldPath="setenios_eventos.quarto_setenio_21_28_formacao_profissional" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Decênios (28-40+ anos)</h4>
-            <DataField label="Climatério/Menopausa" value={setenios_eventos?.decenios_28_40_mais_climaterio_menopausa} />
-            <DataField label="Pausas Hormonais" value={setenios_eventos?.decenios_28_40_mais_pausas_hormonais} />
-            <DataField label="Acumulação" value={setenios_eventos?.decenios_28_40_mais_acumulacao} />
-            <DataField label="Estado Atual" value={setenios_eventos?.decenios_28_40_mais_estado_atual} />
-            <DataField label="Episódios de Estresse Extremo" value={setenios_eventos?.decenios_28_40_mais_episodios_estresse_extremo} />
+            <DataField label="Climatério/Menopausa" value={setenios_eventos?.decenios_28_40_mais_climaterio_menopausa} fieldPath="setenios_eventos.decenios_28_40_mais_climaterio_menopausa" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Pausas Hormonais" value={setenios_eventos?.decenios_28_40_mais_pausas_hormonais} fieldPath="setenios_eventos.decenios_28_40_mais_pausas_hormonais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Acumulação" value={setenios_eventos?.decenios_28_40_mais_acumulacao} fieldPath="setenios_eventos.decenios_28_40_mais_acumulacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Estado Atual" value={setenios_eventos?.decenios_28_40_mais_estado_atual} fieldPath="setenios_eventos.decenios_28_40_mais_estado_atual" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Episódios de Estresse Extremo" value={setenios_eventos?.decenios_28_40_mais_episodios_estresse_extremo} fieldPath="setenios_eventos.decenios_28_40_mais_episodios_estresse_extremo" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Observações Gerais</h4>
-            <DataField label="Eventos Críticos Identificados" value={setenios_eventos?.eventos_criticos_identificados} />
-            <DataField label="Experiência de Virada" value={setenios_eventos?.experiencia_considera_virada} />
-            <DataField label="Diferenças Sazonais/Climáticas nos Sintomas" value={setenios_eventos?.diferencas_sazonais_climaticas_sintomas} />
+            <DataField label="Eventos Críticos Identificados" value={setenios_eventos?.eventos_criticos_identificados} fieldPath="setenios_eventos.eventos_criticos_identificados" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Experiência de Virada" value={setenios_eventos?.experiencia_considera_virada} fieldPath="setenios_eventos.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Diferenças Sazonais/Climáticas nos Sintomas" value={setenios_eventos?.diferencas_sazonais_climaticas_sintomas} fieldPath="setenios_eventos.diferencas_sazonais_climaticas_sintomas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -796,54 +797,54 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Ambiente e Contexto">
           <div className="anamnese-subsection">
             <h4>Contexto Familiar</h4>
-            <DataField label="Estado Civil" value={ambiente_contexto?.contexto_familiar_estado_civil} />
-            <DataField label="Filhos" value={ambiente_contexto?.contexto_familiar_filhos} />
-            <DataField label="Dinâmica Familiar" value={ambiente_contexto?.contexto_familiar_dinamica_familiar} />
-            <DataField label="Suporte Familiar" value={ambiente_contexto?.contexto_familiar_suporte_familiar} />
-            <DataField label="Relacionamento Conjugal" value={ambiente_contexto?.contexto_familiar_relacionamento_conjugal} />
-            <DataField label="Divisão de Tarefas Domésticas" value={ambiente_contexto?.contexto_familiar_divisao_tarefas_domesticas} />
-            <DataField label="Vida Sexual Ativa" value={ambiente_contexto?.contexto_familiar_vida_sexual_ativa} />
-            <DataField label="Diálogo sobre Sobrecarga" value={ambiente_contexto?.contexto_familiar_dialogo_sobre_sobrecarga} />
+            <DataField label="Estado Civil" value={ambiente_contexto?.contexto_familiar_estado_civil} fieldPath="ambiente_contexto.contexto_familiar_estado_civil" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Filhos" value={ambiente_contexto?.contexto_familiar_filhos} fieldPath="ambiente_contexto.contexto_familiar_filhos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Dinâmica Familiar" value={ambiente_contexto?.contexto_familiar_dinamica_familiar} fieldPath="ambiente_contexto.contexto_familiar_dinamica_familiar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Suporte Familiar" value={ambiente_contexto?.contexto_familiar_suporte_familiar} fieldPath="ambiente_contexto.contexto_familiar_suporte_familiar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Relacionamento Conjugal" value={ambiente_contexto?.contexto_familiar_relacionamento_conjugal} fieldPath="ambiente_contexto.contexto_familiar_relacionamento_conjugal" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Divisão de Tarefas Domésticas" value={ambiente_contexto?.contexto_familiar_divisao_tarefas_domesticas} fieldPath="ambiente_contexto.contexto_familiar_divisao_tarefas_domesticas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Vida Sexual Ativa" value={ambiente_contexto?.contexto_familiar_vida_sexual_ativa} fieldPath="ambiente_contexto.contexto_familiar_vida_sexual_ativa" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Diálogo sobre Sobrecarga" value={ambiente_contexto?.contexto_familiar_dialogo_sobre_sobrecarga} fieldPath="ambiente_contexto.contexto_familiar_dialogo_sobre_sobrecarga" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Contexto Profissional</h4>
-            <DataField label="Área" value={ambiente_contexto?.contexto_profissional_area} />
-            <DataField label="Carga Horária" value={ambiente_contexto?.contexto_profissional_carga_horaria} />
-            <DataField label="Nível de Estresse" value={ambiente_contexto?.contexto_profissional_nivel_estresse} />
-            <DataField label="Satisfação" value={ambiente_contexto?.contexto_profissional_satisfacao} />
+            <DataField label="Área" value={ambiente_contexto?.contexto_profissional_area} fieldPath="ambiente_contexto.contexto_profissional_area" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Carga Horária" value={ambiente_contexto?.contexto_profissional_carga_horaria} fieldPath="ambiente_contexto.contexto_profissional_carga_horaria" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Nível de Estresse" value={ambiente_contexto?.contexto_profissional_nivel_estresse} fieldPath="ambiente_contexto.contexto_profissional_nivel_estresse" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Satisfação" value={ambiente_contexto?.contexto_profissional_satisfacao} fieldPath="ambiente_contexto.contexto_profissional_satisfacao" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Ambiente Físico</h4>
-            <DataField label="Sedentarismo" value={ambiente_contexto?.ambiente_fisico_sedentarismo} />
-            <DataField label="Exposição ao Sol" value={ambiente_contexto?.ambiente_fisico_exposicao_sol} />
-            <DataField label="Pratica Atividade Física" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_pratica} />
-            <DataField label="Tipo de Atividade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tipo} />
-            <DataField label="Frequência" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_frequencia} />
-            <DataField label="Intensidade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_intensidade} />
-            <DataField label="Tem Acompanhamento Profissional" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona} />
+            <DataField label="Sedentarismo" value={ambiente_contexto?.ambiente_fisico_sedentarismo} fieldPath="ambiente_contexto.ambiente_fisico_sedentarismo" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Exposição ao Sol" value={ambiente_contexto?.ambiente_fisico_exposicao_sol} fieldPath="ambiente_contexto.ambiente_fisico_exposicao_sol" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Pratica Atividade Física" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_pratica} fieldPath="ambiente_contexto.ambiente_fisico_atividade_fisica_pratica" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tipo de Atividade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tipo} fieldPath="ambiente_contexto.ambiente_fisico_atividade_fisica_tipo" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Frequência" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_frequencia} fieldPath="ambiente_contexto.ambiente_fisico_atividade_fisica_frequencia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Intensidade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_intensidade} fieldPath="ambiente_contexto.ambiente_fisico_atividade_fisica_intensidade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tem Acompanhamento Profissional" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona} fieldPath="ambiente_contexto.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Hábitos de Vida</h4>
-            <DataField label="Sono" value={ambiente_contexto?.habitos_vida_sono} />
-            <DataField label="Alimentação" value={ambiente_contexto?.habitos_vida_alimentacao} />
-            <DataField label="Lazer" value={ambiente_contexto?.habitos_vida_lazer} />
-            <DataField label="Espiritualidade" value={ambiente_contexto?.habitos_vida_espiritualidade} />
+            <DataField label="Sono" value={ambiente_contexto?.habitos_vida_sono} fieldPath="ambiente_contexto.habitos_vida_sono" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Alimentação" value={ambiente_contexto?.habitos_vida_alimentacao} fieldPath="ambiente_contexto.habitos_vida_alimentacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Lazer" value={ambiente_contexto?.habitos_vida_lazer} fieldPath="ambiente_contexto.habitos_vida_lazer" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Espiritualidade" value={ambiente_contexto?.habitos_vida_espiritualidade} fieldPath="ambiente_contexto.habitos_vida_espiritualidade" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Suporte Social</h4>
-            <DataField label="Tem Rede de Apoio" value={ambiente_contexto?.suporte_social_tem_rede_apoio} />
-            <DataField label="Participa de Grupos Sociais" value={ambiente_contexto?.suporte_social_participa_grupos_sociais} />
-            <DataField label="Tem com Quem Desabafar" value={ambiente_contexto?.suporte_social_tem_com_quem_desabafar} />
+            <DataField label="Tem Rede de Apoio" value={ambiente_contexto?.suporte_social_tem_rede_apoio} fieldPath="ambiente_contexto.suporte_social_tem_rede_apoio" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Participa de Grupos Sociais" value={ambiente_contexto?.suporte_social_participa_grupos_sociais} fieldPath="ambiente_contexto.suporte_social_participa_grupos_sociais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tem com Quem Desabafar" value={ambiente_contexto?.suporte_social_tem_com_quem_desabafar} fieldPath="ambiente_contexto.suporte_social_tem_com_quem_desabafar" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Fatores de Risco</h4>
-            <DataField label="Fatores Estressores" value={ambiente_contexto?.fatores_estressores} />
-            <DataField label="Fatores Externos à Saúde" value={ambiente_contexto?.fatores_externos_saude} />
+            <DataField label="Fatores Estressores" value={ambiente_contexto?.fatores_estressores} fieldPath="ambiente_contexto.fatores_estressores" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Fatores Externos à Saúde" value={ambiente_contexto?.fatores_externos_saude} fieldPath="ambiente_contexto.fatores_externos_saude" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -851,37 +852,37 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Sensação e Emoções">
           <div className="anamnese-subsection">
             <h4>Emoções e Sensações</h4>
-            <DataField label="Emoções Predominantes" value={sensacao_emocoes?.emocoes_predominantes} />
-            <DataField label="Sensações Corporais" value={sensacao_emocoes?.sensacoes_corporais} />
-            <DataField label="Palavras-chave Emocionais" value={sensacao_emocoes?.palavras_chave_emocionais} />
-            <DataField label="Intensidade Emocional" value={sensacao_emocoes?.intensidade_emocional} />
+            <DataField label="Emoções Predominantes" value={sensacao_emocoes?.emocoes_predominantes} fieldPath="sensacao_emocoes.emocoes_predominantes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Sensações Corporais" value={sensacao_emocoes?.sensacoes_corporais} fieldPath="sensacao_emocoes.sensacoes_corporais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Palavras-chave Emocionais" value={sensacao_emocoes?.palavras_chave_emocionais} fieldPath="sensacao_emocoes.palavras_chave_emocionais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Intensidade Emocional" value={sensacao_emocoes?.intensidade_emocional} fieldPath="sensacao_emocoes.intensidade_emocional" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Gatilhos Emocionais</h4>
-            <DataField label="Consegue Identificar Gatilhos" value={sensacao_emocoes?.consegue_identificar_gatilhos_emocionais} />
-            <DataField label="Gatilhos Identificados" value={sensacao_emocoes?.gatilhos_identificados} />
+            <DataField label="Consegue Identificar Gatilhos" value={sensacao_emocoes?.consegue_identificar_gatilhos_emocionais} fieldPath="sensacao_emocoes.consegue_identificar_gatilhos_emocionais" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Gatilhos Identificados" value={sensacao_emocoes?.gatilhos_identificados} fieldPath="sensacao_emocoes.gatilhos_identificados" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Regulação Emocional</h4>
-            <DataField label="Capacidade de Regulação" value={sensacao_emocoes?.regulacao_emocional_capacidade_regulacao} />
-            <DataField label="Forma de Expressão" value={sensacao_emocoes?.regulacao_emocional_forma_expressao} />
-            <DataField label="Como Gerencia Estresse/Ansiedade" value={sensacao_emocoes?.regulacao_emocional_como_gerencia_estresse_ansiedade} />
-            <DataField label="Memória Afetiva" value={sensacao_emocoes?.memoria_afetiva} />
+            <DataField label="Capacidade de Regulação" value={sensacao_emocoes?.regulacao_emocional_capacidade_regulacao} fieldPath="sensacao_emocoes.regulacao_emocional_capacidade_regulacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Forma de Expressão" value={sensacao_emocoes?.regulacao_emocional_forma_expressao} fieldPath="sensacao_emocoes.regulacao_emocional_forma_expressao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Como Gerencia Estresse/Ansiedade" value={sensacao_emocoes?.regulacao_emocional_como_gerencia_estresse_ansiedade} fieldPath="sensacao_emocoes.regulacao_emocional_como_gerencia_estresse_ansiedade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Memória Afetiva" value={sensacao_emocoes?.memoria_afetiva} fieldPath="sensacao_emocoes.memoria_afetiva" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Sensações Específicas do Reino</h4>
-            <DataField label="Usa Palavras Como" value={sensacao_emocoes?.sensacoes_especificas_reino_usa_palavras_como} />
-            <DataField label="Descreve Sensações Como" value={sensacao_emocoes?.sensacoes_especificas_reino_descreve_sensacoes_como} />
-            <DataField label="Padrões de Discurso" value={sensacao_emocoes?.sensacoes_especificas_reino_padroes_discurso} />
+            <DataField label="Usa Palavras Como" value={sensacao_emocoes?.sensacoes_especificas_reino_usa_palavras_como} fieldPath="sensacao_emocoes.sensacoes_especificas_reino_usa_palavras_como" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Descreve Sensações Como" value={sensacao_emocoes?.sensacoes_especificas_reino_descreve_sensacoes_como} fieldPath="sensacao_emocoes.sensacoes_especificas_reino_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Padrões de Discurso" value={sensacao_emocoes?.sensacoes_especificas_reino_padroes_discurso} fieldPath="sensacao_emocoes.sensacoes_especificas_reino_padroes_discurso" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Conexão Corpo-Mente</h4>
-            <DataField label="Percebe Manifestações Corporais das Emoções" value={sensacao_emocoes?.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes} />
-            <DataField label="Exemplos" value={sensacao_emocoes?.conexao_corpo_mente_exemplos} />
+            <DataField label="Percebe Manifestações Corporais das Emoções" value={sensacao_emocoes?.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes} fieldPath="sensacao_emocoes.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Exemplos" value={sensacao_emocoes?.conexao_corpo_mente_exemplos} fieldPath="sensacao_emocoes.conexao_corpo_mente_exemplos" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -889,31 +890,31 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Preocupações e Crenças">
           <div className="anamnese-subsection">
             <h4>Percepção do Problema</h4>
-            <DataField label="Como Percebe o Problema" value={preocupacoes_crencas?.como_percebe_problema} />
-            <DataField label="Compreensão sobre Causa dos Sintomas" value={preocupacoes_crencas?.compreensao_sobre_causa_sintomas} />
+            <DataField label="Como Percebe o Problema" value={preocupacoes_crencas?.como_percebe_problema} fieldPath="preocupacoes_crencas.como_percebe_problema" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Compreensão sobre Causa dos Sintomas" value={preocupacoes_crencas?.compreensao_sobre_causa_sintomas} fieldPath="preocupacoes_crencas.compreensao_sobre_causa_sintomas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Crenças e Preocupações</h4>
-            <DataField label="Crenças Limitantes" value={preocupacoes_crencas?.crencas_limitantes} />
-            <DataField label="Preocupações Explícitas" value={preocupacoes_crencas?.preocupacoes_explicitas} />
-            <DataField label="Preocupações Implícitas" value={preocupacoes_crencas?.preocupacoes_implicitas} />
-            <DataField label="Ganhos Secundários" value={preocupacoes_crencas?.ganhos_secundarios} />
-            <DataField label="Resistências Possíveis" value={preocupacoes_crencas?.resistencias_possiveis} />
+            <DataField label="Crenças Limitantes" value={preocupacoes_crencas?.crencas_limitantes} fieldPath="preocupacoes_crencas.crencas_limitantes" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Preocupações Explícitas" value={preocupacoes_crencas?.preocupacoes_explicitas} fieldPath="preocupacoes_crencas.preocupacoes_explicitas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Preocupações Implícitas" value={preocupacoes_crencas?.preocupacoes_implicitas} fieldPath="preocupacoes_crencas.preocupacoes_implicitas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Ganhos Secundários" value={preocupacoes_crencas?.ganhos_secundarios} fieldPath="preocupacoes_crencas.ganhos_secundarios" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Resistências Possíveis" value={preocupacoes_crencas?.resistencias_possiveis} fieldPath="preocupacoes_crencas.resistencias_possiveis" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Expectativas e Insight</h4>
-            <DataField label="Condições Genéticas na Família" value={preocupacoes_crencas?.condicoes_geneticas_familia} />
-            <DataField label="Expectativas Irrealistas" value={preocupacoes_crencas?.expectativas_irrealistas} />
-            <DataField label="Nível de Insight/Autoconsciência" value={preocupacoes_crencas?.nivel_insight_autoconsciencia} />
-            <DataField label="Abertura para Mudança" value={preocupacoes_crencas?.abertura_para_mudanca} />
+            <DataField label="Condições Genéticas na Família" value={preocupacoes_crencas?.condicoes_geneticas_familia} fieldPath="preocupacoes_crencas.condicoes_geneticas_familia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Expectativas Irrealistas" value={preocupacoes_crencas?.expectativas_irrealistas} fieldPath="preocupacoes_crencas.expectativas_irrealistas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Nível de Insight/Autoconsciência" value={preocupacoes_crencas?.nivel_insight_autoconsciencia} fieldPath="preocupacoes_crencas.nivel_insight_autoconsciencia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Abertura para Mudança" value={preocupacoes_crencas?.abertura_para_mudanca} fieldPath="preocupacoes_crencas.abertura_para_mudanca" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Barreiras e Desafios</h4>
-            <DataField label="Barreiras Percebidas ao Tratamento" value={preocupacoes_crencas?.barreiras_percebidas_tratamento} />
-            <DataField label="Aspectos do Plano que Parecem Desafiadores" value={preocupacoes_crencas?.aspectos_plano_parecem_desafiadores} />
+            <DataField label="Barreiras Percebidas ao Tratamento" value={preocupacoes_crencas?.barreiras_percebidas_tratamento} fieldPath="preocupacoes_crencas.barreiras_percebidas_tratamento" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Aspectos do Plano que Parecem Desafiadores" value={preocupacoes_crencas?.aspectos_plano_parecem_desafiadores} fieldPath="preocupacoes_crencas.aspectos_plano_parecem_desafiadores" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
 
@@ -921,28 +922,28 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Reino e Miasma">
           <div className="anamnese-subsection">
             <h4>Reino Predominante</h4>
-            <DataField label="Reino" value={reino_miasma?.reino_predominante} />
-            <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} />
+            <DataField label="Reino" value={reino_miasma?.reino_predominante} fieldPath="reino_miasma.reino_predominante" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} fieldPath="reino_miasma.caracteristicas_identificadas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Análise Detalhada - Reino Animal</h4>
-            <DataField label="Palavras Usadas" value={reino_miasma?.analise_detalhada_reino_animal_palavras_usadas} />
-            <DataField label="Descreve Sensações Como" value={reino_miasma?.analise_detalhada_reino_animal_descreve_sensacoes_como} />
+            <DataField label="Palavras Usadas" value={reino_miasma?.analise_detalhada_reino_animal_palavras_usadas} fieldPath="reino_miasma.analise_detalhada_reino_animal_palavras_usadas" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Descreve Sensações Como" value={reino_miasma?.analise_detalhada_reino_animal_descreve_sensacoes_como} fieldPath="reino_miasma.analise_detalhada_reino_animal_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Implicações Terapêuticas</h4>
-            <DataField label="Comunicação" value={reino_miasma?.implicacoes_terapeuticas_comunicacao} />
-            <DataField label="Abordagem" value={reino_miasma?.implicacoes_terapeuticas_abordagem} />
-            <DataField label="Outras Terapias Alinhadas" value={reino_miasma?.implicacoes_terapeuticas_outras_terapias_alinhadas} />
+            <DataField label="Comunicação" value={reino_miasma?.implicacoes_terapeuticas_comunicacao} fieldPath="reino_miasma.implicacoes_terapeuticas_comunicacao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Abordagem" value={reino_miasma?.implicacoes_terapeuticas_abordagem} fieldPath="reino_miasma.implicacoes_terapeuticas_abordagem" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Outras Terapias Alinhadas" value={reino_miasma?.implicacoes_terapeuticas_outras_terapias_alinhadas} fieldPath="reino_miasma.implicacoes_terapeuticas_outras_terapias_alinhadas" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Observações Comportamentais</h4>
-            <DataField label="Maneira de Vestir" value={reino_miasma?.maneira_vestir} />
-            <DataField label="Tipo de Profissão Escolhida" value={reino_miasma?.tipo_profissao_escolhida} />
-            <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} />
+            <DataField label="Maneira de Vestir" value={reino_miasma?.maneira_vestir} fieldPath="reino_miasma.maneira_vestir" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Tipo de Profissão Escolhida" value={reino_miasma?.tipo_profissao_escolhida} fieldPath="reino_miasma.tipo_profissao_escolhida" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} fieldPath="reino_miasma.padrao_discurso" consultaId={consultaId} onSave={handleSaveField} />
           </div>
         </CollapsibleSection>
     </div>
