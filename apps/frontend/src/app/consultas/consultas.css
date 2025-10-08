@@ -1321,6 +1321,30 @@
   margin-bottom: 8px;
 }
 
+.field-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ai-button {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-button:hover {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
 .edit-button {
   background: none;
   border: none;
@@ -1424,6 +1448,60 @@
   }
 }
 
+/* Estilos para Chat com IA */
+.chat-field-indicator {
+  font-size: 13px;
+  color: #8b5cf6;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* Indicador de digitando */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background-color: #9ca3af;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
 /* Mobile - Campos editáveis */
 @media (max-width: 768px) {
   .edit-actions {
@@ -1434,5 +1512,9 @@
   .cancel-button {
     justify-content: center;
     width: 100%;
+  }
+
+  .field-actions {
+    gap: 2px;
   }
 }
