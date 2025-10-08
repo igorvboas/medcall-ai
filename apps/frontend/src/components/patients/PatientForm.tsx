@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import './PatientForm.css';
 
 // Tipos locais para pacientes
@@ -20,6 +21,7 @@ interface Patient {
   medical_history?: string;
   allergies?: string;
   current_medications?: string;
+  profile_pic?: string | null;
   status: 'active' | 'inactive' | 'archived';
   created_at: string;
   updated_at: string;
@@ -190,6 +192,22 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       </div>
 
       <form onSubmit={handleSubmit} className="form-content">
+        {/* Avatar - apenas quando editando */}
+        {patient && patient.id && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+            <AvatarUpload
+              currentImageUrl={patient.profile_pic}
+              onUploadComplete={(url) => {
+                // Avatar foi atualizado com sucesso
+                console.log('Avatar atualizado:', url);
+              }}
+              userId={patient.id}
+              userType="paciente"
+              size="large"
+            />
+          </div>
+        )}
+
         {/* Informações Básicas */}
         <div className="form-section">
           <div className="section-header">

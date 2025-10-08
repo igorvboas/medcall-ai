@@ -82,11 +82,17 @@ const nextConfig = {
 
   // Configurações de imagens
   images: {
-    domains: ['localhost', 'your-domain.com'],
+    domains: ['localhost', 'your-domain.com', 'yzjlhezmvdkwdhibyvwh.supabase.co'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'your-project.supabase.co',
+        hostname: 'yzjlhezmvdkwdhibyvwh.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },

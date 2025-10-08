@@ -82,6 +82,20 @@ interface DashboardData {
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [medicoName, setMedicoName] = useState<string>('');
+
+  // Função para gerar saudação dinâmica
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    
+    if (hour >= 5 && hour < 12) {
+      return 'Bom dia';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Boa tarde';
+    } else {
+      return 'Boa noite';
+    }
+  };
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const isMock = process.env.NEXT_PUBLIC_MOCK === 'true' || process.env.MOCK_MODE === 'true';
@@ -94,6 +108,13 @@ export default function DashboardPage() {
     new Date(2024, 9, 25), // 25 de outubro
     new Date(2024, 9, 28), // 28 de outubro
   ];
+
+  // Atualizar nome do médico quando os dados do dashboard forem carregados
+  useEffect(() => {
+    if (dashboardData?.medico?.name) {
+      setMedicoName(dashboardData.medico.name);
+    }
+  }, [dashboardData]);
 
   useEffect(() => {
     if (isMock) {
@@ -236,7 +257,9 @@ export default function DashboardPage() {
         <div className="main-content">
           {/* Saudação do dashboard */}
           <div className="dashboard-greeting-section">
-            <h1 className="dashboard-title">Boa Tarde, Dr Felipe</h1>
+            <h1 className="dashboard-title">
+              {getGreeting()}, Dr {medicoName || 'Carregando...'}
+            </h1>
           </div>
 
           {/* Linha dos KPIs conectados */}

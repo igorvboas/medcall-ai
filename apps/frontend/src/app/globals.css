@@ -563,6 +563,13 @@ body {
   justify-content: center;
 }
 
+.user-profile-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .dropdown-icon {
   width: 16px;
   height: 16px;
