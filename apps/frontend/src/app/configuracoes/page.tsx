@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText } from 'lucide-react';
+import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import './configuracoes.css';
 
 interface MedicoData {
@@ -13,6 +14,7 @@ interface MedicoData {
   crm?: string;
   cpf?: string;
   birth_date?: string;
+  profile_pic?: string | null;
   subscription_type?: 'FREE' | 'PRO' | 'ENTERPRISE';
   created_at: string;
   updated_at: string;
@@ -158,6 +160,22 @@ export default function ConfiguracoesPage() {
             <User className="form-section-icon" />
             <span>Informações Pessoais</span>
           </div>
+
+          {medico && (
+            <div className="form-group" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+              <AvatarUpload
+                currentImageUrl={medico.profile_pic}
+                onUploadComplete={(url) => {
+                  setMedico(prev => prev ? { ...prev, profile_pic: url } : null);
+                  setSuccess('Foto de perfil atualizada com sucesso!');
+                  setTimeout(() => setSuccess(null), 3000);
+                }}
+                userId={medico.id}
+                userType="medico"
+                size="large"
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="name" className="form-label">

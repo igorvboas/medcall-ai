@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, FileText, Shield, Calendar } from 'lucide-react';
 import { SuccessModal } from '../../../components/modals/SuccessModal';
+import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import './cadastro.css';
 
 interface PatientFormData {
@@ -68,6 +69,8 @@ export default function CadastrarPaciente() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [patientId, setPatientId] = useState<string | null>(null);
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
 
   const handleChange = (field: keyof PatientFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -151,6 +154,11 @@ export default function CadastrarPaciente() {
       const result = await response.json();
       console.log('Paciente cadastrado com sucesso:', result);
       
+      // Salvar ID do paciente para upload de avatar
+      if (result.patient && result.patient.id) {
+        setPatientId(result.patient.id);
+      }
+      
       // Mostrar modal de sucesso
       setShowSuccessModal(true);
     } catch (error) {
@@ -211,6 +219,20 @@ export default function CadastrarPaciente() {
             </div>
             <h2 className="section-title">Informações do Paciente</h2>
           </div>
+
+          {patientId && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+              <AvatarUpload
+                currentImageUrl={profilePicUrl}
+                onUploadComplete={(url) => {
+                  setProfilePicUrl(url);
+                }}
+                userId={patientId}
+                userType="paciente"
+                size="large"
+              />
+            </div>
+          )}
 
           <div className="form-grid">
             <div className="form-field">
