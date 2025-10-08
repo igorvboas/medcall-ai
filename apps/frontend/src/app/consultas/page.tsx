@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
-  Clock, Phone, FileText, Stethoscope, Mic, Download, Play
+  Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
+  Edit3, Save, X
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
@@ -153,8 +154,55 @@ function CollapsibleSection({ title, children, defaultOpen = false }: { title: s
   );
 }
 
-// Componente para renderizar campo de dados
-function DataField({ label, value }: { label: string; value: any }) {
+// Componente para renderizar campo de dados (agora editável)
+function DataField({ 
+  label, 
+  value, 
+  fieldPath, 
+  consultaId,
+  onSave 
+}: { 
+  label: string; 
+  value: any; 
+  fieldPath?: string;
+  consultaId?: string;
+  onSave?: (fieldPath: string, newValue: string, consultaId: string) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEdit = () => {
+    if (!fieldPath || !consultaId || !onSave) return;
+    setEditValue(String(value || ''));
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!fieldPath || !consultaId || !onSave) return;
+    
+    if (editValue === String(value || '')) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(fieldPath, editValue, consultaId);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erro ao salvar campo:', error);
+      // Aqui você pode adicionar uma notificação de erro
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue('');
+    setIsEditing(false);
+  };
+
   const renderValue = () => {
     // Se não houver valor, mostrar campo vazio
     if (!value || (Array.isArray(value) && value.length === 0)) {
@@ -178,8 +226,54 @@ function DataField({ label, value }: { label: string; value: any }) {
 
   return (
     <div className="data-field">
-      <label className="data-label">{label}:</label>
-      {renderValue()}
+      <div className="data-field-header">
+        <label className="data-label">{label}:</label>
+        {fieldPath && consultaId && onSave && !isEditing && (
+          <button 
+            className="edit-button"
+            onClick={handleEdit}
+            title="Editar campo"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      
+      {isEditing ? (
+        <div className="edit-field">
+          <textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="edit-input"
+            rows={3}
+            placeholder="Digite o novo valor..."
+          />
+          <div className="edit-actions">
+            <button 
+              className="save-button"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <div className="loading-spinner-small"></div>
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button 
+              className="cancel-button"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              <X className="w-4 h-4" />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        renderValue()
+      )}
     </div>
   );
 }
@@ -189,6 +283,66 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Função para salvar campo editado
+  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
+    try {
+      // 1. Atualizar no Supabase
+      const response = await fetch(`/api/anamnese/${consultaId}/update-field`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fieldPath,
+          value: newValue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar campo no Supabase');
+      }
+
+      // 2. Fazer requisição para o webhook
+      const webhookResponse = await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-anamnese', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fieldPath,
+          value: newValue,
+          consultaId,
+        }),
+      });
+
+      if (!webhookResponse.ok) {
+        console.warn('Webhook falhou, mas campo foi salvo no Supabase');
+      }
+
+      // 3. Atualizar o estado local
+      const pathParts = fieldPath.split('.');
+      let current = anamneseData;
+      
+      // Navegar até o campo correto
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        if (current && current[pathParts[i] as keyof AnamneseData]) {
+          current = current[pathParts[i] as keyof AnamneseData] as any;
+        }
+      }
+      
+      // Atualizar o valor
+      if (current && pathParts.length > 0) {
+        const lastKey = pathParts[pathParts.length - 1];
+        (current as any)[lastKey] = newValue;
+        setAnamneseData({ ...anamneseData! });
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar campo:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     fetchAnamneseData();
@@ -262,38 +416,38 @@ function AnamneseSection({ consultaId }: { consultaId: string }) {
       <CollapsibleSection title="Dados do Paciente" defaultOpen={true}>
           <div className="anamnese-subsection">
             <h4>Identificação</h4>
-            <DataField label="Nome Completo" value={cadastro_prontuario?.identificacao_nome_completo} />
-            <DataField label="Nome Social" value={cadastro_prontuario?.identificacao_nome_social} />
-            <DataField label="Data de Nascimento" value={cadastro_prontuario?.identificacao_data_nascimento} />
-            <DataField label="Idade Atual" value={cadastro_prontuario?.identificacao_idade_atual} />
-            <DataField label="Sexo Biológico" value={cadastro_prontuario?.identificacao_sexo_biologico} />
-            <DataField label="Gênero" value={cadastro_prontuario?.identificacao_genero} />
-            <DataField label="Naturalidade" value={cadastro_prontuario?.identificacao_naturalidade} />
-            <DataField label="Nacionalidade" value={cadastro_prontuario?.identificacao_nacionalidade} />
+            <DataField label="Nome Completo" value={cadastro_prontuario?.identificacao_nome_completo} fieldPath="cadastro_prontuario.identificacao_nome_completo" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Nome Social" value={cadastro_prontuario?.identificacao_nome_social} fieldPath="cadastro_prontuario.identificacao_nome_social" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Data de Nascimento" value={cadastro_prontuario?.identificacao_data_nascimento} fieldPath="cadastro_prontuario.identificacao_data_nascimento" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Idade Atual" value={cadastro_prontuario?.identificacao_idade_atual} fieldPath="cadastro_prontuario.identificacao_idade_atual" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Sexo Biológico" value={cadastro_prontuario?.identificacao_sexo_biologico} fieldPath="cadastro_prontuario.identificacao_sexo_biologico" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Gênero" value={cadastro_prontuario?.identificacao_genero} fieldPath="cadastro_prontuario.identificacao_genero" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Naturalidade" value={cadastro_prontuario?.identificacao_naturalidade} fieldPath="cadastro_prontuario.identificacao_naturalidade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Nacionalidade" value={cadastro_prontuario?.identificacao_nacionalidade} fieldPath="cadastro_prontuario.identificacao_nacionalidade" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Dados Sociodemográficos</h4>
-            <DataField label="Estado Civil" value={cadastro_prontuario?.dados_sociodemograficos_estado_civil} />
-            <DataField label="Número de Filhos" value={cadastro_prontuario?.dados_sociodemograficos_numero_filhos} />
-            <DataField label="Idade dos Filhos" value={cadastro_prontuario?.dados_sociodemograficos_idade_filhos} />
-            <DataField label="Escolaridade" value={cadastro_prontuario?.dados_sociodemograficos_escolaridade} />
-            <DataField label="Profissão" value={cadastro_prontuario?.dados_sociodemograficos_profissao} />
-            <DataField label="Exerce a Profissão" value={cadastro_prontuario?.dados_sociodemograficos_exerce_profissao} />
-            <DataField label="Situação de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_situacao_trabalho} />
-            <DataField label="Carga Horária de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_carga_horaria_trabalho} />
-            <DataField label="Condição Social" value={cadastro_prontuario?.dados_sociodemograficos_condicao_social} />
-            <DataField label="Renda Familiar" value={cadastro_prontuario?.dados_sociodemograficos_renda_familiar} />
-            <DataField label="Pessoas na Residência" value={cadastro_prontuario?.dados_sociodemograficos_pessoas_residencia} />
-            <DataField label="Responsável Financeiro" value={cadastro_prontuario?.dados_sociodemograficos_responsavel_financeiro} />
-            <DataField label="Seguro Saúde" value={cadastro_prontuario?.dados_sociodemograficos_seguro_saude} />
+            <DataField label="Estado Civil" value={cadastro_prontuario?.dados_sociodemograficos_estado_civil} fieldPath="cadastro_prontuario.dados_sociodemograficos_estado_civil" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Número de Filhos" value={cadastro_prontuario?.dados_sociodemograficos_numero_filhos} fieldPath="cadastro_prontuario.dados_sociodemograficos_numero_filhos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Idade dos Filhos" value={cadastro_prontuario?.dados_sociodemograficos_idade_filhos} fieldPath="cadastro_prontuario.dados_sociodemograficos_idade_filhos" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Escolaridade" value={cadastro_prontuario?.dados_sociodemograficos_escolaridade} fieldPath="cadastro_prontuario.dados_sociodemograficos_escolaridade" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Profissão" value={cadastro_prontuario?.dados_sociodemograficos_profissao} fieldPath="cadastro_prontuario.dados_sociodemograficos_profissao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Exerce a Profissão" value={cadastro_prontuario?.dados_sociodemograficos_exerce_profissao} fieldPath="cadastro_prontuario.dados_sociodemograficos_exerce_profissao" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Situação de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_situacao_trabalho} fieldPath="cadastro_prontuario.dados_sociodemograficos_situacao_trabalho" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Carga Horária de Trabalho" value={cadastro_prontuario?.dados_sociodemograficos_carga_horaria_trabalho} fieldPath="cadastro_prontuario.dados_sociodemograficos_carga_horaria_trabalho" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Condição Social" value={cadastro_prontuario?.dados_sociodemograficos_condicao_social} fieldPath="cadastro_prontuario.dados_sociodemograficos_condicao_social" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Renda Familiar" value={cadastro_prontuario?.dados_sociodemograficos_renda_familiar} fieldPath="cadastro_prontuario.dados_sociodemograficos_renda_familiar" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Pessoas na Residência" value={cadastro_prontuario?.dados_sociodemograficos_pessoas_residencia} fieldPath="cadastro_prontuario.dados_sociodemograficos_pessoas_residencia" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Responsável Financeiro" value={cadastro_prontuario?.dados_sociodemograficos_responsavel_financeiro} fieldPath="cadastro_prontuario.dados_sociodemograficos_responsavel_financeiro" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="Seguro Saúde" value={cadastro_prontuario?.dados_sociodemograficos_seguro_saude} fieldPath="cadastro_prontuario.dados_sociodemograficos_seguro_saude" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
             <h4>Documentos</h4>
-            <DataField label="CPF" value={cadastro_prontuario?.doc_cpf} />
-            <DataField label="RG" value={cadastro_prontuario?.doc_rg} />
-            <DataField label="CNS" value={cadastro_prontuario?.doc_cns} />
+            <DataField label="CPF" value={cadastro_prontuario?.doc_cpf} fieldPath="cadastro_prontuario.doc_cpf" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="RG" value={cadastro_prontuario?.doc_rg} fieldPath="cadastro_prontuario.doc_rg" consultaId={consultaId} onSave={handleSaveField} />
+            <DataField label="CNS" value={cadastro_prontuario?.doc_cns} fieldPath="cadastro_prontuario.doc_cns" consultaId={consultaId} onSave={handleSaveField} />
           </div>
 
           <div className="anamnese-subsection">
