@@ -16,69 +16,8 @@ interface ConsultationEvent {
   duration: number; // em minutos
 }
 
-// Dados mockados de consultas
-const mockConsultations: ConsultationEvent[] = [
-  {
-    id: '1',
-    title: 'Consulta de Rotina',
-    patient: 'Kristin Watson',
-    date: new Date(2024, 11, 15), // 15 de dezembro de 2024
-    time: '09:00',
-    type: 'TELEMEDICINA',
-    status: 'AGENDADA',
-    duration: 30
-  },
-  {
-    id: '2',
-    title: 'Consulta de Acompanhamento',
-    patient: 'Jacob Jones',
-    date: new Date(2024, 11, 18), // 18 de dezembro de 2024
-    time: '14:30',
-    type: 'PRESENCIAL',
-    status: 'AGENDADA',
-    duration: 45
-  },
-  {
-    id: '3',
-    title: 'Consulta Concluída',
-    patient: 'Leslie Alexander',
-    date: new Date(2024, 11, 10), // 10 de dezembro de 2024
-    time: '10:15',
-    type: 'PRESENCIAL',
-    status: 'CONCLUIDA',
-    duration: 30
-  },
-  {
-    id: '4',
-    title: 'Consulta de Emergência',
-    patient: 'Arlene McCoy',
-    date: new Date(2024, 11, 20), // 20 de dezembro de 2024
-    time: '16:00',
-    type: 'TELEMEDICINA',
-    status: 'AGENDADA',
-    duration: 60
-  },
-  {
-    id: '5',
-    title: 'Consulta Concluída',
-    patient: 'Darrell Steward',
-    date: new Date(2024, 11, 8), // 8 de dezembro de 2024
-    time: '11:30',
-    type: 'TELEMEDICINA',
-    status: 'CONCLUIDA',
-    duration: 30
-  },
-  {
-    id: '6',
-    title: 'Consulta Agendada',
-    patient: 'Albert Flores',
-    date: new Date(2024, 11, 22), // 22 de dezembro de 2024
-    time: '08:00',
-    type: 'PRESENCIAL',
-    status: 'AGENDADA',
-    duration: 45
-  }
-];
+// Sem dados mock – inicia vazio e carrega da API
+const mockConsultations: ConsultationEvent[] = [];
 
 const monthNames = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -97,15 +36,67 @@ export default function AgendaPage() {
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
 
-  // Navegar entre meses
+  // Carregar consultas do mês atual
+  useEffect(() => {
+    const load = async () => {
+      const year = currentYear;
+      const month = currentMonth + 1; // 1-12
+      const res = await fetch(`/api/agenda?year=${year}&month=${month}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const items = (json.items || []) as Array<{
+        id: string;
+        patient: string;
+        consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
+        status: string;
+        duration: number | null;
+        created_at: string;
+      }>;
+
+      const mapped: ConsultationEvent[] = items.map((c) => {
+        // created_at → data + hora locais (TZ implícita)
+        const d = new Date(c.created_at);
+        const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return {
+          id: c.id,
+          title: 'Consulta',
+          patient: c.patient,
+          date: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+          time,
+          type: c.consultation_type,
+          status: c.status === 'COMPLETED' ? 'CONCLUIDA' : c.status === 'CANCELLED' ? 'CANCELADA' : 'AGENDADA',
+          duration: c.duration ? Math.round(c.duration / 60) : 30
+        };
+      });
+      setConsultations(mapped);
+    };
+    load();
+  }, [currentMonth, currentYear]);
+
+  // Navegação
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1);
-      } else {
-        newDate.setMonth(prev.getMonth() + 1);
-      }
+      if (direction === 'prev') newDate.setMonth(prev.getMonth() - 1);
+      else newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      const delta = direction === 'prev' ? -7 : 7;
+      newDate.setDate(prev.getDate() + delta);
+      return newDate;
+    });
+  };
+
+  const navigateDay = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(prev.getDate() + (direction === 'prev' ? -1 : 1));
+      setSelectedDate(newDate);
       return newDate;
     });
   };
@@ -160,6 +151,40 @@ export default function AgendaPage() {
     return days;
   };
 
+  // Obter dias da semana corrente (domingo-sábado)
+  const getDaysInWeek = () => {
+    const start = new Date(currentDate);
+    start.setHours(0,0,0,0);
+    const dayOfWeek = start.getDay(); // 0-6
+    start.setDate(start.getDate() - dayOfWeek);
+    const days: any[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dayConsultations = consultations.filter(c => c.date.toDateString() === d.toDateString());
+      days.push({
+        date: d,
+        isCurrentMonth: d.getMonth() === currentMonth && d.getFullYear() === currentYear,
+        isToday: d.toDateString() === today.toDateString(),
+        consultations: dayConsultations
+      });
+    }
+    return days;
+  };
+
+  // Obter apenas o dia selecionado/atual
+  const getDayView = () => {
+    const d = selectedDate ? new Date(selectedDate) : new Date(currentDate);
+    d.setHours(0,0,0,0);
+    const dayConsultations = consultations.filter(c => c.date.toDateString() === d.toDateString());
+    return [{
+      date: d,
+      isCurrentMonth: true,
+      isToday: d.toDateString() === today.toDateString(),
+      consultations: dayConsultations
+    }];
+  };
+
   // Obter consultas do dia selecionado
   const getSelectedDayConsultations = () => {
     if (!selectedDate) return [];
@@ -185,7 +210,7 @@ export default function AgendaPage() {
     return type === 'TELEMEDICINA' ? <Video className="event-type-icon" /> : <User className="event-type-icon" />;
   };
 
-  const days = getDaysInMonth();
+  const days = viewMode === 'month' ? getDaysInMonth() : viewMode === 'week' ? getDaysInWeek() : getDayView();
 
   return (
     <div className="agenda-container">
@@ -210,7 +235,7 @@ export default function AgendaPage() {
             <div className="calendar-navigation">
               <button 
                 className="nav-button"
-                onClick={() => navigateMonth('prev')}
+                onClick={() => (viewMode === 'month' ? navigateMonth('prev') : viewMode === 'week' ? navigateWeek('prev') : navigateDay('prev'))}
               >
                 <ChevronLeft className="nav-icon" />
               </button>
@@ -221,7 +246,7 @@ export default function AgendaPage() {
               
               <button 
                 className="nav-button"
-                onClick={() => navigateMonth('next')}
+                onClick={() => (viewMode === 'month' ? navigateMonth('next') : viewMode === 'week' ? navigateWeek('next') : navigateDay('next'))}
               >
                 <ChevronRight className="nav-icon" />
               </button>
@@ -250,17 +275,19 @@ export default function AgendaPage() {
           </div>
 
           <div className="calendar-grid">
-            {/* Cabeçalho dos dias da semana */}
-            <div className="calendar-weekdays">
-              {dayNames.map(day => (
-                <div key={day} className="weekday-header">
-                  {day}
-                </div>
-              ))}
-            </div>
+            {/* Cabeçalho dos dias da semana (esconde no modo Dia) */}
+            {viewMode !== 'day' && (
+              <div className="calendar-weekdays">
+                {dayNames.map(day => (
+                  <div key={day} className="weekday-header">
+                    {day}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Dias do calendário */}
-            <div className="calendar-days">
+            <div className="calendar-days" style={{ gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)' }}>
               {days.map((day, index) => (
                 <div
                   key={index}
@@ -275,7 +302,7 @@ export default function AgendaPage() {
                   
                   {day.consultations.length > 0 && (
                     <div className="day-events">
-                      {day.consultations.slice(0, 3).map(consultation => (
+                      {day.consultations.slice(0, 3).map((consultation: ConsultationEvent) => (
                         <div
                           key={consultation.id}
                           className={`day-event ${getStatusColor(consultation.status)}`}
