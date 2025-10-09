@@ -116,31 +116,59 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(5);
 
-    // Consultas dos últimos 30 dias para gráfico
-    const trintaDiasAtras = new Date();
-    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+    // Período alvo
+    const { searchParams } = new URL(request.url);
+    const yearParam = searchParams.get('year');
+    const periodParam = searchParams.get('period'); // '7d' | '15d' | '30d'
+    const targetYear = yearParam ? Number(yearParam) : new Date().getFullYear();
+
+    // Se ano informado, buscamos do início do ano até hoje (ou final do ano se for passado)
+    let startDateRange: Date;
+    let endDateRange: Date;
+
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      const days = Number(periodParam.replace('d', ''));
+      endDateRange = new Date();
+      startDateRange = new Date();
+      startDateRange.setDate(startDateRange.getDate() - days + 1);
+    } else {
+      // fallback por ano
+      startDateRange = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
+      endDateRange = targetYear === new Date().getFullYear()
+        ? new Date()
+        : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
+    }
 
     const { data: consultasUltimos30Dias } = await supabase
       .from('consultations')
       .select('created_at, status, consultation_type')
       .eq('doctor_id', medico.id)
-      .gte('created_at', trintaDiasAtras.toISOString())
+      .gte('created_at', startDateRange.toISOString())
+      .lte('created_at', endDateRange.toISOString())
       .order('created_at', { ascending: true });
 
-    // Agrupar por dia
+    // Agrupar por dia (considerando fuso horário de São Paulo para não "trocar" o dia)
+    const TIMEZONE = 'America/Sao_Paulo';
+    const dayKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
     const consultasPorDia = consultasUltimos30Dias?.reduce((acc, c) => {
-      const date = new Date(c.created_at).toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = { total: 0, presencial: 0, telemedicina: 0, concluidas: 0 };
+      const dateKey = dayKeyFormatter.format(new Date(c.created_at)); // yyyy-mm-dd na TZ de SP
+      if (!acc[dateKey]) {
+        acc[dateKey] = { total: 0, presencial: 0, telemedicina: 0, concluidas: 0 };
       }
-      acc[date].total += 1;
+      acc[dateKey].total += 1;
       if (c.consultation_type === 'PRESENCIAL') {
-        acc[date].presencial += 1;
+        acc[dateKey].presencial += 1;
       } else {
-        acc[date].telemedicina += 1;
+        acc[dateKey].telemedicina += 1;
       }
       if (c.status === 'COMPLETED') {
-        acc[date].concluidas += 1;
+        acc[dateKey].concluidas += 1;
       }
       return acc;
     }, {} as Record<string, any>) || {};

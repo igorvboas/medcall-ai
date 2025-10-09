@@ -41,14 +41,13 @@ const defaultMetrics: MetricData[] = [
 const periods = [
   { value: '7d', label: '📅 Últimos 7 dias' },
   { value: '15d', label: '📅 Últimos 15 dias' },
-  { value: '30d', label: '📅 Últimos 30 dias' },
-  { value: 'custom', label: '📅 05th - 12th Jan' }
+  { value: '30d', label: '📅 Últimos 30 dias' }
 ];
 
 export function ConsultationStatusChart({ 
   data = defaultData, 
   metrics = defaultMetrics,
-  selectedPeriod = 'custom',
+  selectedPeriod = '7d',
   onPeriodChange 
 }: ConsultationStatusChartProps) {
   const [animationProgress, setAnimationProgress] = useState(0);
