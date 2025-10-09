@@ -15,14 +15,15 @@
   background: transparent;
   z-index: 1000;
   width: auto;
-  max-width: 1000px;
+  max-width: 1200px;
   padding: 0;
 }
 
 .landing-header-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  gap: 4rem;
   padding: 0.875rem 2rem;
   min-width: 900px;
   background: rgba(255, 255, 255, 0.9);
@@ -40,6 +41,7 @@
   color: #111827;
   font-weight: 700;
   font-size: 1.25rem;
+  justify-self: start;
 }
 
 .landing-logo-image {
@@ -74,6 +76,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  justify-self: end;
 }
 
 /* Login Button - Differentiated Style */

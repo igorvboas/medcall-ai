@@ -260,9 +260,12 @@ export default function PatientsPage() {
 
   return (
     <div className="patients-page">
-      {/* Lista de Pacientes - Design da Imagem */}
-      <div className="patients-list-design">
-        <h1 className="patients-list-title">Lista de Pacientes</h1>
+      <div className="patients-container">
+        {/* Header */}
+        <div className="patients-header">
+          <h1 className="patients-title">Lista de Pacientes</h1>
+          <p className="patients-subtitle">Gerencie seus pacientes de forma eficiente</p>
+        </div>
         
         {loading ? (
           <div className="loading-state">
@@ -284,13 +287,8 @@ export default function PatientsPage() {
           </div>
         ) : patients.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">
-              <Plus className="empty-icon-svg" />
-            </div>
-            <h3 className="empty-title">Nenhum Paciente Registrado</h3>
-            <p className="empty-description">
-              Você ainda não possui pacientes cadastrados.
-            </p>
+            <h3>Nenhum paciente encontrado</h3>
+            <p>Comece cadastrando seu primeiro paciente para gerenciar suas consultas.</p>
             <button 
               onClick={() => setShowForm(true)}
               className="btn btn-primary"
@@ -300,45 +298,107 @@ export default function PatientsPage() {
             </button>
           </div>
         ) : (
-          <>
-            {patients.map((patient) => (
-              <div 
-                key={patient.id} 
-                className="patient-item"
-                onClick={() => setEditingPatient(patient)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="patient-avatar">
-                  {patient.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="patient-info">
-                  <div className="patient-details">
-                    <div className="patient-name">{patient.name}</div>
-                    <div className="patient-condition">{patient.medical_history || 'Infectious disease'}</div>
-                  </div>
-                  <div className="patient-date">
-                    {patient.created_at ? new Date(patient.created_at).toLocaleDateString('pt-BR', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    }) : 'N/A'}
-                  </div>
-                  <div className="patient-specialty">{(patient as any).specialty || 'Geriatrician'}</div>
-                  <div className="patient-actions">
-                    <button 
-                      className="patient-menu"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Aqui você pode implementar um dropdown menu se necessário
-                        console.log('Menu clicked for patient:', patient.name);
-                      }}
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                  </div>
-                </div>
+          <div className="patients-cards-container">
+            {/* Filtros */}
+            <div className="filters-section">
+              <div className="search-container">
+                <Search className="search-icon" size={20} />
+                <input
+                  type="text"
+                  placeholder="Buscar pacientes..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    fetchPatients(1, e.target.value, statusFilter);
+                  }}
+                  className="search-input"
+                />
               </div>
-            ))}
+              
+              <div className="filters-right">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    const newStatus = e.target.value as 'all' | 'active' | 'inactive' | 'archived';
+                    setStatusFilter(newStatus);
+                    fetchPatients(1, searchTerm, newStatus);
+                  }}
+                  className="status-filter"
+                >
+                  <option value="all">Todos os status</option>
+                  <option value="active">Ativos</option>
+                  <option value="inactive">Inativos</option>
+                  <option value="archived">Arquivados</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Grid de Cards */}
+            <div className="patients-grid">
+              {patients.map((patient) => (
+                <div key={patient.id} className="patient-card">
+                  <div className="patient-card-header">
+                    <div className="patient-info">
+                      <h3 className="patient-name">{patient.name}</h3>
+                      <span className={`patient-status ${patient.status}`}>
+                        {getStatusText(patient.status)}
+                      </span>
+                    </div>
+                    <div className="patient-actions">
+                      <button 
+                        className="action-btn edit"
+                        onClick={() => setEditingPatient(patient)}
+                        title="Editar paciente"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        className="action-btn delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Implementar confirmação de exclusão
+                          console.log('Delete patient:', patient.name);
+                        }}
+                        title="Excluir paciente"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="patient-details">
+                    {patient.email && (
+                      <div className="detail-item">
+                        <Mail size={16} />
+                        <span className="detail-value">{patient.email}</span>
+                      </div>
+                    )}
+                    {patient.phone && (
+                      <div className="detail-item">
+                        <Phone size={16} />
+                        <span className="detail-value">{patient.phone}</span>
+                      </div>
+                    )}
+                    {(patient.city || patient.state) && (
+                      <div className="detail-item">
+                        <MapPin size={16} />
+                        <span className="detail-value">
+                          {[patient.city, patient.state].filter(Boolean).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    {patient.birth_date && (
+                      <div className="detail-item">
+                        <Calendar size={16} />
+                        <span className="detail-value">
+                          {new Date(patient.birth_date).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
             
             {/* Paginação */}
             {pagination.totalPages > 1 && (
@@ -402,7 +462,7 @@ export default function PatientsPage() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 

@@ -15,6 +15,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
+import { Video, Mic, CheckCircle } from 'lucide-react';
 
 
 
@@ -73,6 +74,9 @@ export function ConsultationRoom({
   const [isTranscriptionActive, setIsTranscriptionActive] = useState(false);
 
   const [showAnswerButton, setShowAnswerButton] = useState(false);
+
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
   
 
@@ -1518,7 +1522,17 @@ export function ConsultationRoom({
 
       localStreamRef.current = stream;
 
+      // Configurar estados iniciais dos controles
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
       
+      if (videoTrack) {
+        setIsVideoEnabled(videoTrack.enabled);
+      }
+      
+      if (audioTrack) {
+        setIsAudioEnabled(audioTrack.enabled);
+      }
 
       // Inicializar AudioProcessor para transcrição (apenas uma vez)
 
@@ -1808,6 +1822,7 @@ export function ConsultationRoom({
       if (videoTrack) {
 
         videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
 
       }
 
@@ -1826,6 +1841,7 @@ export function ConsultationRoom({
       if (audioTrack) {
 
         audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
 
       }
 
@@ -2205,29 +2221,29 @@ export function ConsultationRoom({
 
             <button 
 
-              className="media-btn active" 
+              className={`media-btn ${isVideoEnabled ? 'active' : 'disabled'}`}
 
               onClick={toggleCamera}
 
-              title="Câmera"
+              title={isVideoEnabled ? "Desativar Câmera" : "Ativar Câmera"}
 
             >
 
-              📹
+              <Video size={20} />
 
             </button>
 
             <button 
 
-              className="media-btn active" 
+              className={`media-btn ${isAudioEnabled ? 'active' : 'disabled'}`}
 
               onClick={toggleMicrophone}
 
-              title="Microfone"
+              title={isAudioEnabled ? "Desativar Microfone" : "Ativar Microfone"}
 
             >
 
-              🎤
+              <Mic size={20} />
 
             </button>
 
@@ -2399,7 +2415,9 @@ export function ConsultationRoom({
 
           <div className="finish-modal-content">
 
-            <div className="finish-modal-icon">✅</div>
+            <div className="finish-modal-icon">
+              <CheckCircle size={48} />
+            </div>
 
             <h2>Consulta Finalizada</h2>
 
