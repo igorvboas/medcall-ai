@@ -326,7 +326,7 @@ function AnamneseSection({
   onChatInputChange: (value: string) => void;
   readOnly?: boolean;
 }) {
-  console.log('🔍 AnamneseSection readOnly:', readOnly);
+  //console.log('🔍 AnamneseSection readOnly:', readOnly);
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
