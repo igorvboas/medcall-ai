@@ -31,66 +31,87 @@ export async function GET(
 
     // Buscar dados de todas as tabelas de anamnese
     // Usando Promise.allSettled para não falhar se alguma tabela não tiver dados
+    // Usando order + limit(1) ao invés de maybeSingle() para lidar com duplicatas
     const results = await Promise.allSettled([
       supabase
         .from('a_cadastro_prontuario')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_objetivos_queixas')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_historico_risco')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_observacao_clinica_lab')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_historia_vida')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_setenios_eventos')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_ambiente_contexto')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_sensacao_emocoes')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_preocupacoes_crencas')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
       
       supabase
         .from('a_reino_miasma')
         .select('*')
         .eq('consulta_id', consultaId)
-        .maybeSingle(),
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
     ]);
 
     // Extrair dados dos resultados, ignorando erros

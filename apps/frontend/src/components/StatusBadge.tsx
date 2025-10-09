@@ -16,7 +16,8 @@ import './StatusBadge.css';
 export type StatusType = 
   | 'confirmed' | 'pending' | 'cancelled' | 'completed' 
   | 'in-progress' | 'scheduled' | 'waiting' | 'recording' 
-  | 'processing' | 'error' | 'created' | 'rescheduled';
+  | 'processing' | 'error' | 'created' | 'rescheduled'
+  | 'validation';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -124,6 +125,14 @@ const statusConfig = {
     bgColor: '#fef3c7',
     textColor: '#92400e',
     borderColor: '#f59e0b'
+  },
+  validation: {
+    icon: FileText,
+    label: 'Validação',
+    color: 'warning',
+    bgColor: '#fef3c7',
+    textColor: '#92400e',
+    borderColor: '#f59e0b'
   }
 };
 
@@ -186,18 +195,19 @@ export function useStatusConfig(status: StatusType) {
 export function mapBackendStatus(backendStatus: string): StatusType {
   const statusMap: Record<string, StatusType> = {
     'CREATED': 'created',
-    'CONFIRMED': 'confirmed',
-    'PENDING': 'pending',
-    'CANCELLED': 'cancelled',
-    'COMPLETED': 'completed',
     'RECORDING': 'recording',
     'PROCESSING': 'processing',
+    'VALIDATION': 'validation',
     'ERROR': 'error',
+    'CANCELLED': 'cancelled',
+    'COMPLETED': 'completed',
+    // Mapeamentos adicionais
+    'CONFIRMED': 'confirmed',
+    'PENDING': 'pending',
     'IN_PROGRESS': 'in-progress',
     'SCHEDULED': 'scheduled',
     'WAITING': 'waiting',
     'RESCHEDULED': 'rescheduled',
-    // Mapeamentos adicionais
     'Confirmed': 'confirmed',
     'Pending': 'pending',
     'Cancelled': 'cancelled'
