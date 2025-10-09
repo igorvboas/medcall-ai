@@ -113,6 +113,9 @@ export function Calendar({
             <span className="calendar-cell-number">
               {format(day, dayFormat)}
             </span>
+            {isHighlighted && (
+              <span className="calendar-cell-dot" aria-hidden="true"></span>
+            )}
           </div>
         );
         day = addDays(day, 1);

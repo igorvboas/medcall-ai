@@ -138,12 +138,23 @@
 }
 
 .calendar-cell-highlighted {
-  background: rgba(255, 216, 77, 0.3);
+  background: transparent; /* keep only the dot indicator */
 }
 
 .calendar-cell-highlighted .calendar-cell-number {
-  color: #ffd84d;
-  font-weight: 600;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Small dot indicator for days with events */
+.calendar-cell-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd84d;
+  box-shadow: 0 0 6px rgba(255, 216, 77, 0.7);
 }
 
 /* Responsive Design */
