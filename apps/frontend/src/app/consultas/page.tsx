@@ -3646,26 +3646,45 @@ function ConsultasPageContent() {
     router.push('/consultas');
   };
 
-  // Função para salvar alterações da ANAMNESE e mudar para próxima etapa (DIAGNOSTICO)
+  // Função para salvar alterações da ANAMNESE e mudar para próxima etapa (DIAGNOSTICO SENDO PROCESSADO)
   const handleSaveAndContinue = async () => {
-    if (!consultaId) return;
+    if (!consultaId || !consultaDetails) return;
 
     try {
       setIsSaving(true);
       
-      // Atualiza a etapa da consulta para DIAGNOSTICO
+      // Atualiza a etapa da consulta para DIAGNOSTICO SENDO PROCESSADO
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          etapa: 'DIAGNOSTICO'
+          etapa: 'DIAGNOSTICO',
+          status: 'PROCESSING'
         }),
       });
 
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Disparar webhook para iniciar processamento do diagnóstico
+      try {
+        await fetch('https://webhook.tc1.triacompany.com.br/webhook/diagnostico-principal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            consultaId: consultaDetails.id,
+            medicoId: consultaDetails.doctor_id,
+            pacienteId: consultaDetails.patient_id
+          }),
+        });
+        console.log('✅ Webhook de diagnóstico processando disparado com sucesso');
+      } catch (webhookError) {
+        console.warn('⚠️ Webhook de diagnóstico falhou, mas consulta foi atualizada:', webhookError);
       }
 
       // Recarrega os dados da consulta
@@ -3680,12 +3699,12 @@ function ConsultasPageContent() {
 
   // Função para salvar alterações do DIAGNÓSTICO e mudar para etapa de SOLUÇÃO
   const handleSaveDiagnosticoAndContinue = async () => {
-    if (!consultaId) return;
+    if (!consultaId || !consultaDetails) return;
 
     try {
       setIsSaving(true);
       
-      // Atualiza a etapa da consulta para SOLUCAO e define solucao_etapa como LTB
+      // Atualiza a etapa da consulta para PROCESSANDO SOLUCAO e define solucao_etapa como LTB
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
@@ -3693,12 +3712,31 @@ function ConsultasPageContent() {
         },
         body: JSON.stringify({
           etapa: 'SOLUCAO',
+          status: 'PROCESSING',
           solucao_etapa: 'LTB'
         }),
       });
 
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Disparar webhook para iniciar processamento da solução
+      try {
+        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-trigger-solucao', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            consultaId: consultaDetails.id,
+            medicoId: consultaDetails.doctor_id,
+            pacienteId: consultaDetails.patient_id
+          }),
+        });
+        console.log('✅ Webhook de solução disparado com sucesso');
+      } catch (webhookError) {
+        console.warn('⚠️ Webhook de solução falhou, mas consulta foi atualizada:', webhookError);
       }
 
       // Recarrega os dados da consulta
@@ -3764,7 +3802,7 @@ function ConsultasPageContent() {
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
-
+        
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
     } catch (error) {
@@ -3807,26 +3845,45 @@ function ConsultasPageContent() {
     }
   };
 
-  // Função para salvar alterações do HABITOS_DE_VIDA e FINALIZAR (status = COMPLETED)
+  // Função para salvar alterações do HABITOS_DE_VIDA e FINALIZAR para PROCESSANDO ENTREGAVEIS
   const handleSaveHabitosVidaAndComplete = async () => {
-    if (!consultaId) return;
+    if (!consultaId || !consultaDetails) return;
 
     try {
       setIsSaving(true);
       
-      // Atualiza o status para COMPLETED (finalizando todo o processo)
+      // Atualiza o status para PROCESSING para começar a processar os entregaveis (finalizando todo o processo)
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: 'COMPLETED'
+          status: 'PROCESSING',
+          etapa:'SOLUCAO'
         }),
       });
 
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Disparar webhook para iniciar criação dos entregáveis
+      try {
+        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-solucao-criacao-entregaveis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            consultaId: consultaDetails.id,
+            medicoId: consultaDetails.doctor_id,
+            pacienteId: consultaDetails.patient_id
+          }),
+        });
+        console.log('✅ Webhook de criação de entregáveis disparado com sucesso');
+      } catch (webhookError) {
+        console.warn('⚠️ Webhook de entregáveis falhou, mas consulta foi atualizada:', webhookError);
       }
 
       // Recarrega os dados da consulta
@@ -4002,6 +4059,23 @@ function ConsultasPageContent() {
 
     // STATUS = PROCESSING
     if (consultaDetails.status === 'PROCESSING') {
+      // Definir mensagens baseadas na etapa
+      let titulo = 'Processando Consulta';
+      let descricao = 'As informações da consulta estão sendo processadas';
+      
+      if (consultaDetails.etapa === 'DIAGNOSTICO') {
+        titulo = 'Processando Diagnóstico';
+        descricao = 'As informações do diagnóstico estão sendo processadas';
+      }
+      if (consultaDetails.etapa === 'SOLUCAO') {
+        titulo = 'Processando Solução';
+        descricao = 'As informações da solução estão sendo processadas';
+        if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
+          titulo = 'Processando Entregáveis';
+          descricao = 'Os entegráveis da consulta estão sendo processados';
+        }
+      }
+      
       return (
         <div style={{ 
           display: 'flex', 
@@ -4017,8 +4091,8 @@ function ConsultasPageContent() {
           minHeight: '400px'
         }}>
           <div className="loading-spinner" style={{ margin: '0 auto 20px' }}></div>
-          <h2 style={{ marginBottom: '10px', fontSize: '24px', fontWeight: '600', color: '#1f2937' }}>Processando Consulta</h2>
-          <p style={{ color: '#6b7280', fontSize: '16px' }}>As informações da consulta estão sendo processadas</p>
+          <h2 style={{ marginBottom: '10px', fontSize: '24px', fontWeight: '600', color: '#1f2937' }}>{titulo}</h2>
+          <p style={{ color: '#6b7280', fontSize: '16px' }}>{descricao}</p>
         </div>
       );
     }
