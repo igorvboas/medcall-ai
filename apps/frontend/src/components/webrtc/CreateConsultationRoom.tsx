@@ -291,7 +291,7 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
           </button>
 
           <p className="text-muted small text-center mt-3">
-            A sala expira em 5 minutos se ninguém entrar
+            A sala expira em 5 minutos se ninguém entrar.
           </p>
 
           <div className="mt-4 text-center">
