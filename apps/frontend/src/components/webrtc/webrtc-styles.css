@@ -24,8 +24,11 @@
 }
 
 .finish-modal-icon {
-  font-size: 64px;
   margin-bottom: 20px;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .finish-modal-content h2 {
@@ -933,6 +936,11 @@
 .media-btn.active {
   background: #d4a574;
   color: white;
+}
+
+.media-btn.disabled {
+  background: #6b7280;
+  color: #9ca3af;
 }
 
 .media-btn.end-call {
