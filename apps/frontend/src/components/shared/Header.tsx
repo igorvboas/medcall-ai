@@ -1,11 +1,12 @@
 'use client';
 
-import { Search, Bell, User, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, User, LogOut, ChevronDown, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { useTheme } from 'next-themes';
 
 export function Header() {
   const { user, signOut, loading } = useAuth();
@@ -14,10 +15,17 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [medicoData, setMedicoData] = useState<any>(null);
   const [loadingMedico, setLoadingMedico] = useState(true);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   // Extrair dados do usuário diretamente do useAuth
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
   const email = user?.email || '';
+
+  // Aguarda a hidratação para evitar erro de mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Buscar dados do médico
   useEffect(() => {
@@ -51,6 +59,13 @@ export function Header() {
     fetchMedicoData();
   }, [user?.id]);
 
+  // Função para alternar tema
+  const toggleTheme = () => {
+    if (mounted) {
+      setTheme(theme === 'dark' ? 'light' : 'dark');
+    }
+  };
+
   // Função para fazer logout
   const handleLogout = async () => {
     await signOut();
@@ -67,10 +82,18 @@ export function Header() {
         {/* Right Side Actions */}
         <div className="header-actions">
 
-          {/* Notifications */}
-          <button className="notification-button">
-            <Bell className="notification-icon" />
-            <span className="notification-badge"></span>
+          {/* Theme Toggle */}
+          <button 
+            className="theme-toggle-button"
+            onClick={toggleTheme}
+            title={mounted ? (theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro') : 'Alternar tema'}
+            aria-label="Alternar tema"
+          >
+            {mounted && theme === 'dark' ? (
+              <Sun className="theme-icon" />
+            ) : (
+              <Moon className="theme-icon" />
+            )}
           </button>
 
           {/* User Menu */}
