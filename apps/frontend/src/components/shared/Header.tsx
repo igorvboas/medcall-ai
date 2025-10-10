@@ -23,39 +23,24 @@ export function Header() {
   useEffect(() => {
     const fetchMedicoData = async () => {
       if (!user?.id) {
-        console.log('Header: Usuário não encontrado');
         setLoadingMedico(false);
         return;
       }
 
-      console.log('Header: Buscando dados do médico para user.id:', user.id);
-
       try {
+        // Buscar usando user_auth (FK para auth.users)
         const { data, error } = await supabase
           .from('medicos')
           .select('name, profile_pic')
-          .eq('id', user.id)
-          .single();
+          .eq('user_auth', user.id)
+          .maybeSingle();
 
         if (error) {
           console.error('Header: Erro ao buscar dados do médico:', error);
-          // Tentar buscar por email se o ID não funcionar
-          const { data: dataByEmail, error: errorByEmail } = await supabase
-            .from('medicos')
-            .select('name, profile_pic')
-            .eq('email', user.email)
-            .single();
-          
-          if (errorByEmail) {
-            console.error('Header: Erro ao buscar por email também:', errorByEmail);
-          } else {
-            console.log('Header: Dados encontrados por email:', dataByEmail);
-            setMedicoData(dataByEmail);
-          }
-        } else {
-          console.log('Header: Dados do médico encontrados:', data);
+        } else if (data) {
           setMedicoData(data);
         }
+        // Se não houver dados, simplesmente não define nada (usa fallback)
       } catch (err) {
         console.error('Header: Erro ao buscar dados do médico:', err);
       } finally {
@@ -64,7 +49,7 @@ export function Header() {
     };
 
     fetchMedicoData();
-  }, [user?.id, user?.email]);
+  }, [user?.id]);
 
   // Função para fazer logout
   const handleLogout = async () => {
@@ -105,11 +90,7 @@ export function Header() {
                 </div>
                 <div className="user-avatar">
                   {(() => {
-                    console.log('Header: Renderizando avatar - medicoData:', medicoData);
-                    console.log('Header: profile_pic:', medicoData?.profile_pic);
-                    
                     if (medicoData?.profile_pic) {
-                      console.log('Header: Mostrando imagem de perfil');
                       return (
                         <Image
                           src={medicoData.profile_pic}
@@ -125,14 +106,12 @@ export function Header() {
                         />
                       );
                     } else if (displayName && displayName !== 'Usuário' && displayName !== 'Carregando...') {
-                      console.log('Header: Mostrando iniciais');
                       return (
                         <div className="user-initials">
                           {displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                         </div>
                       );
                     } else {
-                      console.log('Header: Mostrando ícone de usuário');
                       return <User className="theme-icon" />;
                     }
                   })()}
