@@ -2423,3 +2423,550 @@
     width: 100%;
   }
 }
+
+/* ==================== DARK MODE STYLES ==================== */
+
+/* Table Container */
+.dark .consultas-table-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.dark .consultas-table-container:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* Table Header */
+.dark .table-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .header-cell {
+  background: linear-gradient(135deg, #cccccc 0%, #9ca3af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Table Rows */
+.dark .table-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .table-row:hover {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+}
+
+/* Table Cells */
+.dark .table-cell {
+  color: #cccccc;
+}
+
+.dark .patient-name {
+  color: #ffffff;
+}
+
+.dark .patient-condition {
+  color: #9ca3af;
+}
+
+.dark .date-cell {
+  color: #9ca3af;
+}
+
+.dark .consultation-type {
+  color: #cccccc;
+}
+
+.dark .type-icon {
+  color: #9ca3af;
+}
+
+/* Action Buttons */
+.dark .actions-button {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(26, 26, 26, 0.9) 100%);
+}
+
+.dark .actions-icon {
+  color: #9ca3af;
+}
+
+.dark .actions-button:hover .actions-icon {
+  color: #ffffff;
+}
+
+/* Pagination */
+.dark .pagination-arrow {
+  background: linear-gradient(#2a2a2a, #2a2a2a) padding-box,
+              linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%) border-box;
+  color: #9ca3af;
+}
+
+.dark .pagination-arrow:hover:not(:disabled) {
+  color: #ffffff;
+}
+
+.dark .pagination-number {
+  background: #2a2a2a;
+  color: #9ca3af;
+}
+
+.dark .pagination-number:hover {
+  color: #E6C3A7;
+}
+
+.dark .pagination-number.active {
+  color: #ffffff;
+}
+
+.dark .pagination-dots {
+  color: #6b7280;
+}
+
+/* Loading States */
+.dark .loading-container p {
+  color: #cccccc;
+}
+
+.dark .empty-state h3 {
+  color: #ffffff;
+}
+
+.dark .empty-state p {
+  color: #9ca3af;
+}
+
+.dark .empty-icon {
+  color: #6b7280;
+}
+
+/* Error States */
+.dark .error-container {
+  background: #2a1a1a;
+  border: 1px solid #4a2626;
+}
+
+.dark .error-container h3 {
+  color: #ff6b6b;
+}
+
+.dark .error-container p {
+  color: #ff9999;
+}
+
+/* Back Button */
+.dark .back-button {
+  background: rgba(42, 42, 42, 0.95);
+  color: #cccccc;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .back-button:hover {
+  color: #E6C3A7;
+  border-color: rgba(230, 195, 167, 0.3);
+}
+
+/* Modal */
+.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.dark .modal-content {
+  background: rgba(26, 26, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .modal-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .modal-title {
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .modal-close {
+  background: #2a2a2a;
+  color: #9ca3af;
+}
+
+.dark .modal-close:hover {
+  background: linear-gradient(135deg, #4a2626 0%, #3a1f1f 100%);
+  color: #ff6b6b;
+}
+
+.dark .section-title {
+  color: #ffffff;
+}
+
+.dark .section-content {
+  color: #cccccc;
+}
+
+.dark .info-label {
+  color: #9ca3af;
+}
+
+.dark .info-value {
+  color: #cccccc;
+}
+
+/* Consultation Info Card */
+.dark .consultation-info-card {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .info-block {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .info-block:hover {
+  background: linear-gradient(135deg, rgba(51, 51, 51, 0.95) 0%, rgba(42, 42, 42, 0.95) 100%);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark .info-content .info-label {
+  color: #9ca3af;
+}
+
+.dark .info-content .info-value {
+  color: #ffffff;
+}
+
+.dark .patient-context-section {
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.1) 0%, rgba(230, 195, 167, 0.15) 100%);
+  border: 1px solid rgba(230, 195, 167, 0.3);
+}
+
+.dark .context-label {
+  color: #E6C3A7;
+}
+
+.dark .context-text {
+  color: #E6C3A7;
+}
+
+/* Chat Container */
+.dark .chat-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .chat-container:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+.dark .chat-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .chat-header h3 {
+  color: #ffffff;
+}
+
+.dark .message-content {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  color: #cccccc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .user-message .message-content {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #cccccc;
+}
+
+.dark .chat-input-area {
+  background: linear-gradient(135deg, #2a2a2a 0%, rgba(42, 42, 42, 0.5) 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .chat-input {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .chat-input:focus {
+  background: #333333;
+  border-color: #E6C3A7;
+}
+
+.dark .chat-empty-state {
+  color: #9ca3af;
+}
+
+/* Anamnese Container */
+.dark .anamnese-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .anamnese-container:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+.dark .anamnese-header {
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.08) 0%, rgba(230, 195, 167, 0.12) 100%);
+  border-bottom: 2px solid rgba(230, 195, 167, 0.2);
+}
+
+.dark .anamnese-header h2 {
+  color: #E6C3A7;
+}
+
+.dark .anamnese-warning-banner {
+  background: rgba(230, 195, 167, 0.08);
+  border: 1px solid rgba(230, 195, 167, 0.2);
+  color: #E6C3A7;
+}
+
+.dark .collapsible-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .collapsible-header {
+  background: #2a2a2a;
+}
+
+.dark .collapsible-header:hover {
+  background: #333333;
+}
+
+.dark .collapsible-title {
+  color: #ffffff;
+}
+
+.dark .collapsible-icon {
+  color: #9ca3af;
+}
+
+.dark .collapsible-content {
+  background: #1a1a1a;
+}
+
+.dark .anamnese-subsection h4 {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .anamnese-subsection h5 {
+  color: #9ca3af;
+}
+
+.dark .anamnese-loading,
+.dark .anamnese-error,
+.dark .anamnese-empty {
+  color: #9ca3af;
+}
+
+/* Data Fields */
+.dark .data-field {
+  background: #2a2a2a;
+  border-left: 4px solid transparent;
+}
+
+.dark .data-field:hover {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 1) 0%, rgba(51, 51, 51, 1) 100%);
+}
+
+.dark .data-label {
+  color: #9ca3af;
+}
+
+.dark .data-value {
+  color: #cccccc;
+}
+
+.dark .data-value-empty {
+  color: #6b7280;
+}
+
+.dark .data-list li {
+  color: #cccccc;
+}
+
+/* Edit Fields */
+.dark .edit-input {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .edit-input:focus {
+  background: #333333;
+  border-color: #E6C3A7;
+}
+
+/* Audio/Document Files */
+.dark .audio-file,
+.dark .document {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .file-name,
+.dark .document-title {
+  color: #ffffff;
+}
+
+.dark .file-size,
+.dark .file-duration,
+.dark .document-type {
+  color: #9ca3af;
+}
+
+.dark .action-button {
+  background: #1a1a1a;
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .action-button:hover {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+/* Stats */
+.dark .consultas-stats {
+  color: #9ca3af;
+}
+
+.dark .consultas-stats span {
+  background: #2a2a2a;
+  color: #cccccc;
+}
+
+/* Alimentação Section */
+.dark .alimentacao-container {
+  background: #1a1a1a;
+}
+
+.dark .alimentacao-title {
+  color: #ffffff;
+}
+
+.dark .refeicao-section {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .refeicao-title {
+  color: #ffffff;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .refeicao-table th {
+  background: #1a1a1a;
+  color: #cccccc;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .refeicao-table td {
+  color: #9ca3af;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .refeicao-table tr:hover {
+  background: #333333;
+}
+
+.dark .empty-row {
+  color: #6b7280;
+}
+
+/* Modal de edição */
+.dark .modal-content h3 {
+  color: #ffffff;
+}
+
+.dark .modal-body {
+  background: transparent;
+}
+
+.dark .modal-section {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .form-group label {
+  color: #cccccc;
+}
+
+.dark .form-group input,
+.dark .form-group select {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .form-group input:focus,
+.dark .form-group select:focus {
+  border-color: #E6C3A7;
+  box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.2);
+}
+
+.dark .form-group select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .btn-cancel {
+  background: #2a2a2a;
+  color: #cccccc;
+}
+
+.dark .btn-cancel:hover {
+  background: #333333;
+}
+
+/* No consultations message */
+.dark .no-consultations {
+  color: #6b7280;
+}
+
+/* Consultation details */
+.dark .consultation-title {
+  color: #ffffff;
+}
+
+.dark .consultation-patient,
+.dark .consultation-type,
+.dark .consultation-duration {
+  color: #9ca3af;
+}
+
+.dark .patient-icon,
+.dark .event-type-icon,
+.dark .time-icon {
+  color: #6b7280;
+}
+
+/* Transcription sections */
+.dark .transcription-summary h4,
+.dark .key-points h4,
+.dark .raw-transcription h4,
+.dark .medical-info h4 {
+  color: #ffffff;
+}
+
+.dark .transcription-summary p,
+.dark .raw-transcription p,
+.dark .medical-info p {
+  color: #cccccc;
+}
+
+.dark .key-points li {
+  color: #cccccc;
+}
+
+/* Chat field indicator */
+.dark .chat-field-indicator {
+  color: #a78bfa;
+}

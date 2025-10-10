@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
 import {
   Home,
   FileText,
@@ -32,20 +30,6 @@ const menuItems = [
 
 export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Aguarda a hidratação para evitar erro de mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Função para alternar tema de forma segura
-  const toggleTheme = () => {
-    if (mounted) {
-      setTheme(theme === 'dark' ? 'light' : 'dark');
-    }
-  };
 
   return (
     <aside
@@ -74,14 +58,6 @@ export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
         <button className="nav-btn" aria-label="Sair">
           <LogOut size={20} />
           <span className="nav-label">Sair</span>
-        </button>
-        <button 
-          className="toggle-darkmode" 
-          onClick={toggleTheme}
-          title={mounted ? (theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro') : 'Alternar tema'}
-          aria-label="Alternar tema"
-        >
-          <span className={mounted && theme === 'dark' ? 'dark-mode' : ''}></span>
         </button>
       </div>
     </aside>

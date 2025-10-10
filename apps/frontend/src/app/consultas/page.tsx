@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Edit3, Save, X, Sparkles, Edit
+  Edit3, Save, X, Sparkles, Edit, Plus
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
@@ -6126,9 +6126,20 @@ function ConsultasPageContent() {
   return (
     <div className="consultas-container">
       <div className="consultas-header">
-        <h1 className="consultas-title">Lista de Consultas</h1>
-        <div className="consultas-stats">
-          <span>{totalConsultations} consultas encontradas</span>
+        <div className="consultas-header-content">
+          <div>
+            <h1 className="consultas-title">Lista de Consultas</h1>
+            <div className="consultas-stats">
+              <span>{totalConsultations} consultas encontradas</span>
+            </div>
+          </div>
+          <button 
+            className="btn-new-consultation"
+            onClick={() => router.push('/consulta/nova')}
+          >
+            <Plus className="btn-icon" />
+            Nova Consulta
+          </button>
         </div>
       </div>
 

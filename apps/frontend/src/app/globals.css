@@ -498,6 +498,16 @@ body {
   color: var(--text-primary);
 }
 
+/* Dark mode theme button */
+.dark .theme-toggle-button {
+  color: #cccccc;
+}
+
+.dark .theme-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
 .notification-button {
   position: relative;
   padding: 10px;
