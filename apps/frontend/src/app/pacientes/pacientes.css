@@ -187,7 +187,7 @@
 .patient-card {
   background: rgba(255, 255, 255, 0.8);
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px 24px;
   border: 1px solid rgba(229, 231, 235, 0.5);
   transition: all 0.3s ease;
   position: relative;
@@ -230,6 +230,8 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
+  gap: 12px;
+  width: 100%;
 }
 
 .patient-info {
@@ -282,13 +284,17 @@
 /* Ações do card */
 .patient-actions {
   display: flex;
-  gap: 8px;
+  gap: 3px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: auto;
 }
 
 .action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
   border: none;
   cursor: pointer;
   display: flex;
@@ -296,11 +302,15 @@
   justify-content: center;
   transition: all 0.2s ease;
   color: #6b7280;
+  flex-shrink: 0;
+  background: rgba(249, 250, 251, 0.8);
+  border: 1px solid rgba(229, 231, 235, 0.6);
 }
 
 .action-btn:hover {
-  background: rgba(107, 114, 128, 0.1);
+  background: rgba(107, 114, 128, 0.15);
   color: #374151;
+  border-color: rgba(107, 114, 128, 0.3);
 }
 
 /* Dark mode action buttons */
@@ -314,13 +324,21 @@
 }
 
 .action-btn.edit:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .action-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.action-btn.copy:hover {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
 }
 
 /* Detalhes do paciente */

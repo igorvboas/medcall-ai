@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2 } from 'lucide-react';
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
@@ -258,6 +258,19 @@ export default function PatientsPage() {
     }
   };
 
+  // Copiar link da anamnese personalizada
+  const handleCopyAnamneseLink = async (patientId: string) => {
+    const link = `${window.location.origin}/anamnese-personalizada?paciente_id=${patientId}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      // TODO: Adicionar feedback visual de sucesso (toast/notification)
+      alert('Link da anamnesecopiado para a área de transferência!');
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      alert('Erro ao copiar link. Tente novamente.');
+    }
+  };
+
   return (
     <div className="patients-page">
       <div className="patients-container">
@@ -346,11 +359,21 @@ export default function PatientsPage() {
                     </div>
                     <div className="patient-actions">
                       <button 
+                        className="action-btn copy"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyAnamneseLink(patient.id);
+                        }}
+                        title="Copiar link da anamnese personalizada"
+                      >
+                        <Link2 size={12} />
+                      </button>
+                      <button 
                         className="action-btn edit"
                         onClick={() => setEditingPatient(patient)}
                         title="Editar paciente"
                       >
-                        <Edit size={16} />
+                        <Edit size={12} />
                       </button>
                       <button 
                         className="action-btn delete"
@@ -361,7 +384,7 @@ export default function PatientsPage() {
                         }}
                         title="Excluir paciente"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
