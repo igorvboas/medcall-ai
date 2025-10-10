@@ -4,7 +4,12 @@ import './globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { Layout } from '@/components/shared/Layout';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+  variable: '--font-inter'
+});
 
 export const metadata: Metadata = {
   title: 'TRIA - Plataforma de Consultas Médicas com IA',
@@ -18,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} ${inter.variable}`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
