@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Edit3, Save, X, Sparkles
+  Edit3, Save, X, Sparkles, Edit
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
@@ -3015,6 +3015,286 @@ function SuplemementacaoSection({
   );
 }
 
+// Componente da seção de Solução Alimentação
+function AlimentacaoSection({ 
+  consultaId
+}: {
+  consultaId: string;
+}) {
+  const [alimentacaoData, setAlimentacaoData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [editingItem, setEditingItem] = useState<{refeicao: string, index: number} | null>(null);
+  const [editForm, setEditForm] = useState({
+    alimento: '',
+    tipo: '',
+    gramatura: '',
+    kcal: ''
+  });
+
+  useEffect(() => {
+    loadAlimentacaoData();
+  }, [consultaId]);
+
+  // Listener para recarregar dados quando a IA processar
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadAlimentacaoData();
+    };
+
+    window.addEventListener('alimentacao-data-refresh', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('alimentacao-data-refresh', handleRefresh);
+    };
+  }, []);
+
+  const loadAlimentacaoData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/alimentacao/${consultaId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAlimentacaoData(data.alimentacao_data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de Alimentação:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
+    try {
+      // Primeiro, atualizar diretamente no Supabase
+      const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fieldPath, 
+          value: newValue
+        }),
+      });
+
+      if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
+      
+      // Depois, notificar o webhook
+      try {
+        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            origem: 'MANUAL',
+            fieldPath, 
+            texto: newValue,
+            consultaId,
+            solucao_etapa: 'ALIMENTACAO'
+          }),
+        });
+      } catch (webhookError) {
+        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
+      }
+      
+      // Recarregar dados após salvar
+      await loadAlimentacaoData();
+    } catch (error) {
+      console.error('Erro ao salvar campo:', error);
+      throw error;
+    }
+  };
+
+  const handleEditItem = (refeicao: string, index: number, item: any) => {
+    setEditingItem({ refeicao, index });
+    setEditForm({
+      alimento: item.alimento || '',
+      tipo: item.tipo || '',
+      gramatura: item.gramatura || '',
+      kcal: item.kcal || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    
+    try {
+      // Salvar dados na tabela s_gramaturas_alimentares
+      const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          refeicao: editingItem.refeicao,
+          index: editingItem.index,
+          alimento: editForm.alimento,
+          tipo: editForm.tipo,
+          gramatura: editForm.gramatura,
+          kcal: editForm.kcal
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao salvar dados');
+      }
+
+      // Fechar modal
+      setEditingItem(null);
+      setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
+      
+      // Recarregar dados
+      await loadAlimentacaoData();
+    } catch (error) {
+      console.error('Erro ao salvar edição:', error);
+      alert('Erro ao salvar edição. Tente novamente.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
+  };
+
+  if (loading) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando dados de alimentação...</p>
+      </div>
+    );
+  }
+
+  const refeicoes = [
+    { key: 'cafe_da_manha', label: 'Café da Manhã' },
+    { key: 'almoco', label: 'Almoço' },
+    { key: 'cafe_da_tarde', label: 'Café da Tarde' },
+    { key: 'jantar', label: 'Jantar' }
+  ];
+
+  const getRefeicaoData = (refeicaoKey: string) => {
+    if (!alimentacaoData) return [];
+    
+    // Usar os dados organizados pela API
+    return alimentacaoData[refeicaoKey] || [];
+  };
+
+  return (
+    <div className="anamnese-sections">
+      <div className="alimentacao-container">
+        <h2 className="alimentacao-title">Alimentação</h2>
+        
+        {/* Grid de refeições */}
+        <div className="refeicoes-grid">
+          {refeicoes.map((refeicao) => {
+            const items = getRefeicaoData(refeicao.key);
+            
+            return (
+              <div key={refeicao.key} className="refeicao-section">
+                <h3 className="refeicao-title">{refeicao.label}</h3>
+                <div className="refeicao-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Alimento</th>
+                        <th>Tipo</th>
+                        <th>Gramatura</th>
+                        <th>Kcal</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.length > 0 ? (
+                        items.map((item: any, index: number) => (
+                          <tr key={item.id}>
+                            <td>{item.alimento}</td>
+                            <td>{item.tipo || '-'}</td>
+                            <td>{item.gramatura}</td>
+                            <td>{item.kcal}</td>
+                            <td>
+                              <button
+                                onClick={() => handleEditItem(refeicao.key, index, item)}
+                                className="edit-button"
+                                title="Editar item"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="empty-row">
+                            Nenhum item adicionado
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modal de edição */}
+      {editingItem && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Editar Item - {refeicoes.find(r => r.key === editingItem.refeicao)?.label}</h3>
+            <div className="edit-form">
+              <div className="form-group">
+                <label>Alimento:</label>
+                <input
+                  type="text"
+                  value={editForm.alimento}
+                  onChange={(e) => setEditForm({...editForm, alimento: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Tipo:</label>
+                <select
+                  value={editForm.tipo}
+                  onChange={(e) => setEditForm({...editForm, tipo: e.target.value})}
+                >
+                  <option value="">Selecione o tipo</option>
+                  <option value="Proteína">Proteína</option>
+                  <option value="Carboidrato">Carboidrato</option>
+                  <option value="Gordura">Gordura</option>
+                  <option value="Fibra">Fibra</option>
+                  <option value="Vitamina">Vitamina</option>
+                  <option value="Mineral">Mineral</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Gramatura:</label>
+                <input
+                  type="text"
+                  value={editForm.gramatura}
+                  onChange={(e) => setEditForm({...editForm, gramatura: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Kcal:</label>
+                <input
+                  type="text"
+                  value={editForm.kcal}
+                  onChange={(e) => setEditForm({...editForm, kcal: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button onClick={handleCancelEdit} className="btn-cancel">
+                Cancelar
+              </button>
+              <button onClick={handleSaveEdit} className="btn-save">
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Componente da seção de Solução Hábitos de Vida
 function HabitosDeVidaSection({ 
   consultaId,
@@ -3869,6 +4149,38 @@ function ConsultasPageContent() {
     }
   };
 
+  // Função para salvar alterações do ALIMENTACAO e mudar para SUPLEMENTACAO
+  const handleSaveAlimentacaoAndContinue = async () => {
+    if (!consultaId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Atualiza a solucao_etapa para SUPLEMENTACAO
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: 'SUPLEMENTACAO'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+        
+      // Recarrega os dados da consulta
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao salvar alterações:', error);
+      alert('Erro ao salvar alterações. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Função para salvar alterações do SUPLEMENTACAO e mudar para ATIVIDADE_FISICA (HABITOS_DE_VIDA)
   const handleSaveSuplemementacaoAndContinue = async () => {
     if (!consultaId) return;
@@ -4226,6 +4538,11 @@ function ConsultasPageContent() {
           return 'SOLUCAO_SUPLEMENTACAO';
         }
         
+        // Se for ALIMENTACAO, retornar a tela de edição completa
+        if (consultaDetails.solucao_etapa === 'ALIMENTACAO') {
+          return 'SOLUCAO_ALIMENTACAO';
+        }
+        
         // Se for HABITOS_DE_VIDA, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
           return 'SOLUCAO_HABITOS_DE_VIDA';
@@ -4233,10 +4550,6 @@ function ConsultasPageContent() {
         
         // Para outras etapas de solução, manter os modais placeholder
         const solucaoModals: Record<string, { title: string; icon: React.ReactNode }> = {
-          'ALIMENTACAO': { 
-            title: 'Tela de Alimentação', 
-            icon: <FileText className="w-16 h-16" style={{ margin: '0 auto 20px', color: '#6366f1' }} />
-          },
           'ATIVIDADE_FISICA': { 
             title: 'Tela de Atividade Fisica', 
             icon: <FileText className="w-16 h-16" style={{ margin: '0 auto 20px', color: '#6366f1' }} />
@@ -5420,8 +5733,143 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
-    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
+    // Se for SOLUCAO_ALIMENTACAO, renderiza a tela de Alimentação
+    if (contentType === 'SOLUCAO_ALIMENTACAO') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Solução - Alimentação</h1>
+          </div>
+
+          {/* Informações da Consulta - Card no Topo */}
+          <div className="consultation-info-card">
+            <div className="consultation-info-grid">
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <User className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Paciente</span>
+                  <span className="info-value">{consultaDetails.patient_name}</span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Data/Hora</span>
+                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
+                    <User className="w-5 h-5" />
+                  ) : (
+                    <Video className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Tipo</span>
+                  <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Duração</span>
+                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper status-icon">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Status</span>
+                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna Única - Alimentação */}
+          <div className="single-column-layout">
+            <div className="anamnese-column">
+              <div className="anamnese-container">
+                <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2>Protocolo de Alimentação</h2>
+                  <button
+                    onClick={handleSaveAlimentacaoAndContinue}
+                    disabled={isSaving}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 20px',
+                      background: isSaving ? '#9ca3af' : '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: isSaving ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSaving) {
+                        e.currentTarget.style.background = '#059669';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSaving) {
+                        e.currentTarget.style.background = '#10b981';
+                      }
+                    }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="loading-spinner-small"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Próximo
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="anamnese-content">
+                  <AlimentacaoSection 
+                    consultaId={consultaId}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
+    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
