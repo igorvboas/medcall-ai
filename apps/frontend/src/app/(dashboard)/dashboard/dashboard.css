@@ -56,7 +56,7 @@
   --divider-color: rgba(255,255,255,0.1);
   --progress-bg: #3a3a3a;
   --pie-center: #2a2a2a;
-  --kpi-bg: #1a1a1a;
+  --kpi-bg: #000000;
   --kpi-text: #ffffff;
   --kpi-number: #ffffff;
   --chart-bg: #1a1a1a;
@@ -154,6 +154,15 @@
   background-position: center;
   background-repeat: no-repeat;
   z-index: 1;
+}
+
+/* Dark mode - KPI cards pretos */
+.dark .kpi--cyan,
+.dark .kpi--amber,
+.dark .kpi--lilac {
+  background-image: none !important;
+  background-color: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* As imagens já contêm o efeito "dentes" */
