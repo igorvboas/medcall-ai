@@ -407,10 +407,10 @@ function AnamneseSection({
       setError(null);
       
       // Buscar dados de todas as tabelas de anamnese
-      console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
+      //console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
       const response = await fetch(`/api/anamnese/${consultaId}`);
       
-      console.log('📡 Status da resposta:', response.status);
+      //console.log('📡 Status da resposta:', response.status);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
@@ -419,7 +419,7 @@ function AnamneseSection({
       }
       
       const data = await response.json();
-      console.log('✅ Dados da anamnese recebidos:', data);
+      //console.log('✅ Dados da anamnese recebidos:', data);
       setAnamneseData(data);
     } catch (err) {
       console.error('❌ Erro ao carregar anamnese:', err);
@@ -1026,6 +1026,7 @@ function DiagnosticoSection({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔍 DiagnosticoSection useEffect - Carregando dados para consulta:', consultaId);
     loadDiagnosticoData();
   }, [consultaId]);
 
@@ -1045,13 +1046,20 @@ function DiagnosticoSection({
   const loadDiagnosticoData = async () => {
     try {
       setLoading(true);
+      //console.log('🔍 Carregando dados de diagnóstico para consulta:', consultaId);
       const response = await fetch(`/api/diagnostico/${consultaId}`);
+      //console.log('📡 Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        //console.log('✅ Dados de diagnóstico carregados:', data);
         setDiagnosticoData(data);
+      } else {
+        console.error('❌ Erro na resposta:', response.status, response.statusText);
+        const errorData = await response.text();
+        console.error('❌ Detalhes do erro:', errorData);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados de diagnóstico:', error);
+      console.error('❌ Erro ao carregar dados de diagnóstico:', error);
     } finally {
       setLoading(false);
     }
@@ -1073,10 +1081,11 @@ function DiagnosticoSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico', {
+        await fetch('/api/ai-edit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
+            webhookUrl: 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico',
             origem: 'MANUAL',
             fieldPath, 
             texto: newValue,
@@ -1100,6 +1109,7 @@ function DiagnosticoSection({
   };
 
   if (loading) {
+    //console.log('🔍 DiagnosticoSection - Mostrando loading...');
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
@@ -1116,6 +1126,9 @@ function DiagnosticoSection({
     integracao_diagnostica,
     habitos_vida
   } = diagnosticoData || {};
+
+  //console.log('🔍 DiagnosticoSection - dados recebidos:', diagnosticoData);
+  //console.log('🔍 DiagnosticoSection - Renderizando componente com dados:', diagnosticoData);
 
   return (
     <div className="anamnese-sections">
@@ -3492,27 +3505,37 @@ function ConsultasPageContent() {
         requestBody.solucao_etapa = 'HABITOS_DE_VIDA';
       }
       
-      console.log('Enviando para webhook:', requestBody);
-      console.log('URL:', webhookUrl);
+      console.log('🚀 Enviando para webhook:', requestBody);
+      console.log('🔗 URL:', webhookUrl);
       
-      // Faz requisição para o webhook
-      const response = await fetch(webhookUrl, {
+      // Faz requisição para nossa API interna (que chama o webhook)
+      console.log('📤 Fazendo requisição para /api/ai-edit...');
+      const response = await fetch('/api/ai-edit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          ...requestBody,
+          webhookUrl: webhookUrl
+        }),
       });
+      
+      console.log('📥 Resposta recebida da API interna:', response.status);
 
       console.log('Status da resposta:', response.status);
       console.log('Response OK?', response.ok);
       
+      const data = await response.json();
+      
       if (!response.ok) {
         console.error('Response not OK:', response.status, response.statusText);
+        // Se for erro 500, pode ser problema no webhook, mas ainda mostramos a resposta
+        if (data.warning) {
+          throw new Error(data.message || 'Webhook de IA não disponível');
+        }
         throw new Error('Erro ao comunicar com a IA');
       }
-
-      const data = await response.json();
       
       // Debug: vamos ver exatamente o que está vindo
       console.log('Resposta completa do webhook:', data);
@@ -3522,23 +3545,52 @@ function ConsultasPageContent() {
       
       // Pega a resposta da IA - lidando com diferentes formatos
       let aiResponse = 'Não foi possível obter resposta da IA';
+      let usedField = 'none';
       
       if (Array.isArray(data) && data.length > 0) {
         // Formato esperado: [{"response": "texto"}]
-        aiResponse = data[0]?.response || aiResponse;
+        const firstItem = data[0];
+        if (firstItem.response) {
+          aiResponse = firstItem.response;
+          usedField = 'data[0].response';
+        } else if (firstItem.message) {
+          aiResponse = firstItem.message;
+          usedField = 'data[0].message';
+        } else if (firstItem.text) {
+          aiResponse = firstItem.text;
+          usedField = 'data[0].text';
+        } else if (firstItem.answer) {
+          aiResponse = firstItem.answer;
+          usedField = 'data[0].answer';
+        }
       } else if (data && typeof data === 'object') {
         // Se não é array, pode ser um objeto com diferentes campos
         if (data.response) {
           aiResponse = data.response;
-        } else if (data.message) {
-          // Se só tem message, significa que o workflow foi iniciado
-          aiResponse = 'Workflow iniciado com sucesso. Processando sua solicitação...';
+          usedField = 'data.response';
         } else if (data.text) {
           aiResponse = data.text;
+          usedField = 'data.text';
         } else if (data.answer) {
           aiResponse = data.answer;
+          usedField = 'data.answer';
+        } else if (data.message) {
+          // Só assume que é "workflow iniciado" se for uma mensagem específica
+          if (data.message.includes('Workflow iniciado') || data.message.includes('Processing')) {
+            aiResponse = 'Workflow iniciado com sucesso. Processando sua solicitação...';
+            usedField = 'data.message (workflow iniciado)';
+          } else {
+            aiResponse = data.message;
+            usedField = 'data.message';
+          }
+        } else if (data.result) {
+          aiResponse = data.result;
+          usedField = 'data.result';
         }
       }
+      
+      //console.log('🎯 Campo usado para resposta:', usedField);
+      //console.log('💬 Resposta final da IA:', aiResponse);
 
       // Adiciona resposta da IA no chat
       const assistantMessage: ChatMessage = {
@@ -3595,6 +3647,7 @@ function ConsultasPageContent() {
   // Carregar detalhes quando houver consulta_id na URL
   useEffect(() => {
     if (consultaId) {
+      console.log('🔍 useEffect - Carregando detalhes para consulta:', consultaId);
       fetchConsultaDetails(consultaId);
     } else {
       setConsultaDetails(null);
@@ -3622,16 +3675,19 @@ function ConsultasPageContent() {
     try {
       setLoadingDetails(true);
       setError(null);
+      //console.log('🔍 Carregando detalhes da consulta:', id);
       const response = await fetch(`/api/consultations/${id}`);
+      //console.log('📡 Response status:', response.status);
       
       if (!response.ok) {
         throw new Error('Erro ao carregar detalhes da consulta');
       }
       
       const data = await response.json();
+      //console.log('✅ Detalhes da consulta carregados:', data.consultation);
       setConsultaDetails(data.consultation);
     } catch (err) {
-      console.error('Erro ao carregar detalhes:', err);
+      console.error('❌ Erro ao carregar detalhes:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes da consulta');
     } finally {
       setLoadingDetails(false);
@@ -3682,7 +3738,7 @@ function ConsultasPageContent() {
             pacienteId: consultaDetails.patient_id
           }),
         });
-        console.log('✅ Webhook de diagnóstico processando disparado com sucesso');
+        //console.log('✅ Webhook de diagnóstico processando disparado com sucesso');
       } catch (webhookError) {
         console.warn('⚠️ Webhook de diagnóstico falhou, mas consulta foi atualizada:', webhookError);
       }
@@ -3881,7 +3937,7 @@ function ConsultasPageContent() {
             pacienteId: consultaDetails.patient_id
           }),
         });
-        console.log('✅ Webhook de criação de entregáveis disparado com sucesso');
+        //console.log('✅ Webhook de criação de entregáveis disparado com sucesso');
       } catch (webhookError) {
         console.warn('⚠️ Webhook de entregáveis falhou, mas consulta foi atualizada:', webhookError);
       }
@@ -4149,6 +4205,7 @@ function ConsultasPageContent() {
       // ETAPA = DIAGNOSTICO
       if (consultaDetails.etapa === 'DIAGNOSTICO') {
         // Retorna a tela de diagnóstico (será renderizado depois)
+        //console.log('🔍 renderConsultationContent - Retornando DIAGNOSTICO para consulta:', consultaDetails.id);
         return 'DIAGNOSTICO';
       }
 
@@ -4228,6 +4285,7 @@ function ConsultasPageContent() {
 
     // Se for DIAGNOSTICO, renderiza a tela de diagnóstico
     if (typeof contentType === 'string' && contentType === 'DIAGNOSTICO') {
+      //console.log('🔍 Renderizando tela de DIAGNOSTICO para consulta:', consultaId);
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">

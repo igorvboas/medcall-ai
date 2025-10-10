@@ -60,13 +60,12 @@ export async function POST(
       );
     }
 
-    // Verificar se o registro existe
+    // Verificar se o registro existe (apenas por consulta_id já que não há RLS)
     const { data: existing } = await supabase
       .from(actualTableName)
-      .select('user_id')
-      .eq('user_id', userId)
+      .select('*')
       .eq('consulta_id', consultaId)
-      .single();
+      .maybeSingle();
 
     if (!existing) {
       // Se não existir, buscar o paciente_id da consulta
@@ -105,7 +104,6 @@ export async function POST(
       const { error: updateError } = await supabase
         .from(actualTableName)
         .update({ [fieldName]: value })
-        .eq('user_id', userId)
         .eq('consulta_id', consultaId);
 
       if (updateError) {

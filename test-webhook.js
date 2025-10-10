@@ -11,7 +11,7 @@ const testWebhook = async () => {
     console.log('🚀 Testando webhook...');
     console.log('📤 Enviando:', requestBody);
 
-    const response = await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-anamnese', {
+    const response = await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -635,7 +635,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             patient_id: room.patientId,
             patient_name: room.patientName,
             consultation_type: 'TELEMEDICINA',
-            status: 'PROCESSANDO',
+            status: 'PROCESSING',
             patient_context: `Consulta online - Sala: ${room.roomName}`
           });
 
