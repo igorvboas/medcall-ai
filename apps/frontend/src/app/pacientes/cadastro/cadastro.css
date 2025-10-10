@@ -6,6 +6,11 @@
     background-color: #f8f9fa;
     min-height: 100vh;
   }
+
+/* Dark mode container */
+.dark .cadastro-container {
+  background-color: var(--dashboard-bg, #0a0a0a);
+}
   
   /* Header */
   .cadastro-header {
@@ -19,6 +24,11 @@
     margin: 0;
     letter-spacing: -0.5px;
   }
+
+/* Dark mode title */
+.dark .cadastro-title {
+  color: #ffffff;
+}
   
   /* Formulário */
   .cadastro-form {
@@ -36,6 +46,13 @@
     border: 1px solid #f0f0f0;
     margin-bottom: 24px;
   }
+
+/* Dark mode form sections */
+.dark .form-section {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
   
   /* Header da seção */
   .section-header {
@@ -70,6 +87,11 @@
     margin: 0;
     letter-spacing: -0.3px;
   }
+
+/* Dark mode section title */
+.dark .section-title {
+  color: #ffffff;
+}
   
   /* Grid do formulário - FORÇADO */
   .cadastro-container .form-grid {
@@ -110,6 +132,11 @@
     line-height: 1.4 !important;
     min-height: 21px !important;
   }
+
+/* Dark mode field labels */
+.dark .cadastro-container .field-label {
+  color: #cccccc !important;
+}
   
   .cadastro-container .form-input,
   .cadastro-container .form-textarea {
@@ -125,6 +152,14 @@
     margin: 0 !important;
     box-sizing: border-box !important;
   }
+
+/* Dark mode inputs */
+.dark .cadastro-container .form-input,
+.dark .cadastro-container .form-textarea {
+  background-color: #2a2a2a !important;
+  border: 2px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
   
   .cadastro-container .form-input {
     height: 56px !important;
@@ -147,12 +182,26 @@
     box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1) !important;
     transform: translateY(-1px) !important;
   }
+
+/* Dark mode focus states */
+.dark .cadastro-container .form-input:focus,
+.dark .cadastro-container .form-textarea:focus {
+  background-color: #333333 !important;
+  border-color: #d4a574 !important;
+  box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.2) !important;
+}
   
   .form-input::placeholder,
   .form-textarea::placeholder {
     color: #a0aec0;
     font-weight: 400;
   }
+
+/* Dark mode placeholders */
+.dark .form-input::placeholder,
+.dark .form-textarea::placeholder {
+  color: #9ca3af;
+}
   
   .cadastro-container .form-textarea {
     resize: vertical !important;
@@ -208,6 +257,11 @@
     border-top: 2px solid #f7fafc;
     margin-top: 40px;
   }
+
+/* Dark mode form actions */
+.dark .form-actions {
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+}
   
   .btn {
     display: flex;
@@ -281,6 +335,17 @@
   .form-textarea:hover:not(:focus) {
     border-color: #cbd5e0;
   }
+
+/* Dark mode hover states */
+.dark .form-input:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: #333333;
+}
+
+.dark .form-textarea:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: #333333;
+}
   
   /* Garantir espaçamento entre campos - FORÇADO */
   .cadastro-container .form-field + .form-field {

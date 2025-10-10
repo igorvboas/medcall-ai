@@ -18,7 +18,7 @@
 .calendar-month-title {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--calendar-text, #fff);
   margin: 0;
   text-transform: capitalize;
 }
@@ -29,16 +29,16 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  border: 1px solid var(--calendar-border, rgba(255, 255, 255, 0.2));
+  background: var(--calendar-bg, rgba(255, 255, 255, 0.1));
+  color: var(--calendar-text, #fff);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .calendar-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--calendar-bg, rgba(255, 255, 255, 0.2));
   transform: scale(1.05);
 }
 
@@ -61,7 +61,7 @@
   height: 32px;
   font-size: 12px;
   font-weight: 600;
-  color: #aaa;
+  color: var(--legend-color, #aaa);
   text-transform: uppercase;
 }
 
@@ -93,13 +93,13 @@
 .calendar-cell-number {
   font-size: 14px;
   font-weight: 500;
-  color: #fff;
+  color: var(--calendar-text, #fff);
   z-index: 1;
 }
 
 /* Cell States */
 .calendar-cell:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--calendar-bg, rgba(255, 255, 255, 0.1));
   transform: scale(1.05);
 }
 
@@ -142,7 +142,7 @@
 }
 
 .calendar-cell-highlighted .calendar-cell-number {
-  color: #fff;
+  color: var(--calendar-text, #fff);
   font-weight: 500;
 }
 

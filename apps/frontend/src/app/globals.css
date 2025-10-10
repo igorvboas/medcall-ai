@@ -8,11 +8,18 @@ html {
   color: var(--text-primary);
 }
 
+/* Forçar modo claro por padrão */
+html:not(.dark) {
+  --bg-primary: #F7F2EC;
+  --text-primary: #111827;
+}
+
 body {
   background: var(--bg-primary) !important;
   color: var(--text-primary);
   margin: 0;
   padding: 0;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 * {
@@ -115,9 +122,9 @@ body {
   bottom: 0;
   width: 84px;
   background: #FFFFFF;
-  color: var(--text-primary);
+  color: #1a1a1a;
   border-radius: 0 24px 24px 0;
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
   overflow: visible;
   z-index: 1000;
   display: flex;
@@ -126,6 +133,14 @@ body {
   gap: 16px;
   padding: 18px 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode sidebar */
+.dark .sidebar {
+  background: #1a1a1a;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar.expanded {
@@ -154,6 +169,12 @@ body {
   background: transparent;
   mix-blend-mode: multiply;
   filter: contrast(1.2) brightness(1.1);
+}
+
+/* Dark mode logo */
+.dark .sidebar-logo-image {
+  mix-blend-mode: normal;
+  filter: contrast(1.2) brightness(1.3) invert(0);
 }
 
 .sidebar-logo-text {
@@ -232,15 +253,24 @@ body {
 .nav-btn:hover { background: #F5EEE6; }
 .nav-btn.is-active { background: #F1E6DA; color: #1e1e1e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
 
+/* Dark mode nav buttons */
+.dark .nav-btn:hover { background: rgba(255, 255, 255, 0.08); }
+.dark .nav-btn.is-active { background: rgba(255, 255, 255, 0.12); color: #ffffff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+
 .nav-label {
   font-size: 14px;
   font-weight: 500;
-  color: inherit;
+  color: #666666;
   white-space: nowrap;
   opacity: 0;
   transform: translateX(-10px);
   transition: all 0.3s ease;
   pointer-events: none;
+}
+
+/* Dark mode nav labels */
+.dark .nav-label {
+  color: #cccccc;
 }
 
 /* Garantir que os ícones sejam sempre visíveis e alinhados */
@@ -250,6 +280,22 @@ body {
   height: 20px;
   display: block;
   margin: 0;
+  color: #666666;
+  transition: color 0.3s ease;
+}
+
+/* Dark mode icons */
+.dark .nav-btn svg {
+  color: #cccccc;
+}
+
+/* Active state icons */
+.nav-btn.is-active svg {
+  color: #1e1e1e;
+}
+
+.dark .nav-btn.is-active svg {
+  color: #ffffff;
 }
 
 /* Forçar centralização absoluta dos ícones no estado compacto */
@@ -302,18 +348,26 @@ body {
 .toggle-darkmode { 
   width: 46px; 
   height: 26px; 
-  border-radius: 999px; 
-  background: #EDE7DF; 
-  position: relative; 
-  align-self: center; 
-  margin-top: 8px; 
-  border: none;
+  border-radius: 999px;
+  background: #e5e7eb;
+  border: 2px solid #d1d5db;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Dark mode toggle */
+.dark .toggle-darkmode {
+  background: #374151;
+  border-color: #4b5563;
 }
 
 .toggle-darkmode:hover {
-  background: #E0D5CC;
+  background: #d1d5db;
+}
+
+.dark .toggle-darkmode:hover {
+  background: #4b5563;
 }
 
 .toggle-darkmode span { 
@@ -323,13 +377,23 @@ body {
   width: 18px; 
   height: 18px; 
   border-radius: 50%; 
-  background: #C8BFB4; 
+  background: #ffffff; 
   transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-darkmode span.dark-mode {
   left: 24px;
-  background: #8B7355;
+  background: #fbbf24;
+}
+
+/* Dark mode circle */
+.dark .toggle-darkmode span {
+  background: #6b7280;
+}
+
+.dark .toggle-darkmode span.dark-mode {
+  background: #fbbf24;
 }
 
 /* Header Styles */

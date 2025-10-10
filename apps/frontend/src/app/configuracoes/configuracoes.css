@@ -7,6 +7,11 @@
   min-height: 100vh;
 }
 
+/* Dark mode container */
+.dark .configuracoes-container {
+  background: var(--dashboard-bg, #0a0a0a);
+}
+
 /* Header */
 .configuracoes-header {
   margin-bottom: 32px;
@@ -24,6 +29,15 @@
   font-size: 16px;
   color: #6b7280;
   margin: 0;
+}
+
+/* Dark mode header */
+.dark .configuracoes-title {
+  color: #ffffff;
+}
+
+.dark .configuracoes-subtitle {
+  color: #cccccc;
 }
 
 /* Formulário */
@@ -44,6 +58,13 @@
   margin: 0;
 }
 
+/* Dark mode form card */
+.dark .form-card {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
 /* Títulos das seções */
 .form-section-title {
   display: flex;
@@ -55,6 +76,12 @@
   margin: 0 0 24px 0;
   padding-bottom: 12px;
   border-bottom: 2px solid #f7fafc;
+}
+
+/* Dark mode section titles */
+.dark .form-section-title {
+  color: #ffffff;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .form-section-title:not(:first-child) {
@@ -83,6 +110,11 @@
   gap: 8px;
 }
 
+/* Dark mode labels */
+.dark .form-label {
+  color: #cccccc;
+}
+
 .form-label .form-section-icon {
   width: 16px;
   height: 16px;
@@ -104,6 +136,14 @@
   box-sizing: border-box;
 }
 
+/* Dark mode inputs */
+.dark .form-input,
+.dark .form-select {
+  background-color: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
 .form-input:focus,
 .form-select:focus {
   outline: none;
@@ -113,15 +153,35 @@
   transform: translateY(-1px);
 }
 
+/* Dark mode focus states */
+.dark .form-input:focus,
+.dark .form-select:focus {
+  background-color: #333333;
+  border-color: #d4a574;
+  box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.2);
+}
+
 .form-input:hover:not(:focus),
 .form-select:hover:not(:focus) {
   border-color: #cbd5e0;
   background-color: #ffffff;
 }
 
+/* Dark mode hover states */
+.dark .form-input:hover:not(:focus),
+.dark .form-select:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: #333333;
+}
+
 .form-input::placeholder {
   color: #a0aec0;
   font-weight: 400;
+}
+
+/* Dark mode placeholder */
+.dark .form-input::placeholder {
+  color: #9ca3af;
 }
 
 /* Select específico */
@@ -205,6 +265,11 @@
   border-top: 2px solid #f7fafc;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Dark mode form actions */
+.dark .form-actions {
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .btn {
