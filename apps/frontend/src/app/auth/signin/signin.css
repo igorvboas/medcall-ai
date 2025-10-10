@@ -125,18 +125,29 @@
   padding: 0.75rem 1rem;
   border: 1px solid #D1D5DB;
   border-radius: 8px;
-  background: #ffffff;
+  background: #ffffff !important;
   font-size: 0.875rem;
-  color: #111827;
+  color: #111827 !important;
   box-sizing: border-box;
   transition: all 0.2s ease;
   font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.form-input:hover:not(:focus) {
+  border-color: #9CA3AF !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #E6C3A8;
+  border-color: #E6C3A8 !important;
   box-shadow: 0 0 0 3px rgba(230, 195, 168, 0.1);
+  background-color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .form-input:disabled {
@@ -149,6 +160,40 @@
   color: #9CA3AF;
 }
 
+/* Autofill styles para compatibilidade entre navegadores */
+.form-input:-webkit-autofill,
+.form-input:-webkit-autofill:hover,
+.form-input:-webkit-autofill:focus,
+.form-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Firefox autofill */
+.form-input:-moz-autofill {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Estilos específicos para diferentes navegadores */
+@supports (-webkit-appearance: none) {
+  .form-input {
+    -webkit-appearance: none;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+}
+
+@supports (-moz-appearance: none) {
+  .form-input {
+    -moz-appearance: none;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+}
+
 /* Password Input */
 .password-input-wrapper {
   position: relative;
@@ -156,6 +201,20 @@
 
 .password-input {
   padding-right: 3rem;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.password-input:hover:not(:focus) {
+  border-color: #9CA3AF !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+.password-input:focus {
+  border-color: #E6C3A8 !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .password-toggle-btn {
