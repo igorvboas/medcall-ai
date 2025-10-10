@@ -1425,3 +1425,259 @@
     max-height: 50vh;
   }
 }
+
+/* ==================== DARK MODE STYLES ==================== */
+
+/* Finish Modal */
+.dark .finish-modal-content {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .finish-modal-content h2 {
+  color: #E6C3A7;
+}
+
+.dark .finish-modal-content p {
+  color: #cccccc;
+}
+
+/* Create Consultation Container */
+.dark .create-consultation-container,
+.dark .create-room-container {
+  background: var(--dashboard-bg, #0a0a0a);
+}
+
+.dark .consultation-card {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dark .section-title,
+.dark .create-room-header h1 {
+  color: #ffffff;
+}
+
+.dark .create-room-header p {
+  color: #9ca3af;
+}
+
+.dark .form-label {
+  color: #cccccc;
+}
+
+.dark .form-select,
+.dark .form-control {
+  background-color: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .form-select:focus,
+.dark .form-control:focus {
+  background-color: #333333;
+  border-color: #d4a574;
+}
+
+.dark .form-select:hover:not(:focus),
+.dark .form-control:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .type-button {
+  background-color: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+}
+
+.dark .type-button:hover {
+  background-color: #333333;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .type-button.active {
+  color: #E6C3A7;
+  background-color: rgba(230, 195, 167, 0.1);
+  border-color: #E6C3A7;
+}
+
+.dark .consent-checkbox {
+  background-color: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dark .consent-checkbox:hover {
+  background-color: #333333;
+}
+
+.dark .checkbox-text {
+  color: #cccccc;
+}
+
+.dark .loading-overlay p {
+  color: #9ca3af;
+}
+
+/* Link Container */
+.dark .link-container {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .link-container .text-muted {
+  color: #cccccc;
+}
+
+.dark .link-container .text-muted strong {
+  color: #ffffff;
+}
+
+.dark .link-container .text-muted.small {
+  background: #2a2a2a;
+  color: #9ca3af;
+}
+
+.dark .btn-copy {
+  background: #2a2a2a;
+  border: 2px solid #E6C3A7;
+  color: #E6C3A7;
+}
+
+/* Consultation Room */
+.dark .consultation-room-container {
+  background: var(--dashboard-bg, #0a0a0a);
+  color: #cccccc;
+}
+
+.dark .consultation-room-loading {
+  background: var(--dashboard-bg, #0a0a0a);
+  color: #cccccc;
+}
+
+.dark .loading-spinner {
+  border: 4px solid #2a2a2a;
+  border-top: 4px solid #d4a574;
+}
+
+.dark .room-header {
+  background: #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .room-info p {
+  color: #cccccc;
+}
+
+.dark .video-main-container,
+.dark .video-local-overlay {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .suggestions-box,
+.dark .transcription-box {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .suggestions-content p,
+.dark .transcription-info {
+  color: #cccccc;
+}
+
+.dark .transcription-textarea {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .transcription-textarea:focus {
+  border-color: #d4a574;
+}
+
+/* Media Controls */
+.dark .media-btn {
+  background: rgba(230, 195, 167, 0.15);
+  color: #E6C3A7;
+}
+
+.dark .media-btn:hover {
+  background: rgba(230, 195, 167, 0.25);
+}
+
+.dark .media-btn.disabled {
+  background: #333333;
+  color: #6b7280;
+}
+
+/* Participant Form */
+.dark .participant-form-content {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.dark .participant-form h3 {
+  color: #ffffff;
+}
+
+.dark .participant-form input {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* Suggestions Panel */
+.dark .suggestions-panel {
+  background: rgba(26, 26, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .suggestions-header {
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.08) 0%, rgba(230, 195, 167, 0.03) 100%);
+  border-bottom: 1px solid rgba(230, 195, 167, 0.15);
+}
+
+.dark .suggestions-header h3 {
+  color: #ffffff;
+}
+
+.dark .suggestions-empty p {
+  color: #cccccc;
+}
+
+.dark .suggestions-empty span {
+  color: #9ca3af;
+}
+
+.dark .suggestion-card {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .suggestion-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dark .suggestion-content p {
+  color: #cccccc;
+}
+
+.dark .suggestion-source {
+  background: rgba(230, 195, 167, 0.08);
+  border-left: 2px solid rgba(230, 195, 167, 0.3);
+  color: #9ca3af;
+}
+
+.dark .suggestion-dismiss {
+  color: #9ca3af;
+}
+
+.dark .suggestion-dismiss:hover {
+  background: rgba(230, 195, 167, 0.15);
+  color: #E6C3A7;
+}
+
+.dark .suggestion-confidence {
+  color: #9ca3af;
+}

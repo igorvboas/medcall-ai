@@ -31,6 +31,11 @@
   position: relative;
 }
 
+/* Dark mode patients page */
+.dark .patients-page {
+  background: var(--dashboard-bg, #0a0a0a);
+}
+
 /* Container principal */
 .patients-container {
   max-width: 1400px;
@@ -64,6 +69,18 @@
   font-size: 16px;
   margin-top: 8px;
   font-weight: 400;
+}
+
+/* Dark mode title and subtitle */
+.dark .patients-title {
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .patients-subtitle {
+  color: #cccccc;
 }
   
   /* Botões - Seguindo padrão do app */
@@ -133,6 +150,19 @@
   transform: translateY(-2px);
 }
 
+/* Dark mode cards container */
+.dark .patients-cards-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+              0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dark .patients-cards-container:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 
+              0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* Filtros e Busca */
 .filters-section {
   display: flex;
@@ -162,6 +192,12 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+}
+
+/* Dark mode patient card */
+.dark .patient-card {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .patient-card::before {
@@ -206,6 +242,11 @@
   color: #1f2937;
   margin: 0 0 4px 0;
   line-height: 1.3;
+}
+
+/* Dark mode patient name */
+.dark .patient-name {
+  color: #ffffff;
 }
 
 .patient-status {
@@ -262,6 +303,16 @@
   color: #374151;
 }
 
+/* Dark mode action buttons */
+.dark .action-btn {
+  color: #9ca3af;
+}
+
+.dark .action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
 .action-btn.edit:hover {
   background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
@@ -297,6 +348,15 @@
   font-weight: 500;
 }
 
+/* Dark mode details */
+.dark .detail-item {
+  color: #9ca3af;
+}
+
+.dark .detail-value {
+  color: #cccccc;
+}
+
 /* Busca */
 .patients-page .search-container {
   position: relative;
@@ -324,6 +384,23 @@
 }
 
 .search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Dark mode search input */
+.dark .search-input {
+  background: rgba(42, 42, 42, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .search-input:focus {
+  background: #2a2a2a;
+  border-color: #E6C3A7;
+  box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.2);
+}
+
+.dark .search-input::placeholder {
   color: #9ca3af;
 }
 
@@ -360,6 +437,19 @@
   border-color: #E6C3A7;
   box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.1);
   background: white;
+}
+
+/* Dark mode status filter */
+.dark .status-filter {
+  background: rgba(42, 42, 42, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .status-filter:focus {
+  background: #2a2a2a;
+  border-color: #E6C3A7;
+  box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.2);
 }
 
 /* Botões */
@@ -428,6 +518,15 @@
   border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
+/* Dark mode loading/empty states */
+.dark .loading-state, 
+.dark .error-state, 
+.dark .empty-state {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
 .loading-spinner {
   width: 48px;
   height: 48px;
@@ -466,6 +565,24 @@
   color: #6b7280;
   margin: 0 0 32px 0;
   max-width: 400px;
+}
+
+/* Dark mode text states */
+.dark .loading-text, 
+.dark .error-title {
+  color: #ffffff;
+}
+
+.dark .error-message {
+  color: #9ca3af;
+}
+
+.dark .empty-state h3 {
+  color: #ffffff;
+}
+
+.dark .empty-state p {
+  color: #9ca3af;
 }
 
 /* Responsive Design */

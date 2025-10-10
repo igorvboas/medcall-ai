@@ -31,6 +31,11 @@
   position: relative;
 }
 
+/* Dark mode container */
+.dark .consultas-container {
+  background: var(--dashboard-bg, #0a0a0a);
+}
+
 
 /* Header */
 .consultas-header {
@@ -49,6 +54,14 @@
   margin: 0;
   letter-spacing: -1px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode title */
+.dark .consultas-title {
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Container da tabela */
@@ -2106,4 +2119,332 @@
   .field-actions {
     gap: 2px;
   }
+}
+
+/* ==================== DARK MODE STYLES ==================== */
+
+/* Table Container */
+.dark .consultas-table-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.dark .consultas-table-container:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* Table Header */
+.dark .table-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .header-cell {
+  background: linear-gradient(135deg, #cccccc 0%, #9ca3af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Table Rows */
+.dark .table-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .table-row:hover {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+}
+
+/* Table Cells */
+.dark .table-cell {
+  color: #cccccc;
+}
+
+.dark .patient-name {
+  color: #ffffff;
+}
+
+.dark .patient-condition,
+.dark .date-cell {
+  color: #9ca3af;
+}
+
+.dark .consultation-type {
+  color: #cccccc;
+}
+
+/* Action Buttons */
+.dark .actions-button {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(26, 26, 26, 0.9) 100%);
+}
+
+.dark .actions-icon {
+  color: #9ca3af;
+}
+
+/* Pagination */
+.dark .pagination-arrow {
+  background: linear-gradient(#2a2a2a, #2a2a2a) padding-box,
+              linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%) border-box;
+  color: #9ca3af;
+}
+
+.dark .pagination-number {
+  background: #2a2a2a;
+  color: #9ca3af;
+}
+
+/* Loading & Empty States */
+.dark .loading-container p,
+.dark .error-container,
+.dark .empty-state {
+  color: #cccccc;
+}
+
+.dark .error-container {
+  background: #2a1a1a;
+  border: 1px solid #4a2626;
+}
+
+.dark .empty-state h3 {
+  color: #ffffff;
+}
+
+.dark .empty-state p {
+  color: #9ca3af;
+}
+
+/* Back Button */
+.dark .back-button {
+  background: rgba(42, 42, 42, 0.95);
+  color: #cccccc;
+}
+
+.dark .back-button:hover {
+  color: #E6C3A7;
+}
+
+/* Modal */
+.dark .modal-content {
+  background: rgba(26, 26, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .modal-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .modal-title {
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .modal-close {
+  background: #2a2a2a;
+  color: #9ca3af;
+}
+
+.dark .section-title {
+  color: #ffffff;
+}
+
+.dark .section-content,
+.dark .info-value {
+  color: #cccccc;
+}
+
+.dark .info-label {
+  color: #9ca3af;
+}
+
+/* Consultation Info Card */
+.dark .consultation-info-card {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .info-block {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .info-block:hover {
+  background: linear-gradient(135deg, rgba(51, 51, 51, 0.95) 0%, rgba(42, 42, 42, 0.95) 100%);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark .info-content .info-label {
+  color: #9ca3af;
+}
+
+.dark .info-content .info-value {
+  color: #ffffff;
+}
+
+.dark .patient-context-section {
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.1) 0%, rgba(230, 195, 167, 0.15) 100%);
+  border: 1px solid rgba(230, 195, 167, 0.3);
+}
+
+.dark .context-text {
+  color: #E6C3A7;
+}
+
+/* Chat Container */
+.dark .chat-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .chat-header {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .chat-header h3 {
+  color: #ffffff;
+}
+
+.dark .message-content {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  color: #cccccc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .chat-input-area {
+  background: linear-gradient(135deg, #2a2a2a 0%, rgba(42, 42, 42, 0.5) 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .chat-input {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .chat-input:focus {
+  background: #333333;
+}
+
+/* Anamnese Container */
+.dark .anamnese-container {
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .anamnese-header {
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.08) 0%, rgba(230, 195, 167, 0.12) 100%);
+  border-bottom: 2px solid rgba(230, 195, 167, 0.2);
+}
+
+.dark .anamnese-header h2 {
+  color: #E6C3A7;
+}
+
+.dark .collapsible-header {
+  background: #2a2a2a;
+}
+
+.dark .collapsible-header:hover {
+  background: #333333;
+}
+
+.dark .collapsible-title {
+  color: #ffffff;
+}
+
+.dark .collapsible-icon {
+  color: #9ca3af;
+}
+
+.dark .collapsible-content {
+  background: #1a1a1a;
+}
+
+.dark .anamnese-subsection h4 {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .anamnese-subsection h5 {
+  color: #9ca3af;
+}
+
+/* Data Fields */
+.dark .data-field {
+  background: #2a2a2a;
+  border-left: 4px solid transparent;
+}
+
+.dark .data-field:hover {
+  background: linear-gradient(135deg, rgba(42, 42, 42, 1) 0%, rgba(51, 51, 51, 1) 100%);
+}
+
+.dark .data-label {
+  color: #9ca3af;
+}
+
+.dark .data-value {
+  color: #cccccc;
+}
+
+.dark .data-value-empty {
+  color: #6b7280;
+}
+
+.dark .data-list li {
+  color: #cccccc;
+}
+
+/* Edit Fields */
+.dark .edit-input {
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .edit-input:focus {
+  background: #333333;
+}
+
+/* Audio/Document Files */
+.dark .audio-file,
+.dark .document {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .file-name,
+.dark .document-title {
+  color: #ffffff;
+}
+
+.dark .file-size,
+.dark .file-duration,
+.dark .document-type {
+  color: #9ca3af;
+}
+
+.dark .action-button {
+  background: #1a1a1a;
+  color: #9ca3af;
+}
+
+.dark .action-button:hover {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+/* Stats */
+.dark .consultas-stats {
+  color: #9ca3af;
+}
+
+.dark .consultas-stats span {
+  background: #2a2a2a;
+  color: #cccccc;
 }

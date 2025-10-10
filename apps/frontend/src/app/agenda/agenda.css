@@ -7,6 +7,11 @@
   min-height: 100vh;
 }
 
+/* Dark mode container */
+.dark .agenda-container {
+  background-color: var(--dashboard-bg, #0a0a0a);
+}
+
 /* Header */
 .agenda-header {
   display: flex;
@@ -31,6 +36,15 @@
   font-size: 16px;
   color: #6b7280;
   margin: 0;
+}
+
+/* Dark mode title and subtitle */
+.dark .agenda-title {
+  color: #ffffff;
+}
+
+.dark .agenda-subtitle {
+  color: #cccccc;
 }
 
 .agenda-actions {
@@ -85,12 +99,24 @@
   overflow: hidden;
 }
 
+/* Dark mode calendar section */
+.dark .calendar-section {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
 .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 24px;
   border-bottom: 1px solid #f3f4f6;
+}
+
+/* Dark mode calendar header */
+.dark .calendar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .calendar-navigation {
@@ -117,6 +143,17 @@
   border-color: #d1d5db;
 }
 
+/* Dark mode nav button */
+.dark .nav-button {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dark .nav-button:hover {
+  background-color: #333333;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .nav-icon {
   width: 18px;
   height: 18px;
@@ -130,6 +167,11 @@
   margin: 0;
   min-width: 200px;
   text-align: center;
+}
+
+/* Dark mode calendar title */
+.dark .calendar-title {
+  color: #ffffff;
 }
 
 .view-mode-selector {
@@ -157,6 +199,21 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Dark mode view mode selector */
+.dark .view-mode-selector {
+  background: #2a2a2a;
+}
+
+.dark .view-mode-btn {
+  color: #9ca3af;
+}
+
+.dark .view-mode-btn.active {
+  background: #333333;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
 /* Grid do calendário */
 .calendar-grid {
   padding: 0;
@@ -177,6 +234,16 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Dark mode weekdays */
+.dark .calendar-weekdays {
+  background: #2a2a2a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .weekday-header {
+  color: #9ca3af;
 }
 
 .calendar-days {
@@ -216,6 +283,34 @@
   background-color: #fafafa;
 }
 
+/* Dark mode calendar days */
+.dark .calendar-day {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .calendar-day:hover {
+  background-color: #2a2a2a;
+}
+
+.dark .calendar-day.selected {
+  background-color: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+.dark .calendar-day.today {
+  background-color: #3a2d1a;
+}
+
+.dark .calendar-day.today.selected {
+  background-color: #1e3a5f;
+}
+
+.dark .calendar-day.other-month {
+  color: #4b5563;
+  background-color: #0f0f0f;
+}
+
 .day-number {
   display: block;
   font-size: 14px;
@@ -230,6 +325,20 @@
 
 .calendar-day.today .day-number {
   color: #92400e;
+  font-weight: 700;
+}
+
+/* Dark mode day numbers */
+.dark .day-number {
+  color: #cccccc;
+}
+
+.dark .calendar-day.other-month .day-number {
+  color: #4b5563;
+}
+
+.dark .calendar-day.today .day-number {
+  color: #fbbf24;
   font-weight: 700;
 }
 
@@ -301,6 +410,13 @@
   padding: 24px;
 }
 
+/* Dark mode sidebar */
+.dark .sidebar-section {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
 .sidebar-title {
   display: flex;
   align-items: center;
@@ -309,6 +425,11 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0 0 20px 0;
+}
+
+/* Dark mode sidebar title */
+.dark .sidebar-title {
+  color: #ffffff;
 }
 
 .sidebar-icon {
@@ -342,6 +463,17 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Dark mode consultation card */
+.dark .consultation-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(42, 42, 42, 0.5);
+}
+
+.dark .consultation-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .consultation-header {
   display: flex;
   justify-content: space-between;
@@ -356,6 +488,11 @@
   font-size: 14px;
   font-weight: 600;
   color: #374151;
+}
+
+/* Dark mode consultation time */
+.dark .consultation-time {
+  color: #cccccc;
 }
 
 .time-icon {
@@ -410,6 +547,17 @@
   color: #6b7280;
 }
 
+/* Dark mode consultation details */
+.dark .consultation-title {
+  color: #ffffff;
+}
+
+.dark .consultation-patient,
+.dark .consultation-type,
+.dark .consultation-duration {
+  color: #9ca3af;
+}
+
 .patient-icon,
 .event-type-icon {
   width: 14px;
@@ -444,6 +592,19 @@
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
+}
+
+/* Dark mode summary */
+.dark .summary-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .summary-label {
+  color: #9ca3af;
+}
+
+.dark .summary-value {
+  color: #ffffff;
 }
 
 /* Responsividade */
