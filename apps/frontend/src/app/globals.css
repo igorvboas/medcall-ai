@@ -8,6 +8,12 @@ html {
   color: var(--text-primary);
 }
 
+/* Forçar modo claro por padrão */
+html:not(.dark) {
+  --bg-primary: #F7F2EC;
+  --text-primary: #111827;
+}
+
 body {
   background: var(--bg-primary) !important;
   color: var(--text-primary);
