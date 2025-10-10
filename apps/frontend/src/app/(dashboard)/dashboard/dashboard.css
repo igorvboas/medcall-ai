@@ -8,22 +8,64 @@
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
+/* Light Mode - Cards brancos com texto preto */
+.dashboard-exact {
+  --dashboard-bg: #f7f2ec;
+  --dashboard-title-color: #1a1a1a;
+  --card-bg: #ffffff;
+  --card-text: #1a1a1a;
+  --card-border: rgba(0, 0, 0, 0.1);
+  --section-border: rgba(0, 0, 0, 0.15);
+  --table-row-bg: #f8f9fa;
+  --table-text: #1a1a1a;
+  --table-header: #666666;
+  --select-bg: #ffffff;
+  --select-text: #1a1a1a;
+  --legend-color: #666666;
+  --label-color: #666666;
+  --divider-color: rgba(0,0,0,0.1);
+  --progress-bg: #e5e7eb;
+  --pie-center: #ffffff;
+  --kpi-bg: transparent;
+  --kpi-text: #111111;
+  --kpi-number: #111111;
+  --chart-bg: #ffffff;
+  --chart-text: #1a1a1a;
+  --calendar-bg: #ffffff;
+  --calendar-text: #1a1a1a;
+  --calendar-border: #e5e7eb;
+  --status-bg: #ffffff;
+  --status-text: #1a1a1a;
+}
+
 /* Dark Mode */
 .dark .dashboard-exact {
   --dashboard-bg: #0a0a0a;
   --dashboard-title-color: #ffffff;
-  --card-bg: #ffffff;
-  --card-text: #1a1a1a;
-  --table-row-bg: #f8f8f8;
-  --table-text: #1a1a1a;
-  --table-header: #666;
-  --select-bg: #f5f5f5;
-  --select-text: #1a1a1a;
-  --legend-color: #666;
-  --label-color: #666;
-  --divider-color: rgba(0,0,0,0.1);
-  --progress-bg: #e5e5e5;
-  --pie-center: #f5f5f5;
+  --card-bg: #1a1a1a;
+  --card-text: #ffffff;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --section-border: rgba(255, 255, 255, 0.12);
+  --table-row-bg: #2a2a2a;
+  --table-text: #ffffff;
+  --table-header: #cccccc;
+  --select-bg: #2a2a2a;
+  --select-text: #ffffff;
+  --legend-color: #cccccc;
+  --label-color: #cccccc;
+  --divider-color: rgba(255,255,255,0.1);
+  --progress-bg: #3a3a3a;
+  --pie-center: #2a2a2a;
+  --kpi-bg: #1a1a1a;
+  --kpi-text: #ffffff;
+  --kpi-number: #ffffff;
+  --chart-bg: #1a1a1a;
+  --chart-text: #ffffff;
+  --calendar-bg: #1a1a1a;
+  --calendar-text: #ffffff;
+  --calendar-border: #3a3a3a;
+  --status-bg: #1a1a1a;
+  --status-text: #ffffff;
 }
 
 /* Layout limpo sem duplicações */
@@ -82,7 +124,8 @@
   padding: 20px; /* Padding menor */
   border-radius: 24px; /* Border radius menor */
   box-shadow: 0 4px 16px rgba(0,0,0,0.06); /* Sombra mais sutil */
-  color: #111;
+  color: var(--kpi-text, #111);
+  background: var(--kpi-bg, transparent);
   flex: 1;
   z-index: 1;
   overflow: visible;
@@ -119,7 +162,7 @@
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #111 !important;
+  color: var(--kpi-text, #111) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -128,7 +171,7 @@
 .kpi .value {
   font-size: 36px;
   font-weight: 700;
-  color: #111 !important;
+  color: var(--kpi-number, #111) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -136,10 +179,11 @@
 
 /* Cards Escuros com efeito 3D */
 .card-dark {
-  background: #121316;
+  background: var(--card-bg, #121316);
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
   border-radius: 20px; /* Border radius menor */
   padding: 18px; /* Padding menor */
-  color: #fff;
+  color: var(--card-text, #fff);
   box-shadow: 
     0 6px 24px rgba(0,0,0,0.12), /* Sombra mais sutil */
     0 2px 8px rgba(0,0,0,0.08),
@@ -194,12 +238,8 @@
   margin-bottom: 5px;
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--card-text, #fff);
   flex-shrink: 0;
-}
-
-.dark .weekly-chart .card-title {
-  color: var(--card-text);
 }
 
 /* Card de Consultas com espaçamento menor */
@@ -227,16 +267,13 @@
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: #fff !important;
+  color: var(--card-text, #fff) !important;
   margin: 0;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
 
-.dark .card-title {
-  color: var(--card-text) !important;
-}
 
 .card-actions {
   display: flex;
@@ -246,19 +283,12 @@
 
 .year-select,
 .month-select {
-  background: #1f2024;
+  background: var(--select-bg, #1f2024);
   border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
+  color: var(--select-text, #fff);
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 14px;
-}
-
-.dark .year-select,
-.dark .month-select {
-  background: var(--select-bg);
-  border: 1px solid rgba(0,0,0,0.12);
-  color: var(--select-text);
 }
 
 .btn-download,
@@ -324,11 +354,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #aaa;
-}
-
-.dark .chart-legend-top .legend-item {
-  color: var(--legend-color);
+  color: var(--legend-color, #aaa);
 }
 
 .legend-line {
@@ -426,7 +452,7 @@
 }
 
 .line-chart-3d .axis-labels text:hover {
-  fill: #fff;
+  fill: var(--chart-text, #fff);
   font-size: 13px;
 }
 
@@ -642,27 +668,20 @@
 .bar-value {
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--card-text, #fff);
   margin-top: 4px;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.dark .bar-value {
-  color: var(--card-text);
-  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
-}
 
 .bar-label-3d {
   font-size: 12px;
-  color: #aaa;
+  color: var(--legend-color, #aaa);
   font-weight: 500;
   text-align: center;
   margin-top: 4px;
 }
 
-.dark .bar-label-3d {
-  color: var(--label-color);
-}
 
 /* Animação de crescimento das barras */
 @keyframes barGrowth {
@@ -843,7 +862,7 @@
 
 .bar-label {
   font-size: 14px;
-  color: #aaa;
+  color: var(--legend-color, #aaa);
   font-weight: 500;
   margin-top: 8px;
 }
@@ -856,36 +875,23 @@
 }
 
 .table thead th {
-  color: #aaa;
+  color: var(--table-header, #aaa);
   font-size: 14px;
   font-weight: 600;
   padding: 0 14px 8px; /* Menos padding */
   text-align: left;
 }
 
-.dark .table thead th {
-  color: var(--table-header);
-}
-
 .table tbody tr {
-  background: #0f1013;
+  background: var(--table-row-bg, #0f1013);
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.dark .table tbody tr {
-  background: var(--table-row-bg);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .table tbody td {
   padding: 12px 14px; /* Menos padding nas células */
   font-size: 14px; /* Fonte menor */
-  color: #fff;
-}
-
-.dark .table tbody td {
-  color: var(--table-text);
+  color: var(--table-text, #fff);
 }
 
 .table tbody td:first-child {
@@ -929,21 +935,16 @@
 }
 
 .unified-card {
-  background: #121316;
+  background: var(--card-bg, #121316);
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
   border-radius: 18px;
   padding: 20px;
-  color: #fff;
+  color: var(--card-text, #fff);
   box-shadow: 0 6px 24px rgba(0,0,0,0.12);
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0; /* Remove gap automático - usa divisores */
-}
-
-.dark .unified-card {
-  background: var(--card-bg);
-  color: var(--card-text);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
 }
 
 /* Seções do card unificado */
@@ -965,11 +966,7 @@
 .unified-card .card-title {
   font-size: 16px;
   margin-bottom: 16px;
-  color: #fff !important;
-}
-
-.dark .unified-card .card-title {
-  color: var(--card-text) !important;
+  color: var(--card-text, #fff) !important;
 }
 
 .date-section,
@@ -1067,19 +1064,12 @@
 .pie-center {
   width: 60px;
   height: 60px;
-  background: #121316;
+  background: var(--pie-center, #121316);
   border-radius: 50%;
   transform: translateZ(2px);
   box-shadow: 
     0 4px 12px rgba(0,0,0,0.5),
     inset 0 2px 4px rgba(255,255,255,0.1);
-}
-
-.dark .pie-center {
-  background: var(--pie-center);
-  box-shadow: 
-    0 4px 12px rgba(0,0,0,0.2),
-    inset 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .pie-legend {
@@ -1095,6 +1085,7 @@
   justify-content: flex-start; /* Alinha à esquerda */
   gap: 10px; /* Gap entre dot e texto */
   font-size: 13px; /* Fonte menor */
+  color: var(--legend-color, #aaa);
 }
 
 .legend-dot {
@@ -1111,18 +1102,12 @@
 /* Date Range Select */
 .date-range-select {
   width: 100%;
-  background: #1f2024;
+  background: var(--select-bg, #1f2024);
   border: 1px solid rgba(255,255,255,0.12);
-  color: #fff;
+  color: var(--select-text, #fff);
   padding: 12px;
   border-radius: 12px;
   font-size: 14px;
-}
-
-.dark .date-range-select {
-  background: var(--select-bg);
-  border: 1px solid rgba(0,0,0,0.12);
-  color: var(--select-text);
 }
 
 /* Metrics Card */
@@ -1139,7 +1124,7 @@
 
 .metric-label {
   font-size: 14px;
-  color: #aaa;
+  color: var(--label-color, #aaa);
 }
 
 .dark .metric-label {
@@ -1149,7 +1134,7 @@
 .metric-value {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--card-text, #fff);
 }
 
 .dark .metric-value {
@@ -1176,7 +1161,7 @@
 
 .duration-label {
   font-size: 14px;
-  color: #aaa;
+  color: var(--label-color, #aaa);
   margin-bottom: 4px;
 }
 
@@ -1187,7 +1172,7 @@
 .duration-value {
   font-size: 24px;
   font-weight: 700;
-  color: #fff;
+  color: var(--card-text, #fff);
   margin-bottom: 8px;
 }
 
@@ -1197,13 +1182,9 @@
 
 .progress-bar {
   height: 8px;
-  background: #2b2c33;
+  background: var(--progress-bg, #2b2c33);
   border-radius: 4px;
   overflow: hidden;
-}
-
-.dark .progress-bar {
-  background: var(--progress-bg);
 }
 
 .progress-fill {

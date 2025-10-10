@@ -39,9 +39,9 @@ const defaultMetrics: MetricData[] = [
 ];
 
 const periods = [
-  { value: '7d', label: '📅 Últimos 7 dias' },
-  { value: '15d', label: '📅 Últimos 15 dias' },
-  { value: '30d', label: '📅 Últimos 30 dias' }
+  { value: '7d', label: '🗓️ Últimos 7 dias' },
+  { value: '15d', label: '🗓️ Últimos 15 dias' },
+  { value: '30d', label: '🗓️ Últimos 30 dias' }
 ];
 
 export function ConsultationStatusChart({ 
