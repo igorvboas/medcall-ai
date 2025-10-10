@@ -44,6 +44,13 @@
   z-index: 1;
 }
 
+.consultas-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
 .consultas-title {
   font-size: 36px;
   font-weight: 800;
@@ -62,6 +69,39 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Botão Nova Consulta */
+.btn-new-consultation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  white-space: nowrap;
+}
+
+.btn-new-consultation:hover {
+  background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4);
+}
+
+.btn-new-consultation:active {
+  transform: translateY(0);
+}
+
+.btn-new-consultation .btn-icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* Container da tabela */
@@ -523,6 +563,10 @@
     height: 36px;
     font-size: 12px;
   }
+
+  .consultas-header-content {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 768px) {
@@ -532,6 +576,16 @@
   
   .consultas-title {
     font-size: 28px;
+  }
+
+  .consultas-header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-new-consultation {
+    width: 100%;
+    justify-content: center;
   }
   
   .table-header {

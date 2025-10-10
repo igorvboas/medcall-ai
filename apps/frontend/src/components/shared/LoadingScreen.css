@@ -172,3 +172,32 @@
   }
 }
 
+/* ==================== DARK MODE STYLES ==================== */
+
+.dark .loading-screen {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+}
+
+.dark .loading-screen-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .loading-screen-badge-text {
+  color: #cccccc;
+}
+
+.dark .loading-screen-gif-container {
+  background: rgba(26, 26, 26, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .loading-screen-gif-container:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.dark .loading-screen-text {
+  color: #ffffff;
+}
+
