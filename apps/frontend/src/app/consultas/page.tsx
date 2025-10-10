@@ -1136,7 +1136,7 @@ function DiagnosticoSection({
       <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={true}>
         <div className="anamnese-subsection">
           <h4>CID e Diagnósticos</h4>
-          <DataField label="CID Principal" value={diagnostico_principal?.cid_principal} fieldPath="diagnostico_principal.cid_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="CID Principal." value={diagnostico_principal?.cid_principal} fieldPath="diagnostico_principal.cid_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
           <DataField label="Diagnósticos Associados (CID)" value={diagnostico_principal?.diagnosticos_associados_cid} fieldPath="diagnostico_principal.diagnosticos_associados_cid" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
