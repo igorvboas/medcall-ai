@@ -2175,330 +2175,251 @@
   }
 }
 
-/* ==================== DARK MODE STYLES ==================== */
+/* ==================== ESTILOS PARA PÁGINA DE ALIMENTAÇÃO ==================== */
 
-/* Table Container */
-.dark .consultas-table-container {
-  background: rgba(26, 26, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+.single-column-layout {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
-.dark .consultas-table-container:hover {
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+.alimentacao-container {
+  background: #fafafa;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Table Header */
-.dark .table-header {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+.alimentacao-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 32px;
+  text-align: center;
 }
 
-.dark .header-cell {
-  background: linear-gradient(135deg, #cccccc 0%, #9ca3af 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.refeicoes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
-/* Table Rows */
-.dark .table-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.refeicao-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
 }
 
-.dark .table-row:hover {
-  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+.refeicao-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16px;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
 }
 
-/* Table Cells */
-.dark .table-cell {
-  color: #cccccc;
+.refeicao-table {
+  overflow-x: auto;
 }
 
-.dark .patient-name {
-  color: #ffffff;
+.refeicao-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
 }
 
-.dark .patient-condition,
-.dark .date-cell {
-  color: #9ca3af;
+.refeicao-table th {
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 12px;
 }
 
-.dark .consultation-type {
-  color: #cccccc;
-}
-
-/* Action Buttons */
-.dark .actions-button {
-  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(26, 26, 26, 0.9) 100%);
-}
-
-.dark .actions-icon {
-  color: #9ca3af;
-}
-
-/* Pagination */
-.dark .pagination-arrow {
-  background: linear-gradient(#2a2a2a, #2a2a2a) padding-box,
-              linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%) border-box;
-  color: #9ca3af;
-}
-
-.dark .pagination-number {
-  background: #2a2a2a;
-  color: #9ca3af;
-}
-
-/* Loading & Empty States */
-.dark .loading-container p,
-.dark .error-container,
-.dark .empty-state {
-  color: #cccccc;
-}
-
-.dark .error-container {
-  background: #2a1a1a;
-  border: 1px solid #4a2626;
-}
-
-.dark .empty-state h3 {
-  color: #ffffff;
-}
-
-.dark .empty-state p {
-  color: #9ca3af;
-}
-
-/* Back Button */
-.dark .back-button {
-  background: rgba(42, 42, 42, 0.95);
-  color: #cccccc;
-}
-
-.dark .back-button:hover {
-  color: #E6C3A7;
-}
-
-/* Modal */
-.dark .modal-content {
-  background: rgba(26, 26, 26, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .modal-header {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark .modal-title {
-  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.dark .modal-close {
-  background: #2a2a2a;
-  color: #9ca3af;
-}
-
-.dark .section-title {
-  color: #ffffff;
-}
-
-.dark .section-content,
-.dark .info-value {
-  color: #cccccc;
-}
-
-.dark .info-label {
-  color: #9ca3af;
-}
-
-/* Consultation Info Card */
-.dark .consultation-info-card {
-  background: rgba(26, 26, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .info-block {
-  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .info-block:hover {
-  background: linear-gradient(135deg, rgba(51, 51, 51, 0.95) 0%, rgba(42, 42, 42, 0.95) 100%);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-.dark .info-content .info-label {
-  color: #9ca3af;
-}
-
-.dark .info-content .info-value {
-  color: #ffffff;
-}
-
-.dark .patient-context-section {
-  background: linear-gradient(135deg, rgba(230, 195, 167, 0.1) 0%, rgba(230, 195, 167, 0.15) 100%);
-  border: 1px solid rgba(230, 195, 167, 0.3);
-}
-
-.dark .context-text {
-  color: #E6C3A7;
-}
-
-/* Chat Container */
-.dark .chat-container {
-  background: rgba(26, 26, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .chat-header {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark .chat-header h3 {
-  color: #ffffff;
-}
-
-.dark .message-content {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  color: #cccccc;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .chat-input-area {
-  background: linear-gradient(135deg, #2a2a2a 0%, rgba(42, 42, 42, 0.5) 100%);
-  border-top: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark .chat-input {
-  background: #2a2a2a;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-}
-
-.dark .chat-input:focus {
-  background: #333333;
-}
-
-/* Anamnese Container */
-.dark .anamnese-container {
-  background: rgba(26, 26, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .anamnese-header {
-  background: linear-gradient(135deg, rgba(230, 195, 167, 0.08) 0%, rgba(230, 195, 167, 0.12) 100%);
-  border-bottom: 2px solid rgba(230, 195, 167, 0.2);
-}
-
-.dark .anamnese-header h2 {
-  color: #E6C3A7;
-}
-
-.dark .collapsible-header {
-  background: #2a2a2a;
-}
-
-.dark .collapsible-header:hover {
-  background: #333333;
-}
-
-.dark .collapsible-title {
-  color: #ffffff;
-}
-
-.dark .collapsible-icon {
-  color: #9ca3af;
-}
-
-.dark .collapsible-content {
-  background: #1a1a1a;
-}
-
-.dark .anamnese-subsection h4 {
-  color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark .anamnese-subsection h5 {
-  color: #9ca3af;
-}
-
-/* Data Fields */
-.dark .data-field {
-  background: #2a2a2a;
-  border-left: 4px solid transparent;
-}
-
-.dark .data-field:hover {
-  background: linear-gradient(135deg, rgba(42, 42, 42, 1) 0%, rgba(51, 51, 51, 1) 100%);
-}
-
-.dark .data-label {
-  color: #9ca3af;
-}
-
-.dark .data-value {
-  color: #cccccc;
-}
-
-.dark .data-value-empty {
+.refeicao-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #f3f4f6;
   color: #6b7280;
 }
 
-.dark .data-list li {
-  color: #cccccc;
+.refeicao-table tr:hover {
+  background: #f9fafb;
 }
 
-/* Edit Fields */
-.dark .edit-input {
-  background: #2a2a2a;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+.edit-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.dark .edit-input:focus {
-  background: #333333;
+.edit-button:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
 }
 
-/* Audio/Document Files */
-.dark .audio-file,
-.dark .document {
-  background: #2a2a2a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.edit-button:active {
+  transform: translateY(0);
 }
 
-.dark .file-name,
-.dark .document-title {
-  color: #ffffff;
-}
-
-.dark .file-size,
-.dark .file-duration,
-.dark .document-type {
+.empty-row {
+  text-align: center;
   color: #9ca3af;
+  font-style: italic;
+  padding: 24px;
 }
 
-.dark .action-button {
-  background: #1a1a1a;
-  color: #9ca3af;
+/* Modal de edição */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
-.dark .action-button:hover {
-  background-color: #333333;
-  color: #ffffff;
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* Stats */
-.dark .consultas-stats {
-  color: #9ca3af;
+.modal-content h3 {
+  margin: 0 0 24px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
 }
 
-.dark .consultas-stats span {
-  background: #2a2a2a;
-  color: #cccccc;
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.form-group select {
+  cursor: pointer;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-group select:hover {
+  border-color: #d1d5db;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 12px 24px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-save {
+  padding: 12px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-save:hover {
+  background: #059669;
+}
+
+/* Responsividade para alimentação */
+@media (max-width: 768px) {
+  .refeicoes-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .alimentacao-container {
+    padding: 20px;
+  }
+  
+  .refeicao-section {
+    padding: 16px;
+  }
+  
+  .modal-content {
+    margin: 20px;
+    padding: 24px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+  }
 }
