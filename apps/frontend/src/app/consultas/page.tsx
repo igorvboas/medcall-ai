@@ -5,10 +5,32 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Edit3, Save, X, Sparkles, Edit, Plus
+  Save, X, Sparkles, Edit, Plus
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import './consultas.css';
+
+// Tipos para exercícios físicos
+interface ExercicioFisico {
+  id: number;
+  consulta_id: string;
+  paciente_id: string;
+  user_id?: string;
+  thread_id?: string;
+  tipo_treino?: string;
+  grupo_muscular?: string;
+  nome_exercicio?: string;
+  series?: string;
+  repeticoes?: string;
+  descanso?: string;
+  observacoes?: string;
+  treino_atual?: number;
+  proximo_treino?: number;
+  ultimo_treino?: boolean;
+  alertas_importantes?: string;
+  nome_treino?: string;
+  created_at?: string;
+}
 
 // Tipos para consultas da API
 interface Consultation {
@@ -251,7 +273,7 @@ function DataField({
                 onClick={handleEdit}
                 title="Editar campo manualmente"
               >
-                <Edit3 className="w-4 h-4" />
+                <Edit className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -400,6 +422,20 @@ function AnamneseSection({
   useEffect(() => {
     fetchAnamneseData();
   }, [consultaId]);
+
+  // Listener para recarregar dados de anamnese quando a IA processar
+  useEffect(() => {
+    const handleAnamneseRefresh = () => {
+      console.log('🔍 DEBUG [REFERENCIA] Forçando refresh dos dados de anamnese');
+      fetchAnamneseData();
+    };
+
+    window.addEventListener('force-anamnese-refresh', handleAnamneseRefresh);
+    
+    return () => {
+      window.removeEventListener('force-anamnese-refresh', handleAnamneseRefresh);
+    };
+  }, []);
 
   const fetchAnamneseData = async () => {
     try {
@@ -3725,6 +3761,11 @@ function ConsultasPageContent() {
   // Estado para salvar alterações
   const [isSaving, setIsSaving] = useState(false);
 
+  // Estados para ATIVIDADE_FISICA
+  const [atividadeFisicaData, setAtividadeFisicaData] = useState<ExercicioFisico[]>([]);
+  const [loadingAtividadeFisica, setLoadingAtividadeFisica] = useState(false);
+  const [editingExercicio, setEditingExercicio] = useState<{id: number, field: string} | null>(null);
+
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
     setSelectedField({ fieldPath, label });
@@ -3817,56 +3858,56 @@ function ConsultasPageContent() {
         throw new Error('Erro ao comunicar com a IA');
       }
       
-      // Debug: vamos ver exatamente o que está vindo
-      console.log('Resposta completa do webhook:', data);
-      console.log('Tipo da resposta:', typeof data);
-      console.log('É array?', Array.isArray(data));
-      console.log('Primeiro item:', data[0]);
+      // A API retorna { success: true, result: "string_json" }
+      // Precisamos extrair o result e fazer parse
+      let webhookResponse = data.result || data;
+      
+      // Tentar parsear se for string JSON
+      let parsedData;
+      if (typeof webhookResponse === 'string') {
+        try {
+          parsedData = JSON.parse(webhookResponse);
+        } catch (e) {
+          // Se não conseguir fazer parse, usar a string diretamente
+          parsedData = webhookResponse;
+        }
+      } else {
+        parsedData = webhookResponse;
+      }
       
       // Pega a resposta da IA - lidando com diferentes formatos
       let aiResponse = 'Não foi possível obter resposta da IA';
-      let usedField = 'none';
       
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
         // Formato esperado: [{"response": "texto"}]
-        const firstItem = data[0];
-        if (firstItem.response) {
+        const firstItem = parsedData[0];
+        if (firstItem && firstItem.response) {
           aiResponse = firstItem.response;
-          usedField = 'data[0].response';
-        } else if (firstItem.message) {
+        } else if (firstItem && firstItem.message) {
           aiResponse = firstItem.message;
-          usedField = 'data[0].message';
-        } else if (firstItem.text) {
+        } else if (firstItem && firstItem.text) {
           aiResponse = firstItem.text;
-          usedField = 'data[0].text';
-        } else if (firstItem.answer) {
+        } else if (firstItem && firstItem.answer) {
           aiResponse = firstItem.answer;
-          usedField = 'data[0].answer';
         }
-      } else if (data && typeof data === 'object') {
+      } else if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
         // Se não é array, pode ser um objeto com diferentes campos
-        if (data.response) {
-          aiResponse = data.response;
-          usedField = 'data.response';
-        } else if (data.text) {
-          aiResponse = data.text;
-          usedField = 'data.text';
-        } else if (data.answer) {
-          aiResponse = data.answer;
-          usedField = 'data.answer';
-        } else if (data.message) {
-          // Só assume que é "workflow iniciado" se for uma mensagem específica
-          if (data.message.includes('Workflow iniciado') || data.message.includes('Processing')) {
+        if (parsedData.response) {
+          aiResponse = parsedData.response;
+        } else if (parsedData.text) {
+          aiResponse = parsedData.text;
+        } else if (parsedData.answer) {
+          aiResponse = parsedData.answer;
+        } else if (parsedData.message) {
+          if (parsedData.message.includes('Workflow iniciado') || parsedData.message.includes('Processing')) {
             aiResponse = 'Workflow iniciado com sucesso. Processando sua solicitação...';
-            usedField = 'data.message (workflow iniciado)';
           } else {
-            aiResponse = data.message;
-            usedField = 'data.message';
+            aiResponse = parsedData.message;
           }
-        } else if (data.result) {
-          aiResponse = data.result;
-          usedField = 'data.result';
         }
+      } else if (typeof parsedData === 'string') {
+        // Se ainda é string, usar diretamente
+        aiResponse = parsedData;
       }
       
       //console.log('🎯 Campo usado para resposta:', usedField);
@@ -3895,6 +3936,10 @@ function ConsultasPageContent() {
           if (isDiagnostico) {
             // Trigger refresh of diagnostico data by updating a state that triggers useEffect
             window.dispatchEvent(new CustomEvent('diagnostico-data-refresh'));
+          } else {
+            // Se for anamnese, recarregar dados de anamnese
+            //console.log('🔍 DEBUG [REFERENCIA] Recarregando dados de anamnese após resposta da IA');
+            window.dispatchEvent(new CustomEvent('anamnese-data-refresh'));
           }
         } catch (refreshError) {
           console.warn('Erro ao recarregar dados após IA:', refreshError);
@@ -3934,6 +3979,136 @@ function ConsultasPageContent() {
     }
   }, [consultaId]);
 
+  // Carregar dados de atividade física quando a etapa for ATIVIDADE_FISICA
+  useEffect(() => {
+    console.log('🔍 DEBUG [REFERENCIA] useEffect atividade física - consultaId:', consultaId, 'solucao_etapa:', consultaDetails?.solucao_etapa);
+    if (consultaId && consultaDetails?.solucao_etapa === 'ATIVIDADE_FISICA') {
+      console.log('🔍 DEBUG [REFERENCIA] Condições atendidas, carregando dados de atividade física para consulta:', consultaId);
+      loadAtividadeFisicaData();
+    }
+  }, [consultaId, consultaDetails?.solucao_etapa]);
+
+  // Listener para recarregar dados de anamnese quando a IA processar
+  useEffect(() => {
+    const handleAnamneseRefresh = () => {
+      console.log('🔍 DEBUG [REFERENCIA] Evento de refresh de anamnese recebido');
+      // Disparar evento para o componente AnamneseSection
+      window.dispatchEvent(new CustomEvent('force-anamnese-refresh'));
+    };
+
+    window.addEventListener('anamnese-data-refresh', handleAnamneseRefresh);
+    
+    return () => {
+      window.removeEventListener('anamnese-data-refresh', handleAnamneseRefresh);
+    };
+  }, []);
+
+  const loadAtividadeFisicaData = async () => {
+    if (!consultaId) return;
+    
+    try {
+      setLoadingAtividadeFisica(true);
+      console.log('🔍 DEBUG [REFERENCIA] Iniciando carregamento de dados de atividade física para consulta:', consultaId);
+      
+      const response = await fetch(`/api/atividade-fisica/${consultaId}`);
+      console.log('🔍 DEBUG [REFERENCIA] Resposta da API:', response.status, response.statusText);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 DEBUG [REFERENCIA] Dados recebidos da API:', data);
+        const exercicios = data.exercicios || [];
+        console.log('🔍 DEBUG [REFERENCIA] Exercícios para setar:', exercicios.length, 'exercícios');
+        setAtividadeFisicaData(exercicios);
+        console.log('🔍 DEBUG [REFERENCIA] Estado atividadeFisicaData atualizado');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Erro na resposta da API:', errorData);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados de Atividade Física:', error);
+    } finally {
+      setLoadingAtividadeFisica(false);
+    }
+  };
+
+  const handleSaveExercicio = async (id: number, field: string, newValue: string) => {
+    if (!consultaId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Primeiro, atualizar no banco de dados
+      const response = await fetch(`/api/atividade-fisica/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id,
+          field, 
+          value: newValue
+        }),
+      });
+
+      if (!response.ok) throw new Error('Erro ao atualizar campo no banco de dados');
+      
+      // Depois, notificar o webhook
+      try {
+        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            origem: 'MANUAL',
+            fieldPath: `s_exercicios_fisicos.${field}`,
+            texto: newValue,
+            consultaId,
+            solucao_etapa: 'ATIVIDADE_FISICA'
+          }),
+        });
+      } catch (webhookError) {
+        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
+      }
+
+      // Recarregar dados
+      await loadAtividadeFisicaData();
+      setEditingExercicio(null);
+      
+    } catch (error) {
+      console.error('Erro ao salvar exercício:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveAtividadeFisicaAndContinue = async () => {
+    if (!consultaId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Atualiza a solucao_etapa para HABITOS_DE_VIDA
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: 'HABITOS_DE_VIDA'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Recarregar detalhes da consulta
+      await fetchConsultaDetails(consultaId);
+      
+    } catch (error) {
+      console.error('Erro ao salvar e continuar:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const loadConsultations = async () => {
     try {
       setLoading(true);
@@ -3964,7 +4139,8 @@ function ConsultasPageContent() {
       }
       
       const data = await response.json();
-      //console.log('✅ Detalhes da consulta carregados:', data.consultation);
+      console.log('🔍 DEBUG [REFERENCIA] Detalhes da consulta carregados:', data.consultation);
+      console.log('🔍 DEBUG [REFERENCIA] solucao_etapa:', data.consultation?.solucao_etapa);
       setConsultaDetails(data.consultation);
     } catch (err) {
       console.error('❌ Erro ao carregar detalhes:', err);
@@ -4181,21 +4357,21 @@ function ConsultasPageContent() {
     }
   };
 
-  // Função para salvar alterações do SUPLEMENTACAO e mudar para ATIVIDADE_FISICA (HABITOS_DE_VIDA)
+  // Função para salvar alterações do SUPLEMENTACAO e mudar para ATIVIDADE_FISICA
   const handleSaveSuplemementacaoAndContinue = async () => {
     if (!consultaId) return;
 
     try {
       setIsSaving(true);
       
-      // Atualiza a solucao_etapa para HABITOS_DE_VIDA
+      // Atualiza a solucao_etapa para ATIVIDADE_FISICA
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          solucao_etapa: 'HABITOS_DE_VIDA'
+          solucao_etapa: 'ATIVIDADE_FISICA'
         }),
       });
 
@@ -4256,6 +4432,12 @@ function ConsultasPageContent() {
 
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
+      
+      // Redireciona para o dashboard após finalizar a consulta
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000); // Delay de 1 segundo para mostrar feedback visual
+      
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       alert('Erro ao salvar alterações. Tente novamente.');
@@ -4543,48 +4725,17 @@ function ConsultasPageContent() {
           return 'SOLUCAO_ALIMENTACAO';
         }
         
+        // Se for ATIVIDADE_FISICA, retornar a tela de edição completa
+        if (consultaDetails.solucao_etapa === 'ATIVIDADE_FISICA') {
+          console.log('🔍 DEBUG [REFERENCIA] Solução etapa é ATIVIDADE_FISICA, retornando SOLUCAO_ATIVIDADE_FISICA');
+          return 'SOLUCAO_ATIVIDADE_FISICA';
+        }
+        
         // Se for HABITOS_DE_VIDA, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
           return 'SOLUCAO_HABITOS_DE_VIDA';
         }
-        
-        // Para outras etapas de solução, manter os modais placeholder
-        const solucaoModals: Record<string, { title: string; icon: React.ReactNode }> = {
-          'ATIVIDADE_FISICA': { 
-            title: 'Tela de Atividade Fisica', 
-            icon: <FileText className="w-16 h-16" style={{ margin: '0 auto 20px', color: '#6366f1' }} />
-          },
-        };
 
-        const modalConfig = consultaDetails.solucao_etapa 
-          ? solucaoModals[consultaDetails.solucao_etapa]
-          : null;
-
-        if (modalConfig) {
-          return (
-            <div className="modal-overlay">
-              <div className="modal-content" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px' }}>
-                {modalConfig.icon}
-                <h2 style={{ marginBottom: '10px' }}>{modalConfig.title}</h2>
-                <p style={{ color: '#666' }}>Esta tela será implementada em breve</p>
-                <button 
-                  onClick={handleBackToList}
-                  style={{ 
-                    marginTop: '20px', 
-                    padding: '10px 20px', 
-                    background: '#6366f1', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Voltar para lista
-                </button>
-              </div>
-            </div>
-          );
-        }
       }
     }
 
@@ -5510,6 +5661,237 @@ function ConsultasPageContent() {
       );
     }
 
+    // Se for SOLUCAO_ATIVIDADE_FISICA, renderiza a tela de Atividade Física
+    if (contentType === 'SOLUCAO_ATIVIDADE_FISICA') {
+      console.log('🔍 DEBUG [REFERENCIA] Renderizando tela SOLUCAO_ATIVIDADE_FISICA - consultaDetails:', consultaDetails);
+      console.log('🔍 DEBUG [REFERENCIA] atividadeFisicaData length:', atividadeFisicaData.length);
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar para lista
+            </button>
+            <div className="consultation-info">
+              <h1>Atividades Físicas</h1>
+            </div>
+          </div>
+
+          <div className="consultation-content">
+            {loadingAtividadeFisica ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Carregando exercícios físicos...</p>
+              </div>
+            ) : (
+              <div className="atividade-fisica-container">
+                {(() => {
+                  console.log('🔍 DEBUG [REFERENCIA] Renderizando atividade física - dados:', atividadeFisicaData.length, 'exercícios');
+                  return null;
+                })()}
+                {atividadeFisicaData.length === 0 ? (
+                  <div className="no-data">
+                    <FileText className="w-16 h-16" style={{ color: '#6366f1', marginBottom: '20px' }} />
+                    <h3>Nenhum exercício encontrado</h3>
+                    <p>Não há exercícios físicos cadastrados para este paciente.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Agrupar exercícios por nome_treino */}
+                    {Object.entries(
+                      atividadeFisicaData.reduce((acc, exercicio) => {
+                        const treino = exercicio.nome_treino || 'Treino Sem Nome';
+                        if (!acc[treino]) {
+                          acc[treino] = [];
+                        }
+                        acc[treino].push(exercicio);
+                        return acc;
+                      }, {} as Record<string, ExercicioFisico[]>)
+                    ).map(([nomeTreino, exercicios]: [string, ExercicioFisico[]]) => (
+                      <div key={nomeTreino} className="treino-section">
+                        <h2 className="treino-title">{nomeTreino}</h2>
+                        <div className="exercicios-table-container">
+                          <table className="exercicios-table">
+                            <thead>
+                              <tr>
+                                <th>Nome do Exercício</th>
+                                <th>Séries</th>
+                                <th>Repetições</th>
+                                <th>Descanso</th>
+                                <th>Observações</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {exercicios.map((exercicio: ExercicioFisico) => (
+                                <tr key={exercicio.id}>
+                                  <td>
+                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'nome_exercicio' ? (
+                                      <input
+                                        type="text"
+                                        defaultValue={exercicio.nome_exercicio || ''}
+                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'nome_exercicio', e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveExercicio(exercicio.id, 'nome_exercicio', e.currentTarget.value);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingExercicio(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="edit-input"
+                                      />
+                                    ) : (
+                                      <span 
+                                        className="editable-field"
+                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'nome_exercicio' })}
+                                      >
+                                        {exercicio.nome_exercicio || '-'}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'series' ? (
+                                      <input
+                                        type="text"
+                                        defaultValue={exercicio.series || ''}
+                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'series', e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveExercicio(exercicio.id, 'series', e.currentTarget.value);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingExercicio(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="edit-input"
+                                      />
+                                    ) : (
+                                      <span 
+                                        className="editable-field"
+                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'series' })}
+                                      >
+                                        {exercicio.series || '-'}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'repeticoes' ? (
+                                      <input
+                                        type="text"
+                                        defaultValue={exercicio.repeticoes || ''}
+                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'repeticoes', e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveExercicio(exercicio.id, 'repeticoes', e.currentTarget.value);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingExercicio(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="edit-input"
+                                      />
+                                    ) : (
+                                      <span 
+                                        className="editable-field"
+                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'repeticoes' })}
+                                      >
+                                        {exercicio.repeticoes || '-'}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'descanso' ? (
+                                      <input
+                                        type="text"
+                                        defaultValue={exercicio.descanso || ''}
+                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'descanso', e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveExercicio(exercicio.id, 'descanso', e.currentTarget.value);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingExercicio(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="edit-input"
+                                      />
+                                    ) : (
+                                      <span 
+                                        className="editable-field"
+                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'descanso' })}
+                                      >
+                                        {exercicio.descanso || '-'}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'observacoes' ? (
+                                      <input
+                                        type="text"
+                                        defaultValue={exercicio.observacoes || ''}
+                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'observacoes', e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleSaveExercicio(exercicio.id, 'observacoes', e.currentTarget.value);
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingExercicio(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="edit-input"
+                                      />
+                                    ) : (
+                                      <span 
+                                        className="editable-field"
+                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'observacoes' })}
+                                      >
+                                        {exercicio.observacoes || '-'}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Botão para continuar */}
+                    <div className="save-section">
+                      <button
+                        className="save-button"
+                        onClick={handleSaveAtividadeFisicaAndContinue}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="loading-spinner-small"></div>
+                            Salvando...
+                          </>
+                        ) : (
+                          'Salvar e Avançar para Hábitos de Vida'
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     // Se for SOLUCAO_HABITOS_DE_VIDA, renderiza a tela de Hábitos de Vida
     if (contentType === 'SOLUCAO_HABITOS_DE_VIDA') {
       return (
@@ -5868,8 +6250,8 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
-    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
+    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
+    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
@@ -6151,7 +6533,6 @@ function ConsultasPageContent() {
             <div className="header-cell date-header">Data Consulta</div>
             <div className="header-cell type-header">Tipo de Consulta</div>
             <div className="header-cell status-header">Status</div>
-            <div className="header-cell actions-header"></div>
           </div>
 
           {/* Linhas da tabela */}
@@ -6202,11 +6583,6 @@ function ConsultasPageContent() {
                     />
                   </div>
                   
-                  <div className="table-cell actions-cell">
-                    <button className="actions-button" onClick={(e) => { e.stopPropagation(); }}>
-                      <MoreVertical className="actions-icon" />
-                    </button>
-                  </div>
                 </div>
               ))
             )}
@@ -6304,3 +6680,4 @@ export default function ConsultasPage() {
     </Suspense>
   );
 }
+

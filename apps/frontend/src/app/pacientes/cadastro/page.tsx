@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, FileText, Shield, Calendar } from 'lucide-react';
-import { SuccessModal } from '../../../components/modals/SuccessModal';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import './cadastro.css';
 
@@ -67,8 +66,6 @@ export default function CadastrarPaciente() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
   const [patientId, setPatientId] = useState<string | null>(null);
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
 
@@ -159,8 +156,8 @@ export default function CadastrarPaciente() {
         setPatientId(result.patient.id);
       }
       
-      // Mostrar modal de sucesso
-      setShowSuccessModal(true);
+      // Redirecionar diretamente para a lista de pacientes
+      router.push('/pacientes');
     } catch (error) {
       console.error('Erro ao cadastrar paciente:', error);
       alert(`Erro ao cadastrar paciente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -195,14 +192,6 @@ export default function CadastrarPaciente() {
     return undefined;
   };
 
-  const handleModalConfirm = () => {
-    setShowSuccessModal(false);
-    router.push('/pacientes');
-  };
-
-  const handleModalClose = () => {
-    setShowSuccessModal(false);
-  };
 
   return (
     <div className="cadastro-container">
@@ -482,17 +471,6 @@ export default function CadastrarPaciente() {
         </div>
       </form>
 
-      {/* Modal de Sucesso */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleModalClose}
-        onConfirm={handleModalConfirm}
-        title="Novo Paciente Publicado"
-        message="O novo paciente foi adicionado com sucesso, você pode vê-lo na página da lista de pacientes"
-        showDontShowAgain={true}
-        dontShowAgain={dontShowAgain}
-        onDontShowAgainChange={setDontShowAgain}
-      />
     </div>
   );
 }
