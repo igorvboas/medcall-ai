@@ -133,26 +133,35 @@
 }
 
 .kpi--cyan { 
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background-image: url('/card-cyan.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   z-index: 1;
 }
 
 .kpi--amber { 
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background-image: url('/card-amber.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   z-index: 1;
 }
 
 .kpi--lilac { 
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background-image: url('/card-lilac.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   z-index: 1;
 }
 
-/* Dark mode - KPI cards pretos */
+/* Dark mode - KPI cards cinza */
 .dark .kpi--cyan,
 .dark .kpi--amber,
 .dark .kpi--lilac {
   background-image: none !important;
-  background-color: #000000 !important;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 

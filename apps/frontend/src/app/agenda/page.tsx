@@ -31,6 +31,8 @@ export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [consultations, setConsultations] = useState<ConsultationEvent[]>(mockConsultations);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const today = new Date();
   const currentMonth = currentDate.getMonth();
@@ -345,6 +347,58 @@ export default function AgendaPage() {
                 </>
               )}
             </h3>
+
+            {!selectedDate && (
+              <div className="date-range-selector">
+                <div className="date-input-group">
+                  <label htmlFor="start-date" className="date-label">
+                    Data de Início
+                  </label>
+                  <input
+                    type="date"
+                    id="start-date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="date-input"
+                  />
+                </div>
+                
+                <div className="date-input-group">
+                  <label htmlFor="end-date" className="date-label">
+                    Data de Fim
+                  </label>
+                  <input
+                    type="date"
+                    id="end-date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="date-input"
+                  />
+                </div>
+                
+                {(startDate || endDate) && (
+                  <div className="date-range-info">
+                    <p className="range-text">
+                      {startDate && endDate 
+                        ? `Período: ${new Date(startDate).toLocaleDateString('pt-BR')} até ${new Date(endDate).toLocaleDateString('pt-BR')}`
+                        : startDate 
+                        ? `A partir de: ${new Date(startDate).toLocaleDateString('pt-BR')}`
+                        : `Até: ${new Date(endDate).toLocaleDateString('pt-BR')}`
+                      }
+                    </p>
+                    <button 
+                      className="btn btn-secondary btn-small"
+                      onClick={() => {
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                    >
+                      Limpar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {selectedDate && (
               <div className="day-consultations">
