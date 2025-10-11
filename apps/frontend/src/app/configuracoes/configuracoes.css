@@ -184,6 +184,34 @@
   color: #9ca3af;
 }
 
+/* Estado de erro */
+.form-input.error,
+.form-select.error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.dark .form-input.error,
+.dark .form-select.error {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.form-input.error:focus,
+.form-select.error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+.field-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Select específico */
 .form-select {
   cursor: pointer;

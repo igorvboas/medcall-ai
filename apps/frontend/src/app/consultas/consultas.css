@@ -2971,266 +2971,83 @@
   color: #a78bfa;
 }
 
-/* Atividade Física Styles */
-.atividade-fisica-container {
-  padding: 20px 0;
+/* ==================== COMPLETION MODAL STYLES ==================== */
+
+.completion-modal-content {
+  max-width: 500px !important;
+  text-align: center !important;
+  padding: 40px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+  width: 100% !important;
+  max-height: 90vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 auto !important;
 }
 
-.treino-section {
-  margin-bottom: 40px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
+.completion-icon {
+  width: 64px !important;
+  height: 64px !important;
+  margin: 0 auto 20px !important;
+  color: #d4a574 !important;
 }
 
-.treino-title {
-  background: linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%);
-  color: white;
-  padding: 20px;
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(230, 195, 167, 0.3);
+.completion-title {
+  margin-bottom: 10px !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
 }
 
-.exercicios-table-container {
-  overflow-x: auto;
-  padding: 0;
-  background: #ffffff;
+.completion-message {
+  color: #6b7280 !important;
+  font-size: 16px !important;
+  margin-bottom: 20px !important;
+  line-height: 1.6 !important;
 }
 
-.exercicios-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  background: #ffffff;
+.btn-completion-back {
+  margin-top: 20px !important;
+  padding: 12px 28px !important;
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3) !important;
 }
 
-.exercicios-table th {
-  background: #f8fafc;
-  color: #374151;
-  font-weight: 600;
-  padding: 15px 12px;
-  text-align: left;
-  border-bottom: 2px solid #e5e7eb;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-right: 1px solid #e5e7eb;
+.btn-completion-back:hover {
+  background: linear-gradient(135deg, #c19660 0%, #a68456 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4) !important;
 }
 
-.exercicios-table th:last-child {
-  border-right: none;
+.btn-completion-back:active {
+  transform: translateY(0) !important;
 }
 
-.exercicios-table td {
-  padding: 12px;
-  border-bottom: 1px solid #f3f4f6;
-  border-right: 1px solid #f3f4f6;
-  vertical-align: top;
-  background: #ffffff;
-  color: #374151;
+/* Dark mode completion modal */
+.dark .modal-overlay .modal-content.completion-modal-content {
+  background: rgba(26, 26, 26, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-.exercicios-table td:last-child {
-  border-right: none;
+.dark .modal-overlay .modal-content.completion-modal-content .completion-icon {
+  color: #E6C3A7 !important;
 }
 
-.exercicios-table tr:hover {
-  background: #f9fafb;
+.dark .modal-overlay .modal-content.completion-modal-content .completion-title {
+  color: #ffffff !important;
 }
 
-.exercicios-table tr:hover td {
-  background: #f9fafb;
-}
-
-.editable-field {
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  display: block;
-  min-height: 20px;
-  color: #374151;
-}
-
-.editable-field:hover {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.edit-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 2px solid #6366f1;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  background: white;
-  color: #374151;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.edit-input:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-}
-
-
-.save-section {
-  margin-top: 40px;
-  text-align: center;
-  padding: 30px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 2px dashed #d1d5db;
-}
-
-.save-button {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  padding: 15px 40px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.save-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-}
-
-.save-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.loading-spinner-small {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.no-data {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6b7280;
-}
-
-.no-data h3 {
-  color: #374151;
-  margin-bottom: 10px;
-}
-
-/* Dark mode styles */
-.dark .atividade-fisica-container {
-  background: transparent;
-}
-
-.dark .treino-section {
-  background: #1f2937;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  border-color: #374151;
-}
-
-.dark .treino-title {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.4);
-}
-
-.dark .exercicios-table-container {
-  background: #1f2937;
-}
-
-.dark .exercicios-table {
-  background: #1f2937;
-}
-
-.dark .exercicios-table th {
-  background: #374151;
-  color: #f9fafb;
-  border-bottom-color: #4b5563;
-  border-right-color: #4b5563;
-}
-
-.dark .exercicios-table th:last-child {
-  border-right: none;
-}
-
-.dark .exercicios-table td {
-  background: #1f2937;
-  border-bottom-color: #374151;
-  border-right-color: #374151;
-  color: #e5e7eb;
-}
-
-.dark .exercicios-table td:last-child {
-  border-right: none;
-}
-
-.dark .exercicios-table tr:hover {
-  background: #374151;
-}
-
-.dark .exercicios-table tr:hover td {
-  background: #374151;
-}
-
-.dark .editable-field {
-  color: #e5e7eb;
-}
-
-.dark .editable-field:hover {
-  background: #4338ca;
-  color: #e0e7ff;
-}
-
-.dark .edit-input {
-  background: #374151;
-  border-color: #6366f1;
-  color: #f9fafb;
-}
-
-.dark .edit-input:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-}
-
-
-.dark .save-section {
-  background: #374151;
-  border-color: #4b5563;
-}
-
-.dark .save-button {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.dark .save-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-}
-
-.dark .no-data {
-  color: #9ca3af;
-}
-
-.dark .no-data h3 {
-  color: #f9fafb;
+.dark .modal-overlay .modal-content.completion-modal-content .completion-message {
+  color: #cccccc !important;
 }

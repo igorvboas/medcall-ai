@@ -343,6 +343,13 @@ export default function PatientsPage() {
                   <option value="inactive">Inativos</option>
                   <option value="archived">Arquivados</option>
                 </select>
+                <button 
+                  onClick={() => setShowForm(true)}
+                  className="btn btn-primary"
+                >
+                  <Plus className="btn-icon" />
+                  Novo Paciente
+                </button>
               </div>
             </div>
 

@@ -23,20 +23,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Garantir que o modo claro seja aplicado por padrão
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('theme', 'light');
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-              }
-            `,
-          }}
-        />
-      </head>
       <body className={`${inter.className} ${inter.variable}`} suppressHydrationWarning>
         <ThemeProvider>
           {children}

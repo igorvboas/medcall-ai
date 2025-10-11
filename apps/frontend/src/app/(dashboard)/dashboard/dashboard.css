@@ -133,26 +133,17 @@
 }
 
 .kpi--cyan { 
-  background-image: url('/card-cyan.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   z-index: 1;
 }
 
 .kpi--amber { 
-  background-image: url('/card-amber.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   z-index: 1;
 }
 
 .kpi--lilac { 
-  background-image: url('/card-lilac.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   z-index: 1;
 }
 

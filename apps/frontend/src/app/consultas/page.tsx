@@ -4651,35 +4651,18 @@ function ConsultasPageContent() {
     if (consultaDetails.status === 'COMPLETED') {
       return (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px' }}>
-            <Sparkles className="w-16 h-16" style={{ margin: '0 auto 20px', color: '#10b981' }} />
-            <h2 style={{ marginBottom: '10px', fontSize: '24px', fontWeight: '600', color: '#1f2937' }}>
+          <div className="modal-content completion-modal-content">
+            <Sparkles className="completion-icon" />
+            <h2 className="completion-title">
               Processamento Concluído
             </h2>
-            <p style={{ color: '#6b7280', fontSize: '16px', marginBottom: '20px' }}>
+            <p className="completion-message">
               A consulta foi processada com sucesso. <br/>
               A tela de visualização completa será implementada em breve.
             </p>
             <button 
               onClick={handleBackToList}
-              style={{ 
-                marginTop: '20px', 
-                padding: '10px 20px', 
-                background: '#10b981', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#059669';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#10b981';
-              }}
+              className="btn-completion-back"
             >
               Voltar para lista
             </button>
