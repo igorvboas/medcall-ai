@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
           id,
           name,
           email,
-          phone
+          phone,
+          profile_pic
         )
       `, { count: 'exact' })
       .eq('doctor_id', medico.id)

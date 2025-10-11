@@ -223,6 +223,26 @@
   gap: 12px;
 }
 
+/* Avatar com imagem */
+.patient-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(230, 195, 167, 0.3),
+              0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .avatar-placeholder {
   width: 48px;
   height: 48px;
@@ -241,6 +261,18 @@
   transition: all 0.3s ease;
 }
 
+/* Hover effects para avatar */
+.patient-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.3) 0%, rgba(128, 109, 93, 0.3) 100%);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .avatar-placeholder::after {
   content: '';
   position: absolute;
@@ -252,6 +284,7 @@
   transition: opacity 0.3s ease;
 }
 
+.table-row:hover .patient-avatar::after,
 .table-row:hover .avatar-placeholder::after {
   opacity: 1;
 }
@@ -3052,469 +3085,235 @@
   color: #cccccc !important;
 }
 
-/* =====================================================
-   ESTILOS PARA UPLOAD DE EXAMES LABORATORIAIS
-   ===================================================== */
+/* ==================== ATIVIDADES FÍSICAS STYLES ==================== */
 
-/* Container principal da seção de upload de exames */
-.exames-upload-container {
-  margin-top: 24px;
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-/* Header da seção */
-.exames-upload-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #f3f4f6;
-  background: #fafafa;
-}
-
-.exames-upload-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.exames-upload-title svg {
-  width: 20px;
-  height: 20px;
-  color: #6b7280;
-}
-
-/* Conteúdo da seção */
-.exames-upload-content {
+.atividade-fisica-container {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 24px;
 }
 
-.exames-upload-description {
-  color: #6b7280;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.exames-upload-description p {
-  margin: 0 0 8px 0;
-}
-
-.exames-upload-description strong {
-  color: #374151;
-  font-weight: 600;
-}
-
-/* Área de drag and drop */
-.file-upload-dropzone {
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
+.treino-section {
+  margin-bottom: 48px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
   padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.dark .treino-section {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.treino-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 24px;
   text-align: center;
-  background: #fafafa;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #d4a574;
+  position: relative;
 }
 
-.file-upload-dropzone:hover {
-  border-color: #3b82f6;
-  background: #f0f9ff;
+.treino-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  border-radius: 1px;
 }
 
-.file-upload-dropzone.drag-over {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  transform: scale(1.02);
-}
-
-.file-upload-dropzone.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #f9fafb;
-}
-
-.file-upload-icon {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 16px;
-  color: #9ca3af;
-}
-
-.file-upload-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #111827;
-  margin-bottom: 8px;
-}
-
-.file-upload-subtitle {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 12px;
-}
-
-.file-upload-constraints {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.file-upload-button {
-  margin-top: 16px;
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.file-upload-button:hover:not(:disabled) {
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.file-upload-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Lista de arquivos */
-.file-list {
-  margin-top: 16px;
-}
-
-.file-list-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  margin-bottom: 12px;
-}
-
-.file-item {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.file-item-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-
-.file-item-icon {
-  width: 16px;
-  height: 16px;
-  color: #6b7280;
-}
-
-.file-item-icon.success {
-  color: #10b981;
-}
-
-.file-item-icon.error {
-  color: #ef4444;
-}
-
-.file-item-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-item-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-item-size {
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.file-item-error {
-  font-size: 12px;
-  color: #ef4444;
-  margin-top: 2px;
-}
-
-.file-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.file-item-progress {
-  width: 80px;
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.file-item-progress-bar {
-  height: 100%;
-  background: #3b82f6;
-  transition: width 0.3s ease;
-}
-
-.file-item-remove {
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.file-item-remove:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #ef4444;
-}
-
-.file-item-remove:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Alertas */
-.exames-upload-alert {
-  margin: 16px 0;
-  padding: 12px 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.exames-upload-alert.error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-}
-
-.exames-upload-alert.success {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
-}
-
-.exames-upload-alert svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* Botão de processar */
-.exames-upload-process {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
-}
-
-.exames-upload-process-button {
-  min-width: 200px;
-  padding: 12px 24px;
-  background: #3b82f6;
+.dark .treino-title {
   color: #ffffff;
-  border: none;
-  border-radius: 8px;
+  border-bottom-color: #d4a574;
+}
+
+.exercicios-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.exercicios-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
   font-size: 14px;
+}
+
+.dark .exercicios-table {
+  background: rgba(30, 30, 30, 0.8);
+}
+
+.exercicios-table thead {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+}
+
+.exercicios-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+}
+
+.exercicios-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  vertical-align: top;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.dark .exercicios-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+}
+
+.exercicios-table tbody tr:hover {
+  background: rgba(212, 165, 116, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.dark .exercicios-table tbody tr:hover {
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.exercicios-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.editable-field {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(249, 250, 251, 0.8);
+  border: 1px solid rgba(229, 231, 235, 0.3);
+  transition: all 0.2s ease;
+  min-width: 100%;
+  word-wrap: break-word;
+}
+
+.dark .editable-field {
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+}
+
+.editable-field:hover {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.05);
+  box-shadow: 0 2px 4px rgba(212, 165, 116, 0.1);
+}
+
+.dark .editable-field:hover {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.save-section {
+  text-align: center;
+  margin-top: 48px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.dark .save-section {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.save-button {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.exames-upload-process-button:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+.save-button:hover {
+  background: linear-gradient(135deg, #b8956a 0%, #9c7a5f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
 }
 
-.exames-upload-process-button:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+.save-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
 }
 
-.exames-upload-process-button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.exames-upload-process-button.loading svg {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+/* Responsividade para atividades físicas */
+@media (max-width: 768px) {
+  .atividade-fisica-container {
+    padding: 16px;
   }
-  to {
-    transform: rotate(360deg);
+  
+  .treino-section {
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+  
+  .treino-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .exercicios-table th,
+  .exercicios-table td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  
+  .save-section {
+    padding: 24px;
+    margin-top: 32px;
+  }
+  
+  .save-button {
+    padding: 14px 24px;
+    font-size: 14px;
   }
 }
 
-/* Mensagem de sucesso */
-.exames-upload-success {
-  text-align: center;
-  margin-top: 16px;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-/* Modo escuro */
-.dark .exames-upload-container {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.dark .exames-upload-header {
-  background: #111827;
-  border-color: #374151;
-}
-
-.dark .exames-upload-title {
-  color: #f9fafb;
-}
-
-.dark .exames-upload-title svg {
-  color: #9ca3af;
-}
-
-.dark .exames-upload-description {
-  color: #d1d5db;
-}
-
-.dark .exames-upload-description strong {
-  color: #e5e7eb;
-}
-
-.dark .file-upload-dropzone {
-  background: #111827;
-  border-color: #4b5563;
-}
-
-.dark .file-upload-dropzone:hover {
-  background: #1e3a8a;
-  border-color: #3b82f6;
-}
-
-.dark .file-upload-dropzone.drag-over {
-  background: #1e40af;
-}
-
-.dark .file-upload-dropzone.disabled {
-  background: #111827;
-}
-
-.dark .file-upload-icon {
-  color: #6b7280;
-}
-
-.dark .file-upload-title {
-  color: #f9fafb;
-}
-
-.dark .file-upload-subtitle {
-  color: #d1d5db;
-}
-
-.dark .file-upload-constraints {
-  color: #9ca3af;
-}
-
-.dark .file-upload-button {
-  background: #374151;
-  border-color: #4b5563;
-  color: #e5e7eb;
-}
-
-.dark .file-upload-button:hover:not(:disabled) {
-  border-color: #3b82f6;
-  color: #60a5fa;
-}
-
-.dark .file-item {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.dark .file-item-icon {
-  color: #9ca3af;
-}
-
-.dark .file-item-name {
-  color: #f9fafb;
-}
-
-.dark .file-item-size {
-  color: #d1d5db;
-}
-
-.dark .file-item-progress {
-  background: #374151;
-}
-
-.dark .file-item-remove {
-  color: #9ca3af;
-}
-
-.dark .file-item-remove:hover:not(:disabled) {
-  background: #374151;
-  color: #f87171;
-}
-
-.dark .exames-upload-alert.error {
-  background: #7f1d1d;
-  border-color: #991b1b;
-  color: #fecaca;
-}
-
-.dark .exames-upload-alert.success {
-  background: #14532d;
-  border-color: #166534;
-  color: #bbf7d0;
-}
-
-.dark .exames-upload-process-button {
-  background: #3b82f6;
-}
-
-.dark .exames-upload-process-button:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.dark .exames-upload-process-button:disabled {
-  background: #6b7280;
-}
-
-.dark .exames-upload-success {
-  color: #d1d5db;
+@media (max-width: 480px) {
+  .treino-section {
+    padding: 16px;
+  }
+  
+  .exercicios-table th,
+  .exercicios-table td {
+    padding: 10px 6px;
+    font-size: 12px;
+  }
+  
+  .treino-title {
+    font-size: 18px;
+  }
+  
+  .editable-field {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
 }

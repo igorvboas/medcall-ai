@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash } from 'lucide-react';
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
@@ -26,6 +26,8 @@ interface Patient {
   status: 'active' | 'inactive' | 'archived';
   created_at: string;
   updated_at: string;
+  // Campo para imagem do paciente
+  profile_pic?: string;
 }
 
 interface CreatePatientData {
@@ -70,6 +72,8 @@ export default function PatientsPage() {
     total: 0,
     totalPages: 0
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
 
   // Buscar pacientes
@@ -100,6 +104,15 @@ export default function PatientsPage() {
 
       const data: PatientsResponse = await response.json();
       console.log('📋 Dados recebidos:', data);
+      console.log('👤 Primeiro paciente (exemplo):', data.patients[0]);
+      console.log('🖼️ Propriedades de imagem do primeiro paciente:', {
+        profile_pic: data.patients[0]?.profile_pic,
+        picture: data.patients[0]?.picture,
+        avatar_url: data.patients[0]?.avatar_url,
+        avatar: data.patients[0]?.avatar,
+        image_url: data.patients[0]?.image_url,
+        photo: data.patients[0]?.photo
+      });
       setPatients(data.patients);
       setPagination(data.pagination);
     } catch (err) {
@@ -271,6 +284,25 @@ export default function PatientsPage() {
     }
   };
 
+  // Confirmar exclusão de paciente
+  const handleConfirmDelete = async (patientId: string) => {
+    try {
+      const response = await fetch(`/api/patients/${patientId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao deletar paciente');
+      }
+
+      setShowDeleteConfirm(null);
+      fetchPatients(pagination.page, searchTerm, statusFilter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao deletar paciente');
+    }
+  };
+
   return (
     <div className="patients-page">
       <div className="patients-container">
@@ -353,78 +385,95 @@ export default function PatientsPage() {
               </div>
             </div>
 
-            {/* Grid de Cards */}
-            <div className="patients-grid">
+            {/* Lista de Pacientes em Cards Separados */}
+            <div className="patients-list-container">
               {patients.map((patient) => (
-                <div key={patient.id} className="patient-card">
-                  <div className="patient-card-header">
-                    <div className="patient-info">
-                      <h3 className="patient-name">{patient.name}</h3>
-                      <span className={`patient-status ${patient.status}`}>
-                        {getStatusText(patient.status)}
-                      </span>
+                <div key={patient.id} className="patient-list-card">
+                  <div className="card-content">
+                    <div className="patient-avatar">
+                      {patient.profile_pic ? (
+                        <img 
+                          src={patient.profile_pic} 
+                          alt={patient.name}
+                          className="avatar-image"
+                          onError={(e) => {
+                            // Se a imagem falhar ao carregar, mostrar placeholder
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const placeholder = target.nextElementSibling as HTMLElement;
+                            if (placeholder) placeholder.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className="avatar-placeholder" style={{ display: patient.profile_pic ? 'none' : 'flex' }}>
+                        <span className="avatar-initial">
+                          {patient.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                     </div>
+                    
+                    <div className="patient-main-info">
+                      <div className="patient-name-section">
+                        <h3 className="patient-name">{patient.name}</h3>
+                        <span className={`patient-status ${patient.status}`}>
+                          {getStatusText(patient.status)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="patient-contact-info">
+                      {patient.email && (
+                        <div className="contact-item">
+                          <Mail size={16} />
+                          <span className="contact-value">{patient.email}</span>
+                        </div>
+                      )}
+                      {patient.phone && (
+                        <div className="contact-item">
+                          <Phone size={16} />
+                          <span className="contact-value">{patient.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="patient-actions">
                       <button 
-                        className="action-btn copy"
+                        className={`action-btn copy ${copySuccess === patient.id ? 'success' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyAnamneseLink(patient.id);
                         }}
-                        title="Copiar link da anamnese personalizada"
+                        title="Copiar link da anamnese"
                       >
-                        <Link2 size={12} />
+                        <Copy size={14} />
+                        {copySuccess === patient.id ? (
+                          <span className="action-label success">Copiado!</span>
+                        ) : (
+                          <span className="action-label">Copiar</span>
+                        )}
                       </button>
+                      
                       <button 
                         className="action-btn edit"
                         onClick={() => setEditingPatient(patient)}
-                        title="Editar paciente"
+                        title="Editar informações do paciente"
                       >
-                        <Edit size={12} />
+                        <User size={14} />
+                        <span className="action-label">Editar</span>
                       </button>
+                      
                       <button 
                         className="action-btn delete"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Implementar confirmação de exclusão
-                          console.log('Delete patient:', patient.name);
+                          setShowDeleteConfirm(patient.id);
                         }}
                         title="Excluir paciente"
                       >
-                        <Trash2 size={12} />
+                        <Trash size={14} />
+                        <span className="action-label">Excluir</span>
                       </button>
                     </div>
-                  </div>
-                  
-                  <div className="patient-details">
-                    {patient.email && (
-                      <div className="detail-item">
-                        <Mail size={16} />
-                        <span className="detail-value">{patient.email}</span>
-                      </div>
-                    )}
-                    {patient.phone && (
-                      <div className="detail-item">
-                        <Phone size={16} />
-                        <span className="detail-value">{patient.phone}</span>
-                      </div>
-                    )}
-                    {(patient.city || patient.state) && (
-                      <div className="detail-item">
-                        <MapPin size={16} />
-                        <span className="detail-value">
-                          {[patient.city, patient.state].filter(Boolean).join(', ')}
-                        </span>
-                      </div>
-                    )}
-                    {patient.birth_date && (
-                      <div className="detail-item">
-                        <Calendar size={16} />
-                        <span className="detail-value">
-                          {new Date(patient.birth_date).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -534,6 +583,42 @@ export default function PatientsPage() {
               onCancel={() => setEditingPatient(null)}
               title="Editar Paciente"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteConfirm && (
+        <div 
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDeleteConfirm(null);
+            }
+          }}
+        >
+          <div className="modal-content delete-confirm-modal">
+            <div className="modal-header">
+              <h3 className="modal-title">Confirmar Exclusão</h3>
+            </div>
+            <div className="modal-body">
+              <p>Tem certeza que deseja excluir este paciente?</p>
+              <p className="warning-text">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-danger"
+                onClick={() => handleConfirmDelete(showDeleteConfirm)}
+              >
+                Excluir
+              </button>
+            </div>
           </div>
         </div>
       )}
