@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Bell, User, LogOut, ChevronDown, Moon, Sun } from 'lucide-react';
+import { Search, Bell, User, LogOut, ChevronDown, Moon, Sun, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -70,6 +70,12 @@ export function Header() {
   const handleLogout = async () => {
     await signOut();
     router.push('/auth/signin');
+  };
+
+  // Função para ir para configurações
+  const handleGoToSettings = () => {
+    setShowUserMenu(false);
+    router.push('/configuracoes');
   };
 
 
@@ -148,6 +154,13 @@ export function Header() {
                 <div className="user-info">
                   <p className="user-email">{email}</p>
                 </div>
+                <button 
+                  className="dropdown-item-button"
+                  onClick={handleGoToSettings}
+                >
+                  <Settings className="w-4 h-4" />
+                  Configurações
+                </button>
                 <button 
                   className="logout-button"
                   onClick={handleLogout}

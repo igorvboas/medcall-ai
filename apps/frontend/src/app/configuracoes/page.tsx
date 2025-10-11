@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
+import { formatCPF, formatPhone, validateCPF, removeMask } from '@/lib/validations';
 import './configuracoes.css';
 
 interface MedicoData {
@@ -47,6 +48,7 @@ export default function ConfiguracoesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [cpfError, setCpfError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMedicoData();
@@ -64,14 +66,14 @@ export default function ConfiguracoesPage() {
       const data = await response.json();
       setMedico(data.medico);
       
-      // Preencher formulário com dados existentes
+      // Preencher formulário com dados existentes e aplicar máscaras
       setFormData({
         name: data.medico.name || '',
         email: data.medico.email || '',
-        phone: data.medico.phone || '',
+        phone: data.medico.phone ? formatPhone(data.medico.phone) : '',
         specialty: data.medico.specialty || '',
         crm: data.medico.crm || '',
-        cpf: data.medico.cpf || '',
+        cpf: data.medico.cpf ? formatCPF(data.medico.cpf) : '',
         birth_date: data.medico.birth_date || '',
         subscription_type: data.medico.subscription_type || 'FREE'
       });
@@ -84,26 +86,60 @@ export default function ConfiguracoesPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Aplica máscaras específicas
+    let formattedValue = value;
+    
+    if (name === 'phone') {
+      formattedValue = formatPhone(value);
+    } else if (name === 'cpf') {
+      formattedValue = formatCPF(value);
+      // Valida CPF em tempo real
+      if (value.replace(/\D/g, '').length === 11) {
+        if (!validateCPF(value)) {
+          setCpfError('CPF inválido');
+        } else {
+          setCpfError(null);
+        }
+      } else {
+        setCpfError(null);
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: formattedValue
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validações antes de enviar
+    if (formData.cpf && !validateCPF(formData.cpf)) {
+      setError('Por favor, insira um CPF válido.');
+      setCpfError('CPF inválido');
+      return;
+    }
+    
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
+
+      // Remove máscaras antes de enviar para o servidor
+      const dataToSend = {
+        ...formData,
+        phone: removeMask(formData.phone),
+        cpf: removeMask(formData.cpf),
+      };
 
       const response = await fetch('/api/medico', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!response.ok) {
@@ -222,6 +258,7 @@ export default function ConfiguracoesPage() {
               onChange={handleInputChange}
               className="form-input"
               placeholder="(11) 99999-9999"
+              maxLength={15}
             />
           </div>
 
@@ -236,9 +273,15 @@ export default function ConfiguracoesPage() {
               name="cpf"
               value={formData.cpf}
               onChange={handleInputChange}
-              className="form-input"
+              className={`form-input ${cpfError ? 'error' : ''}`}
               placeholder="000.000.000-00"
+              maxLength={14}
             />
+            {cpfError && (
+              <div className="field-error" style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                {cpfError}
+              </div>
+            )}
           </div>
 
           <div className="form-group">

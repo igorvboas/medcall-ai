@@ -2970,3 +2970,84 @@
 .dark .chat-field-indicator {
   color: #a78bfa;
 }
+
+/* ==================== COMPLETION MODAL STYLES ==================== */
+
+.completion-modal-content {
+  max-width: 500px !important;
+  text-align: center !important;
+  padding: 40px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+  width: 100% !important;
+  max-height: 90vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 auto !important;
+}
+
+.completion-icon {
+  width: 64px !important;
+  height: 64px !important;
+  margin: 0 auto 20px !important;
+  color: #d4a574 !important;
+}
+
+.completion-title {
+  margin-bottom: 10px !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.completion-message {
+  color: #6b7280 !important;
+  font-size: 16px !important;
+  margin-bottom: 20px !important;
+  line-height: 1.6 !important;
+}
+
+.btn-completion-back {
+  margin-top: 20px !important;
+  padding: 12px 28px !important;
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3) !important;
+}
+
+.btn-completion-back:hover {
+  background: linear-gradient(135deg, #c19660 0%, #a68456 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4) !important;
+}
+
+.btn-completion-back:active {
+  transform: translateY(0) !important;
+}
+
+/* Dark mode completion modal */
+.dark .modal-overlay .modal-content.completion-modal-content {
+  background: rgba(26, 26, 26, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .modal-overlay .modal-content.completion-modal-content .completion-icon {
+  color: #E6C3A7 !important;
+}
+
+.dark .modal-overlay .modal-content.completion-modal-content .completion-title {
+  color: #ffffff !important;
+}
+
+.dark .modal-overlay .modal-content.completion-modal-content .completion-message {
+  color: #cccccc !important;
+}
