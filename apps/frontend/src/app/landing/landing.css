@@ -1992,7 +1992,8 @@
   border-radius: 25px;
   padding: 0.75rem 1.5rem;
   font-size: 0.9rem;
-  min-width: 140px;
+  min-width: 160px;
+  white-space: nowrap;
   box-shadow: 0 4px 12px rgba(192, 140, 9, 0.3);
   border: none;
   text-decoration: none;
