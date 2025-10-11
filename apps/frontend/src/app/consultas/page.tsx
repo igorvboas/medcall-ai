@@ -8,6 +8,7 @@ import {
   Save, X, Sparkles, Edit, Plus
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
+import ExamesUploadSection from '../../components/ExamesUploadSection';
 import './consultas.css';
 
 // Tipos para exercícios físicos
@@ -336,7 +337,9 @@ function AnamneseSection({
   onFieldSelect,
   onSendMessage,
   onChatInputChange,
-  readOnly = false
+  readOnly = false,
+  consultaStatus,
+  consultaEtapa
 }: { 
   consultaId: string;
   selectedField: { fieldPath: string; label: string } | null;
@@ -347,6 +350,8 @@ function AnamneseSection({
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
   readOnly?: boolean;
+  consultaStatus?: string;
+  consultaEtapa?: string;
 }) {
   //console.log('🔍 AnamneseSection readOnly:', readOnly);
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
@@ -1034,6 +1039,14 @@ function AnamneseSection({
             <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} fieldPath="reino_miasma.padrao_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
           </div>
         </CollapsibleSection>
+
+        {/* Seção de Upload de Exames - Apenas para VALIDATION + ANAMNESE */}
+        <ExamesUploadSection 
+          consultaId={consultaId}
+          consultaStatus={consultaStatus || ''}
+          consultaEtapa={consultaEtapa || ''}
+          disabled={readOnly}
+        />
     </div>
   );
 }
@@ -6478,6 +6491,8 @@ function ConsultasPageContent() {
                   onFieldSelect={handleFieldSelect}
                   onSendMessage={handleSendAIMessage}
                   onChatInputChange={setChatInput}
+                  consultaStatus={consultaDetails?.status}
+                  consultaEtapa={consultaDetails?.etapa}
                 />
               </div>
             </div>

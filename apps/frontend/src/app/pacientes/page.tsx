@@ -260,11 +260,11 @@ export default function PatientsPage() {
 
   // Copiar link da anamnese personalizada
   const handleCopyAnamneseLink = async (patientId: string) => {
-    const link = `${window.location.origin}/anamnese-personalizada?paciente_id=${patientId}`;
+    const link = `https://funnel.insiderhub.com.br/anamnese-personalizada?paciente_id=${patientId}`;
     try {
       await navigator.clipboard.writeText(link);
       // TODO: Adicionar feedback visual de sucesso (toast/notification)
-      alert('Link da anamnesecopiado para a área de transferência!');
+      alert('Link da anamnese copiado para a área de transferência!');
     } catch (err) {
       console.error('Erro ao copiar link:', err);
       alert('Erro ao copiar link. Tente novamente.');
