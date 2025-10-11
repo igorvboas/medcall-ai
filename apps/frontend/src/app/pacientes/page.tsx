@@ -28,6 +28,11 @@ interface Patient {
   updated_at: string;
   // Campo para imagem do paciente
   profile_pic?: string;
+  picture?: string;
+  avatar_url?: string;
+  avatar?: string;
+  image_url?: string;
+  photo?: string;
 }
 
 interface CreatePatientData {
