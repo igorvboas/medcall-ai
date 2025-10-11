@@ -345,8 +345,9 @@ function AnamneseSection({
   consultaStatus?: string;
   consultaEtapa?: string;
 }) {
-  //console.log('🔍 AnamneseSection readOnly:', readOnly);
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  //console.log('🔍 AnamneseSection readOnly:', readOnly);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -439,10 +440,10 @@ function AnamneseSection({
       setError(null);
       
       // Buscar dados de todas as tabelas de anamnese
-      //console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
+      console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
       const response = await fetch(`/api/anamnese/${consultaId}`);
       
-      //console.log('📡 Status da resposta:', response.status);
+      console.log('📡 Status da resposta:', response.status);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
@@ -451,11 +452,18 @@ function AnamneseSection({
       }
       
       const data = await response.json();
-      //console.log('✅ Dados da anamnese recebidos:', data);
+      console.log('✅ Dados da anamnese recebidos:', data);
+      console.log('🔍 Estrutura dos dados:', {
+        type: typeof data,
+        keys: Object.keys(data || {}),
+        hasData: !!data
+      });
       setAnamneseData(data);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     } catch (err) {
       console.error('❌ Erro ao carregar anamnese:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar anamnese');
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading em caso de erro
     } finally {
       setLoadingDetails(false);
     }
@@ -463,6 +471,7 @@ function AnamneseSection({
 
   // Mostrar loading apenas no primeiro carregamento
   if (loading && !error) {
+    console.log('🔍 AnamneseSection - Mostrando loading...');
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
@@ -484,6 +493,13 @@ function AnamneseSection({
     preocupacoes_crencas,
     reino_miasma
   } = anamneseData || {};
+
+  console.log('🔍 AnamneseSection - Renderizando com dados:', { 
+    loading, 
+    error, 
+    hasAnamneseData: !!anamneseData,
+    anamneseDataKeys: anamneseData ? Object.keys(anamneseData) : []
+  });
 
   return (
     <div className="anamnese-sections">
@@ -1063,6 +1079,7 @@ function DiagnosticoSection({
   onChatInputChange: (value: string) => void;
 }) {
   const [diagnosticoData, setDiagnosticoData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1085,18 +1102,26 @@ function DiagnosticoSection({
   const loadDiagnosticoData = async () => {
     try {
       setLoadingDetails(true);
-      //console.log('🔍 Carregando dados de diagnóstico para consulta:', consultaId);
+      console.log('🔍 Carregando dados de diagnóstico para consulta:', consultaId);
       const response = await fetch(`/api/diagnostico/${consultaId}`);
-      //console.log('📡 Response status:', response.status);
+      console.log('📡 Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        //console.log('✅ Dados de diagnóstico carregados:', data);
+        console.log('✅ Dados de diagnóstico carregados:', data);
+        console.log('🔍 Estrutura dos dados de diagnóstico:', {
+          type: typeof data,
+          keys: Object.keys(data || {}),
+          hasData: !!data
+        });
         setDiagnosticoData(data);
+        setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
       } else {
         const errorData = await response.text();
+        setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading mesmo em caso de erro
       }
     } catch (error) {
       // Erro ao carregar dados
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading em caso de erro
     } finally {
       setLoadingDetails(false);
     }
@@ -1146,7 +1171,7 @@ function DiagnosticoSection({
   };
 
   if (loading) {
-    //console.log('🔍 DiagnosticoSection - Mostrando loading...');
+    console.log('🔍 DiagnosticoSection - Mostrando loading...');
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
@@ -1164,8 +1189,12 @@ function DiagnosticoSection({
     habitos_vida
   } = diagnosticoData || {};
 
-  //console.log('🔍 DiagnosticoSection - dados recebidos:', diagnosticoData);
-  //console.log('🔍 DiagnosticoSection - Renderizando componente com dados:', diagnosticoData);
+  console.log('🔍 DiagnosticoSection - dados recebidos:', diagnosticoData);
+  console.log('🔍 DiagnosticoSection - Renderizando componente com dados:', {
+    loading,
+    hasDiagnosticoData: !!diagnosticoData,
+    diagnosticoDataKeys: diagnosticoData ? Object.keys(diagnosticoData) : []
+  });
 
   return (
     <div className="anamnese-sections">
@@ -1667,6 +1696,7 @@ function LTBSection({
   onChatInputChange: (value: string) => void;
 }) {
   const [ltbData, setLtbData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2060,6 +2090,7 @@ function MentalidadeSection({
   onChatInputChange: (value: string) => void;
 }) {
   const [mentalidadeData, setMentalidadeData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2410,7 +2441,8 @@ function SuplemementacaoSection({
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
 }) {
-  const [suplementacaoData, setSuplemementacaoData] = useState<any>(null);
+  const [suplementacaoData, setSuplementacaoData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2436,7 +2468,7 @@ function SuplemementacaoSection({
       const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setSuplemementacaoData(data.suplementacao_data);
+        setSuplementacaoData(data.suplementacao_data);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de Suplementação:', error);
@@ -3059,6 +3091,7 @@ function AlimentacaoSection({
   consultaId: string;
 }) {
   const [alimentacaoData, setAlimentacaoData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<{refeicao: string, index: number} | null>(null);
   const [editForm, setEditForm] = useState({
@@ -3353,6 +3386,7 @@ function HabitosDeVidaSection({
   onChatInputChange: (value: string) => void;
 }) {
   const [habitosVidaData, setHabitosVidaData] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
