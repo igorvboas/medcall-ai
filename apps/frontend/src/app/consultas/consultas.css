@@ -223,6 +223,26 @@
   gap: 12px;
 }
 
+/* Avatar com imagem */
+.patient-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(230, 195, 167, 0.3),
+              0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .avatar-placeholder {
   width: 48px;
   height: 48px;
@@ -241,6 +261,18 @@
   transition: all 0.3s ease;
 }
 
+/* Hover effects para avatar */
+.patient-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(230, 195, 167, 0.3) 0%, rgba(128, 109, 93, 0.3) 100%);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .avatar-placeholder::after {
   content: '';
   position: absolute;
@@ -252,6 +284,7 @@
   transition: opacity 0.3s ease;
 }
 
+.table-row:hover .patient-avatar::after,
 .table-row:hover .avatar-placeholder::after {
   opacity: 1;
 }
@@ -3050,4 +3083,237 @@
 
 .dark .modal-overlay .modal-content.completion-modal-content .completion-message {
   color: #cccccc !important;
+}
+
+/* ==================== ATIVIDADES FÍSICAS STYLES ==================== */
+
+.atividade-fisica-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.treino-section {
+  margin-bottom: 48px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.dark .treino-section {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.treino-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 24px;
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #d4a574;
+  position: relative;
+}
+
+.treino-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  border-radius: 1px;
+}
+
+.dark .treino-title {
+  color: #ffffff;
+  border-bottom-color: #d4a574;
+}
+
+.exercicios-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.exercicios-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.dark .exercicios-table {
+  background: rgba(30, 30, 30, 0.8);
+}
+
+.exercicios-table thead {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+}
+
+.exercicios-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+}
+
+.exercicios-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  vertical-align: top;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.dark .exercicios-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+}
+
+.exercicios-table tbody tr:hover {
+  background: rgba(212, 165, 116, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.dark .exercicios-table tbody tr:hover {
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.exercicios-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.editable-field {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(249, 250, 251, 0.8);
+  border: 1px solid rgba(229, 231, 235, 0.3);
+  transition: all 0.2s ease;
+  min-width: 100%;
+  word-wrap: break-word;
+}
+
+.dark .editable-field {
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+}
+
+.editable-field:hover {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.05);
+  box-shadow: 0 2px 4px rgba(212, 165, 116, 0.1);
+}
+
+.dark .editable-field:hover {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.save-section {
+  text-align: center;
+  margin-top: 48px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.dark .save-section {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.save-button {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.save-button:hover {
+  background: linear-gradient(135deg, #b8956a 0%, #9c7a5f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+}
+
+.save-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+}
+
+/* Responsividade para atividades físicas */
+@media (max-width: 768px) {
+  .atividade-fisica-container {
+    padding: 16px;
+  }
+  
+  .treino-section {
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+  
+  .treino-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .exercicios-table th,
+  .exercicios-table td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  
+  .save-section {
+    padding: 24px;
+    margin-top: 32px;
+  }
+  
+  .save-button {
+    padding: 14px 24px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .treino-section {
+    padding: 16px;
+  }
+  
+  .exercicios-table th,
+  .exercicios-table td {
+    padding: 10px 6px;
+    font-size: 12px;
+  }
+  
+  .treino-title {
+    font-size: 18px;
+  }
+  
+  .editable-field {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
 }

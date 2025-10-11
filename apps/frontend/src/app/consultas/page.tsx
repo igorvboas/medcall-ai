@@ -48,25 +48,17 @@ interface Consultation {
   notes?: string;
   diagnosis?: string;
   treatment?: string;
-  prescription?: string;
-  next_appointment?: string;
-  created_at: string;
-  updated_at: string;
   patients?: {
     id: string;
     name: string;
     email?: string;
     phone?: string;
-    birth_date?: string;
-    gender?: string;
-    cpf?: string;
-    address?: string;
-    emergency_contact?: string;
-    emergency_phone?: string;
-    medical_history?: string;
-    allergies?: string;
-    current_medications?: string;
+    profile_pic?: string;
   };
+  prescription?: string;
+  next_appointment?: string;
+  created_at: string;
+  updated_at: string;
   transcription?: {
     id: string;
     raw_text: string;
@@ -4534,7 +4526,29 @@ function ConsultasPageContent() {
     return type === 'TELEMEDICINA' ? <Video className="type-icon" /> : <User className="type-icon" />;
   };
 
-  const generateAvatar = (name: string) => {
+  const generateAvatar = (name: string, profilePic?: string) => {
+    if (profilePic) {
+      return (
+        <div className="patient-avatar">
+          <img 
+            src={profilePic} 
+            alt={name}
+            className="avatar-image"
+            onError={(e) => {
+              // Se a imagem falhar ao carregar, mostrar placeholder
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const placeholder = target.nextElementSibling as HTMLElement;
+              if (placeholder) placeholder.style.display = 'flex';
+            }}
+          />
+          <div className="avatar-placeholder" style={{ display: 'none' }}>
+            {name.split(' ').map(n => n[0]).join('').toUpperCase()}
+          </div>
+        </div>
+      );
+    }
+
     const colors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
       '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
@@ -6536,7 +6550,7 @@ function ConsultasPageContent() {
                 >
                   <div className="table-cell patient-cell">
                     <div className="patient-info">
-                      {generateAvatar(consultation.patient_name)}
+                      {generateAvatar(consultation.patient_name, consultation.patients?.profile_pic)}
                       <div className="patient-details">
                         <div className="patient-name">{consultation.patient_name}</div>
                         <div className="patient-condition">
