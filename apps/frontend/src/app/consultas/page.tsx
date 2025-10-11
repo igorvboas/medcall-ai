@@ -418,7 +418,6 @@ function AnamneseSection({
   // Listener para recarregar dados de anamnese quando a IA processar
   useEffect(() => {
     const handleAnamneseRefresh = () => {
-      console.log('🔍 DEBUG [REFERENCIA] Forçando refresh dos dados de anamnese');
       fetchAnamneseData();
     };
 
@@ -431,7 +430,7 @@ function AnamneseSection({
 
   const fetchAnamneseData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       setError(null);
       
       // Buscar dados de todas as tabelas de anamnese
@@ -453,7 +452,7 @@ function AnamneseSection({
       console.error('❌ Erro ao carregar anamnese:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar anamnese');
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -1054,7 +1053,6 @@ function DiagnosticoSection({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🔍 DiagnosticoSection useEffect - Carregando dados para consulta:', consultaId);
     loadDiagnosticoData();
   }, [consultaId]);
 
@@ -1073,7 +1071,7 @@ function DiagnosticoSection({
 
   const loadDiagnosticoData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       //console.log('🔍 Carregando dados de diagnóstico para consulta:', consultaId);
       const response = await fetch(`/api/diagnostico/${consultaId}`);
       //console.log('📡 Response status:', response.status);
@@ -1082,14 +1080,12 @@ function DiagnosticoSection({
         //console.log('✅ Dados de diagnóstico carregados:', data);
         setDiagnosticoData(data);
       } else {
-        console.error('❌ Erro na resposta:', response.status, response.statusText);
         const errorData = await response.text();
-        console.error('❌ Detalhes do erro:', errorData);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar dados de diagnóstico:', error);
+      // Erro ao carregar dados
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -1679,7 +1675,7 @@ function LTBSection({
 
   const loadLTBData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const response = await fetch(`/api/solucao-ltb/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
@@ -1688,7 +1684,7 @@ function LTBSection({
     } catch (error) {
       console.error('Erro ao carregar dados de LTB:', error);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -2072,7 +2068,7 @@ function MentalidadeSection({
 
   const loadMentalidadeData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const response = await fetch(`/api/solucao-mentalidade/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
@@ -2081,7 +2077,7 @@ function MentalidadeSection({
     } catch (error) {
       console.error('Erro ao carregar dados de Mentalidade:', error);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -2423,7 +2419,7 @@ function SuplemementacaoSection({
 
   const loadSuplemementacaoData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
@@ -2432,7 +2428,7 @@ function SuplemementacaoSection({
     } catch (error) {
       console.error('Erro ao carregar dados de Suplementação:', error);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -3078,7 +3074,7 @@ function AlimentacaoSection({
 
   const loadAlimentacaoData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const response = await fetch(`/api/alimentacao/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
@@ -3087,7 +3083,7 @@ function AlimentacaoSection({
     } catch (error) {
       console.error('Erro ao carregar dados de Alimentação:', error);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -3365,7 +3361,7 @@ function HabitosDeVidaSection({
 
   const loadHabitosVidaData = async () => {
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const response = await fetch(`/api/solucao-habitos-vida/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
@@ -3374,7 +3370,7 @@ function HabitosDeVidaSection({
     } catch (error) {
       console.error('Erro ao carregar dados de Hábitos de Vida:', error);
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -3734,11 +3730,13 @@ function ConsultasPageContent() {
   const consultaId = searchParams.get('consulta_id');
 
   const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalConsultations, setTotalConsultations] = useState(0);
+  const [cssLoaded, setCssLoaded] = useState(false);
+  const [dashboardLoaded, setDashboardLoaded] = useState(false);
   
   // Estados para visualização de detalhes
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
@@ -3954,12 +3952,103 @@ function ConsultasPageContent() {
     }
   };
 
-  // Carregar consultas ao montar o componente
+  // Carregar consultas só depois que dashboard e CSS estiverem carregados
   useEffect(() => {
-    if (!consultaId) {
-      loadConsultations();
-    }
-  }, [currentPage, consultaId]);
+    const executeLoad = async () => {
+      if (!consultaId && dashboardLoaded && cssLoaded) {
+        await loadConsultations();
+      }
+    };
+    
+    executeLoad();
+  }, [currentPage, consultaId, dashboardLoaded, cssLoaded]);
+
+  // Verificar se o dashboard está completamente carregado
+  useEffect(() => {
+    const checkDashboardLoaded = () => {
+      // Verificar se elementos críticos do dashboard estão presentes e estilizados
+      const sidebar = document.querySelector('.sidebar');
+      const header = document.querySelector('.header');
+      const mainContent = document.querySelector('.main-content');
+      
+      if (sidebar && header && mainContent) {
+        // Verificar se os elementos têm estilos aplicados
+        const sidebarStyles = window.getComputedStyle(sidebar);
+        const headerStyles = window.getComputedStyle(header);
+        
+        const sidebarHasStyles = sidebarStyles.width !== 'auto' && sidebarStyles.width !== '0px';
+        const headerHasStyles = headerStyles.height !== 'auto' && headerStyles.height !== '0px';
+        
+        if (sidebarHasStyles && headerHasStyles) {
+          setDashboardLoaded(true);
+          return true;
+        }
+      }
+      
+      return false;
+    };
+
+    // Verificar imediatamente
+    if (checkDashboardLoaded()) return;
+
+    // Verificar com intervalos menores para ser mais responsivo
+    const checkInterval = setInterval(() => {
+      if (checkDashboardLoaded()) {
+        clearInterval(checkInterval);
+      }
+    }, 50);
+
+    // Timeout de segurança - marcar como carregado após 2 segundos
+    const timeout = setTimeout(() => {
+      clearInterval(checkInterval);
+      if (!dashboardLoaded) {
+        setDashboardLoaded(true);
+      }
+    }, 2000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // Verificar CSS (só depois que dashboard estiver carregado)
+  useEffect(() => {
+    if (!dashboardLoaded) return; // Aguardar dashboard carregar primeiro
+
+    // Verificação rápida do CSS
+    const checkCssLoaded = () => {
+      const testElement = document.createElement('div');
+      testElement.className = 'consultas-container';
+      testElement.style.visibility = 'hidden';
+      testElement.style.position = 'absolute';
+      testElement.style.top = '-9999px';
+      document.body.appendChild(testElement);
+      
+      const computedStyle = window.getComputedStyle(testElement);
+      const hasStyles = computedStyle.padding !== '' || computedStyle.margin !== '';
+      
+      document.body.removeChild(testElement);
+      
+      if (hasStyles) {
+        setCssLoaded(true);
+      }
+    };
+
+    // Verificar imediatamente
+    checkCssLoaded();
+    
+    // Fallback rápido: marcar como carregado após 500ms
+    const fallbackTimer = setTimeout(() => {
+      if (!cssLoaded) {
+        setCssLoaded(true);
+      }
+    }, 500);
+    
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
+  }, [dashboardLoaded]);
 
   // Carregar detalhes quando houver consulta_id na URL
   useEffect(() => {
@@ -3973,9 +4062,7 @@ function ConsultasPageContent() {
 
   // Carregar dados de atividade física quando a etapa for ATIVIDADE_FISICA
   useEffect(() => {
-    console.log('🔍 DEBUG [REFERENCIA] useEffect atividade física - consultaId:', consultaId, 'solucao_etapa:', consultaDetails?.solucao_etapa);
     if (consultaId && consultaDetails?.solucao_etapa === 'ATIVIDADE_FISICA') {
-      console.log('🔍 DEBUG [REFERENCIA] Condições atendidas, carregando dados de atividade física para consulta:', consultaId);
       loadAtividadeFisicaData();
     }
   }, [consultaId, consultaDetails?.solucao_etapa]);
@@ -4103,7 +4190,6 @@ function ConsultasPageContent() {
 
   const loadConsultations = async () => {
     try {
-      setLoading(true);
       setError(null);
       const response = await fetchConsultations(currentPage, 20);
       
@@ -4111,10 +4197,7 @@ function ConsultasPageContent() {
       setTotalPages(response.pagination.totalPages);
       setTotalConsultations(response.pagination.total);
     } catch (err) {
-      console.error('Erro ao carregar consultas:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -4131,11 +4214,8 @@ function ConsultasPageContent() {
       }
       
       const data = await response.json();
-      console.log('🔍 DEBUG [REFERENCIA] Detalhes da consulta carregados:', data.consultation);
-      console.log('🔍 DEBUG [REFERENCIA] solucao_etapa:', data.consultation?.solucao_etapa);
       setConsultaDetails(data.consultation);
     } catch (err) {
-      console.error('❌ Erro ao carregar detalhes:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes da consulta');
     } finally {
       setLoadingDetails(false);
@@ -4527,6 +4607,13 @@ function ConsultasPageContent() {
   };
 
   const generateAvatar = (name: string, profilePic?: string) => {
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+      '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+    ];
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const colorIndex = name.length % colors.length;
+
     if (profilePic) {
       return (
         <div className="patient-avatar">
@@ -4535,26 +4622,20 @@ function ConsultasPageContent() {
             alt={name}
             className="avatar-image"
             onError={(e) => {
-              // Se a imagem falhar ao carregar, mostrar placeholder
+              // Se a imagem falhar ao carregar, substituir por placeholder
               const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const placeholder = target.nextElementSibling as HTMLElement;
-              if (placeholder) placeholder.style.display = 'flex';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = '';
+                parent.className = 'avatar-placeholder';
+                parent.style.backgroundColor = colors[colorIndex];
+                parent.textContent = initials;
+              }
             }}
           />
-          <div className="avatar-placeholder" style={{ display: 'none' }}>
-            {name.split(' ').map(n => n[0]).join('').toUpperCase()}
-          </div>
         </div>
       );
     }
-
-    const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-      '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
-    ];
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-    const colorIndex = name.length % colors.length;
     
     return (
       <div 
@@ -4566,19 +4647,40 @@ function ConsultasPageContent() {
     );
   };
 
-  // Renderizar loading
-  if (loading || loadingDetails) {
+  // Renderizar loading único - aguardar apenas dashboard, CSS e loadingDetails
+  if (!dashboardLoaded || !cssLoaded || loadingDetails) {
     return (
-      <div className="consultas-container">
-        <div className="consultas-header">
-          <h1 className="consultas-title">
-            {consultaId ? 'Detalhes da Consulta' : 'Lista de Consultas'}
-          </h1>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: '#f9fafb',
+        color: '#1f2937',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #d4a574',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>
+            Carregando...
+          </p>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>{consultaId ? 'Carregando detalhes...' : 'Carregando consultas...'}</p>
-        </div>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `
+        }} />
       </div>
     );
   }

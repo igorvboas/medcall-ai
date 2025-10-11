@@ -254,11 +254,17 @@
   font-weight: 700;
   color: white;
   flex-shrink: 0;
+  position: relative;
   background: linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%);
   box-shadow: 0 4px 12px rgba(230, 195, 167, 0.3),
               0 2px 4px rgba(0, 0, 0, 0.1);
-  position: relative;
   transition: all 0.3s ease;
+  isolation: isolate;
+}
+
+.avatar-placeholder > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Hover effects para avatar */
@@ -268,9 +274,10 @@
   inset: -2px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(230, 195, 167, 0.3) 0%, rgba(128, 109, 93, 0.3) 100%);
-  z-index: -1;
+  z-index: 0;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .avatar-placeholder::after {
@@ -279,9 +286,10 @@
   inset: -2px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(230, 195, 167, 0.3) 0%, rgba(128, 109, 93, 0.3) 100%);
-  z-index: -1;
+  z-index: 0;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .table-row:hover .patient-avatar::after,
