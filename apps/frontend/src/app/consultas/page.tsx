@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Save, X, Sparkles, Edit, Plus
+  Save, X, Sparkles, Edit, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
@@ -3769,6 +3769,11 @@ function ConsultasPageContent() {
   const [loadingAtividadeFisica, setLoadingAtividadeFisica] = useState(false);
   const [editingExercicio, setEditingExercicio] = useState<{id: number, field: string} | null>(null);
 
+  // Estados para modal de confirmação de exclusão
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [consultationToDelete, setConsultationToDelete] = useState<Consultation | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
     setSelectedField({ fieldPath, label });
@@ -4243,6 +4248,57 @@ function ConsultasPageContent() {
     router.push('/consultas');
   };
 
+  // Função para editar consulta
+  const handleEditConsultation = (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation(); // Previne a abertura da consulta
+    router.push(`/consultas?consulta_id=${consultation.id}`);
+  };
+
+  // Função para abrir modal de confirmação de exclusão
+  const handleDeleteConsultation = (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation(); // Previne a abertura da consulta
+    setConsultationToDelete(consultation);
+    setShowDeleteModal(true);
+  };
+
+  // Função para confirmar exclusão da consulta
+  const confirmDeleteConsultation = async () => {
+    if (!consultationToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/consultations/${consultationToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir consulta');
+      }
+
+      // Atualiza a lista removendo a consulta excluída
+      setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
+      setTotalConsultations(prev => prev - 1);
+      
+      // Fecha o modal
+      setShowDeleteModal(false);
+      setConsultationToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir consulta:', err);
+      alert('Erro ao excluir consulta. Por favor, tente novamente.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Função para cancelar exclusão
+  const cancelDeleteConsultation = () => {
+    setShowDeleteModal(false);
+    setConsultationToDelete(null);
+  };
+
   // Função para salvar alterações da ANAMNESE e mudar para próxima etapa (DIAGNOSTICO SENDO PROCESSADO)
   const handleSaveAndContinue = async () => {
     if (!consultaId || !consultaDetails) return;
@@ -4639,9 +4695,27 @@ function ConsultasPageContent() {
               const target = e.target as HTMLImageElement;
               const parent = target.parentElement;
               if (parent) {
+                // Limpar completamente o conteúdo
                 parent.innerHTML = '';
+                // Aplicar todas as classes CSS necessárias
                 parent.className = 'avatar-placeholder';
-                parent.style.backgroundColor = colors[colorIndex];
+                // Aplicar estilo de fundo correto (marrom em vez de azul)
+                parent.style.background = 'linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%)';
+                parent.style.width = '48px';
+                parent.style.height = '48px';
+                parent.style.borderRadius = '50%';
+                parent.style.display = 'flex';
+                parent.style.alignItems = 'center';
+                parent.style.justifyContent = 'center';
+                parent.style.fontSize = '15px';
+                parent.style.fontWeight = '700';
+                parent.style.color = 'white';
+                parent.style.flexShrink = '0';
+                parent.style.position = 'relative';
+                parent.style.boxShadow = '0 4px 12px rgba(230, 195, 167, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)';
+                parent.style.transition = 'all 0.3s ease';
+                parent.style.isolation = 'isolate';
+                // Adicionar o texto
                 parent.textContent = initials;
               }
             }}
@@ -4653,7 +4727,7 @@ function ConsultasPageContent() {
     return (
       <div 
         className="avatar-placeholder" 
-        style={{ backgroundColor: colors[colorIndex] }}
+        style={{ background: 'linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%)' }}
       >
         {initials}
       </div>
@@ -6647,6 +6721,7 @@ function ConsultasPageContent() {
             <div className="header-cell date-header">Data Consulta</div>
             <div className="header-cell type-header">Tipo de Consulta</div>
             <div className="header-cell status-header">Status</div>
+            <div className="header-cell actions-header">Ações</div>
           </div>
 
           {/* Linhas da tabela */}
@@ -6665,13 +6740,76 @@ function ConsultasPageContent() {
                   onClick={() => handleConsultationClick(consultation)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <div className="table-cell patient-cell">
-                    <div className="patient-info">
+                  <div 
+                    className="table-cell patient-cell"
+                    style={{
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-start'
+                    }}
+                  >
+                    <div 
+                      className="patient-info"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        gap: '12px'
+                      }}
+                    >
                       {generateAvatar(consultation.patient_name, consultation.patients?.profile_pic)}
-                      <div className="patient-details">
-                        <div className="patient-name">{consultation.patient_name}</div>
-                        <div className="patient-condition">
-                          {consultation.patient_context || 'Consulta médica'}
+                      <div 
+                        className="patient-details"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          justifyContent: 'flex-start',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div 
+                          className="patient-name"
+                          style={{
+                            textAlign: 'left',
+                            alignSelf: 'flex-start',
+                            width: '100%'
+                          }}
+                        >
+                          {consultation.patient_name}
+                        </div>
+                        <div 
+                          className="patient-condition"
+                          style={{
+                            textAlign: 'left',
+                            alignSelf: 'flex-start',
+                            width: '100%'
+                          }}
+                        >
+                          {(() => {
+                            const typeText = consultation.consultation_type === 'TELEMEDICINA' ? 'Consulta online' : 'Consulta presencial';
+                            const context = consultation.patient_context || '';
+                            
+                            // Limpar contexto removendo informações duplicadas
+                            let cleanContext = context;
+                            if (cleanContext.toLowerCase().includes('consulta online')) {
+                              cleanContext = cleanContext.replace(/consulta online\s*[-–]\s*/gi, '').trim();
+                            }
+                            if (cleanContext.toLowerCase().includes('consulta presencial')) {
+                              cleanContext = cleanContext.replace(/consulta presencial\s*[-–]\s*/gi, '').trim();
+                            }
+                            
+                            // Se ainda há contexto após limpeza, mostrar tipo + contexto
+                            if (cleanContext && cleanContext !== consultation.patient_name) {
+                              return `${typeText} - ${cleanContext}`;
+                            }
+                            
+                            // Caso contrário, mostrar apenas o tipo
+                            return typeText;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -6695,6 +6833,25 @@ function ConsultasPageContent() {
                       showIcon={true}
                       variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' || consultation.status === 'VALIDATION' ? 'outlined' : 'default'}
                     />
+                  </div>
+                  
+                  <div className="table-cell actions-cell">
+                    <div className="action-buttons">
+                      <button
+                        className="action-button edit-action"
+                        onClick={(e) => handleEditConsultation(e, consultation)}
+                        title="Editar consulta"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        className="action-button delete-action"
+                        onClick={(e) => handleDeleteConsultation(e, consultation)}
+                        title="Excluir consulta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   
                 </div>
@@ -6764,6 +6921,56 @@ function ConsultasPageContent() {
           >
             ›
           </button>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteModal && consultationToDelete && (
+        <div className="modal-overlay" onClick={cancelDeleteConsultation}>
+          <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-icon delete-icon">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="modal-title">Excluir Consulta</h3>
+            </div>
+            
+            <div className="modal-body">
+              <p className="modal-text">
+                Tem certeza que deseja excluir a consulta de <strong>{consultationToDelete.patient_name}</strong>?
+              </p>
+              <p className="modal-warning">
+                Esta ação não pode ser desfeita. Todos os dados da consulta serão permanentemente removidos.
+              </p>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="modal-button cancel-button"
+                onClick={cancelDeleteConsultation}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="modal-button delete-button"
+                onClick={confirmDeleteConsultation}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Excluir Consulta
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

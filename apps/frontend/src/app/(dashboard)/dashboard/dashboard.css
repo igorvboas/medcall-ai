@@ -94,7 +94,7 @@
   visibility: visible !important;
   opacity: 1 !important;
   text-align: left; /* Alinha à esquerda */
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 /* Layout principal: conteúdo + painel direito */

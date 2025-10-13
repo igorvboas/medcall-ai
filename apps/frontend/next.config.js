@@ -45,6 +45,21 @@ const nextConfig = {
             key: 'Cross-Origin-Resource-Policy',
             value: 'cross-origin',
           },
+          // Priorizar carregamento de fontes
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+      // Headers específicos para fontes
+      {
+        source: '/_next/static/media/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
         ],
       },
     ];

@@ -1,8 +1,8 @@
 /* Sign Up Page Styles - Based on Landing Page Design */
 
-/* Apply SF Pro font to the entire sign up page */
+/* Apply Inter font to the entire sign up page */
 .signup-page {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
   min-height: 100vh;
   display: flex;
   align-items: center;
