@@ -103,6 +103,9 @@ export function ConsultationRoom({
   // Estado para modal de finalização
 
   const [showFinishModal, setShowFinishModal] = useState(false);
+  
+  // Estado para loading da finalização da sala
+  const [isEndingRoom, setIsEndingRoom] = useState(false);
 
   
 
@@ -1969,6 +1972,10 @@ export function ConsultationRoom({
 
     if (confirm('Tem certeza que deseja finalizar esta sala? As transcrições serão salvas.')) {
 
+      // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
+      console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
+      setIsEndingRoom(true);
+
       socketRef.current.emit('endRoom', {
 
         roomId: roomId
@@ -2034,11 +2041,19 @@ export function ConsultationRoom({
               // Silenciar erros (não bloquear UI)
             }
 
+          // 🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso
+          console.log('🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso');
+          setIsEndingRoom(false);
+
           alert('✅ Sala finalizada!\n\n💾 Transcrições salvas no banco de dados\n📝 Total: ' + response.saveResult.transcriptionsCount + ' transcrições');
 
           router.push('/consulta/nova');
 
         } else {
+
+          // 🔍 DEBUG [REFERENCIA] Erro ao finalizar sala
+          console.log('🔍 DEBUG [REFERENCIA] Erro ao finalizar sala:', response.error);
+          setIsEndingRoom(false);
 
           alert('Erro ao finalizar sala: ' + response.error);
 
@@ -2135,9 +2150,13 @@ export function ConsultationRoom({
 
           {userType === 'doctor' && (
 
-            <button className="btn-end-room" onClick={endRoom}>
+            <button 
+              className="btn-end-room" 
+              onClick={endRoom}
+              disabled={isEndingRoom}
+            >
 
-              Finalizar Sala
+              {isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}
 
             </button>
 
@@ -2434,6 +2453,80 @@ export function ConsultationRoom({
               Entendi
 
             </button>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* Loading overlay durante finalização da sala */}
+
+      {isEndingRoom && (
+
+        <div style={{
+
+          position: 'fixed',
+
+          top: 0,
+
+          left: 0,
+
+          right: 0,
+
+          bottom: 0,
+
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+
+          display: 'flex',
+
+          alignItems: 'center',
+
+          justifyContent: 'center',
+
+          zIndex: 10000
+
+        }}>
+
+          <div style={{
+
+            backgroundColor: '#1a1a1a',
+
+            padding: '2rem',
+
+            borderRadius: '8px',
+
+            display: 'flex',
+
+            flexDirection: 'column',
+
+            alignItems: 'center',
+
+            gap: '1rem',
+
+            color: '#fff'
+
+          }}>
+
+            <div style={{
+
+              width: '40px',
+
+              height: '40px',
+
+              border: '4px solid #333',
+
+              borderTop: '4px solid #A6CE39',
+
+              borderRadius: '50%',
+
+              animation: 'spin 1s linear infinite'
+
+            }}></div>
+
+            <p style={{ margin: 0, fontSize: '16px' }}>Finalizando sala...</p>
+
+            <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>Salvando transcrições no banco de dados</p>
 
           </div>
 
