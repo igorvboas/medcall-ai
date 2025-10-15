@@ -40,6 +40,33 @@ JWT_SECRET = [SEU_JWT_SECRET_32_CHARS]
 ENCRYPTION_KEY = [SUA_ENCRYPTION_KEY_32_CHARS]
 ```
 
+### Twilio TURN (Network Traversal Service)
+
+Para habilitar TURN/STUN via Twilio no Gateway:
+
+1) Instalar dependência no workspace do gateway
+
+```
+# na raiz do monorepo
+npm i twilio -w @medcall/gateway
+```
+
+2) Adicionar variáveis no serviço `medcall-gateway`
+
+```
+TWILIO_ACCOUNT_SID = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN  = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+3) Endpoint disponível
+
+```
+GET /api/turn-credentials  # retorna { iceServers: [...] } efêmeros da Twilio
+```
+
+4) Frontend
+- `ConsultationRoom.tsx` já busca esse endpoint e usa os `iceServers` antes de criar o RTCPeerConnection. Mantém STUN/TURN do `.env` como fallback.
+
 4. **Deploy:**
    - Clique em "DEPLOY"
 
@@ -55,6 +82,8 @@ gcloud run services update medcall-gateway \
   --set-env-vars="SUPABASE_SERVICE_ROLE_KEY=[SUA_SUPABASE_SERVICE_ROLE_KEY]" \
   --set-env-vars="OPENAI_API_KEY=[SUA_OPENAI_API_KEY]" \
   --set-env-vars="OPENAI_ORGANIZATION=[SUA_OPENAI_ORGANIZATION]" \
+  --set-env-vars="TWILIO_ACCOUNT_SID=[SEU_SID]" \
+  --set-env-vars="TWILIO_AUTH_TOKEN=[SEU_TOKEN]" \
   --set-env-vars="JWT_SECRET=[SEU_JWT_SECRET_32_CHARS]" \
   --set-env-vars="ENCRYPTION_KEY=[SUA_ENCRYPTION_KEY_32_CHARS]" \
   --region=southamerica-east1
