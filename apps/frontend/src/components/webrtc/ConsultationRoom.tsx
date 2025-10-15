@@ -1193,9 +1193,11 @@ export function ConsultationRoom({
     try {
 
       //console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] createOffer()...');
       const offer = await peerConnectionRef.current!.createOffer();
 
       await peerConnectionRef.current!.setLocalDescription(offer);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(offer) OK');
 
       
 
@@ -1214,6 +1216,7 @@ export function ConsultationRoom({
       // Enviar oferta com roomId
 
       //console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
+      console.log('🔍 DEBUG [REFERENCIA] [SIGNALING] emit newOffer');
       socketRef.current.emit('newOffer', {
 
         roomId: roomId,
@@ -1304,12 +1307,14 @@ export function ConsultationRoom({
 
       // 1. fetchUserMedia - igual ao projeto original
 
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] answer: fetchUserMedia');
       await fetchUserMedia();
 
       
 
       // 2. createPeerConnection - igual ao projeto original
 
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] answer: createPeerConnection with remote offer');
       await createPeerConnection({ offer: offerData.offer });
 
   
@@ -1318,9 +1323,11 @@ export function ConsultationRoom({
 
       // 3. Criar e enviar resposta - igual ao projeto original
 
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] createAnswer()...');
       const answer = await peerConnectionRef.current!.createAnswer({});
 
       await peerConnectionRef.current!.setLocalDescription(answer);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(answer) OK');
 
       
 
@@ -1342,6 +1349,7 @@ export function ConsultationRoom({
 
       // Enviar resposta com roomId - igual ao projeto original
 
+      console.log('🔍 DEBUG [REFERENCIA] [SIGNALING] emit newAnswer');
       socketRef.current.emit('newAnswer', {
 
         roomId: roomId,
@@ -1527,8 +1535,10 @@ export function ConsultationRoom({
       }
 
       
-      //console.log('📹 [MÍDIA] Stream obtido:', stream);
-      console.log('📹 [MÍDIA] Tracks:', stream.getTracks().map(t => `${t.kind} - ${t.enabled}`));
+      // 🔍 DEBUG [REFERENCIA] MÍDIA OBTIDA
+      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Stream obtido');
+      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Tracks totais:', stream.getTracks().length);
+      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Tracks detalhe:', stream.getTracks().map(t => `${t.kind}:${t.enabled}:${t.readyState}`));
       
 
       if (localVideoRef.current) {
@@ -1558,7 +1568,7 @@ export function ConsultationRoom({
 
       if (!audioProcessorRef.current) {
 
-        //console.log('Inicializando AudioProcessor...');
+        console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Inicializando AudioProcessor...');
         audioProcessorRef.current = new AudioProcessor();
 
         await audioProcessorRef.current.init(stream);
@@ -1569,7 +1579,7 @@ export function ConsultationRoom({
 
         if (!transcriptionManagerRef.current) {
 
-          //console.log('Inicializando TranscriptionManager...');
+          console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Inicializando TranscriptionManager...');
           transcriptionManagerRef.current = new TranscriptionManager();
 
           transcriptionManagerRef.current.setSocket(socketRef.current);
@@ -1654,20 +1664,21 @@ export function ConsultationRoom({
     }
 
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
+    console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] PeerConnection criada');
 
     
 
     // ✅ Monitorar estado da conexão
     peerConnectionRef.current.onconnectionstatechange = () => {
-      console.log('🔗 [WEBRTC] Connection state:', peerConnectionRef.current?.connectionState);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] connectionState =', peerConnectionRef.current?.connectionState);
     };
     
     peerConnectionRef.current.oniceconnectionstatechange = () => {
-      console.log('🔗 [WEBRTC] ICE connection state:', peerConnectionRef.current?.iceConnectionState);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] iceConnectionState =', peerConnectionRef.current?.iceConnectionState);
     };
     
     peerConnectionRef.current.onsignalingstatechange = () => {
-      console.log('🔗 [WEBRTC] Signaling state:', peerConnectionRef.current?.signalingState);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] signalingState =', peerConnectionRef.current?.signalingState);
     };
     
     // ✅ CORREÇÃO: Criar remoteStream vazio (será preenchido quando receber tracks)
@@ -1684,11 +1695,11 @@ export function ConsultationRoom({
       //console.log('🔗 [WEBRTC] userType:', userType);
       
 
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Adicionando', tracks.length, 'tracks locais');
       tracks.forEach((track, index) => {
-
-        //console.log(`🔗 [WEBRTC] Adicionando track ${index}:`, track.kind, track.enabled, 'readyState:', track.readyState);
+        console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] addTrack #${index} kind=${track.kind} enabled=${track.enabled} state=${track.readyState}`);
         const sender = peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
-        //console.log(`🔗 [WEBRTC] ✅ Sender criado para track ${track.kind}:`, sender);
+        console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] sender #${index} criado para ${track.kind}`, sender ? 'ok' : 'fail');
       });
 
       
@@ -1712,8 +1723,7 @@ export function ConsultationRoom({
     // ✅ CORREÇÃO: Usar onicecandidate ao invés de addEventListener
     peerConnectionRef.current.onicecandidate = (e) => {
       if(e.candidate) {
-
-        //console.log('🔗 [ICE] Enviando ICE candidate:', e.candidate.type);
+        console.log('🔍 DEBUG [REFERENCIA] [ICE] candidate gerado (type, protocol):', e.candidate.type, e.candidate.protocol);
         socketRef.current.emit('sendIceCandidateToSignalingServer', {
 
           roomId: roomId,
@@ -1732,11 +1742,7 @@ export function ConsultationRoom({
     
     // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
     peerConnectionRef.current.ontrack = (e) => {
-      //console.log('🔗 [WEBRTC] 🎉 TRACK EVENTO DISPARADO!');
-      //console.log('🔗 [WEBRTC] Track remoto recebido:', e.track.kind, 'enabled:', e.track.enabled, 'readyState:', e.track.readyState);
-      //console.log('🔗 [WEBRTC] Streams recebidos:', e.streams.length);
-      //console.log('🔗 [WEBRTC] Stream[0]:', e.streams[0]);
-      //console.log('🔗 [WEBRTC] userType:', userType);
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] ontrack recebido kind=', e.track.kind, 'streams=', e.streams?.length);
       
       // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
       if (e.streams && e.streams[0]) {
@@ -1747,7 +1753,7 @@ export function ConsultationRoom({
           // ✅ FIX: Só atribuir se for um stream diferente
           const currentStream = remoteVideoRef.current.srcObject as MediaStream;
           if (!currentStream || currentStream.id !== e.streams[0].id) {
-            console.log('🔗 [WEBRTC] Atribuindo novo stream (id:', e.streams[0].id, ')');
+            console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', e.streams[0].id);
             remoteVideoRef.current.srcObject = e.streams[0];
             remoteStreamRef.current = e.streams[0];
             
@@ -1759,7 +1765,7 @@ export function ConsultationRoom({
                 }).catch(err => {
                   // ✅ CORREÇÃO: Silenciar erro de autoplay (comum e não crítico)
                   if (err.name === 'NotAllowedError') {
-                    console.warn('🔗 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador (normal)');
+                    console.warn('🔍 DEBUG [REFERENCIA] [WEBRTC] ⚠️ Autoplay bloqueado (aguardando interação)');
                     // Tentar novamente após interação do usuário
                     const handleUserInteraction = () => {
                       remoteVideoRef.current?.play().catch(() => {});
