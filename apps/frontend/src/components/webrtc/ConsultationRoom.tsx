@@ -1133,20 +1133,7 @@ export function ConsultationRoom({
 
 
 
-    // Para pacientes: criar botão Answer - IGUAL AO PROJETO ORIGINAL
-
-    if (userType === 'patient') {
-
-      socketRef.current.on('newOfferAwaiting', (data: any) => {
-
-        //console.log('🩺 [PACIENTE] Oferta recebida via newOfferAwaiting, criando botão Answer...');
-        // Criar botão Answer IGUAL AO PROJETO ORIGINAL
-
-        createAnswerButton(data);
-
-      });
-
-    }
+    // Handler duplicado removido para evitar processar oferta duas vezes no paciente
 
   };
 
