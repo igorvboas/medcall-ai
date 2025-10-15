@@ -1501,13 +1501,30 @@ export function ConsultationRoom({
     try {
 
       //console.log('📹 [MÍDIA] Obtendo stream de mídia...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-
-        video: true,
-
-        audio: true,
-
-      });
+      
+      // ✅ NOVO: Tentar primeiro com preferências específicas
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+      } catch (error) {
+        // Se falhar com preferências, tentar sem
+        console.warn('📹 [MÍDIA] Falha com preferências, tentando configuração básica...');
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+      }
 
       
       //console.log('📹 [MÍDIA] Stream obtido:', stream);
@@ -1574,8 +1591,53 @@ export function ConsultationRoom({
 
     } catch(err) {
 
-      console.error('Erro ao obter mídia:', err);
-
+      console.error('❌ Erro ao obter mídia:', err);
+      
+      // ✅ NOVO: Se erro for "Device in use", tentar liberar e tentar novamente
+      if (err instanceof DOMException && err.name === 'NotReadableError') {
+        console.warn('⚠️ Dispositivo em uso. Tentando liberar e tentar novamente...');
+        
+        // Liberar qualquer stream anterior que possa estar travado
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => track.stop());
+          localStreamRef.current = null;
+        }
+        
+        // Aguardar um pouco e tentar novamente
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          console.log('✅ Stream obtido após retry');
+          
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+          }
+          localStreamRef.current = stream;
+          
+          // Inicializar AudioProcessor
+          if (!audioProcessorRef.current) {
+            audioProcessorRef.current = new AudioProcessor();
+            await audioProcessorRef.current.init(stream);
+            
+            if (!transcriptionManagerRef.current) {
+              transcriptionManagerRef.current = new TranscriptionManager();
+              transcriptionManagerRef.current.setSocket(socketRef.current);
+              transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
+              setupTranscriptionCallbacks();
+            }
+          }
+        } catch (retryErr) {
+          console.error('❌ Falha no retry:', retryErr);
+          alert('Não foi possível acessar a câmera/microfone. Verifique as permissões do navegador.');
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+        alert('Erro ao acessar câmera/microfone: ' + errorMessage);
+      }
     }
 
   };
@@ -1583,8 +1645,14 @@ export function ConsultationRoom({
 
 
   const createPeerConnection = async (offerObj?: any) => {
-
     
+
+    // ✅ NOVO: Verificar se stream local existe antes de criar PeerConnection
+    if (!localStreamRef.current) {
+      console.error('❌ [WEBRTC] Não é possível criar PeerConnection sem stream local');
+      throw new Error('Stream local não disponível');
+    }
+
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
 
     
@@ -1689,11 +1757,24 @@ export function ConsultationRoom({
                 remoteVideoRef.current.play().then(() => {
                   console.log('🔗 [WEBRTC] ✅ Vídeo remoto começou a reproduzir');
                 }).catch(err => {
-                  console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
-                  // Tentar novamente
-                  setTimeout(() => {
-                    remoteVideoRef.current?.play().catch(e => console.error('Retry falhou:', e));
-                  }, 100);
+                  // ✅ CORREÇÃO: Silenciar erro de autoplay (comum e não crítico)
+                  if (err.name === 'NotAllowedError') {
+                    console.warn('🔗 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador (normal)');
+                    // Tentar novamente após interação do usuário
+                    const handleUserInteraction = () => {
+                      remoteVideoRef.current?.play().catch(() => {});
+                      document.removeEventListener('click', handleUserInteraction);
+                      document.removeEventListener('touchstart', handleUserInteraction);
+                    };
+                    document.addEventListener('click', handleUserInteraction, { once: true });
+                    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+                  } else {
+                    console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
+                    // Tentar novamente
+                    setTimeout(() => {
+                      remoteVideoRef.current?.play().catch(e => console.error('Retry falhou:', e));
+                    }, 100);
+                  }
                 });
               }
             }, 100);

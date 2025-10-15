@@ -38,6 +38,7 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
   const [microphones, setMicrophones] = useState<AudioDevice[]>([]);
   const [consent, setConsent] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
+  const [socketConnected, setSocketConnected] = useState(false);
   
   const socketRef = useRef<any>(null);
 
@@ -62,6 +63,7 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
     if (socketRef.current) return; // já conectado
 
     try {
+      console.log('🔌 Conectando ao Socket.IO...');
       socketRef.current = (window as any).io.connect(
         process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
         {
@@ -72,8 +74,25 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
           }
         }
       );
+
+      // ✅ NOVO: Configurar listeners de conexão
+      socketRef.current.on('connect', () => {
+        console.log('✅ Socket.IO conectado');
+        setSocketConnected(true);
+      });
+
+      socketRef.current.on('disconnect', () => {
+        console.log('❌ Socket.IO desconectado');
+        setSocketConnected(false);
+      });
+
+      socketRef.current.on('connect_error', (error: any) => {
+        console.error('❌ Erro ao conectar Socket.IO:', error);
+        setSocketConnected(false);
+      });
     } catch (error) {
       console.error('Erro ao conectar Socket.IO:', error);
+      setSocketConnected(false);
     }
   }, [hostName]);
 
@@ -414,6 +433,7 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
               isCreatingRoom || 
               loadingPatients || 
               loadingDoctor ||
+              !socketConnected ||
               !selectedPatient || 
               !consent ||
               (consultationType === 'online' && !selectedMicrophone)
@@ -421,6 +441,14 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
           >
             {isCreatingRoom ? 'Criando Consulta...' : 'Iniciar Consulta'}
           </button>
+
+          {/* ✅ NOVO: Indicador de status da conexão */}
+          {!socketConnected && !loadingDoctor && (
+            <div className="connection-status">
+              <div className="spinner-small"></div>
+              <span className="text-muted small">Conectando ao servidor...</span>
+            </div>
+          )}
         </form>
 
         {isCreatingRoom && (

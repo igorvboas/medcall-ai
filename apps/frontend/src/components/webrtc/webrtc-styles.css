@@ -1681,3 +1681,46 @@
 .dark .suggestion-confidence {
   color: #9ca3af;
 }
+
+/* ✅ NOVO: Indicador de Status de Conexão */
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(212, 165, 116, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 165, 116, 0.2);
+}
+
+.connection-status .spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(212, 165, 116, 0.2);
+  border-top: 2px solid #d4a574;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.connection-status span {
+  font-size: 13px;
+  color: #d4a574;
+  font-weight: 500;
+}
+
+/* Dark mode para connection-status */
+.dark .connection-status {
+  background: rgba(230, 195, 167, 0.08);
+  border: 1px solid rgba(230, 195, 167, 0.2);
+}
+
+.dark .connection-status .spinner-small {
+  border: 2px solid rgba(230, 195, 167, 0.2);
+  border-top: 2px solid #E6C3A7;
+}
+
+.dark .connection-status span {
+  color: #E6C3A7;
+}
