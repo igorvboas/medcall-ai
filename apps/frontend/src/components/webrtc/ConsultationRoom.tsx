@@ -161,26 +161,37 @@ export function ConsultationRoom({
 
 
 
-  // Configuração WebRTC
+  // Configuração WebRTC (STUN + opcional TURN via variáveis de ambiente)
+  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
+  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
 
-  const peerConfiguration = {
+  const iceServers: RTCIceServer[] = [
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302'
+      ]
+    }
+  ];
 
-    iceServers: [
-
-      {
-
-        urls: [
-
-          'stun:stun.l.google.com:19302',
-
-          'stun:stun1.l.google.com:19302'
-
-        ]
-
+  if (turnUrl && turnUsername && turnCredential) {
+    // Normalizar URL: exigir prefixo turn:/turns:
+    let normalizedTurnUrl = turnUrl.trim();
+    if (!/^turns?:/i.test(normalizedTurnUrl)) {
+      // Heurística simples: se porta 5349/443 -> turns, senão turn
+      if (/:(5349|443)(\b|$)/.test(normalizedTurnUrl)) {
+        normalizedTurnUrl = `turns:${normalizedTurnUrl}`;
+      } else {
+        normalizedTurnUrl = `turn:${normalizedTurnUrl}`;
       }
+    }
 
-    ]
+    iceServers.push({ urls: normalizedTurnUrl as string, username: turnUsername as string, credential: turnCredential as string });
+  }
 
+  const peerConfiguration: RTCConfiguration = {
+    iceServers
   };
 
   console.log('🟢 userName inicial:', userName);
@@ -1732,7 +1743,7 @@ export function ConsultationRoom({
 
           iceUserName: userName,
 
-          didIOffer,
+          didIOffer: didOfferRef.current,
 
         });
 
