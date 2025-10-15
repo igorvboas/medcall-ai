@@ -161,7 +161,7 @@ export function ConsultationRoom({
 
 
 
-  // Configuração WebRTC (STUN + opcional TURN via variáveis de ambiente)
+  // Configuração WebRTC (STUN + opcional TURN via variáveis de ambiente e Twilio)
   const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
   const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
   const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
@@ -176,22 +176,52 @@ export function ConsultationRoom({
   ];
 
   if (turnUrl && turnUsername && turnCredential) {
-    // Normalizar URL: exigir prefixo turn:/turns:
-    let normalizedTurnUrl = turnUrl.trim();
-    if (!/^turns?:/i.test(normalizedTurnUrl)) {
-      // Heurística simples: se porta 5349/443 -> turns, senão turn
-      if (/:(5349|443)(\b|$)/.test(normalizedTurnUrl)) {
-        normalizedTurnUrl = `turns:${normalizedTurnUrl}`;
-      } else {
-        normalizedTurnUrl = `turn:${normalizedTurnUrl}`;
-      }
-    }
+    // Aceitar lista separada por vírgulas/space e normalizar cada item
+    const rawEntries = turnUrl.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    const urls: string[] = [];
 
-    iceServers.push({ urls: normalizedTurnUrl as string, username: turnUsername as string, credential: turnCredential as string });
+    rawEntries.forEach(entry => {
+      let e = entry;
+      const hasScheme = /^turns?:/i.test(e);
+      const isTlsPort = /:(5349|443)(\b|$)/.test(e);
+      if (!hasScheme) {
+        e = `${isTlsPort ? 'turns' : 'turn'}:${e}`;
+      }
+      // Adicionar variantes UDP/TCP quando não for TLS explícito
+      if (/^turns:/i.test(e)) {
+        urls.push(e);
+      } else {
+        urls.push(`${e}?transport=udp`);
+        urls.push(`${e}?transport=tcp`);
+      }
+    });
+
+    // Garantir unicidade
+    const uniqueUrls = Array.from(new Set(urls));
+    iceServers.push({ urls: uniqueUrls as any, username: turnUsername as string, credential: turnCredential as string });
   }
 
+  // Estado com ICE servers (começa com STUN + eventual TURN do .env)
+  const [iceServersState, setIceServersState] = useState<RTCIceServer[]>(iceServers);
+
+  // Buscar credenciais efêmeras da Twilio via gateway (se disponível)consol
+  
+  console.log('------> vou chamar a api /api/turn-credentials')
+  useEffect(() => {
+    const httpBase = (process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001').replace(/^ws/i, 'http');
+    fetch(`${httpBase}/api/turn-credentials`)
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data = await r.json();
+        if (data && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+          setIceServersState(data.iceServers as RTCIceServer[]);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const peerConfiguration: RTCConfiguration = {
-    iceServers
+    iceServers: iceServersState
   };
 
   console.log('🟢 userName inicial:', userName);
@@ -372,7 +402,7 @@ export function ConsultationRoom({
 
 
 
-    console.log('🔧 [TRANSCRIPTION] Configurando callbacks...');
+    //console.log('🔧 [TRANSCRIPTION] Configurando callbacks...');
 
     
 

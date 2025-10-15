@@ -10,6 +10,7 @@ import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
 import roomsRoutes from './routes/rooms';
+import twilioRoutes from './routes/index';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 import { setupRoomsWebSocket } from './websocket/rooms';
 
@@ -58,6 +59,7 @@ app.use('/api/transcription', transcriptionRoutes);
 app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/rooms', roomsRoutes);
+app.use('/api', twilioRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM
 app.get('/api/pcm-transcription/stats', (req, res) => {
