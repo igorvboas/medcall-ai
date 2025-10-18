@@ -23,7 +23,9 @@ export interface WebhookEndpoints {
  * Retorna a configuração de webhook baseada no ambiente
  */
 export function getWebhookConfig(): WebhookConfig {
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
+  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
+  const isDevelopment = nodeEnv === 'development';
   
   return {
     baseUrl: 'https://webhook.tc1.triacompany.com.br',
@@ -36,14 +38,17 @@ export function getWebhookConfig(): WebhookConfig {
  */
 export function getWebhookEndpoints(): WebhookEndpoints {
   const config = getWebhookConfig();
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
+  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
+  const isDevelopment = nodeEnv === 'development';
   
   const suffix = isDevelopment ? '-teste' : '';
   
   console.log('🔗 Webhook endpoints configurados:', {
     baseUrl: config.baseUrl,
     suffix,
-    isDevelopment
+    isDevelopment,
+    nodeEnv
   });
   
   return {
