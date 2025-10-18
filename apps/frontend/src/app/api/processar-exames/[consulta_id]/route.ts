@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, getAuthenticatedSession } from '@/lib/supabase-server';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 export async function POST(request: NextRequest, { params }: { params: { consulta_id: string } }) {
   try {
@@ -215,16 +216,15 @@ export async function POST(request: NextRequest, { params }: { params: { consult
       paciente_id: consulta.patient_id
     };
 
-    const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi';
+    const webhookEndpoints = getWebhookEndpoints();
+    const webhookHeaders = getWebhookHeaders();
     
     try {
       console.log('🔍 DEBUG [REFERENCIA] Dados do webhook:', webhookData);
       
-      const webhookResponse = await fetch(webhookUrl, {
+      const webhookResponse = await fetch(webhookEndpoints.exames, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: webhookHeaders,
         body: JSON.stringify(webhookData),
       });
 

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import './consultas.css';
 
 // Tipos para exercícios físicos
@@ -375,12 +376,17 @@ function AnamneseSection({
         throw new Error('Erro ao atualizar campo no Supabase');
       }
 
+      // Obter dados da resposta da API
+      const result = await response.json();
+      console.log('📦 Dados retornados pela API:', result);
+
       // 2. Fazer requisição para o webhook
-      const webhookResponse = await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-anamnese', {
+      const webhookEndpoints = getWebhookEndpoints();
+      const webhookHeaders = getWebhookHeaders();
+      
+      const webhookResponse = await fetch(webhookEndpoints.edicaoAnamnese, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: webhookHeaders,
         body: JSON.stringify({
           fieldPath,
           value: newValue,
@@ -393,22 +399,41 @@ function AnamneseSection({
         console.warn('Webhook falhou, mas campo foi salvo no Supabase');
       }
 
-      // 3. Atualizar o estado local
-      const pathParts = fieldPath.split('.');
-      let current = anamneseData;
-      
-      // Navegar até o campo correto
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        if (current && current[pathParts[i] as keyof AnamneseData]) {
-          current = current[pathParts[i] as keyof AnamneseData] as any;
+      // 3. Atualizar o estado local usando os dados da API
+      if (result.success && result.data) {
+        console.log('🔄 Atualizando interface com dados da API:', result.data);
+        
+        // Determinar qual seção da anamnese atualizar baseado no fieldPath
+        const pathParts = fieldPath.split('.');
+        const tableName = pathParts[0];
+        
+        // Mapear nome da tabela para a chave do estado
+        const stateKeyMap: { [key: string]: string } = {
+          'a_cadastro_prontuario': 'cadastro_prontuario',
+          'a_objetivos_queixas': 'objetivos_queixas',
+          'a_historico_risco': 'historico_risco',
+          'a_observacao_clinica_lab': 'observacao_clinica_lab',
+          'a_historia_vida': 'historia_vida',
+          'a_setenios_eventos': 'setenios_eventos',
+          'a_ambiente_contexto': 'ambiente_contexto',
+          'a_sensacao_emocoes': 'sensacao_emocoes',
+          'a_preocupacoes_crencas': 'preocupacoes_crencas',
+          'a_reino_miasma': 'reino_miasma',
+        };
+        
+        const stateKey = stateKeyMap[tableName];
+        if (stateKey && anamneseData) {
+          // Atualizar a seção específica com os dados completos da API
+          setAnamneseData(prev => ({
+            ...prev!,
+            [stateKey]: result.data
+          }));
+          console.log('✅ Interface atualizada com dados da API');
+        } else {
+          console.warn('⚠️ Não foi possível mapear a tabela para o estado:', tableName);
         }
-      }
-      
-      // Atualizar o valor
-      if (current && pathParts.length > 0) {
-        const lastKey = pathParts[pathParts.length - 1];
-        (current as any)[lastKey] = newValue;
-        setAnamneseData({ ...anamneseData! });
+      } else {
+        console.warn('⚠️ Resposta da API não contém dados válidos:', result);
       }
 
     } catch (error) {
@@ -1135,11 +1160,13 @@ function DiagnosticoSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
+        const webhookEndpoints = getWebhookEndpoints();
+        
         await fetch('/api/ai-edit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            webhookUrl: 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico',
+            webhookUrl: webhookEndpoints.edicaoDiagnostico,
             origem: 'MANUAL',
             fieldPath, 
             texto: newValue,
@@ -1739,9 +1766,12 @@ function LTBSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath, 
@@ -2133,9 +2163,12 @@ function MentalidadeSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath, 
@@ -2485,9 +2518,12 @@ function SuplemementacaoSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath, 
@@ -3141,9 +3177,12 @@ function AlimentacaoSection({
       
       // Depois, notificar o webhook
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath, 
@@ -3429,9 +3468,12 @@ function HabitosDeVidaSection({
       
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath, 
@@ -3836,11 +3878,14 @@ function ConsultasPageContent() {
       const isSolucaoSuplemementacao = selectedField.fieldPath.startsWith('suplementacao_data');
       const isSolucaoHabitosVida = selectedField.fieldPath.startsWith('habitos_vida_data');
       
+      const webhookEndpoints = getWebhookEndpoints();
+      const webhookHeaders = getWebhookHeaders();
+      
       const webhookUrl = (isSolucaoLTB || isSolucaoMentalidade || isSolucaoSuplemementacao || isSolucaoHabitosVida)
-        ? 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao'
+        ? webhookEndpoints.edicaoSolucao
         : isDiagnostico 
-        ? 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico'
-        : 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-anamnese';
+        ? webhookEndpoints.edicaoDiagnostico
+        : webhookEndpoints.edicaoAnamnese;
       
       const requestBody: any = {
         origem: 'IA',
@@ -4175,9 +4220,12 @@ function ConsultasPageContent() {
       
       // Depois, notificar o webhook
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: webhookHeaders,
           body: JSON.stringify({ 
             origem: 'MANUAL',
             fieldPath: `s_exercicios_fisicos.${field}`,
@@ -4350,12 +4398,13 @@ function ConsultasPageContent() {
 
       // Disparar webhook para iniciar processamento do diagnóstico
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/diagnostico-principal', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.diagnosticoPrincipal, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        headers: webhookHeaders,
+        body: JSON.stringify({
             consultaId: consultaDetails.id,
             medicoId: consultaDetails.doctor_id,
             pacienteId: consultaDetails.patient_id
@@ -4402,12 +4451,13 @@ function ConsultasPageContent() {
 
       // Disparar webhook para iniciar processamento da solução
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-trigger-solucao', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.triggerSolucao, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        headers: webhookHeaders,
+        body: JSON.stringify({
             consultaId: consultaDetails.id,
             medicoId: consultaDetails.doctor_id,
             pacienteId: consultaDetails.patient_id
@@ -4581,12 +4631,13 @@ function ConsultasPageContent() {
 
       // Disparar webhook para iniciar criação dos entregáveis
       try {
-        await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-solucao-criacao-entregaveis', {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
+        await fetch(webhookEndpoints.solucaoCriacaoEntregaveis, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        headers: webhookHeaders,
+        body: JSON.stringify({
             consultaId: consultaDetails.id,
             medicoId: consultaDetails.doctor_id,
             pacienteId: consultaDetails.patient_id

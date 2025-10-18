@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWebhookHeaders } from '@/lib/webhook-config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,13 @@ export async function POST(request: NextRequest) {
     // Log para verificar se está sendo chamado
     console.log('✅ CONFIRMANDO: API ai-edit foi chamada com sucesso!');
     
+    const webhookHeaders = getWebhookHeaders();
+    console.log('🔐 Headers de autorização:', webhookHeaders);
+    
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...webhookHeaders,
         'User-Agent': 'MedCall-AI-Frontend/1.0',
       },
       body: JSON.stringify(requestBody),

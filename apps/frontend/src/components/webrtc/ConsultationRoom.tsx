@@ -16,6 +16,7 @@ import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
 import { Video, Mic, CheckCircle } from 'lucide-react';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 
 
@@ -2138,7 +2139,9 @@ export function ConsultationRoom({
 
               if (!consultationId) consultationId = roomId;
 
-              const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-transcricao';
+              const webhookEndpoints = getWebhookEndpoints();
+              const webhookHeaders = getWebhookHeaders();
+              
               const webhookData = {
                 consultationId,
                 doctorId: doctorId || null,
@@ -2146,9 +2149,9 @@ export function ConsultationRoom({
                 transcription: transcriptionText
               };
 
-              await fetch(webhookUrl, {
+              await fetch(webhookEndpoints.transcricao, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: webhookHeaders,
                 body: JSON.stringify(webhookData),
                 keepalive: true
               }).catch(() => {});

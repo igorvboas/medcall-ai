@@ -1,6 +1,13 @@
 // Script para testar o webhook diretamente
 const testWebhook = async () => {
   try {
+    // Configuração baseada no ambiente
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const suffix = isDevelopment ? '-teste' : '';
+    const authHeader = 'Vc1mgGDEcnyqLH3LoHGUXoLTUg2BRVSu';
+    
+    const webhookUrl = `https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico${suffix}`;
+    
     const requestBody = {
       origem: 'IA',
       fieldPath: 'cadastro_prontuario.identificacao_nome_completo',
@@ -10,11 +17,14 @@ const testWebhook = async () => {
 
     console.log('🚀 Testando webhook...');
     console.log('📤 Enviando:', requestBody);
+    console.log('🔗 URL:', webhookUrl);
+    console.log('🔐 Ambiente:', isDevelopment ? 'development' : 'production');
 
-    const response = await fetch('https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico', {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': authHeader
       },
       body: JSON.stringify(requestBody),
     });

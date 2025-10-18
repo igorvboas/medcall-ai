@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, getAuthenticatedSession } from '@/lib/supabase-server';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,14 +96,13 @@ export async function POST(request: NextRequest) {
     console.log('🔍 DEBUG [REFERENCIA] Dados do webhook:', webhookData);
 
     // Fazer requisição para o webhook externo
-    const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi';
+    const webhookEndpoints = getWebhookEndpoints();
+    const webhookHeaders = getWebhookHeaders();
     
     try {
-      const webhookResponse = await fetch(webhookUrl, {
+      const webhookResponse = await fetch(webhookEndpoints.exames, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: webhookHeaders,
         body: JSON.stringify(webhookData),
       });
 

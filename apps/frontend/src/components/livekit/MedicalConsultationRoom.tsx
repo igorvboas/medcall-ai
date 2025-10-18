@@ -9,6 +9,7 @@ import {
 } from '@livekit/components-react'; 
 import { TranscriptionDisplay } from './TranscriptionDisplay';
 import { useMicTransmitter } from '../../hooks/useMicTransmitter';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 interface MedicalConsultationRoomProps {
   // Room configuration
@@ -211,7 +212,9 @@ export function MedicalConsultationRoom({
       const transcriptionText = `Transcrição da consulta LiveKit (sessionId: ${sessionId})`;
 
       // ✅ 4. Enviar para o webhook
-      const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/usi-input-transcricao';
+      const webhookEndpoints = getWebhookEndpoints();
+      const webhookHeaders = getWebhookHeaders();
+      
       const webhookData = {
         consultationId: consultationId,
         doctorId: doctorId || undefined,
@@ -221,11 +224,9 @@ export function MedicalConsultationRoom({
 
       console.log('📦 Dados do webhook:', webhookData);
 
-      const webhookResponse = await fetch(webhookUrl, {
+      const webhookResponse = await fetch(webhookEndpoints.transcricao, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: webhookHeaders,
         body: JSON.stringify(webhookData),
         keepalive: true
       });
