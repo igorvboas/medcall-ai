@@ -10,7 +10,7 @@ interface Consultation {
   patient_name: string;
   patient_context?: string;
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR' | 'CANCELLED';
+  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'COMPLETED' | 'ERROR' | 'CANCELLED';
   duration?: number;
   recording_url?: string;
   notes?: string;

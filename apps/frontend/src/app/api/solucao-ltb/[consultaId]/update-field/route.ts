@@ -38,10 +38,10 @@ export async function POST(
     
     console.log('📝 Atualizando campo LTB:', { fieldPath, value });
 
-    // O fieldPath será "ltb_data.campo_nome"
+    // O fieldPath pode ser "ltb_data.campo_nome" ou "s_agente_limpeza_do_terreno_biologico.campo_nome"
     const [tableName, fieldName] = fieldPath.split('.');
     
-    if (tableName !== 'ltb_data' || !fieldName) {
+    if ((tableName !== 'ltb_data' && tableName !== 's_agente_limpeza_do_terreno_biologico') || !fieldName) {
       return NextResponse.json(
         { error: 'Campo inválido' },
         { status: 400 }
@@ -50,61 +50,98 @@ export async function POST(
 
     const actualTableName = 's_agente_limpeza_do_terreno_biologico';
 
-    // Verificar se o registro existe
-    const { data: existing } = await supabase
+    // Buscar o paciente_id da consulta primeiro
+    const { data: consultation } = await supabase
+      .from('consultations')
+      .select('patient_id')
+      .eq('id', consultaId)
+      .single();
+
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Primeiro, limpar registros duplicados se existirem
+    console.log('🧹 Limpando registros duplicados LTB...');
+    
+    // Buscar todos os registros duplicados
+    const { data: allRecords } = await supabase
       .from(actualTableName)
-      .select('user_id')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('consulta_id', consultaId)
+      .order('created_at', { ascending: false });
+
+    if (allRecords && allRecords.length > 1) {
+      console.log(`🗑️ Encontrados ${allRecords.length} registros duplicados LTB, removendo os mais antigos...`);
+      
+      // Manter apenas o mais recente, deletar os outros
+      const recordsToDelete = allRecords.slice(1);
+      for (const record of recordsToDelete) {
+        await supabase
+          .from(actualTableName)
+          .delete()
+          .eq('id', record.id);
+      }
+      console.log(`✅ Removidos ${recordsToDelete.length} registros duplicados LTB`);
+    }
+
+    // Agora buscar o registro único (ou criar se não existir)
+    console.log('🔍 Buscando registro único LTB...');
+    
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from(actualTableName)
+      .select('*')
       .eq('user_id', userId)
       .eq('consulta_id', consultaId)
       .single();
 
-    if (!existing) {
-      // Se não existir, buscar o paciente_id da consulta
-      const { data: consultation } = await supabase
-        .from('consultations')
-        .select('patient_id')
-        .eq('id', consultaId)
-        .single();
+    console.log('📊 Registro LTB encontrado:', existingRecord);
+    console.log('❌ Erro ao buscar LTB:', fetchError);
 
-      if (!consultation) {
-        return NextResponse.json(
-          { error: 'Consulta não encontrada' },
-          { status: 404 }
-        );
-      }
-
-      // Criar registro inicial
-      const { error: insertError } = await supabase
-        .from(actualTableName)
-        .insert({
-          user_id: userId,
-          paciente_id: consultation.patient_id,
-          consulta_id: consultaId,
-          [fieldName]: value
-        });
-
-      if (insertError) {
-        console.error('❌ Erro ao criar registro:', insertError);
-        return NextResponse.json(
-          { error: 'Erro ao criar registro' },
-          { status: 500 }
-        );
-      }
-    } else {
+    if (existingRecord) {
+      console.log('✅ Atualizando registro existente LTB ID:', existingRecord.id);
       // Atualizar registro existente
+      const updateData: any = { [fieldName]: value };
+      
       const { error: updateError } = await supabase
         .from(actualTableName)
-        .update({ [fieldName]: value })
-        .eq('user_id', userId)
-        .eq('consulta_id', consultaId);
+        .update(updateData)
+        .eq('id', existingRecord.id);
 
       if (updateError) {
-        console.error('❌ Erro ao atualizar campo:', updateError);
+        console.error('❌ Erro ao atualizar campo LTB:', updateError);
         return NextResponse.json(
           { error: 'Erro ao atualizar campo' },
           { status: 500 }
         );
       }
+      console.log('✅ Registro LTB atualizado com sucesso');
+    } else {
+      console.log('➕ Criando novo registro LTB');
+      // Criar novo registro
+      const insertData: any = {
+        user_id: userId,
+        paciente_id: consultation.patient_id,
+        consulta_id: consultaId,
+        [fieldName]: value
+      };
+
+      const { error: insertError } = await supabase
+        .from(actualTableName)
+        .insert(insertData);
+
+      if (insertError) {
+        console.error('❌ Erro ao criar registro LTB:', insertError);
+        return NextResponse.json(
+          { error: 'Erro ao criar registro' },
+          { status: 500 }
+        );
+      }
+      console.log('✅ Novo registro LTB criado com sucesso');
     }
 
     console.log('✅ Campo LTB atualizado com sucesso');

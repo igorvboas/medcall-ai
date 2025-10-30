@@ -5,12 +5,15 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Save, X, Sparkles, Edit, Plus, Trash2, Pencil
+  Save, X, Sparkles, Edit, Plus, Trash2, Pencil,
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
+import SolutionsViewer from '../../components/solutions/SolutionsViewer';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import './consultas.css';
+import '../../components/solutions/solutions.css';
 
 // Tipos para exercícios físicos
 interface ExercicioFisico {
@@ -42,7 +45,7 @@ interface Consultation {
   patient_name: string;
   patient_context?: string;
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'ERROR' | 'CANCELLED' | 'COMPLETED';
+  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED';
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
   solucao_etapa?: 'LTB' | 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | 'HABITOS_DE_VIDA';
   duration?: number;
@@ -332,7 +335,8 @@ function AnamneseSection({
   onChatInputChange,
   readOnly = false,
   consultaStatus,
-  consultaEtapa
+  consultaEtapa,
+  renderViewSolutionsButton
 }: { 
   consultaId: string;
   selectedField: { fieldPath: string; label: string } | null;
@@ -345,6 +349,7 @@ function AnamneseSection({
   readOnly?: boolean;
   consultaStatus?: string;
   consultaEtapa?: string;
+  renderViewSolutionsButton?: () => JSX.Element;
 }) {
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -1738,15 +1743,16 @@ function LTBSection({
   const loadLTBData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-ltb/${consultaId}`);
+      const response = await fetch(`/api/solutions/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setLtbData(data.ltb_data);
+        setLtbData(data.solutions.ltb);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de LTB:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     }
   };
 
@@ -2135,15 +2141,16 @@ function MentalidadeSection({
   const loadMentalidadeData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-mentalidade/${consultaId}`);
+      const response = await fetch(`/api/solutions/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setMentalidadeData(data.mentalidade_data);
+        setMentalidadeData(data.solutions.mentalidade);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de Mentalidade:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     }
   };
 
@@ -2490,15 +2497,16 @@ function SuplemementacaoSection({
   const loadSuplemementacaoData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
+      const response = await fetch(`/api/solutions/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setSuplementacaoData(data.suplementacao_data);
+        setSuplementacaoData(data.solutions.suplementacao);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de Suplementação:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     }
   };
 
@@ -2562,552 +2570,220 @@ function SuplemementacaoSection({
       {/* ==================== INFORMAÇÕES GERAIS ==================== */}
       <CollapsibleSection title="1. Objetivo e Filosofia da Suplementação" defaultOpen={true}>
         <div className="anamnese-subsection">
-          <h4>Objetivo e Realidade</h4>
+          <h4>Objetivo</h4>
           <DataField label="Objetivo Principal" value={suplementacaoData?.objetivo_principal} fieldPath="suplementacao_data.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade" value={suplementacaoData?.realidade} fieldPath="suplementacao_data.realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
           <h4>Filosofia da Suplementação</h4>
-          <DataField label="Realidade da Filosofia" value={suplementacaoData?.filosofia_suplementacao_realidade} fieldPath="suplementacao_data.filosofia_suplementacao_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Princípio" value={suplementacaoData?.filosofia_suplementacao_principio} fieldPath="suplementacao_data.filosofia_suplementacao_principio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ordem de Prioridade" value={suplementacaoData?.filosofia_suplementacao_ordem_prioridade} fieldPath="suplementacao_data.filosofia_suplementacao_ordem_prioridade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.filosofia_suplementacao_duracao} fieldPath="suplementacao_data.filosofia_suplementacao_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajustes" value={suplementacaoData?.filosofia_suplementacao_ajustes} fieldPath="suplementacao_data.filosofia_suplementacao_ajustes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Realidade da Filosofia" value={suplementacaoData?.filosofia_realidade} fieldPath="suplementacao_data.filosofia_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Princípio" value={suplementacaoData?.filosofia_principio} fieldPath="suplementacao_data.filosofia_principio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Ordem de Prioridade" value={suplementacaoData?.filosofia_ordem_prioridade} fieldPath="suplementacao_data.filosofia_ordem_prioridade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Duração" value={suplementacaoData?.filosofia_duracao} fieldPath="suplementacao_data.filosofia_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Ajustes" value={suplementacaoData?.filosofia_ajustes} fieldPath="suplementacao_data.filosofia_ajustes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== BASE ESSENCIAL - PARTE 1 ==================== */}
-      <CollapsibleSection title="2. Base Essencial - Vitamina D3" defaultOpen={false}>
+      {/* ==================== SUPLEMENTOS POR CATEGORIA ==================== */}
+      <CollapsibleSection title="2. Suplementos por Categoria" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Vitamina D3 (Colecalciferol)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.vitamina_d3_colecalciferol_urgencia} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.vitamina_d3_colecalciferol_funcoes} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Inicial Agressiva" value={suplementacaoData?.vitamina_d3_colecalciferol_dose_inicial_agressiva} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_dose_inicial_agressiva" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose de Manutenção" value={suplementacaoData?.vitamina_d3_colecalciferol_dose_manutencao} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_dose_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alvo Sanguíneo" value={suplementacaoData?.vitamina_d3_colecalciferol_alvo_sanguineo} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_alvo_sanguineo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.vitamina_d3_colecalciferol_forma} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.vitamina_d3_colecalciferol_tomar_com} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cofator Obrigatório" value={suplementacaoData?.vitamina_d3_colecalciferol_cofator_obrigatorio} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_cofator_obrigatorio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame de Controle" value={suplementacaoData?.vitamina_d3_colecalciferol_exame_controle} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_exame_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Toxicidade" value={suplementacaoData?.vitamina_d3_colecalciferol_toxicidade} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_toxicidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Continuo organizando os campos em seções lógicas... */}
-      
-      <CollapsibleSection title="3. Base Essencial - Ômega 3" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Ômega 3 (EPA/DHA Alta Potência)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_urgencia} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_funcoes} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_dose_terapeutica} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Proporção Ideal" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_proporcao_ideal} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_proporcao_ideal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_fonte} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_fonte" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Qualidade Essencial" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_qualidade_essencial} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_qualidade_essencial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_horario} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conservação" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_conservacao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_conservacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Testar Qualidade" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_testar_qualidade} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_testar_qualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_contraindicacao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_duracao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="4. Base Essencial - Magnésio" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Magnésio (Bisglicinato)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.magnesio_bisglicinato_urgencia} fieldPath="suplementacao_data.magnesio_bisglicinato_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.magnesio_bisglicinato_funcoes} fieldPath="suplementacao_data.magnesio_bisglicinato_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinais de Deficiência no Caso" value={suplementacaoData?.magnesio_bisglicinato_deficiencia_sinais_caso} fieldPath="suplementacao_data.magnesio_bisglicinato_deficiencia_sinais_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.magnesio_bisglicinato_dose} fieldPath="suplementacao_data.magnesio_bisglicinato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Formas (Melhores e Piores)" value={suplementacaoData?.magnesio_bisglicinato_formas_melhores_piores} fieldPath="suplementacao_data.magnesio_bisglicinato_formas_melhores_piores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma Escolhida para o Caso" value={suplementacaoData?.magnesio_bisglicinato_forma_escolhida_caso} fieldPath="suplementacao_data.magnesio_bisglicinato_forma_escolhida_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.magnesio_bisglicinato_horario} fieldPath="suplementacao_data.magnesio_bisglicinato_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Tomar Com" value={suplementacaoData?.magnesio_bisglicinato_nao_tomar_com} fieldPath="suplementacao_data.magnesio_bisglicinato_nao_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame" value={suplementacaoData?.magnesio_bisglicinato_exame} fieldPath="suplementacao_data.magnesio_bisglicinato_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.magnesio_bisglicinato_duracao} fieldPath="suplementacao_data.magnesio_bisglicinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Adicional para Sono (Magnésio + Glicina)" value={suplementacaoData?.magnesio_glicina_dose_sono} fieldPath="suplementacao_data.magnesio_glicina_dose_sono" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="5. Base Essencial - Complexo B, Vitamina C e Zinco" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Complexo B (Formas Ativas)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.complexo_b_formas_ativas_urgencia} fieldPath="suplementacao_data.complexo_b_formas_ativas_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.complexo_b_formas_ativas_funcoes} fieldPath="suplementacao_data.complexo_b_formas_ativas_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Priorizar Formas Ativas" value={suplementacaoData?.complexo_b_formas_ativas_priorizar_formas_ativas} fieldPath="suplementacao_data.complexo_b_formas_ativas_priorizar_formas_ativas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Por Que Formas Ativas" value={suplementacaoData?.complexo_b_formas_ativas_porque_ativas} fieldPath="suplementacao_data.complexo_b_formas_ativas_porque_ativas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.complexo_b_formas_ativas_dose} fieldPath="suplementacao_data.complexo_b_formas_ativas_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B12 Adicional" value={suplementacaoData?.complexo_b_formas_ativas_b12_adicional} fieldPath="suplementacao_data.complexo_b_formas_ativas_b12_adicional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.complexo_b_formas_ativas_horario} fieldPath="suplementacao_data.complexo_b_formas_ativas_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Urina Amarela (Normal)" value={suplementacaoData?.complexo_b_formas_ativas_urina_amarela} fieldPath="suplementacao_data.complexo_b_formas_ativas_urina_amarela" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.complexo_b_formas_ativas_duracao} fieldPath="suplementacao_data.complexo_b_formas_ativas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B5 (Ácido Pantotênico) Extra - Função" value={suplementacaoData?.b5_acido_pantotenico_extra_funcao} fieldPath="suplementacao_data.b5_acido_pantotenico_extra_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B5 - Se Não Estiver no Complexo B" value={suplementacaoData?.b5_acido_pantotenico_extra_se_nao_no_complexo_b} fieldPath="suplementacao_data.b5_acido_pantotenico_extra_se_nao_no_complexo_b" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Vitamina C (Ácido Ascórbico)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.vitamina_c_acido_ascorbico_urgencia} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.vitamina_c_acido_ascorbico_funcoes} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.vitamina_c_acido_ascorbico_dose_terapeutica} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.vitamina_c_acido_ascorbico_forma} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.vitamina_c_acido_ascorbico_horario} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tolerância Intestinal" value={suplementacaoData?.vitamina_c_acido_ascorbico_tolerancia_intestinal} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_tolerancia_intestinal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.vitamina_c_acido_ascorbico_duracao} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Extra para Adrenal (Adicional)" value={suplementacaoData?.vitamina_c_dose_extra_adrenal_adicional} fieldPath="suplementacao_data.vitamina_c_dose_extra_adrenal_adicional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Total por Dia (Adrenal)" value={suplementacaoData?.vitamina_c_dose_extra_adrenal_total_dia} fieldPath="suplementacao_data.vitamina_c_dose_extra_adrenal_total_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Zinco (Bisglicinato)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.zinco_bisglicinato_urgencia} fieldPath="suplementacao_data.zinco_bisglicinato_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.zinco_bisglicinato_funcoes} fieldPath="suplementacao_data.zinco_bisglicinato_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinais de Deficiência no Caso" value={suplementacaoData?.zinco_bisglicinato_deficiencia_sinais_caso} fieldPath="suplementacao_data.zinco_bisglicinato_deficiencia_sinais_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Inicial" value={suplementacaoData?.zinco_bisglicinato_dose_inicial} fieldPath="suplementacao_data.zinco_bisglicinato_dose_inicial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose de Manutenção" value={suplementacaoData?.zinco_bisglicinato_dose_manutencao} fieldPath="suplementacao_data.zinco_bisglicinato_dose_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.zinco_bisglicinato_forma} fieldPath="suplementacao_data.zinco_bisglicinato_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.zinco_bisglicinato_tomar_com} fieldPath="suplementacao_data.zinco_bisglicinato_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Proporção Zinco:Cobre" value={suplementacaoData?.zinco_bisglicinato_proporcao_cobre} fieldPath="suplementacao_data.zinco_bisglicinato_proporcao_cobre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Tomar Com" value={suplementacaoData?.zinco_bisglicinato_nao_tomar_com} fieldPath="suplementacao_data.zinco_bisglicinato_nao_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame" value={suplementacaoData?.zinco_bisglicinato_exame} fieldPath="suplementacao_data.zinco_bisglicinato_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.zinco_bisglicinato_duracao} fieldPath="suplementacao_data.zinco_bisglicinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Continua com mais seções devido ao grande número de campos... */}
-      {/* Por brevidade, vou criar uma nota dizendo que há mais campos */}
-      
-      <CollapsibleSection title="6. Saúde Intestinal" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Probióticos (Rotação de Cepas)</h4>
-          <DataField label="Ver Agente 1 (LTB)" value={suplementacaoData?.probioticos_rotacao_cepas_ver_agente_1} fieldPath="suplementacao_data.probioticos_rotacao_cepas_ver_agente_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégia" value={suplementacaoData?.probioticos_rotacao_cepas_estrategia} fieldPath="suplementacao_data.probioticos_rotacao_cepas_estrategia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Potência" value={suplementacaoData?.probioticos_rotacao_cepas_potencia} fieldPath="suplementacao_data.probioticos_rotacao_cepas_potencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cepas a Priorizar" value={suplementacaoData?.probioticos_rotacao_cepas_cepas_priorizar} fieldPath="suplementacao_data.probioticos_rotacao_cepas_cepas_priorizar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.probioticos_rotacao_cepas_horario} fieldPath="suplementacao_data.probioticos_rotacao_cepas_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conservação" value={suplementacaoData?.probioticos_rotacao_cepas_conservacao} fieldPath="suplementacao_data.probioticos_rotacao_cepas_conservacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.probioticos_rotacao_cepas_duracao} fieldPath="suplementacao_data.probioticos_rotacao_cepas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Glutamina (Pó)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.l_glutamina_po_urgencia} fieldPath="suplementacao_data.l_glutamina_po_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.l_glutamina_po_funcao} fieldPath="suplementacao_data.l_glutamina_po_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Alta para o Caso" value={suplementacaoData?.l_glutamina_po_dose_alta_caso} fieldPath="suplementacao_data.l_glutamina_po_dose_alta_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.l_glutamina_po_forma} fieldPath="suplementacao_data.l_glutamina_po_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dissolver Em" value={suplementacaoData?.l_glutamina_po_dissolver} fieldPath="suplementacao_data.l_glutamina_po_dissolver" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_glutamina_po_horario} fieldPath="suplementacao_data.l_glutamina_po_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sabor" value={suplementacaoData?.l_glutamina_po_sabor} fieldPath="suplementacao_data.l_glutamina_po_sabor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_glutamina_po_duracao} fieldPath="suplementacao_data.l_glutamina_po_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.l_glutamina_po_contraindicacao} fieldPath="suplementacao_data.l_glutamina_po_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Colágeno Hidrolisado (Peptídeos)</h4>
-          <DataField label="Função" value={suplementacaoData?.colageno_hidrolisado_peptideos_funcao} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.colageno_hidrolisado_peptideos_tipo} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.colageno_hidrolisado_peptideos_dose} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.colageno_hidrolisado_peptideos_horario} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sabor" value={suplementacaoData?.colageno_hidrolisado_peptideos_sabor} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_sabor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.colageno_hidrolisado_peptideos_duracao} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.colageno_hidrolisado_peptideos_beneficio_extra} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Outros Suplementos Intestinais</h4>
-          <DataField label="Curcumina + Piperina - Função" value={suplementacaoData?.curcumina_piperina_funcao} fieldPath="suplementacao_data.curcumina_piperina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Dose" value={suplementacaoData?.curcumina_piperina_dose} fieldPath="suplementacao_data.curcumina_piperina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Tomar Com" value={suplementacaoData?.curcumina_piperina_tomar_com} fieldPath="suplementacao_data.curcumina_piperina_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Duração" value={suplementacaoData?.curcumina_piperina_duracao} fieldPath="suplementacao_data.curcumina_piperina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 1 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat1_sup1_nome} fieldPath="suplementacao_data.cat1_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat1_sup1_finalidade} fieldPath="suplementacao_data.cat1_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat1_sup1_posologia} fieldPath="suplementacao_data.cat1_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat1_sup1_observacoes} fieldPath="suplementacao_data.cat1_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
           
-          <DataField label="Zinco-Carnosina (PepZinGI) - Função" value={suplementacaoData?.zinco_carnosina_pepzingi_funcao} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Dose" value={suplementacaoData?.zinco_carnosina_pepzingi_dose} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Forma" value={suplementacaoData?.zinco_carnosina_pepzingi_forma} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Duração" value={suplementacaoData?.zinco_carnosina_pepzingi_duracao} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Benefício Extra" value={suplementacaoData?.zinco_carnosina_pepzingi_beneficio_extra} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat1_sup2_nome} fieldPath="suplementacao_data.cat1_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat1_sup2_finalidade} fieldPath="suplementacao_data.cat1_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat1_sup2_posologia} fieldPath="suplementacao_data.cat1_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat1_sup2_observacoes} fieldPath="suplementacao_data.cat1_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+      </CollapsibleSection>
+
+      {/* ==================== CATEGORIA 2 ==================== */}
+      <CollapsibleSection title="3. Categoria 2 - Suplementos" defaultOpen={false}>
+        <div className="anamnese-subsection">
+          <h4>Categoria 2 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat2_sup1_nome} fieldPath="suplementacao_data.cat2_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat2_sup1_finalidade} fieldPath="suplementacao_data.cat2_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat2_sup1_posologia} fieldPath="suplementacao_data.cat2_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat2_sup1_observacoes} fieldPath="suplementacao_data.cat2_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
           
-          <DataField label="Prebióticos/Fibras - Tipos" value={suplementacaoData?.prebioticos_fibras_tipos} fieldPath="suplementacao_data.prebioticos_fibras_tipos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prebióticos - Horário" value={suplementacaoData?.prebioticos_fibras_horario} fieldPath="suplementacao_data.prebioticos_fibras_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prebióticos - Início Gradual" value={suplementacaoData?.prebioticos_fibras_inicio_gradual} fieldPath="suplementacao_data.prebioticos_fibras_inicio_gradual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat2_sup2_nome} fieldPath="suplementacao_data.cat2_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat2_sup2_finalidade} fieldPath="suplementacao_data.cat2_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat2_sup2_posologia} fieldPath="suplementacao_data.cat2_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat2_sup2_observacoes} fieldPath="suplementacao_data.cat2_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+      </CollapsibleSection>
+
+      {/* ==================== CATEGORIA 3 ==================== */}
+      <CollapsibleSection title="4. Categoria 3 - Suplementos" defaultOpen={false}>
+        <div className="anamnese-subsection">
+          <h4>Categoria 3 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat3_sup1_nome} fieldPath="suplementacao_data.cat3_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat3_sup1_finalidade} fieldPath="suplementacao_data.cat3_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat3_sup1_posologia} fieldPath="suplementacao_data.cat3_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat3_sup1_observacoes} fieldPath="suplementacao_data.cat3_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
           
-          <DataField label="Enzimas Digestivas - Quando" value={suplementacaoData?.enzimas_digestivas_quando} fieldPath="suplementacao_data.enzimas_digestivas_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Composição" value={suplementacaoData?.enzimas_digestivas_composicao} fieldPath="suplementacao_data.enzimas_digestivas_composicao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Dose" value={suplementacaoData?.enzimas_digestivas_dose} fieldPath="suplementacao_data.enzimas_digestivas_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Duração" value={suplementacaoData?.enzimas_digestivas_duracao} fieldPath="suplementacao_data.enzimas_digestivas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat3_sup2_nome} fieldPath="suplementacao_data.cat3_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat3_sup2_finalidade} fieldPath="suplementacao_data.cat3_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat3_sup2_posologia} fieldPath="suplementacao_data.cat3_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat3_sup2_observacoes} fieldPath="suplementacao_data.cat3_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== SAÚDE DA TIREOIDE ==================== */}
-      <CollapsibleSection title="7. Suporte para Saúde da Tireoide" defaultOpen={false}>
+      {/* ==================== CATEGORIA 4 ==================== */}
+      <CollapsibleSection title="5. Categoria 4 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Selênio (Selenometionina)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.selenio_selenometionina_urgencia} fieldPath="suplementacao_data.selenio_selenometionina_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.selenio_selenometionina_funcao} fieldPath="suplementacao_data.selenio_selenometionina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.selenio_selenometionina_estudos} fieldPath="suplementacao_data.selenio_selenometionina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.selenio_selenometionina_dose} fieldPath="suplementacao_data.selenio_selenometionina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.selenio_selenometionina_forma} fieldPath="suplementacao_data.selenio_selenometionina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prefiro" value={suplementacaoData?.selenio_selenometionina_prefiro} fieldPath="suplementacao_data.selenio_selenometionina_prefiro" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Exceder" value={suplementacaoData?.selenio_selenometionina_nao_exceder} fieldPath="suplementacao_data.selenio_selenometionina_nao_exceder" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.selenio_selenometionina_duracao} fieldPath="suplementacao_data.selenio_selenometionina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame de Controle" value={suplementacaoData?.selenio_selenometionina_exame_controle} fieldPath="suplementacao_data.selenio_selenometionina_exame_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Iodo (Cauteloso)</h4>
-          <DataField label="Controvérsia" value={suplementacaoData?.iodo_cauteloso_controversia} fieldPath="suplementacao_data.iodo_cauteloso_controversia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade" value={suplementacaoData?.iodo_cauteloso_realidade} fieldPath="suplementacao_data.iodo_cauteloso_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conduta para o Caso" value={suplementacaoData?.iodo_cauteloso_conduta_caso} fieldPath="suplementacao_data.iodo_cauteloso_conduta_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte Preferencial" value={suplementacaoData?.iodo_cauteloso_fonte_preferencial} fieldPath="suplementacao_data.iodo_cauteloso_fonte_preferencial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Monitorar" value={suplementacaoData?.iodo_cauteloso_monitorar} fieldPath="suplementacao_data.iodo_cauteloso_monitorar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.iodo_cauteloso_inicio} fieldPath="suplementacao_data.iodo_cauteloso_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Tirosina</h4>
-          <DataField label="Função" value={suplementacaoData?.l_tirosina_funcao} fieldPath="suplementacao_data.l_tirosina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_tirosina_dose} fieldPath="suplementacao_data.l_tirosina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_tirosina_horario} fieldPath="suplementacao_data.l_tirosina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.l_tirosina_beneficio_extra} fieldPath="suplementacao_data.l_tirosina_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.l_tirosina_contraindicacao} fieldPath="suplementacao_data.l_tirosina_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_tirosina_duracao} fieldPath="suplementacao_data.l_tirosina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Vitamina A (Retinol)</h4>
-          <DataField label="Função" value={suplementacaoData?.vitamina_a_retinol_funcao} fieldPath="suplementacao_data.vitamina_a_retinol_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.vitamina_a_retinol_dose} fieldPath="suplementacao_data.vitamina_a_retinol_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte" value={suplementacaoData?.vitamina_a_retinol_fonte} fieldPath="suplementacao_data.vitamina_a_retinol_fonte" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Confundir" value={suplementacaoData?.vitamina_a_retinol_nao_confundir} fieldPath="suplementacao_data.vitamina_a_retinol_nao_confundir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Toxicidade" value={suplementacaoData?.vitamina_a_retinol_toxicidade} fieldPath="suplementacao_data.vitamina_a_retinol_toxicidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.vitamina_a_retinol_duracao} fieldPath="suplementacao_data.vitamina_a_retinol_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ferro (Se Baixo)</h4>
-          <DataField label="Função" value={suplementacaoData?.ferro_se_baixo_funcao} fieldPath="suplementacao_data.ferro_se_baixo_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Primeiro: Exame" value={suplementacaoData?.ferro_se_baixo_primeiro_exame} fieldPath="suplementacao_data.ferro_se_baixo_primeiro_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Baixo: Dose" value={suplementacaoData?.ferro_se_baixo_se_baixo_dose} fieldPath="suplementacao_data.ferro_se_baixo_se_baixo_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.ferro_se_baixo_tomar_com} fieldPath="suplementacao_data.ferro_se_baixo_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.ferro_se_baixo_horario} fieldPath="suplementacao_data.ferro_se_baixo_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Colateral" value={suplementacaoData?.ferro_se_baixo_efeito_colateral} fieldPath="suplementacao_data.ferro_se_baixo_efeito_colateral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle" value={suplementacaoData?.ferro_se_baixo_controle} fieldPath="suplementacao_data.ferro_se_baixo_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.ferro_se_baixo_duracao} fieldPath="suplementacao_data.ferro_se_baixo_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 4 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat4_sup1_nome} fieldPath="suplementacao_data.cat4_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat4_sup1_finalidade} fieldPath="suplementacao_data.cat4_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat4_sup1_posologia} fieldPath="suplementacao_data.cat4_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat4_sup1_observacoes} fieldPath="suplementacao_data.cat4_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat4_sup2_nome} fieldPath="suplementacao_data.cat4_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat4_sup2_finalidade} fieldPath="suplementacao_data.cat4_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat4_sup2_posologia} fieldPath="suplementacao_data.cat4_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat4_sup2_observacoes} fieldPath="suplementacao_data.cat4_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== SUPORTE ADRENAL ==================== */}
-      <CollapsibleSection title="8. Suporte para Adrenais (Fadiga Adrenal)" defaultOpen={false}>
+      {/* ==================== CATEGORIA 5 ==================== */}
+      <CollapsibleSection title="6. Categoria 5 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Ashwagandha (KSM-66)</h4>
-          <DataField label="Função" value={suplementacaoData?.ashwagandha_ksm66_funcao} fieldPath="suplementacao_data.ashwagandha_ksm66_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.ashwagandha_ksm66_tipo} fieldPath="suplementacao_data.ashwagandha_ksm66_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.ashwagandha_ksm66_dose} fieldPath="suplementacao_data.ashwagandha_ksm66_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.ashwagandha_ksm66_horario} fieldPath="suplementacao_data.ashwagandha_ksm66_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício (Estudos)" value={suplementacaoData?.ashwagandha_ksm66_beneficio_estudos} fieldPath="suplementacao_data.ashwagandha_ksm66_beneficio_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.ashwagandha_ksm66_contraindicacao} fieldPath="suplementacao_data.ashwagandha_ksm66_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.ashwagandha_ksm66_duracao} fieldPath="suplementacao_data.ashwagandha_ksm66_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Rhodiola Rosea</h4>
-          <DataField label="Função" value={suplementacaoData?.rhodiola_rosea_funcao} fieldPath="suplementacao_data.rhodiola_rosea_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.rhodiola_rosea_tipo} fieldPath="suplementacao_data.rhodiola_rosea_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.rhodiola_rosea_dose} fieldPath="suplementacao_data.rhodiola_rosea_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.rhodiola_rosea_horario} fieldPath="suplementacao_data.rhodiola_rosea_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.rhodiola_rosea_beneficio} fieldPath="suplementacao_data.rhodiola_rosea_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.rhodiola_rosea_duracao} fieldPath="suplementacao_data.rhodiola_rosea_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Fosfatidilserina</h4>
-          <DataField label="Função" value={suplementacaoData?.fosfatidilserina_funcao} fieldPath="suplementacao_data.fosfatidilserina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.fosfatidilserina_dose} fieldPath="suplementacao_data.fosfatidilserina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.fosfatidilserina_horario} fieldPath="suplementacao_data.fosfatidilserina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.fosfatidilserina_estudos} fieldPath="suplementacao_data.fosfatidilserina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.fosfatidilserina_duracao} fieldPath="suplementacao_data.fosfatidilserina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>DHEA (Se Muito Baixo)</h4>
-          <DataField label="Primeiro: Exame" value={suplementacaoData?.dhea_se_muito_baixo_primeiro_exame} fieldPath="suplementacao_data.dhea_se_muito_baixo_primeiro_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Muito Baixo" value={suplementacaoData?.dhea_se_muito_baixo_se_muito_baixo} fieldPath="suplementacao_data.dhea_se_muito_baixo_se_muito_baixo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cuidado" value={suplementacaoData?.dhea_se_muito_baixo_cuidado} fieldPath="suplementacao_data.dhea_se_muito_baixo_cuidado" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 5 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat5_sup1_nome} fieldPath="suplementacao_data.cat5_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat5_sup1_finalidade} fieldPath="suplementacao_data.cat5_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat5_sup1_posologia} fieldPath="suplementacao_data.cat5_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat5_sup1_observacoes} fieldPath="suplementacao_data.cat5_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat5_sup2_nome} fieldPath="suplementacao_data.cat5_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat5_sup2_finalidade} fieldPath="suplementacao_data.cat5_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat5_sup2_posologia} fieldPath="suplementacao_data.cat5_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat5_sup2_observacoes} fieldPath="suplementacao_data.cat5_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== CONTROLE GLICÊMICO ==================== */}
-      <CollapsibleSection title="9. Controle Glicêmico e Resistência Insulínica" defaultOpen={false}>
+      {/* ==================== CATEGORIA 6 ==================== */}
+      <CollapsibleSection title="7. Categoria 6 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Berberina HCL</h4>
-          <DataField label="Urgência" value={suplementacaoData?.berberina_hcl_urgencia} fieldPath="suplementacao_data.berberina_hcl_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.berberina_hcl_funcao} fieldPath="suplementacao_data.berberina_hcl_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Eficaz" value={suplementacaoData?.berberina_hcl_dose_eficaz} fieldPath="suplementacao_data.berberina_hcl_dose_eficaz" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.berberina_hcl_inicio} fieldPath="suplementacao_data.berberina_hcl_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício (Estudos)" value={suplementacaoData?.berberina_hcl_beneficio_estudos} fieldPath="suplementacao_data.berberina_hcl_beneficio_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Colateral" value={suplementacaoData?.berberina_hcl_efeito_colateral} fieldPath="suplementacao_data.berberina_hcl_efeito_colateral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.berberina_hcl_contraindicacao} fieldPath="suplementacao_data.berberina_hcl_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.berberina_hcl_duracao} fieldPath="suplementacao_data.berberina_hcl_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ácido Alfa-Lipóico (ALA)</h4>
-          <DataField label="Função" value={suplementacaoData?.acido_alfa_lipoico_ala_funcao} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.acido_alfa_lipoico_ala_dose} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.acido_alfa_lipoico_ala_forma} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.acido_alfa_lipoico_ala_horario} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.acido_alfa_lipoico_ala_beneficio} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.acido_alfa_lipoico_ala_duracao} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Cromo Picolinato</h4>
-          <DataField label="Função" value={suplementacaoData?.cromo_picolinato_funcao} fieldPath="suplementacao_data.cromo_picolinato_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cromo_picolinato_dose} fieldPath="suplementacao_data.cromo_picolinato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.cromo_picolinato_horario} fieldPath="suplementacao_data.cromo_picolinato_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.cromo_picolinato_beneficio} fieldPath="suplementacao_data.cromo_picolinato_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cromo_picolinato_duracao} fieldPath="suplementacao_data.cromo_picolinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Canela Ceylon</h4>
-          <DataField label="Função" value={suplementacaoData?.canela_ceylon_funcao} fieldPath="suplementacao_data.canela_ceylon_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.canela_ceylon_tipo} fieldPath="suplementacao_data.canela_ceylon_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.canela_ceylon_dose} fieldPath="suplementacao_data.canela_ceylon_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Usar" value={suplementacaoData?.canela_ceylon_usar} fieldPath="suplementacao_data.canela_ceylon_usar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.canela_ceylon_duracao} fieldPath="suplementacao_data.canela_ceylon_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Inositol (Mio ou D-Chiro)</h4>
-          <DataField label="Função" value={suplementacaoData?.inositol_mio_ou_dci_funcao} fieldPath="suplementacao_data.inositol_mio_ou_dci_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.inositol_mio_ou_dci_dose} fieldPath="suplementacao_data.inositol_mio_ou_dci_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.inositol_mio_ou_dci_horario} fieldPath="suplementacao_data.inositol_mio_ou_dci_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.inositol_mio_ou_dci_beneficio_extra} fieldPath="suplementacao_data.inositol_mio_ou_dci_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.inositol_mio_ou_dci_duracao} fieldPath="suplementacao_data.inositol_mio_ou_dci_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Gymnema Sylvestre</h4>
-          <DataField label="Função" value={suplementacaoData?.gymnema_sylvestre_funcao} fieldPath="suplementacao_data.gymnema_sylvestre_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.gymnema_sylvestre_dose} fieldPath="suplementacao_data.gymnema_sylvestre_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar" value={suplementacaoData?.gymnema_sylvestre_tomar} fieldPath="suplementacao_data.gymnema_sylvestre_tomar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Curioso" value={suplementacaoData?.gymnema_sylvestre_efeito_curioso} fieldPath="suplementacao_data.gymnema_sylvestre_efeito_curioso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.gymnema_sylvestre_duracao} fieldPath="suplementacao_data.gymnema_sylvestre_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 6 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat6_sup1_nome} fieldPath="suplementacao_data.cat6_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat6_sup1_finalidade} fieldPath="suplementacao_data.cat6_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat6_sup1_posologia} fieldPath="suplementacao_data.cat6_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat6_sup1_observacoes} fieldPath="suplementacao_data.cat6_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat6_sup2_nome} fieldPath="suplementacao_data.cat6_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat6_sup2_finalidade} fieldPath="suplementacao_data.cat6_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat6_sup2_posologia} fieldPath="suplementacao_data.cat6_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat6_sup2_observacoes} fieldPath="suplementacao_data.cat6_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== SAÚDE HEPÁTICA ==================== */}
-      <CollapsibleSection title="10. Saúde Hepática (Detox e Proteção)" defaultOpen={false}>
+      {/* ==================== CATEGORIA 7 ==================== */}
+      <CollapsibleSection title="8. Categoria 7 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Silimarina (Cardo Mariano)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.silimarina_cardo_mariano_urgencia} fieldPath="suplementacao_data.silimarina_cardo_mariano_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.silimarina_cardo_mariano_funcao} fieldPath="suplementacao_data.silimarina_cardo_mariano_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.silimarina_cardo_mariano_dose_terapeutica} fieldPath="suplementacao_data.silimarina_cardo_mariano_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.silimarina_cardo_mariano_duracao} fieldPath="suplementacao_data.silimarina_cardo_mariano_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.silimarina_cardo_mariano_estudos} fieldPath="suplementacao_data.silimarina_cardo_mariano_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Custo/Mês" value={suplementacaoData?.silimarina_cardo_mariano_custo_mes} fieldPath="suplementacao_data.silimarina_cardo_mariano_custo_mes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Colina (Bitartrato ou CDP-Colina)</h4>
-          <DataField label="Função" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_funcao} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_dose} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combinar Com" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_combinar_com} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_combinar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_beneficio} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_duracao} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>NAC (N-Acetilcisteína)</h4>
-          <DataField label="Função" value={suplementacaoData?.nac_n_acetilcisteina_funcao} fieldPath="suplementacao_data.nac_n_acetilcisteina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.nac_n_acetilcisteina_dose} fieldPath="suplementacao_data.nac_n_acetilcisteina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.nac_n_acetilcisteina_horario} fieldPath="suplementacao_data.nac_n_acetilcisteina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.nac_n_acetilcisteina_beneficio_extra} fieldPath="suplementacao_data.nac_n_acetilcisteina_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.nac_n_acetilcisteina_duracao} fieldPath="suplementacao_data.nac_n_acetilcisteina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Alcachofra (Cynara)</h4>
-          <DataField label="Função" value={suplementacaoData?.alcachofra_cynara_funcao} fieldPath="suplementacao_data.alcachofra_cynara_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.alcachofra_cynara_dose} fieldPath="suplementacao_data.alcachofra_cynara_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.alcachofra_cynara_duracao} fieldPath="suplementacao_data.alcachofra_cynara_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Taurina</h4>
-          <DataField label="Função" value={suplementacaoData?.taurina_funcao} fieldPath="suplementacao_data.taurina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.taurina_dose} fieldPath="suplementacao_data.taurina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.taurina_duracao} fieldPath="suplementacao_data.taurina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 7 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat7_sup1_nome} fieldPath="suplementacao_data.cat7_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat7_sup1_finalidade} fieldPath="suplementacao_data.cat7_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat7_sup1_posologia} fieldPath="suplementacao_data.cat7_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat7_sup1_observacoes} fieldPath="suplementacao_data.cat7_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat7_sup2_nome} fieldPath="suplementacao_data.cat7_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat7_sup2_finalidade} fieldPath="suplementacao_data.cat7_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat7_sup2_posologia} fieldPath="suplementacao_data.cat7_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat7_sup2_observacoes} fieldPath="suplementacao_data.cat7_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== SONO E RELAXAMENTO ==================== */}
-      <CollapsibleSection title="11. Sono e Relaxamento" defaultOpen={false}>
+      {/* ==================== CATEGORIA 8 ==================== */}
+      <CollapsibleSection title="9. Categoria 8 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>L-Triptofano ou 5-HTP</h4>
-          <DataField label="Função" value={suplementacaoData?.l_triptofano_ou_5_htp_funcao} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Opção 1" value={suplementacaoData?.l_triptofano_ou_5_htp_opcao_1} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_opcao_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Opção 2" value={suplementacaoData?.l_triptofano_ou_5_htp_opcao_2} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_opcao_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Escolher" value={suplementacaoData?.l_triptofano_ou_5_htp_escolher} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_escolher" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_triptofano_ou_5_htp_horario} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.l_triptofano_ou_5_htp_tomar_com} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação Crítica" value={suplementacaoData?.l_triptofano_ou_5_htp_contraindicacao_critica} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_contraindicacao_critica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Solução para o Caso" value={suplementacaoData?.l_triptofano_ou_5_htp_solucao_caso} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_solucao_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alternativa Segura" value={suplementacaoData?.l_triptofano_ou_5_htp_alternativa_segura} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_alternativa_segura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Melatonina</h4>
-          <DataField label="Função" value={suplementacaoData?.melatonina_funcao} fieldPath="suplementacao_data.melatonina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.melatonina_dose} fieldPath="suplementacao_data.melatonina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.melatonina_inicio} fieldPath="suplementacao_data.melatonina_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.melatonina_forma} fieldPath="suplementacao_data.melatonina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Segurança" value={suplementacaoData?.melatonina_seguranca} fieldPath="suplementacao_data.melatonina_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Despertar/Piora" value={suplementacaoData?.melatonina_despertar_piora} fieldPath="suplementacao_data.melatonina_despertar_piora" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.melatonina_duracao} fieldPath="suplementacao_data.melatonina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Teanina</h4>
-          <DataField label="Função" value={suplementacaoData?.l_teanina_funcao} fieldPath="suplementacao_data.l_teanina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_teanina_dose} fieldPath="suplementacao_data.l_teanina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_teanina_horario} fieldPath="suplementacao_data.l_teanina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combo" value={suplementacaoData?.l_teanina_combo} fieldPath="suplementacao_data.l_teanina_combo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_teanina_duracao} fieldPath="suplementacao_data.l_teanina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Glicina</h4>
-          <DataField label="Função" value={suplementacaoData?.glicina_funcao} fieldPath="suplementacao_data.glicina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.glicina_dose} fieldPath="suplementacao_data.glicina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.glicina_forma} fieldPath="suplementacao_data.glicina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.glicina_estudos} fieldPath="suplementacao_data.glicina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.glicina_duracao} fieldPath="suplementacao_data.glicina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Fitoterápicos para Sono</h4>
-          <DataField label="Valeriana" value={suplementacaoData?.fitoterapicos_valeriana} fieldPath="suplementacao_data.fitoterapicos_valeriana" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Passiflora" value={suplementacaoData?.fitoterapicos_passiflora} fieldPath="suplementacao_data.fitoterapicos_passiflora" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Melissa" value={suplementacaoData?.fitoterapicos_melissa} fieldPath="suplementacao_data.fitoterapicos_melissa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combinar" value={suplementacaoData?.fitoterapicos_combinar} fieldPath="suplementacao_data.fitoterapicos_combinar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.fitoterapicos_duracao} fieldPath="suplementacao_data.fitoterapicos_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 8 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat8_sup1_nome} fieldPath="suplementacao_data.cat8_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat8_sup1_finalidade} fieldPath="suplementacao_data.cat8_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat8_sup1_posologia} fieldPath="suplementacao_data.cat8_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat8_sup1_observacoes} fieldPath="suplementacao_data.cat8_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat8_sup2_nome} fieldPath="suplementacao_data.cat8_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat8_sup2_finalidade} fieldPath="suplementacao_data.cat8_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat8_sup2_posologia} fieldPath="suplementacao_data.cat8_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat8_sup2_observacoes} fieldPath="suplementacao_data.cat8_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== ENERGIA MITOCONDRIAL ==================== */}
-      <CollapsibleSection title="12. Energia Mitocondrial" defaultOpen={false}>
+      {/* ==================== CATEGORIA 9 ==================== */}
+      <CollapsibleSection title="10. Categoria 9 - Suplementos" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Coenzima Q10 (Ubiquinol)</h4>
-          <DataField label="Função" value={suplementacaoData?.coenzima_q10_ubiquinol_funcao} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.coenzima_q10_ubiquinol_forma} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.coenzima_q10_ubiquinol_dose} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.coenzima_q10_ubiquinol_tomar_com} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.coenzima_q10_ubiquinol_beneficio_extra} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estatinas Depletem" value={suplementacaoData?.coenzima_q10_ubiquinol_estatinas_depletem} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_estatinas_depletem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.coenzima_q10_ubiquinol_duracao} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>PQQ (Pirroloquinolina Quinona)</h4>
-          <DataField label="Função" value={suplementacaoData?.pqq_pirroloquinolina_quinona_funcao} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.pqq_pirroloquinolina_quinona_dose} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.pqq_pirroloquinolina_quinona_horario} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinergia" value={suplementacaoData?.pqq_pirroloquinolina_quinona_sinergia} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_sinergia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.pqq_pirroloquinolina_quinona_duracao} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Acetil-L-Carnitina (ALCAR)</h4>
-          <DataField label="Função" value={suplementacaoData?.acetil_l_carnitina_alcar_funcao} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.acetil_l_carnitina_alcar_dose} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.acetil_l_carnitina_alcar_horario} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.acetil_l_carnitina_alcar_beneficio} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.acetil_l_carnitina_alcar_duracao} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>D-Ribose</h4>
-          <DataField label="Função" value={suplementacaoData?.d_ribose_funcao} fieldPath="suplementacao_data.d_ribose_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.d_ribose_dose} fieldPath="suplementacao_data.d_ribose_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.d_ribose_forma} fieldPath="suplementacao_data.d_ribose_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando" value={suplementacaoData?.d_ribose_quando} fieldPath="suplementacao_data.d_ribose_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Categoria 9 - Suplementos</h4>
+          <DataField label="Suplemento 1 - Nome" value={suplementacaoData?.cat9_sup1_nome} fieldPath="suplementacao_data.cat9_sup1_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Finalidade" value={suplementacaoData?.cat9_sup1_finalidade} fieldPath="suplementacao_data.cat9_sup1_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Posologia" value={suplementacaoData?.cat9_sup1_posologia} fieldPath="suplementacao_data.cat9_sup1_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 1 - Observações" value={suplementacaoData?.cat9_sup1_observacoes} fieldPath="suplementacao_data.cat9_sup1_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Suplemento 2 - Nome" value={suplementacaoData?.cat9_sup2_nome} fieldPath="suplementacao_data.cat9_sup2_nome" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Finalidade" value={suplementacaoData?.cat9_sup2_finalidade} fieldPath="suplementacao_data.cat9_sup2_finalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Posologia" value={suplementacaoData?.cat9_sup2_posologia} fieldPath="suplementacao_data.cat9_sup2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplemento 2 - Observações" value={suplementacaoData?.cat9_sup2_observacoes} fieldPath="suplementacao_data.cat9_sup2_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== EMAGRECIMENTO ==================== */}
-      <CollapsibleSection title="13. Suporte para Emagrecimento (Opcional)" defaultOpen={false}>
+      {/* ==================== PROTOCOLOS POR MÊS ==================== */}
+      <CollapsibleSection title="11. Protocolos por Mês" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>CLA (Ácido Linoleico Conjugado)</h4>
-          <DataField label="Função" value={suplementacaoData?.cla_acido_linoleico_conjugado_funcao} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cla_acido_linoleico_conjugado_dose} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.cla_acido_linoleico_conjugado_estudos} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cla_acido_linoleico_conjugado_duracao} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Protocolo Mês 1-2</h4>
+          <DataField label="Lista de Suplementos" value={suplementacaoData?.protocolo_mes1_2_lista} fieldPath="suplementacao_data.protocolo_mes1_2_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Justificativa" value={suplementacaoData?.protocolo_mes1_2_justificativa} fieldPath="suplementacao_data.protocolo_mes1_2_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Chá Verde (EGCG)</h4>
-          <DataField label="Função" value={suplementacaoData?.cha_verde_egcg_funcao} fieldPath="suplementacao_data.cha_verde_egcg_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cha_verde_egcg_dose} fieldPath="suplementacao_data.cha_verde_egcg_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.cha_verde_egcg_horario} fieldPath="suplementacao_data.cha_verde_egcg_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.cha_verde_egcg_beneficio} fieldPath="suplementacao_data.cha_verde_egcg_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Protocolo Mês 3-6</h4>
+          <DataField label="Lista de Suplementos" value={suplementacaoData?.protocolo_mes3_6_lista} fieldPath="suplementacao_data.protocolo_mes3_6_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Justificativa" value={suplementacaoData?.protocolo_mes3_6_justificativa} fieldPath="suplementacao_data.protocolo_mes3_6_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Café Verde</h4>
-          <DataField label="Função" value={suplementacaoData?.cafe_verde_funcao} fieldPath="suplementacao_data.cafe_verde_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cafe_verde_dose} fieldPath="suplementacao_data.cafe_verde_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cafe_verde_duracao} fieldPath="suplementacao_data.cafe_verde_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Carnitina Tartrato</h4>
-          <DataField label="Função" value={suplementacaoData?.l_carnitina_tartrato_funcao} fieldPath="suplementacao_data.l_carnitina_tartrato_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_carnitina_tartrato_dose} fieldPath="suplementacao_data.l_carnitina_tartrato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Eficácia" value={suplementacaoData?.l_carnitina_tartrato_eficacia} fieldPath="suplementacao_data.l_carnitina_tartrato_eficacia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Protocolo Mês 7-12</h4>
+          <DataField label="Lista de Suplementos" value={suplementacaoData?.protocolo_mes7_12_lista} fieldPath="suplementacao_data.protocolo_mes7_12_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Justificativa" value={suplementacaoData?.protocolo_mes7_12_justificativa} fieldPath="suplementacao_data.protocolo_mes7_12_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== CRONOGRAMA E EXAMES ==================== */}
-      <CollapsibleSection title="Cronograma por Período e Horários" defaultOpen={false}>
+      {/* ==================== HORÁRIOS DE TOMADA ==================== */}
+      <CollapsibleSection title="12. Horários de Tomada" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Cronograma por Mês</h4>
-          <DataField label="Mês 1-2: Base Essencial Obrigatório - Lista" value={suplementacaoData?.mes_1_2_base_essencial_obrigatorio_lista} fieldPath="suplementacao_data.mes_1_2_base_essencial_obrigatorio_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 1-2: Não Negociável" value={suplementacaoData?.mes_1_2_base_essencial_obrigatorio_nao_negociavel} fieldPath="suplementacao_data.mes_1_2_base_essencial_obrigatorio_nao_negociavel" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 3-6: Expandido Importante - Adicionar" value={suplementacaoData?.mes_3_6_expandido_importante_adicionar} fieldPath="suplementacao_data.mes_3_6_expandido_importante_adicionar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 7-12: Otimização Opcional - Adicionar se Orçamento" value={suplementacaoData?.mes_7_12_otimizacao_opcional_adicionar_se_orcamento} fieldPath="suplementacao_data.mes_7_12_otimizacao_opcional_adicionar_se_orcamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Horários Sugeridos</h4>
-          <DataField label="Jejum ao Acordar" value={suplementacaoData?.jejum_ao_acordar} fieldPath="suplementacao_data.jejum_ao_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Café da Manhã (com comida/gordura)" value={suplementacaoData?.cafe_manha_com_comida_gordura} fieldPath="suplementacao_data.cafe_manha_com_comida_gordura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Almoço (com comida)" value={suplementacaoData?.almoco_com_comida} fieldPath="suplementacao_data.almoco_com_comida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meio da Tarde" value={suplementacaoData?.meio_tarde} fieldPath="suplementacao_data.meio_tarde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Jantar (com comida)" value={suplementacaoData?.jantar_com_comida} fieldPath="suplementacao_data.jantar_com_comida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="1 Hora Antes de Dormir" value={suplementacaoData?.uma_hora_antes_dormir} fieldPath="suplementacao_data.uma_hora_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="30 Min Antes de Dormir" value={suplementacaoData?.trinta_min_antes_dormir} fieldPath="suplementacao_data.trinta_min_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Qualquer Hora (estômago vazio)" value={suplementacaoData?.qualquer_hora_estomago_vazio} fieldPath="suplementacao_data.qualquer_hora_estomago_vazio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Exames de Controle</h4>
-          <DataField label="Basal (Mês 1)" value={suplementacaoData?.basal_mes_1} fieldPath="suplementacao_data.basal_mes_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 3)" value={suplementacaoData?.controle_mes_3} fieldPath="suplementacao_data.controle_mes_3" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 6)" value={suplementacaoData?.controle_mes_6} fieldPath="suplementacao_data.controle_mes_6" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 12)" value={suplementacaoData?.controle_mes_12} fieldPath="suplementacao_data.controle_mes_12" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajustar Doses" value={suplementacaoData?.ajustar_doses} fieldPath="suplementacao_data.ajustar_doses" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Cronograma Diário</h4>
+          <DataField label="Jejum ao Acordar" value={suplementacaoData?.horario_jejum_acordar} fieldPath="suplementacao_data.horario_jejum_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Café da Manhã" value={suplementacaoData?.horario_cafe_manha} fieldPath="suplementacao_data.horario_cafe_manha" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Almoço" value={suplementacaoData?.horario_almoco} fieldPath="suplementacao_data.horario_almoco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Meio da Tarde" value={suplementacaoData?.horario_meio_tarde} fieldPath="suplementacao_data.horario_meio_tarde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Jantar" value={suplementacaoData?.horario_jantar} fieldPath="suplementacao_data.horario_jantar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="1h Antes de Dormir" value={suplementacaoData?.horario_1h_antes_dormir} fieldPath="suplementacao_data.horario_1h_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="30min Antes de Dormir" value={suplementacaoData?.horario_30min_antes_dormir} fieldPath="suplementacao_data.horario_30min_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== ALERTAS CRÍTICOS ==================== */}
-      <CollapsibleSection title="Alertas Críticos de Segurança" defaultOpen={false}>
+      {/* ==================== EXAMES DE CONTROLE ==================== */}
+      <CollapsibleSection title="13. Exames de Controle" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Avisos Importantes</h4>
-          <DataField label="Alertas Críticos de Segurança" value={suplementacaoData?.alertas_criticos_seguranca} fieldPath="suplementacao_data.alertas_criticos_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Cronograma de Exames</h4>
+          <DataField label="Exames Basais - Mês 1" value={suplementacaoData?.exames_basal_mes1} fieldPath="suplementacao_data.exames_basal_mes1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Exames de Controle - Mês 3" value={suplementacaoData?.exames_controle_mes3} fieldPath="suplementacao_data.exames_controle_mes3" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Exames de Controle - Mês 6" value={suplementacaoData?.exames_controle_mes6} fieldPath="suplementacao_data.exames_controle_mes6" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Exames de Controle - Mês 12" value={suplementacaoData?.exames_controle_mes12} fieldPath="suplementacao_data.exames_controle_mes12" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Exames para Ajustar Doses" value={suplementacaoData?.exames_ajustar_doses} fieldPath="suplementacao_data.exames_ajustar_doses" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+
+      {/* ==================== ALERTAS DE SEGURANÇA ==================== */}
+      <CollapsibleSection title="14. Alertas de Segurança" defaultOpen={false}>
+        <div className="anamnese-subsection">
+          <h4>Alertas Importantes</h4>
+          <DataField label="Alertas de Segurança" value={suplementacaoData?.alertas_seguranca} fieldPath="suplementacao_data.alertas_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+      </CollapsibleSection>
+
+
     </div>
   );
 }
@@ -3149,15 +2825,16 @@ function AlimentacaoSection({
   const loadAlimentacaoData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/alimentacao/${consultaId}`);
+      const response = await fetch(`/api/solutions/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setAlimentacaoData(data.alimentacao_data);
+        setAlimentacaoData(data.solutions.alimentacao);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de Alimentação:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     }
   };
 
@@ -3269,10 +2946,20 @@ function AlimentacaoSection({
   ];
 
   const getRefeicaoData = (refeicaoKey: string) => {
-    if (!alimentacaoData) return [];
+    if (!alimentacaoData || !Array.isArray(alimentacaoData)) return [];
     
-    // Usar os dados organizados pela API
-    return alimentacaoData[refeicaoKey] || [];
+    // Filtrar os dados por tipo de alimento baseado na refeição
+    const tipoMap: { [key: string]: string[] } = {
+      'cafe_da_manha': ['proteinas', 'carboidratos', 'frutas'],
+      'almoco': ['proteinas', 'carboidratos', 'vegetais'],
+      'cafe_da_tarde': ['frutas', 'carboidratos'],
+      'jantar': ['proteinas', 'vegetais']
+    };
+    
+    const tiposPermitidos = tipoMap[refeicaoKey] || [];
+    return alimentacaoData.filter(item => 
+      tiposPermitidos.includes(item.tipo_de_alimentos)
+    );
   };
 
   return (
@@ -3440,15 +3127,16 @@ function HabitosDeVidaSection({
   const loadHabitosVidaData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-habitos-vida/${consultaId}`);
+      const response = await fetch(`/api/solutions/${consultaId}`);
       if (response.ok) {
         const data = await response.json();
-        setHabitosVidaData(data.habitos_vida_data);
+        setHabitosVidaData(data.solutions.habitos);
       }
     } catch (error) {
       console.error('Erro ao carregar dados de Hábitos de Vida:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
     }
   };
 
@@ -3510,82 +3198,140 @@ function HabitosDeVidaSection({
   return (
     <div className="anamnese-sections">
       {/* ==================== INFORMAÇÕES GERAIS ==================== */}
-      <CollapsibleSection title="1. Objetivo e Realidade Atual" defaultOpen={true}>
+      <CollapsibleSection title="1. Metas e Foco por Período" defaultOpen={true}>
         <div className="anamnese-subsection">
-          <h4>Contexto</h4>
-          <DataField label="Objetivo Principal" value={habitosVidaData?.objetivo_principal} fieldPath="habitos_vida_data.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade Atual (Brutal)" value={habitosVidaData?.realidade_atual_brutal} fieldPath="habitos_vida_data.realidade_atual_brutal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Metas Mensais</h4>
+          <DataField label="Mês 1-2 - Foco" value={habitosVidaData?.mes_1_2_foco} fieldPath="habitos_vida_data.mes_1_2_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Mês 1-2 - Meta" value={habitosVidaData?.mes_1_2_meta} fieldPath="habitos_vida_data.mes_1_2_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Mudanças Simultâneas Máximo" value={habitosVidaData?.mes_1_2_mudancas_simultaneas_maximo} fieldPath="habitos_vida_data.mes_1_2_mudancas_simultaneas_maximo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Mês 3-4 - Foco" value={habitosVidaData?.mes_3_4_foco} fieldPath="habitos_vida_data.mes_3_4_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Mês 3-4 - Meta" value={habitosVidaData?.mes_3_4_meta} fieldPath="habitos_vida_data.mes_3_4_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Mês 5-6 - Foco" value={habitosVidaData?.mes_5_6_foco} fieldPath="habitos_vida_data.mes_5_6_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Mês 5-6 - Meta" value={habitosVidaData?.mes_5_6_meta} fieldPath="habitos_vida_data.mes_5_6_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          
+          <DataField label="Mês 7-9 - Meta" value={habitosVidaData?.mes_7_9_meta} fieldPath="habitos_vida_data.mes_7_9_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Mês 10-12 - Meta" value={habitosVidaData?.mes_10_12_meta} fieldPath="habitos_vida_data.mes_10_12_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
-      {/* ==================== SONO ==================== */}
-      <CollapsibleSection title="2. Sono (Protocolo Detalhado)" defaultOpen={false}>
+      {/* ==================== RITUAIS ==================== */}
+      <CollapsibleSection title="2. Rituais Diários" defaultOpen={false}>
         <div className="anamnese-subsection">
-          <h4>Referências e Contexto</h4>
-          <DataField label="Ver Agente 2 (Mentalidade)" value={habitosVidaData?.sono_ver_agente_2} fieldPath="habitos_vida_data.sono_ver_agente_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Adicionar Aqui" value={habitosVidaData?.sono_adicionar_aqui} fieldPath="habitos_vida_data.sono_adicionar_aqui" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade do Caso" value={habitosVidaData?.sono_realidade_caso} fieldPath="habitos_vida_data.sono_realidade_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meta Inquebrantável" value={habitosVidaData?.sono_meta_inquebrantavel} fieldPath="habitos_vida_data.sono_meta_inquebrantavel" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Rituais Matinais</h4>
+          <DataField label="Sequência do Ritual Matinal" value={habitosVidaData?.ritual_matinal_sequencia} fieldPath="habitos_vida_data.ritual_matinal_sequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Regras do Ritual Matinal" value={habitosVidaData?.ritual_matinal_regra} fieldPath="habitos_vida_data.ritual_matinal_regra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Higiene do Sono - Horário Fixo</h4>
-          <DataField label="Regra" value={habitosVidaData?.sono_higiene_horario_fixo_regra} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_regra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário de Acordar" value={habitosVidaData?.sono_higiene_horario_fixo_acordar} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Consistência" value={habitosVidaData?.sono_higiene_horario_fixo_consistencia} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_consistencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Despertador" value={habitosVidaData?.sono_higiene_horario_fixo_despertador} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_despertador" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Finais de Semana" value={habitosVidaData?.sono_higiene_horario_fixo_finais_semana} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_finais_semana" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Rituais de Refeições</h4>
+          <DataField label="Sequência das Refeições" value={habitosVidaData?.ritual_refeicoes_sequencia} fieldPath="habitos_vida_data.ritual_refeicoes_sequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Frequência das Refeições" value={habitosVidaData?.ritual_refeicoes_frequencia} fieldPath="habitos_vida_data.ritual_refeicoes_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Ambiente do Sono</h4>
-          <DataField label="Escuridão Total" value={habitosVidaData?.sono_ambiente_escuridao_total} fieldPath="habitos_vida_data.sono_ambiente_escuridao_total" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Temperatura Fresca" value={habitosVidaData?.sono_ambiente_temperatura_fresca} fieldPath="habitos_vida_data.sono_ambiente_temperatura_fresca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Silêncio ou Ruído Branco" value={habitosVidaData?.sono_ambiente_silencio_ou_ruido_branco} fieldPath="habitos_vida_data.sono_ambiente_silencio_ou_ruido_branco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Colchão e Travesseiro Adequados" value={habitosVidaData?.sono_ambiente_colchao_travesseiro_adequados} fieldPath="habitos_vida_data.sono_ambiente_colchao_travesseiro_adequados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quarto Exclusivo para Sono/Sexo" value={habitosVidaData?.sono_ambiente_quarto_exclusivo_sono_sexo} fieldPath="habitos_vida_data.sono_ambiente_quarto_exclusivo_sono_sexo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Rituais de Sono</h4>
+          <DataField label="Sequência do Sono" value={habitosVidaData?.ritual_sono_sequencia} fieldPath="habitos_vida_data.ritual_sono_sequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Regras do Sono" value={habitosVidaData?.ritual_sono_regra} fieldPath="habitos_vida_data.ritual_sono_regra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+      </CollapsibleSection>
+
+      {/* ==================== RECURSOS ==================== */}
+      <CollapsibleSection title="3. Recursos e Ferramentas" defaultOpen={false}>
+        <div className="anamnese-subsection">
+          <h4>Apps e Livros</h4>
+          <DataField label="Apps Recomendados" value={habitosVidaData?.apps_recomendados} fieldPath="habitos_vida_data.apps_recomendados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Livros" value={habitosVidaData?.livros} fieldPath="habitos_vida_data.livros" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Rotina Pré-Sono</h4>
-          <DataField label="Timeline da Rotina" value={habitosVidaData?.sono_rotina_pre_sono_timeline} fieldPath="habitos_vida_data.sono_rotina_pre_sono_timeline" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ritual de Relaxamento - Atividades" value={habitosVidaData?.sono_ritual_relaxamento_atividades} fieldPath="habitos_vida_data.sono_ritual_relaxamento_atividades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Comunidade e Profissionais</h4>
+          <DataField label="Comunidades" value={habitosVidaData?.comunidades} fieldPath="habitos_vida_data.comunidades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Profissionais" value={habitosVidaData?.profissionais} fieldPath="habitos_vida_data.profissionais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Desligar Telas (2h Antes)</h4>
-          <DataField label="Horário Limite" value={habitosVidaData?.sono_desligar_telas_2h_horario_limite} fieldPath="habitos_vida_data.sono_desligar_telas_2h_horario_limite" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Por Quê" value={habitosVidaData?.sono_desligar_telas_2h_porque} fieldPath="habitos_vida_data.sono_desligar_telas_2h_porque" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégias" value={habitosVidaData?.sono_desligar_telas_2h_estrategias} fieldPath="habitos_vida_data.sono_desligar_telas_2h_estrategias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Alertas</h4>
+          <DataField label="Alertas Importantes" value={habitosVidaData?.alertas_importantes} fieldPath="habitos_vida_data.alertas_importantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+      </CollapsibleSection>
+
+      {/* ==================== CRONOGRAMA DIÁRIO ==================== */}
+      <CollapsibleSection title="4. Cronograma Diário" defaultOpen={false}>
+        <div className="anamnese-subsection">
+          <h4>Horários de Segunda a Sexta</h4>
+          <DataField label="6h00-6h05" value={habitosVidaData?.dia_util_6h00_6h05} fieldPath="habitos_vida_data.dia_util_6h00_6h05" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="6h05-6h15" value={habitosVidaData?.dia_util_6h05_6h15} fieldPath="habitos_vida_data.dia_util_6h05_6h15" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="6h15-6h30" value={habitosVidaData?.dia_util_6h15_6h30} fieldPath="habitos_vida_data.dia_util_6h15_6h30" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="6h30-7h00" value={habitosVidaData?.dia_util_6h30_7h00} fieldPath="habitos_vida_data.dia_util_6h30_7h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="7h00-7h30" value={habitosVidaData?.dia_util_7h00_7h30} fieldPath="habitos_vida_data.dia_util_7h00_7h30" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="7h30-8h00" value={habitosVidaData?.dia_util_7h30_8h00} fieldPath="habitos_vida_data.dia_util_7h30_8h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="8h00-9h00" value={habitosVidaData?.dia_util_8h00_9h00} fieldPath="habitos_vida_data.dia_util_8h00_9h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="9h00-10h00" value={habitosVidaData?.dia_util_9h00_10h00} fieldPath="habitos_vida_data.dia_util_9h00_10h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="10h00-11h00" value={habitosVidaData?.dia_util_10h00_11h00} fieldPath="habitos_vida_data.dia_util_10h00_11h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="11h00-12h00" value={habitosVidaData?.dia_util_11h00_12h00} fieldPath="habitos_vida_data.dia_util_11h00_12h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="12h00-12h30" value={habitosVidaData?.dia_util_12h00_12h30} fieldPath="habitos_vida_data.dia_util_12h00_12h30" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="12h30-13h00" value={habitosVidaData?.dia_util_12h30_13h00} fieldPath="habitos_vida_data.dia_util_12h30_13h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="13h00-14h00" value={habitosVidaData?.dia_util_13h00_14h00} fieldPath="habitos_vida_data.dia_util_13h00_14h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="14h00-15h00" value={habitosVidaData?.dia_util_14h00_15h00} fieldPath="habitos_vida_data.dia_util_14h00_15h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="15h00-16h00" value={habitosVidaData?.dia_util_15h00_16h00} fieldPath="habitos_vida_data.dia_util_15h00_16h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="16h00-17h00" value={habitosVidaData?.dia_util_16h00_17h00} fieldPath="habitos_vida_data.dia_util_16h00_17h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="17h00-18h00" value={habitosVidaData?.dia_util_17h00_18h00} fieldPath="habitos_vida_data.dia_util_17h00_18h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="18h00-19h00" value={habitosVidaData?.dia_util_18h00_19h00} fieldPath="habitos_vida_data.dia_util_18h00_19h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="19h00-20h00" value={habitosVidaData?.dia_util_19h00_20h00} fieldPath="habitos_vida_data.dia_util_19h00_20h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="20h00-20h30" value={habitosVidaData?.dia_util_20h00_20h30} fieldPath="habitos_vida_data.dia_util_20h00_20h30" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="20h30-21h00" value={habitosVidaData?.dia_util_20h30_21h00} fieldPath="habitos_vida_data.dia_util_20h30_21h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="21h00-21h30" value={habitosVidaData?.dia_util_21h00_21h30} fieldPath="habitos_vida_data.dia_util_21h00_21h30" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="21h30-22h00" value={habitosVidaData?.dia_util_21h30_22h00} fieldPath="habitos_vida_data.dia_util_21h30_22h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="22h00-6h00" value={habitosVidaData?.dia_util_22h00_6h00} fieldPath="habitos_vida_data.dia_util_22h00_6h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>O Que Evitar</h4>
-          <DataField label="Evitar Cafeína" value={habitosVidaData?.sono_evitar_cafeina} fieldPath="habitos_vida_data.sono_evitar_cafeina" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Álcool" value={habitosVidaData?.sono_evitar_alcool} fieldPath="habitos_vida_data.sono_evitar_alcool" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Refeição Pesada" value={habitosVidaData?.sono_evitar_refeicao_pesada} fieldPath="habitos_vida_data.sono_evitar_refeicao_pesada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Exercício Intenso" value={habitosVidaData?.sono_evitar_exercicio_intenso} fieldPath="habitos_vida_data.sono_evitar_exercicio_intenso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Líquidos em Excesso" value={habitosVidaData?.sono_evitar_liquidos_excesso} fieldPath="habitos_vida_data.sono_evitar_liquidos_excesso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Horários de Sábado</h4>
+          <DataField label="6h00-7h00" value={habitosVidaData?.sabado_6h00_7h00} fieldPath="habitos_vida_data.sabado_6h00_7h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="7h00-8h00" value={habitosVidaData?.sabado_7h00_8h00} fieldPath="habitos_vida_data.sabado_7h00_8h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="8h00-9h00" value={habitosVidaData?.sabado_8h00_9h00} fieldPath="habitos_vida_data.sabado_8h00_9h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="9h00-10h00" value={habitosVidaData?.sabado_9h00_10h00} fieldPath="habitos_vida_data.sabado_9h00_10h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="10h00-11h00" value={habitosVidaData?.sabado_10h00_11h00} fieldPath="habitos_vida_data.sabado_10h00_11h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="11h00-12h00" value={habitosVidaData?.sabado_11h00_12h00} fieldPath="habitos_vida_data.sabado_11h00_12h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="12h00-13h00" value={habitosVidaData?.sabado_12h00_13h00} fieldPath="habitos_vida_data.sabado_12h00_13h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="13h00-14h00" value={habitosVidaData?.sabado_13h00_14h00} fieldPath="habitos_vida_data.sabado_13h00_14h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="14h00-15h00" value={habitosVidaData?.sabado_14h00_15h00} fieldPath="habitos_vida_data.sabado_14h00_15h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="15h00-16h00" value={habitosVidaData?.sabado_15h00_16h00} fieldPath="habitos_vida_data.sabado_15h00_16h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="16h00-17h00" value={habitosVidaData?.sabado_16h00_17h00} fieldPath="habitos_vida_data.sabado_16h00_17h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="17h00-18h00" value={habitosVidaData?.sabado_17h00_18h00} fieldPath="habitos_vida_data.sabado_17h00_18h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="18h00-19h00" value={habitosVidaData?.sabado_18h00_19h00} fieldPath="habitos_vida_data.sabado_18h00_19h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="19h00-20h00" value={habitosVidaData?.sabado_19h00_20h00} fieldPath="habitos_vida_data.sabado_19h00_20h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="20h00-21h00" value={habitosVidaData?.sabado_20h00_21h00} fieldPath="habitos_vida_data.sabado_20h00_21h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="21h00-22h00" value={habitosVidaData?.sabado_21h00_22h00} fieldPath="habitos_vida_data.sabado_21h00_22h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="22h00-6h00" value={habitosVidaData?.sabado_22h00_6h00} fieldPath="habitos_vida_data.sabado_22h00_6h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
-
+        
         <div className="anamnese-subsection">
-          <h4>Exposição à Luz</h4>
-          <DataField label="Manhã" value={habitosVidaData?.sono_exposicao_luz_manha} fieldPath="habitos_vida_data.sono_exposicao_luz_manha" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Durante o Dia" value={habitosVidaData?.sono_exposicao_luz_dia} fieldPath="habitos_vida_data.sono_exposicao_luz_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tarde" value={habitosVidaData?.sono_exposicao_luz_tarde} fieldPath="habitos_vida_data.sono_exposicao_luz_tarde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Noite" value={habitosVidaData?.sono_exposicao_luz_noite} fieldPath="habitos_vida_data.sono_exposicao_luz_noite" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Investigações e Estratégias</h4>
-          <DataField label="Investigar Apneia" value={habitosVidaData?.sono_investigar_apneia} fieldPath="habitos_vida_data.sono_investigar_apneia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Investigar Pernas Inquietas" value={habitosVidaData?.sono_investigar_pernas_inquietas} fieldPath="habitos_vida_data.sono_investigar_pernas_inquietas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Não Dormir em 30 Min" value={habitosVidaData?.sono_se_nao_dorme_30min} fieldPath="habitos_vida_data.sono_se_nao_dorme_30min" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <h4>Horários de Domingo</h4>
+          <DataField label="6h00-7h00" value={habitosVidaData?.domingo_6h00_7h00} fieldPath="habitos_vida_data.domingo_6h00_7h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="7h00-8h00" value={habitosVidaData?.domingo_7h00_8h00} fieldPath="habitos_vida_data.domingo_7h00_8h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="8h00-9h00" value={habitosVidaData?.domingo_8h00_9h00} fieldPath="habitos_vida_data.domingo_8h00_9h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="9h00-10h00" value={habitosVidaData?.domingo_9h00_10h00} fieldPath="habitos_vida_data.domingo_9h00_10h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="10h00-11h00" value={habitosVidaData?.domingo_10h00_11h00} fieldPath="habitos_vida_data.domingo_10h00_11h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="11h00-12h00" value={habitosVidaData?.domingo_11h00_12h00} fieldPath="habitos_vida_data.domingo_11h00_12h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="12h00-13h00" value={habitosVidaData?.domingo_12h00_13h00} fieldPath="habitos_vida_data.domingo_12h00_13h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="13h00-14h00" value={habitosVidaData?.domingo_13h00_14h00} fieldPath="habitos_vida_data.domingo_13h00_14h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="14h00-15h00" value={habitosVidaData?.domingo_14h00_15h00} fieldPath="habitos_vida_data.domingo_14h00_15h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="15h00-16h00" value={habitosVidaData?.domingo_15h00_16h00} fieldPath="habitos_vida_data.domingo_15h00_16h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="16h00-17h00" value={habitosVidaData?.domingo_16h00_17h00} fieldPath="habitos_vida_data.domingo_16h00_17h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="17h00-18h00" value={habitosVidaData?.domingo_17h00_18h00} fieldPath="habitos_vida_data.domingo_17h00_18h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="18h00-19h00" value={habitosVidaData?.domingo_18h00_19h00} fieldPath="habitos_vida_data.domingo_18h00_19h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="19h00-20h00" value={habitosVidaData?.domingo_19h00_20h00} fieldPath="habitos_vida_data.domingo_19h00_20h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="20h00-21h00" value={habitosVidaData?.domingo_20h00_21h00} fieldPath="habitos_vida_data.domingo_20h00_21h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="21h00-22h00" value={habitosVidaData?.domingo_21h00_22h00} fieldPath="habitos_vida_data.domingo_21h00_22h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="22h00-6h00" value={habitosVidaData?.domingo_22h00_6h00} fieldPath="habitos_vida_data.domingo_22h00_6h00" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
 
       {/* ==================== ALIMENTAÇÃO ==================== */}
-      <CollapsibleSection title="3. Alimentação (Aplicação Prática)" defaultOpen={false}>
+      <CollapsibleSection title="5. Alimentação (Aplicação Prática)" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Referências</h4>
           <DataField label="Ver Agente 3 (Alimentação)" value={habitosVidaData?.alimentacao_ver_agente_3} fieldPath="habitos_vida_data.alimentacao_ver_agente_3" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3639,7 +3385,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== MOVIMENTO ==================== */}
-      <CollapsibleSection title="4. Movimento e Atividade Física" defaultOpen={false}>
+      <CollapsibleSection title="6. Movimento e Atividade Física" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Referências</h4>
           <DataField label="Ver Agente 5 (Atividade Física)" value={habitosVidaData?.movimento_ver_agente_5} fieldPath="habitos_vida_data.movimento_ver_agente_5" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3662,7 +3408,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== ESPIRITUALIDADE E NATUREZA ==================== */}
-      <CollapsibleSection title="5. Espiritualidade e Conexão com a Natureza" defaultOpen={false}>
+      <CollapsibleSection title="7. Espiritualidade e Conexão com a Natureza" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Espiritualidade</h4>
           <DataField label="Ver Agente 2 (Mentalidade)" value={habitosVidaData?.espiritualidade_ver_agente_2} fieldPath="habitos_vida_data.espiritualidade_ver_agente_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3684,7 +3430,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== CONEXÕES SOCIAIS E RELAÇÕES ==================== */}
-      <CollapsibleSection title="6. Conexões Sociais e Relações" defaultOpen={false}>
+      <CollapsibleSection title="8. Conexões Sociais e Relações" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Conexão Social</h4>
           <DataField label="Problema Atual" value={habitosVidaData?.conexao_social_problema_atual} fieldPath="habitos_vida_data.conexao_social_problema_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3704,7 +3450,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== PROPÓSITO E SENTIDO DE VIDA ==================== */}
-      <CollapsibleSection title="7. Propósito e Sentido de Vida" defaultOpen={false}>
+      <CollapsibleSection title="9. Propósito e Sentido de Vida" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Reflexão Profunda</h4>
           <DataField label="Reflexão sobre Propósito" value={habitosVidaData?.proposito_reflexao_profunda} fieldPath="habitos_vida_data.proposito_reflexao_profunda" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3729,7 +3475,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== GESTÃO DE TEMPO E PRODUTIVIDADE ==================== */}
-      <CollapsibleSection title="8. Gestão de Tempo e Produtividade" defaultOpen={false}>
+      <CollapsibleSection title="10. Gestão de Tempo e Produtividade" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Análise e Estratégias</h4>
           <DataField label="Problema Atual" value={habitosVidaData?.gestao_tempo_problema_atual} fieldPath="habitos_vida_data.gestao_tempo_problema_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3751,7 +3497,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== GESTÃO DE ESTRESSE ==================== */}
-      <CollapsibleSection title="9. Gestão de Estresse" defaultOpen={false}>
+      <CollapsibleSection title="11. Gestão de Estresse" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Identificação e Técnicas</h4>
           <DataField label="Identificar Estressores" value={habitosVidaData?.estresse_identificar_estressores} fieldPath="habitos_vida_data.estresse_identificar_estressores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3761,7 +3507,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== ROTINAS E HÁBITOS ==================== */}
-      <CollapsibleSection title="10. Rotinas e Hábitos Estruturantes" defaultOpen={false}>
+      <CollapsibleSection title="12. Rotinas e Hábitos Estruturantes" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Rotinas Diárias</h4>
           <DataField label="Rotina Matinal (Power Hour)" value={habitosVidaData?.habitos_matinal_power_hour} fieldPath="habitos_vida_data.habitos_matinal_power_hour" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3772,7 +3518,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== TECNOLOGIA ==================== */}
-      <CollapsibleSection title="11. Uso Consciente de Tecnologia" defaultOpen={false}>
+      <CollapsibleSection title="13. Uso Consciente de Tecnologia" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Regras de Uso</h4>
           <DataField label="Celular - Regras" value={habitosVidaData?.tecnologia_celular_regras} fieldPath="habitos_vida_data.tecnologia_celular_regras" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3781,7 +3527,7 @@ function HabitosDeVidaSection({
       </CollapsibleSection>
 
       {/* ==================== MONITORAMENTO E MINDSET ==================== */}
-      <CollapsibleSection title="12. Monitoramento e Mindset" defaultOpen={false}>
+      <CollapsibleSection title="14. Monitoramento e Mindset" defaultOpen={false}>
         <div className="anamnese-subsection">
           <h4>Acompanhamento</h4>
           <DataField label="Check-in Semanal" value={habitosVidaData?.monitoramento_checkin_semanal} fieldPath="habitos_vida_data.monitoramento_checkin_semanal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -3822,6 +3568,19 @@ function ConsultasPageContent() {
   // Estados para visualização de detalhes
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showSolutionsViewer, setShowSolutionsViewer] = useState(false);
+
+  // Função helper para renderizar o botão "Ver Todas as Soluções"
+  const renderViewSolutionsButton = () => (
+    <button 
+      className="view-solutions-button"
+      onClick={() => setShowSolutionsViewer(true)}
+      style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+    >
+      <FileText className="w-4 h-4" />
+      Ver Todas as Soluções
+    </button>
+  );
 
   // Estados para chat com IA
   const [selectedField, setSelectedField] = useState<{ fieldPath: string; label: string } | null>(null);
@@ -4144,6 +3903,8 @@ function ConsultasPageContent() {
     if (consultaId) {
       console.log('🔍 useEffect - Carregando detalhes para consulta:', consultaId);
       fetchConsultaDetails(consultaId);
+      // Resetar o estado do visualizador de soluções quando mudar de consulta
+      setShowSolutionsViewer(false);
     } else {
       setConsultaDetails(null);
     }
@@ -4883,6 +4644,38 @@ function ConsultasPageContent() {
     );
   }
 
+  // Função para selecionar uma solução
+  const handleSelectSolucao = async (solucaoEtapa: string) => {
+    if (!consultaId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Atualiza a consulta com a solução selecionada
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: solucaoEtapa
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Recarrega os dados da consulta
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao selecionar solução:', error);
+      alert('Erro ao selecionar solução. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Função para renderizar o conteúdo baseado no status e etapa
   const renderConsultationContent = () => {
     if (!consultaDetails) return null;
@@ -4951,7 +4744,55 @@ function ConsultasPageContent() {
       );
     }
 
-    // STATUS = VALIDATION
+    // STATUS = VALID_ANAMNESE
+    if (consultaDetails.status === 'VALID_ANAMNESE') {
+      // Retorna a tela atual de anamnese (será renderizado depois)
+      return 'ANAMNESE';
+    }
+
+    // STATUS = VALID_DIAGNOSTICO
+    if (consultaDetails.status === 'VALID_DIAGNOSTICO') {
+      // Retorna a tela de diagnóstico (será renderizado depois)
+      return 'DIAGNOSTICO';
+    }
+
+    // STATUS = VALID_SOLUCAO
+    if (consultaDetails.status === 'VALID_SOLUCAO') {
+      // Se for LTB, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'LTB') {
+        return 'SOLUCAO_LTB';
+      }
+      
+      // Se for MENTALIDADE, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
+        return 'SOLUCAO_MENTALIDADE';
+      }
+      
+      // Se for SUPLEMENTACAO, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'SUPLEMENTACAO') {
+        return 'SOLUCAO_SUPLEMENTACAO';
+      }
+      
+      // Se for ALIMENTACAO, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'ALIMENTACAO') {
+        return 'SOLUCAO_ALIMENTACAO';
+      }
+      
+      // Se for ATIVIDADE_FISICA, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'ATIVIDADE_FISICA') {
+        return 'SOLUCAO_ATIVIDADE_FISICA';
+      }
+      
+      // Se for HABITOS_DE_VIDA, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
+        return 'SOLUCAO_HABITOS_DE_VIDA';
+      }
+
+      // Se não tiver solucao_etapa definida, mostrar tela de seleção
+      return 'SOLUCAO_SELECTION';
+    }
+
+    // STATUS = VALIDATION (mantido para compatibilidade)
     if (consultaDetails.status === 'VALIDATION') {
       // ETAPA = ANAMNESE
       if (consultaDetails.etapa === 'ANAMNESE') {
@@ -5008,6 +4849,35 @@ function ConsultasPageContent() {
 
   // Renderizar detalhes da consulta
   if (consultaId && consultaDetails) {
+    // Se showSolutionsViewer for true, renderiza o visualizador de soluções
+    if (showSolutionsViewer) {
+      return (
+        <SolutionsViewer
+          consultaId={consultaId!}
+          onBack={() => setShowSolutionsViewer(false)}
+          onSolutionSelect={(solutionType) => {
+            // Mapear o tipo de solução para a etapa correspondente
+            const solutionMapping: Record<string, string> = {
+              'ltb': 'LTB',
+              'mentalidade': 'MENTALIDADE',
+              'alimentacao': 'ALIMENTACAO',
+              'suplementacao': 'SUPLEMENTACAO',
+              'exercicios': 'ATIVIDADE_FISICA',
+              'habitos': 'HABITOS_DE_VIDA'
+            };
+            
+            const etapa = solutionMapping[solutionType];
+            if (etapa) {
+              // Atualizar a consulta com a etapa selecionada
+              handleSelectSolucao(etapa);
+              // Voltar para a tela principal
+              setShowSolutionsViewer(false);
+            }
+          }}
+        />
+      );
+    }
+    
     const contentType = renderConsultationContent();
 
     // Se for DIAGNOSTICO, renderiza a tela de diagnóstico
@@ -5232,7 +5102,7 @@ function ConsultasPageContent() {
                   />
 
                   {/* Seção de Anamnese (Somente Leitura) */}
-                  <CollapsibleSection title="📋 Anamnese (Consulta)" defaultOpen={false}>
+                  <CollapsibleSection title="Anamnese (Consulta)" defaultOpen={false}>
                     <div className="anamnese-subsection" style={{ opacity: 0.85, userSelect: 'text', position: 'relative' }}>
                       <AnamneseSection 
                         consultaId={consultaId}
@@ -5244,6 +5114,7 @@ function ConsultasPageContent() {
                         onSendMessage={() => {}}
                         onChatInputChange={() => {}}
                         readOnly={true}
+                        renderViewSolutionsButton={renderViewSolutionsButton}
                       />
                     </div>
                   </CollapsibleSection>
@@ -5269,6 +5140,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Limpeza do Terreno Biológico (LTB)</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -5492,6 +5364,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Mentalidade do Paciente</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -5715,6 +5588,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Suplementação</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -5942,6 +5816,7 @@ function ConsultasPageContent() {
             <div className="consultation-info">
               <h1>Atividades Físicas</h1>
             </div>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           <div className="consultation-content">
@@ -6169,6 +6044,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Hábitos de Vida</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -6392,6 +6268,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Alimentação</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -6513,8 +6390,102 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
-    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
+    // Se for SOLUCAO_SELECTION, renderiza a tela de seleção de solução
+    if (contentType === 'SOLUCAO_SELECTION') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Selecionar Solução</h1>
+          </div>
+          
+          <div className="solucao-selection-container">
+            <div className="solucao-selection-header">
+              <h2>Escolha uma das soluções para continuar:</h2>
+              <p>Selecione a solução que deseja implementar para este paciente.</p>
+            </div>
+            
+            <div className="solucao-grid">
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('LTB')}
+              >
+                <div className="solucao-icon">
+                  <Dna className="w-8 h-8" />
+                </div>
+                <h3>LTB</h3>
+                <p>Limpeza Total do Bioma</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('MENTALIDADE')}
+              >
+                <div className="solucao-icon">
+                  <Brain className="w-8 h-8" />
+                </div>
+                <h3>Mentalidade</h3>
+                <p>Transformação Mental e Emocional</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ALIMENTACAO')}
+              >
+                <div className="solucao-icon">
+                  <Apple className="w-8 h-8" />
+                </div>
+                <h3>Alimentação</h3>
+                <p>Plano Nutricional Personalizado</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
+              >
+                <div className="solucao-icon">
+                  <Pill className="w-8 h-8" />
+                </div>
+                <h3>Suplementação</h3>
+                <p>Protocolo de Suplementos</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
+              >
+                <div className="solucao-icon">
+                  <Dumbbell className="w-8 h-8" />
+                </div>
+                <h3>Atividade Física</h3>
+                <p>Programa de Exercícios</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('HABITOS_DE_VIDA')}
+              >
+                <div className="solucao-icon">
+                  <Leaf className="w-8 h-8" />
+                </div>
+                <h3>Hábitos de Vida</h3>
+                <p>Transformação de Estilo de Vida</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA, não SOLUCAO_HABITOS_DE_VIDA e não SOLUCAO_SELECTION), renderiza só o modal
+    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA' && contentType !== 'SOLUCAO_SELECTION')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
@@ -6760,6 +6731,7 @@ function ConsultasPageContent() {
                   onChatInputChange={setChatInput}
                   consultaStatus={consultaDetails?.status}
                   consultaEtapa={consultaDetails?.etapa}
+                  renderViewSolutionsButton={renderViewSolutionsButton}
                 />
               </div>
             </div>
