@@ -1750,6 +1750,22 @@ export function ConsultationRoom({
         setAiSuggestions(data.suggestions);
 
       });
+      
+      // ✅ NOVO: Notificação quando paciente reconecta (refresh)
+      socketRef.current.on('participantRejoined', (data: any) => {
+        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Enviando nova oferta...`);
+        
+        // Aguardar um pouco para o paciente estar pronto
+        setTimeout(async () => {
+          if (peerConnectionRef.current && localStreamRef.current) {
+            console.log('🔄 [MÉDICO] Renegociando WebRTC após reconexão do paciente...');
+            await renegotiateWebRTC();
+          } else {
+            console.log('🔄 [MÉDICO] Recriando chamada após reconexão do paciente...');
+            await call();
+          }
+        }, 2000); // 2 segundos de delay para paciente estar pronto
+      });
 
     }
 

@@ -310,6 +310,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             role: 'participant',
             roomData: roomDataWithHistory
           });
+          
+          // ✅ NOVO: Se host está conectado, notificar para reenviar oferta
+          if (room.hostSocketId) {
+            console.log(`🔔 Notificando host para reenviar oferta após reconexão do participante`);
+            io.to(room.hostSocketId).emit('participantRejoined', {
+              roomId: roomId,
+              participantName: participantName
+            });
+          }
+          
           return;
         }
         
