@@ -71,6 +71,9 @@ export function ConsultationRoom({
   const [isCallActive, setIsCallActive] = useState(false);
 
   const [participantName, setParticipantName] = useState('');
+  
+  // ✅ NOVO: Estado para controlar se paciente está pronto para entrar
+  const [isPatientReadyToJoin, setIsPatientReadyToJoin] = useState(false);
 
   const [transcriptionText, setTranscriptionText] = useState('');
 
@@ -1146,9 +1149,9 @@ export function ConsultationRoom({
 
     } else if (userType === 'patient') {
 
-      // Paciente: auto-join lendo o id do paciente da URL e buscando nome
+      // ✅ NOVO: Paciente aguarda clique no botão (não auto-join)
 
-      console.log('🩺 [PACIENTE] Auto-join habilitado');
+      console.log('🩺 [PACIENTE] Preparando sala... (aguardando clique no botão)');
 
       loadSocketIO();
 
@@ -1193,32 +1196,16 @@ export function ConsultationRoom({
 
 
           setParticipantName(resolvedName);
-
-          // Aguardar pequeno tempo para garantir que o socket conecte
-
-          const tryJoin = () => {
-
-            if (socketRef.current) {
-
-              joinRoomAsParticipant(resolvedName);
-
-            } else {
-
-              setTimeout(tryJoin, 200);
-
-            }
-
-          };
-
-          tryJoin();
+          
+          // ✅ NOVO: Marcar que está pronto (mostra botão)
+          setIsPatientReadyToJoin(true);
+          console.log('✅ [PACIENTE] Pronto! Aguardando clique no botão...');
 
         } catch (e) {
 
-          console.error('❌ Erro no auto-join do paciente:', e);
+          console.error('❌ Erro ao preparar sala do paciente:', e);
 
           setErrorMessage('Erro ao preparar a participação na sala. Recarregue a página.');
-
-          setShowParticipantModal(true);
 
         }
 
@@ -1397,6 +1384,35 @@ export function ConsultationRoom({
   };
 
 
+
+  // ✅ NOVO: Função chamada quando paciente clica no botão "Entrar na Consulta"
+  const handlePatientJoinClick = () => {
+    console.log('👤 [PACIENTE] Botão "Entrar na Consulta" clicado!');
+    
+    if (!participantName) {
+      console.error('❌ Nome do paciente não definido');
+      setErrorMessage('Erro: Nome não definido. Recarregue a página.');
+      return;
+    }
+    
+    if (!socketRef.current) {
+      console.error('❌ Socket não conectado');
+      setErrorMessage('Erro: Conexão não estabelecida. Recarregue a página.');
+      return;
+    }
+    
+    // Aguardar socket conectar e então entrar
+    const tryJoin = () => {
+      if (socketRef.current?.connected) {
+        joinRoomAsParticipant(participantName);
+      } else {
+        console.log('🔄 Aguardando socket conectar...');
+        setTimeout(tryJoin, 200);
+      }
+    };
+    
+    tryJoin();
+  };
 
   // Função para entrar como paciente (participant) - igual ao projeto original
 
@@ -3216,13 +3232,36 @@ export function ConsultationRoom({
           )}
 
           
-          {/* ✅ Indicador de auto-entrada para o paciente */}
-          {userType === 'patient' && !isCallActive && !showAnswerButton && (
+          {/* ✅ NOVO: Tela de boas-vindas com botão para paciente */}
+          {userType === 'patient' && !hasJoinedRoom && isPatientReadyToJoin && (
+            <div className="patient-welcome-screen">
+              <div className="welcome-card">
+                <h2>🩺 Bem-vindo à Consulta Online</h2>
+                <p className="patient-name">Olá, <strong>{participantName}</strong>!</p>
+                <p className="welcome-text">
+                  Você está prestes a entrar na consulta com o médico.
+                  <br />
+                  Certifique-se de que sua câmera e microfone estão funcionando.
+                </p>
+                <button 
+                  className="join-button" 
+                  onClick={handlePatientJoinClick}
+                >
+                  📹 Entrar na Consulta
+                </button>
+                <p className="connection-status">
+                  {isConnected ? '✅ Conectado ao servidor' : '🔄 Conectando ao servidor...'}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* ✅ Indicador de carregamento (enquanto prepara) */}
+          {userType === 'patient' && !hasJoinedRoom && !isPatientReadyToJoin && (
             <div className="auto-start-indicator">
               <div className="spinner"></div>
-              <span>Entrando na consulta automaticamente...</span>
+              <span>Preparando consulta...</span>
             </div>
-
           )}
 
           
@@ -3632,6 +3671,117 @@ export function ConsultationRoom({
         </div>
 
       )}
+      
+      {/* ✅ NOVO: Estilos para tela de boas-vindas do paciente */}
+      <style jsx>{`
+        .patient-welcome-screen {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          animation: fadeIn 0.5s ease-in;
+        }
+        
+        .welcome-card {
+          background: white;
+          border-radius: 20px;
+          padding: 3rem 2.5rem;
+          max-width: 500px;
+          width: 90%;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          text-align: center;
+          animation: slideUp 0.6s ease-out;
+        }
+        
+        .welcome-card h2 {
+          font-size: 2rem;
+          color: #333;
+          margin-bottom: 1rem;
+          font-weight: 700;
+        }
+        
+        .patient-name {
+          font-size: 1.2rem;
+          color: #667eea;
+          margin-bottom: 1.5rem;
+        }
+        
+        .welcome-text {
+          font-size: 1rem;
+          color: #666;
+          line-height: 1.6;
+          margin-bottom: 2rem;
+        }
+        
+        .join-button {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          padding: 1rem 3rem;
+          font-size: 1.2rem;
+          font-weight: 600;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .join-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .join-button:active {
+          transform: translateY(0);
+        }
+        
+        .connection-status {
+          margin-top: 1.5rem;
+          font-size: 0.9rem;
+          color: #999;
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideUp {
+          from {
+            transform: translateY(30px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .welcome-card {
+            padding: 2rem 1.5rem;
+          }
+          
+          .welcome-card h2 {
+            font-size: 1.5rem;
+          }
+          
+          .join-button {
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+          }
+        }
+      `}</style>
 
     </div>
 
