@@ -2837,6 +2837,15 @@ export function ConsultationRoom({
                 }
               } else {
                 console.log('⏭️ [WEBRTC] Pulando play() - mesmo stream já está tocando');
+                
+                // ✅ CORREÇÃO: Garantir que o áudio seja desmutado mesmo quando pulamos o play()
+                // (quando o segundo track chega)
+                setTimeout(() => {
+                  if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
+                    remoteVideoRef.current.muted = false;
+                    console.log('🔊 [WEBRTC] Áudio remoto garantido após segundo track');
+                  }
+                }, 500);
               }
 
               return true;
