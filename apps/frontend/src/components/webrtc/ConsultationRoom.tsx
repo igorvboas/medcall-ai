@@ -2160,48 +2160,17 @@ export function ConsultationRoom({
       // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
       const attachVideoStream = (stream: MediaStream, retries = 10) => {
         if (localVideoRef.current) {
-          const videoElement = localVideoRef.current;
-          videoElement.srcObject = stream;
+          localVideoRef.current.srcObject = stream;
           console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
           
-          // ✅ CORREÇÃO: Adicionar listeners para garantir reprodução contínua
-          videoElement.onloadedmetadata = () => {
-            console.log('📹 [MÍDIA] Metadata carregada, iniciando reprodução...');
-            videoElement.muted = true; // Mute para evitar feedback
-            videoElement.play().then(() => {
-              console.log('📹 [MÍDIA] ✅ Vídeo local iniciado');
-            }).catch((err) => {
-              console.warn('📹 [MÍDIA] ⚠️ Erro ao iniciar vídeo local:', err.message);
-              // Tentar novamente após interação do usuário
-              const handleUserInteraction = () => {
-                videoElement.play().catch(() => {});
-                document.removeEventListener('click', handleUserInteraction);
-              };
-              document.addEventListener('click', handleUserInteraction, { once: true });
-            });
-          };
-          
-          // ✅ NOVO: Monitorar pausas não intencionais e retomar
-          videoElement.onpause = () => {
-            console.warn('📹 [MÍDIA] Vídeo local pausado, tentando retomar...');
-            setTimeout(() => {
-              if (videoElement.srcObject && videoElement.paused) {
-                videoElement.play().catch(() => {});
-              }
-            }, 100);
-          };
-          
-          // ✅ NOVO: Monitorar erros e tentar recuperar
-          videoElement.onerror = (e) => {
-            console.error('📹 [MÍDIA] Erro no vídeo local:', e);
-            // Tentar reatribuir o stream
-            setTimeout(() => {
-              if (localStreamRef.current) {
-                videoElement.srcObject = localStreamRef.current;
-                videoElement.play().catch(() => {});
-              }
-            }, 500);
-          };
+          // ✅ Forçar play (elemento já tem autoPlay no HTML)
+          setTimeout(() => {
+            if (localVideoRef.current) {
+              localVideoRef.current.play().catch((err) => {
+                console.warn('📹 [MÍDIA] ⚠️ Autoplay bloqueado:', err.message);
+              });
+            }
+          }, 100);
         } else if (retries > 0) {
           console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
           setTimeout(() => attachVideoStream(stream, retries - 1), 100);
@@ -2291,14 +2260,10 @@ export function ConsultationRoom({
               localVideoRef.current.srcObject = stream;
               console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo (retry)');
               
-              // ✅ CORREÇÃO: Forçar reprodução do vídeo local
               setTimeout(() => {
                 if (localVideoRef.current) {
-                  localVideoRef.current.muted = true;
-                  localVideoRef.current.play().then(() => {
-                    console.log('📹 [MÍDIA] ✅ Vídeo local iniciado (retry)');
-                  }).catch((err) => {
-                    console.warn('📹 [MÍDIA] ⚠️ Erro ao iniciar vídeo local (retry):', err.message);
+                  localVideoRef.current.play().catch((err) => {
+                    console.warn('📹 [MÍDIA] ⚠️ Autoplay bloqueado (retry):', err.message);
                   });
                 }
               }, 100);
@@ -2463,55 +2428,20 @@ export function ConsultationRoom({
         // ✅ CORREÇÃO: Anexar vídeo remoto com retry
         const attachRemoteStream = (stream: MediaStream, retries = 10) => {
           if (remoteVideoRef.current) {
-            const videoElement = remoteVideoRef.current;
-            const currentStream = videoElement.srcObject as MediaStream;
+            const currentStream = remoteVideoRef.current.srcObject as MediaStream;
             if (!currentStream || currentStream.id !== stream.id) {
               console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', stream.id);
-              videoElement.srcObject = stream;
+              remoteVideoRef.current.srcObject = stream;
               remoteStreamRef.current = stream;
               
-              // ✅ NOVO: Adicionar listeners para garantir reprodução contínua
-              videoElement.onloadedmetadata = () => {
-                console.log('📹 [WEBRTC] Metadata do vídeo remoto carregada');
-                videoElement.play().then(() => {
-                  console.log('🔗 [WEBRTC] ✅ Vídeo remoto começou a reproduzir');
-                }).catch(err => {
-                  if (err.name === 'NotAllowedError') {
-                    console.warn('🔍 DEBUG [REFERENCIA] [WEBRTC] ⚠️ Autoplay bloqueado (aguardando interação)');
-                    const handleUserInteraction = () => {
-                      videoElement.play().catch(() => {});
-                      document.removeEventListener('click', handleUserInteraction);
-                      document.removeEventListener('touchstart', handleUserInteraction);
-                    };
-                    document.addEventListener('click', handleUserInteraction, { once: true });
-                    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-                  } else {
-                    console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
-                    setTimeout(() => videoElement.play().catch(() => {}), 100);
-                  }
-                });
-              };
-              
-              // ✅ NOVO: Monitorar pausas não intencionais e retomar
-              videoElement.onpause = () => {
-                console.warn('📹 [WEBRTC] Vídeo remoto pausado, tentando retomar...');
-                setTimeout(() => {
-                  if (videoElement.srcObject && videoElement.paused) {
-                    videoElement.play().catch(() => {});
-                  }
-                }, 100);
-              };
-              
-              // ✅ NOVO: Monitorar erros e tentar recuperar
-              videoElement.onerror = (e) => {
-                console.error('📹 [WEBRTC] Erro no vídeo remoto:', e);
-                setTimeout(() => {
-                  if (remoteStreamRef.current) {
-                    videoElement.srcObject = remoteStreamRef.current;
-                    videoElement.play().catch(() => {});
-                  }
-                }, 500);
-              };
+              // Forçar play (elemento já tem autoPlay no HTML)
+              setTimeout(() => {
+                if (remoteVideoRef.current) {
+                  remoteVideoRef.current.play().catch((err) => {
+                    console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado:', err.message);
+                  });
+                }
+              }, 100);
               
               return true;
             } else {
