@@ -1441,19 +1441,12 @@ export function ConsultationRoom({
       }
 
       video.controls = false;
-      video.muted = true;
+      video.muted = false;
 
       await video.play();
-      console.log('✅ [WEBRTC] Reprodução remota iniciada em modo mudo');
+      console.log('✅ [WEBRTC] Reprodução remota liberada pelo clique do usuário');
 
       setIsRemotePlaybackBlocked(false);
-
-      setTimeout(() => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.muted = false;
-          console.log('🔊 [WEBRTC] Áudio remoto liberado após clique do usuário');
-        }
-      }, 200);
     } catch (error) {
       console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
       video.muted = true;
