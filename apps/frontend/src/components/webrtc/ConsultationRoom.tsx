@@ -1427,14 +1427,19 @@ export function ConsultationRoom({
     tryJoin();
   };
 
-  // ✅ NOVO: Permitir que usuário libere áudio/vídeo remoto quando autoplay for bloqueado
   const resumeRemotePlayback = async () => {
-    if (!remoteVideoRef.current) return;
+    const video = remoteVideoRef.current;
+    if (!video) return;
     try {
-      remoteVideoRef.current.muted = false;
-      await remoteVideoRef.current.play();
+      video.muted = true;
+      await video.play();
       setIsRemotePlaybackBlocked(false);
-      console.log('✅ [WEBRTC] Reprodução remota retomada após interação do usuário');
+      setTimeout(() => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.muted = false;
+          console.log('🔊 [WEBRTC] Áudio remoto liberado após interação do usuário');
+        }
+      }, 200);
     } catch (error) {
       console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
       setIsRemotePlaybackBlocked(true);
