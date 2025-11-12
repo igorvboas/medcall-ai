@@ -1953,10 +1953,12 @@ export function ConsultationRoom({
       
       // ✅ NOVO: Notificação quando paciente reconecta (refresh)
       socketRef.current.on('participantRejoined', (data: any) => {
-        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Reiniciando chamada...`);
+        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Reiniciando chamada IMEDIATAMENTE...`);
         
         const restartDoctorCall = async () => {
           try {
+            console.log('🔄 [MÉDICO] Iniciando restart da chamada...');
+            
             // Limpar eventual offer pendente / estados
             pendingOfferRef.current = null;
             isMediaReadyRef.current = true; // médico já tem mídia pronta
@@ -1984,7 +1986,7 @@ export function ConsultationRoom({
               await fetchUserMedia();
             }
 
-            console.log('📞 [MÉDICO] Iniciando nova chamada após reconexão do paciente...');
+            console.log('📞 [MÉDICO] Chamando call() para enviar nova offer...');
             await call();
             console.log('✅ [MÉDICO] Nova offer enviada após restart do paciente!');
           } catch (error) {
@@ -1992,8 +1994,8 @@ export function ConsultationRoom({
           }
         };
 
-        // Aguardar um pouco para o paciente finalizar setup
-        setTimeout(restartDoctorCall, 1500);
+        // ✅ MUDANÇA: Reduzir delay para 800ms (o suficiente para paciente se conectar ao Socket.IO)
+        setTimeout(restartDoctorCall, 800);
       });
 
     }
@@ -2720,6 +2722,9 @@ export function ConsultationRoom({
               remoteVideoRef.current.srcObject = stream;
               remoteStreamRef.current = stream;
 
+              const isNewStream = previousStream !== stream;
+              const isFirstTime = !previousStream;
+              
               if (previousStream && previousStream !== stream) {
                 console.log('🔄 [WEBRTC] Substituindo stream remoto anterior por um novo (id anterior:', previousStream.id, '| novo id:', stream.id, ')');
               } else if (!previousStream) {
@@ -2734,43 +2739,49 @@ export function ConsultationRoom({
 
               console.log('📊 [WEBRTC] Stream remoto atribuído (readyState:', remoteVideoRef.current.readyState, ')');
 
-              // ✅ SOLUÇÃO: Tentar play imediatamente, sem esperar readyState
-              // O navegador vai começar a reproduzir assim que tiver dados suficientes
-              const playPromise = remoteVideoRef.current.play();
-              
-              if (playPromise) {
-                playPromise
-                  .then(() => {
-                    console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
-                    setIsRemotePlaybackBlocked(false);
-                    
-                    // Tentar desmutar após 500ms
-                    setTimeout(() => {
-                      if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
-                        remoteVideoRef.current.muted = false;
-                        console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
-                      }
-                    }, 500);
-                  })
-                  .catch((err: any) => {
-                    console.log('⚠️ [WEBRTC] Play falhou:', err?.name, err?.message);
-                    
-                    // Verificar se é bloqueio de autoplay real
-                    const isAutoplayError = err?.name === 'NotAllowedError' || 
-                                           err?.name === 'NotSupportedError';
-                    
-                    if (isAutoplayError) {
-                      console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador. Solicitando interação do usuário...');
-                      setIsRemotePlaybackBlocked(true);
-                    } else {
-                      // Outros erros (AbortError, etc) não devem mostrar overlay
-                      console.log('📹 [WEBRTC] ℹ️ Play será retomado automaticamente quando stream tiver dados');
+              // ✅ CORREÇÃO CRÍTICA: Só chamar play() se for stream NOVO ou PRIMEIRA VEZ
+              // Evita múltiplos play() quando tracks chegam separadamente
+              if (isFirstTime || isNewStream) {
+                console.log('▶️ [WEBRTC] Iniciando play() pois é', isFirstTime ? 'primeira vez' : 'stream novo');
+                
+                const playPromise = remoteVideoRef.current.play();
+                
+                if (playPromise) {
+                  playPromise
+                    .then(() => {
+                      console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
                       setIsRemotePlaybackBlocked(false);
-                    }
-                  });
+                      
+                      // Tentar desmutar após 500ms
+                      setTimeout(() => {
+                        if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
+                          remoteVideoRef.current.muted = false;
+                          console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
+                        }
+                      }, 500);
+                    })
+                    .catch((err: any) => {
+                      console.log('⚠️ [WEBRTC] Play falhou:', err?.name, err?.message);
+                      
+                      // Verificar se é bloqueio de autoplay real
+                      const isAutoplayError = err?.name === 'NotAllowedError' || 
+                                             err?.name === 'NotSupportedError';
+                      
+                      if (isAutoplayError) {
+                        console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador. Solicitando interação do usuário...');
+                        setIsRemotePlaybackBlocked(true);
+                      } else {
+                        // Outros erros (AbortError, etc) não devem mostrar overlay
+                        console.log('📹 [WEBRTC] ℹ️ Play será retomado automaticamente quando stream tiver dados');
+                        setIsRemotePlaybackBlocked(false);
+                      }
+                    });
+                } else {
+                  // Fallback para navegadores antigos
+                  setIsRemotePlaybackBlocked(false);
+                }
               } else {
-                // Fallback para navegadores antigos
-                setIsRemotePlaybackBlocked(false);
+                console.log('⏭️ [WEBRTC] Pulando play() - mesmo stream já está tocando');
               }
 
               return true;
