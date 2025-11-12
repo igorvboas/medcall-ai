@@ -1430,18 +1430,17 @@ export function ConsultationRoom({
   const resumeRemotePlayback = async () => {
     const video = remoteVideoRef.current;
     if (!video) return;
+
     try {
-      video.muted = true;
+      video.controls = false;
+      video.muted = false;
       await video.play();
       setIsRemotePlaybackBlocked(false);
-      setTimeout(() => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.muted = false;
-          console.log('🔊 [WEBRTC] Áudio remoto liberado após interação do usuário');
-        }
-      }, 200);
+      console.log('✅ [WEBRTC] Reprodução remota liberada pelo usuário');
     } catch (error) {
       console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
+      video.muted = true;
+      video.controls = true; // deixar usuário apertar play manualmente se necessário
       setIsRemotePlaybackBlocked(true);
     }
   };
