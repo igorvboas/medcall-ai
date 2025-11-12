@@ -1455,58 +1455,38 @@ export function ConsultationRoom({
         return;
       }
 
-      // ✅ CRÍTICO: Aguardar o vídeo carregar dados suficientes (readyState >= 2)
-      if (video.readyState < 2) {
-        console.log('⏳ [WEBRTC] Aguardando stream carregar dados... (readyState atual:', video.readyState, ')');
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Timeout aguardando loadeddata'));
-          }, 5000);
-
-          const onLoadedData = () => {
-            clearTimeout(timeout);
-            video.removeEventListener('loadeddata', onLoadedData);
-            console.log('✅ [WEBRTC] Stream carregado! (readyState:', video.readyState, ')');
-            resolve();
-          };
-
-          video.addEventListener('loadeddata', onLoadedData);
-          video.load(); // Forçar reload do srcObject
-        });
-      }
-
-      // Estratégia 1: Tentar play direto sem mute (já estamos em contexto de user gesture)
-      video.controls = false;
+      // ✅ SOLUÇÃO SIMPLES: Apenas remover o overlay e deixar o vídeo tocar
+      // O vídeo já está tocando (paused: false), só estava mudo por causa do autoplay
+      console.log('🔊 [WEBRTC] Liberando áudio do vídeo remoto...');
+      
       video.muted = false;
+      video.controls = false;
       
-      console.log('▶️ [WEBRTC] Tentando play() com áudio...');
-      await video.play();
+      // Se estiver pausado, tentar dar play
+      if (video.paused) {
+        console.log('▶️ [WEBRTC] Vídeo pausado, tentando play...');
+        try {
+          await video.play();
+          console.log('✅ [WEBRTC] Play executado com sucesso!');
+        } catch (playError) {
+          console.warn('⚠️ [WEBRTC] Play falhou, tentando mudo primeiro...', playError);
+          video.muted = true;
+          await video.play();
+          console.log('✅ [WEBRTC] Play mudo OK, desmutando...');
+          await new Promise(resolve => setTimeout(resolve, 100));
+          video.muted = false;
+        }
+      }
       
-      console.log('✅ [WEBRTC] Reprodução remota liberada com sucesso!');
+      console.log('✅ [WEBRTC] Áudio liberado com sucesso!');
       setIsRemotePlaybackBlocked(false);
       
     } catch (error) {
-      console.warn('⚠️ [WEBRTC] Play com áudio falhou, tentando com mute primeiro...', error);
-      
-      try {
-        // Estratégia 2: Play mudo, depois desmutar
-        video.muted = true;
-        await video.play();
-        console.log('✅ [WEBRTC] Reprodução muda iniciada, desmutando...');
-        
-        // Aguardar um frame antes de desmutar
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        video.muted = false;
-        
-        console.log('🔊 [WEBRTC] Áudio liberado!');
-        setIsRemotePlaybackBlocked(false);
-        
-      } catch (fallbackError) {
-        console.error('❌ [WEBRTC] Todas as tentativas falharam:', fallbackError);
-        video.muted = false;
-        video.controls = true; // permitir usuário apertar play manualmente
-        alert('Não foi possível iniciar o vídeo automaticamente. Use o botão de play no vídeo.');
-      }
+      console.error('❌ [WEBRTC] Erro ao liberar áudio:', error);
+      // Fallback: mostrar controles nativos
+      video.controls = true;
+      video.muted = false;
+      alert('Use os controles do vídeo para iniciar a reprodução.');
     }
   };
 
@@ -2751,29 +2731,59 @@ export function ConsultationRoom({
               remoteVideoRef.current.controls = false;
               remoteVideoRef.current.style.opacity = '1';
 
-              // Iniciar playback mudo para satisfazer política de autoplay
-              remoteVideoRef.current.muted = true;
-              const playPromise = remoteVideoRef.current.play();
-              if (playPromise && typeof playPromise.then === 'function') {
-                playPromise
-                  .then(() => {
-                    console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
-                    setIsRemotePlaybackBlocked(false);
-                    setTimeout(() => {
-                      if (remoteVideoRef.current) {
-                        remoteVideoRef.current.muted = false;
-                        console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
-                      }
-                    }, 300);
-                  })
-                  .catch((err: any) => {
-                    console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado no remoto. Solicitando interação do usuário...', err?.message || err);
+              // ✅ CORREÇÃO: Aguardar o stream ter dados antes de tentar play
+              const waitForData = new Promise<void>((resolve) => {
+                if (remoteVideoRef.current && remoteVideoRef.current.readyState >= 2) {
+                  resolve();
+                } else if (remoteVideoRef.current) {
+                  const onLoadedData = () => {
+                    remoteVideoRef.current?.removeEventListener('loadeddata', onLoadedData);
+                    resolve();
+                  };
+                  remoteVideoRef.current.addEventListener('loadeddata', onLoadedData);
+                  // Timeout de segurança
+                  setTimeout(resolve, 2000);
+                } else {
+                  resolve();
+                }
+              });
+
+              waitForData.then(async () => {
+                if (!remoteVideoRef.current) return;
+                
+                console.log('📊 [WEBRTC] Stream remoto pronto (readyState:', remoteVideoRef.current.readyState, ')');
+                
+                // Iniciar playback mudo para satisfazer política de autoplay
+                remoteVideoRef.current.muted = true;
+                
+                try {
+                  await remoteVideoRef.current.play();
+                  console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
+                  setIsRemotePlaybackBlocked(false);
+                  
+                  // Aguardar um pouco e depois tentar desmutar
+                  setTimeout(() => {
+                    if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
+                      remoteVideoRef.current.muted = false;
+                      console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
+                    }
+                  }, 500);
+                  
+                } catch (err: any) {
+                  // Verificar se é realmente bloqueio de autoplay ou falta de dados
+                  const isAutoplayError = err?.name === 'NotAllowedError' || 
+                                         err?.name === 'NotSupportedError';
+                  
+                  if (isAutoplayError) {
+                    console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador. Solicitando interação do usuário...');
                     setIsRemotePlaybackBlocked(true);
-                  });
-              } else {
-                remoteVideoRef.current.muted = false;
-                setIsRemotePlaybackBlocked(false);
-              }
+                  } else {
+                    console.warn('📹 [WEBRTC] ⚠️ Play falhou (provavelmente falta de dados), mas vídeo deve tocar quando dados chegarem:', err?.message || err);
+                    // Não mostrar overlay - o vídeo deve tocar automaticamente quando dados chegarem
+                    setIsRemotePlaybackBlocked(false);
+                  }
+                }
+              });
 
               return true;
             } catch (error) {
