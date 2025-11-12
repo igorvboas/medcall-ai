@@ -361,7 +361,7 @@ export function ConsultationRoom({
 
 
 
-    console.log('🔄 Rejuntando à sala:', roomId, 'como', userRole);
+    console.log('🔄 Rejuntando à sala:', roomId, 'como', userType);
 
 
 
@@ -376,23 +376,124 @@ export function ConsultationRoom({
       if (response.success) {
 
         console.log('✅ Rejuntado à sala com sucesso!');
+        
+        console.log('📊 Room Status:', response.roomData?.status);
 
         setRoomData(response.roomData);
+
+        setUserRole(response.role);
 
         setHasJoinedRoom(true); // ✅ Garantir que flag está setada
 
         
 
-        // ✅ Reconectar WebRTC se necessário
-
-        if (isCallActive && peerConnectionRef.current) {
-
-          console.log('🔄 Restabelecendo conexão WebRTC...');
-
-          // Renegociar WebRTC após rejuntar
-
-          setTimeout(() => renegotiateWebRTC(), 1000);
-
+        // ✅ NOVO: Restaurar WebRTC baseado no status da sala e tipo de usuário
+        
+        const roomStatus = response.roomData?.status;
+        
+        // Se a sala está ativa, significa que o WebRTC deve ser reestabelecido
+        
+        if (roomStatus === 'active' || roomStatus === 'waiting') {
+          
+          console.log('🔄 Sala estava ativa, restaurando WebRTC...');
+          
+          // MÉDICO: Reconstruir conexão e criar nova offer
+          
+          if (userType === 'doctor') {
+            
+            setTimeout(async () => {
+              
+              console.log('👨‍⚕️ [RELOAD] Médico reconectando: iniciando chamada...');
+              
+              try {
+                
+                // Garantir que mídia está disponível
+                
+                if (!localStreamRef.current) {
+                  
+                  await fetchUserMedia();
+                  
+                }
+                
+                
+                // Criar nova conexão WebRTC
+                
+                await createPeerConnection();
+                
+                
+                // Criar nova offer
+                
+                const offer = await peerConnectionRef.current!.createOffer();
+                
+                await peerConnectionRef.current!.setLocalDescription(offer);
+                
+                
+                setDidIOffer(true);
+                
+                didOfferRef.current = true;
+                
+                setIsCallActive(true);
+                
+                
+                // Emitir nova offer para o paciente
+                
+                socketRef.current!.emit('newOffer', { 
+                  
+                  offer: offer, 
+                  
+                  roomId: roomId 
+                  
+                });
+                
+                
+                console.log('✅ [RELOAD] Nova offer enviada após reload!');
+                
+              } catch (error) {
+                
+                console.error('❌ [RELOAD] Erro ao restaurar WebRTC do médico:', error);
+                
+              }
+              
+            }, 1500);
+            
+          } 
+          
+          // PACIENTE: Aguardar offer do médico
+          
+          else {
+            
+            console.log('👤 [RELOAD] Paciente reconectando: aguardando offer...');
+            
+            setTimeout(async () => {
+              
+              try {
+                
+                // Garantir que mídia está disponível
+                
+                if (!localStreamRef.current) {
+                  
+                  await fetchUserMedia();
+                  
+                }
+                
+                
+                // Criar conexão WebRTC (aguardando offer)
+                
+                await createPeerConnection();
+                
+                
+                console.log('✅ [RELOAD] Paciente pronto para receber offer');
+                
+              } catch (error) {
+                
+                console.error('❌ [RELOAD] Erro ao restaurar WebRTC do paciente:', error);
+                
+              }
+              
+            }, 1000);
+            
+          }
+          
         }
 
         
@@ -405,7 +506,7 @@ export function ConsultationRoom({
 
           // Auto-start novamente
 
-          setTimeout(() => autoStartTranscription(), 1000);
+          setTimeout(() => autoStartTranscription(), 2000);
 
         } else if (isTranscriptionActive && transcriptionManagerRef.current) {
 
@@ -1041,7 +1142,7 @@ export function ConsultationRoom({
 
   const joinRoomAsHost = async () => {
 
-    //console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
+    console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
     
 
     if (socketRef.current) {
@@ -1063,22 +1164,39 @@ export function ConsultationRoom({
           setHasJoinedRoom(true); // ✅ Marcar que já entrou na sala
 
           console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
+          
+          console.log('📊 [MÉDICO] Status da sala:', response.roomData?.status);
 
           
 
-          // Inicializar mídia e transcrição
-
-          fetchUserMedia().then(() => {
-
-            console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído na entrada da sala');
-
-            return initializeTranscription();
-
-          }).then(() => {
-
-            console.log('👨‍⚕️ [MÉDICO] ✅ Transcrição inicializada');
-
-          });
+          // ✅ NOVO: Se sala estava ativa (reload durante chamada), restaurar WebRTC
+          const roomStatus = response.roomData?.status;
+          
+          if (roomStatus === 'active') {
+            console.log('🔄 [RELOAD] Sala ativa detectada! Restaurando WebRTC...');
+            
+            // Aguardar mídia carregar e então iniciar chamada
+            fetchUserMedia().then(async () => {
+              console.log('👨‍⚕️ [RELOAD] fetchUserMedia concluído');
+              
+              await initializeTranscription();
+              console.log('👨‍⚕️ [RELOAD] Transcrição inicializada');
+              
+              // Forçar início da chamada (WebRTC)
+              setTimeout(() => {
+                console.log('👨‍⚕️ [RELOAD] Forçando início da chamada após reload...');
+                call(); // Isso vai criar nova offer e enviar
+              }, 1000);
+            });
+          } else {
+            // Fluxo normal: primeira vez entrando na sala
+            fetchUserMedia().then(() => {
+              console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído na entrada da sala');
+              return initializeTranscription();
+            }).then(() => {
+              console.log('👨‍⚕️ [MÉDICO] ✅ Transcrição inicializada');
+            });
+          }
 
         } else {
 
@@ -1124,6 +1242,8 @@ export function ConsultationRoom({
           setShowParticipantModal(false);
 
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
+          
+          console.log('📊 [PACIENTE] Status da sala:', response.roomData?.status);
 
           
 
@@ -1135,6 +1255,19 @@ export function ConsultationRoom({
           // Inicializar transcrição
           await initializeTranscription();
           console.log('🩺 [PACIENTE] ✅ Transcrição inicializada');
+          
+          // ✅ NOVO: Se sala estava ativa (reload durante chamada), preparar WebRTC
+          const roomStatus = response.roomData?.status;
+          
+          if (roomStatus === 'active') {
+            console.log('🔄 [RELOAD] Sala ativa detectada! Preparando WebRTC para receber offer...');
+            
+            setTimeout(async () => {
+              console.log('🩺 [RELOAD] Criando PeerConnection...');
+              await createPeerConnection();
+              console.log('🩺 [RELOAD] ✅ PeerConnection criado, aguardando offer do médico...');
+            }, 1000);
+          }
         } else {
 
           setErrorMessage(response.error);
