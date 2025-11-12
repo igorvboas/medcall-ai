@@ -480,7 +480,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           existingWs.removeAllListeners('close');
           
           // Adicionar listeners para o socket atual
-          existingWs.on('message', (data) => {
+          existingWs.on('message', (data: any) => {
             const message = data.toString();        
             try {
               const parsed = JSON.parse(message);
@@ -493,7 +493,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             socket.emit('transcription:message', message);
           });
 
-          existingWs.on('error', (error) => {
+          existingWs.on('error', (error: Error) => {
             console.error(`[${userName}] ❌ Erro OpenAI:`, error.message);
             socket.emit('transcription:error', { error: error.message });
           });
@@ -939,6 +939,5 @@ export {
   rooms, 
   userToRoom, 
   socketToRoom, 
-  openAIConnections,
-  setupRoomsWebSocket 
+  openAIConnections
 };
