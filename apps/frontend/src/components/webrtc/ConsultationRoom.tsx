@@ -427,6 +427,80 @@ export function ConsultationRoom({
 
   };
 
+  
+  // ✅ NOVO: Força nova conexão Socket.IO (sem reusar SID)
+  const forceNewConnection = async () => {
+    console.log('🔄 FORÇANDO NOVA CONEXÃO Socket.IO...');
+    
+    try {
+      // 1. Desconectar socket antigo completamente
+      if (socketRef.current) {
+        console.log('🔌 Desconectando socket antigo...');
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      
+      setIsConnected(false);
+      
+      // 2. Aguardar um pouco
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 3. Verificar se Socket.IO está disponível
+      if (!window || !(window as any).io) {
+        console.error('❌ Socket.IO não está disponível');
+        alert('Erro: Socket.IO não está carregado. Recarregue a página.');
+        return;
+      }
+      
+      // 4. Criar NOVA conexão com forceNew: true
+      console.log('🔄 Criando nova conexão Socket.IO...');
+      
+      const tempUserName = userName || localStorage.getItem('userName') || 'Anônimo';
+      
+      socketRef.current = (window as any).io.connect(
+        process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
+        {
+          auth: {
+            userName: tempUserName,
+            role: userType === 'doctor' ? 'host' : 'participant',
+            password: "x"
+          },
+          forceNew: true,              // ✅ FORÇAR NOVA CONEXÃO (não reusar SID)
+          reconnection: true,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          reconnectionAttempts: 10     // Limitar tentativas para não travar
+        }
+      );
+      
+      // 5. Configurar listeners
+      socketRef.current.on('connect', () => {
+        console.log('✅ NOVA CONEXÃO estabelecida!');
+        setIsConnected(true);
+        setupSocketListeners();
+        
+        // 6. Rejuntar à sala se já estava na sala
+        if (hasJoinedRoom && roomId) {
+          setTimeout(() => rejoinRoom(), 1000);
+        }
+      });
+      
+      socketRef.current.on('connect_error', (error: any) => {
+        console.error('❌ Erro na nova conexão:', error);
+      });
+      
+      socketRef.current.on('disconnect', (reason: string) => {
+        console.log('❌ Nova conexão desconectada:', reason);
+        setIsConnected(false);
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao forçar nova conexão:', error);
+      alert('Erro ao reconectar. Por favor, recarregue a página.');
+    }
+  };
+
 
 
   const connectSocket = () => {
@@ -485,7 +559,11 @@ export function ConsultationRoom({
 
           console.error('❌ Erro ao conectar:', error);
 
-          alert('Erro ao conectar com o servidor: ' + error.message);
+          
+          // ✅ NOVO: Detectar erro de sessão expirada (SID inválido)
+          if (error.message && error.message.includes('websocket')) {
+            console.warn('⚠️ Erro de WebSocket detectado, pode ser SID expirado');
+          }
 
         });
 
@@ -589,7 +667,10 @@ export function ConsultationRoom({
 
           console.error('❌ Falha ao reconectar após todas as tentativas');
 
-          alert('Não foi possível reconectar. Recarregue a página.');
+          console.log('🔄 Tentando forçar nova conexão...');
+          
+          // ✅ Forçar nova conexão do zero (sem reusar SID)
+          forceNewConnection();
 
         });
 
@@ -2612,6 +2693,35 @@ export function ConsultationRoom({
         </div>
 
         
+        {/* ✅ NOVO: Botão de Reconexão Manual (aparece só quando desconectado) */}
+        {!isConnected && (
+          <div style={{
+            padding: '10px',
+            backgroundColor: '#ff5722',
+            color: 'white',
+            textAlign: 'center',
+            borderRadius: '5px',
+            margin: '10px 0'
+          }}>
+            <p style={{ margin: '0 0 10px 0' }}>
+              ⚠️ Conexão perdida!
+            </p>
+            <button 
+              onClick={forceNewConnection}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🔄 Reconectar Agora
+            </button>
+          </div>
+        )}
 
         <div className="room-controls">
 
