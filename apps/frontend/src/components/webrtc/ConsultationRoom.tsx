@@ -147,6 +147,12 @@ export function ConsultationRoom({
   const pendingOfferRef = useRef<{offer: RTCSessionDescriptionInit, userName: string} | null>(null);
   
   const isMediaReadyRef = useRef<boolean>(false);
+  
+  // ✅ NOVO: Flag para evitar múltiplas chamadas simultâneas a rejoinRoom
+  
+  const isRejoiningRef = useRef<boolean>(false);
+  
+  const hasJoinedRoomRef = useRef<boolean>(false);
 
   
 
@@ -394,9 +400,20 @@ export function ConsultationRoom({
   const rejoinRoom = () => {
 
     if (!socketRef.current || !roomId) return;
-
-
-
+    
+    // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
+    if (isRejoiningRef.current) {
+      console.warn('⚠️ rejoinRoom já está em execução, ignorando chamada duplicada');
+      return;
+    }
+    
+    // ✅ CORREÇÃO: Evitar rejoin se já entrou na sala
+    if (hasJoinedRoomRef.current) {
+      console.warn('⚠️ Já está na sala, ignorando rejoinRoom duplicado');
+      return;
+    }
+    
+    isRejoiningRef.current = true;
     console.log('🔄 Rejuntando à sala:', roomId, 'como', userType);
 
 
@@ -420,6 +437,11 @@ export function ConsultationRoom({
         setUserRole(response.role);
 
         setHasJoinedRoom(true); // ✅ Garantir que flag está setada
+        
+        // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag de rejoining
+        hasJoinedRoomRef.current = true;
+        isRejoiningRef.current = false;
+        console.log('✅ hasJoinedRoomRef = true, isRejoiningRef = false');
 
         // ✅ NOVO: Restaurar histórico de transcrições
         if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
@@ -752,6 +774,11 @@ export function ConsultationRoom({
           console.log('🔌 Desconectado do servidor. Motivo:', reason);
 
           setIsConnected(false);
+          
+          // ✅ CORREÇÃO: Resetar flags ao desconectar
+          hasJoinedRoomRef.current = false;
+          isRejoiningRef.current = false;
+          console.log('🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false');
 
           
 
@@ -1261,6 +1288,19 @@ export function ConsultationRoom({
 
   const joinRoomAsHost = async () => {
 
+    // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
+    if (isRejoiningRef.current) {
+      console.warn('⚠️ joinRoomAsHost já está em execução, ignorando');
+      return;
+    }
+    
+    // ✅ CORREÇÃO: Evitar join se já entrou na sala
+    if (hasJoinedRoomRef.current) {
+      console.warn('⚠️ Já está na sala, ignorando joinRoomAsHost duplicado');
+      return;
+    }
+    
+    isRejoiningRef.current = true;
     console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
     
 
@@ -1285,6 +1325,11 @@ export function ConsultationRoom({
           console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
           
           console.log('📊 [MÉDICO] Status da sala:', response.roomData?.status);
+          
+          // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag
+          hasJoinedRoomRef.current = true;
+          isRejoiningRef.current = false;
+          console.log('✅ hasJoinedRoomRef = true, isRejoiningRef = false');
 
           // ✅ NOVO: Restaurar histórico de transcrições
           if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
@@ -1357,6 +1402,19 @@ export function ConsultationRoom({
 
   const joinRoomAsParticipant = async (participantName: string) => {
 
+    // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
+    if (isRejoiningRef.current) {
+      console.warn('⚠️ joinRoomAsParticipant já está em execução, ignorando');
+      return;
+    }
+    
+    // ✅ CORREÇÃO: Evitar join se já entrou na sala
+    if (hasJoinedRoomRef.current) {
+      console.warn('⚠️ Já está na sala, ignorando joinRoomAsParticipant duplicado');
+      return;
+    }
+    
+    isRejoiningRef.current = true;
     console.log('🩺 [PACIENTE] Entrando como PARTICIPANTE:', participantName);
 
     setUserName(participantName);
@@ -1386,6 +1444,11 @@ export function ConsultationRoom({
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
           console.log('📊 [PACIENTE] Status da sala:', response.roomData?.status);
+          
+          // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag
+          hasJoinedRoomRef.current = true;
+          isRejoiningRef.current = false;
+          console.log('✅ hasJoinedRoomRef = true, isRejoiningRef = false');
 
           // ✅ NOVO: Restaurar histórico de transcrições
           if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
@@ -1462,6 +1525,10 @@ export function ConsultationRoom({
         } else {
 
           setErrorMessage(response.error);
+          
+          // ✅ CORREÇÃO: Resetar flag em caso de erro
+          isRejoiningRef.current = false;
+          console.error('❌ Erro ao rejuntar sala, isRejoiningRef = false');
 
         }
 
