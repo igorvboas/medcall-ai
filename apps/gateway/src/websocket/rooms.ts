@@ -261,23 +261,30 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         socketToRoom.set(socket.id, roomId);
         resetRoomExpiration(roomId);
         
-        callback({ 
-          success: true, 
-          role: 'host',
-          roomData: room
-        });
+      // ✅ CORREÇÃO: Enviar transcrições históricas para reconexão
+      const roomDataWithHistory = {
+        ...room,
+        // Enviar histórico de transcrições
+        transcriptionHistory: room.transcriptions || []
+      };
+      
+      callback({ 
+        success: true, 
+        role: 'host',
+        roomData: roomDataWithHistory
+      });
 
-        // Se já tem participante E já tem oferta, reenviar para o participante
-        if (room.participantSocketId && room.offer) {
-          console.log(`🔄 Reenviando oferta para participante após reconexão do host`);
-          io.to(room.participantSocketId).emit('newOfferAwaiting', {
-            roomId: roomId,
-            offer: room.offer,
-            offererUserName: room.hostUserName
-          });
-        }
-        
-        return;
+      // Se já tem participante E já tem oferta, reenviar para o participante
+      if (room.participantSocketId && room.offer) {
+        console.log(`🔄 Reenviando oferta para participante após reconexão do host`);
+        io.to(room.participantSocketId).emit('newOfferAwaiting', {
+          roomId: roomId,
+          offer: room.offer,
+          offererUserName: room.hostUserName
+        });
+      }
+      
+      return;
       }
 
       // Verificar se usuário já está em outra sala
@@ -291,10 +298,17 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           socketToRoom.set(socket.id, roomId);
           resetRoomExpiration(roomId);
           
+          // ✅ CORREÇÃO: Enviar transcrições históricas para reconexão
+          const roomDataWithHistory = {
+            ...room,
+            // Enviar histórico de transcrições
+            transcriptionHistory: room.transcriptions || []
+          };
+          
           callback({ 
             success: true, 
             role: 'participant',
-            roomData: room
+            roomData: roomDataWithHistory
           });
           return;
         }
@@ -329,10 +343,17 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`✅ ${participantName} entrou na sala ${roomId}`);
 
+      // ✅ CORREÇÃO: Enviar transcrições históricas (caso seja reconexão ou sala já iniciada)
+      const roomDataWithHistory = {
+        ...room,
+        // Enviar histórico de transcrições
+        transcriptionHistory: room.transcriptions || []
+      };
+
       callback({ 
         success: true, 
         role: 'participant',
-        roomData: room
+        roomData: roomDataWithHistory
       });
 
       // Notificar host que participante entrou
@@ -445,9 +466,63 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`[${userName}] Solicitando conexão OpenAI na sala ${roomId}`);
 
+      // ✅ CORREÇÃO: Se já existe uma conexão OpenAI ativa, reutilizar
       if (openAIConnections.has(userName)) {
-        callback({ success: true, message: 'Já conectado' });
-        return;
+        const existingWs = openAIConnections.get(userName);
+        
+        // Verificar se a conexão ainda está aberta
+        if (existingWs && existingWs.readyState === WebSocket.OPEN) {
+          console.log(`[${userName}] ✅ Reutilizando conexão OpenAI existente (reconexão)`);
+          
+          // Reconfigurar listeners para o novo socket
+          existingWs.removeAllListeners('message');
+          existingWs.removeAllListeners('error');
+          existingWs.removeAllListeners('close');
+          
+          // Adicionar listeners para o socket atual
+          existingWs.on('message', (data) => {
+            const message = data.toString();        
+            try {
+              const parsed = JSON.parse(message);
+              if (parsed.type === 'conversation.item.input_audio_transcription.completed') {
+                console.log(`[${userName}] 📝 TRANSCRIÇÃO:`, parsed.transcript);
+              }
+            } catch (e) {
+              // Ignorar erros de parsing
+            }
+            socket.emit('transcription:message', message);
+          });
+
+          existingWs.on('error', (error) => {
+            console.error(`[${userName}] ❌ Erro OpenAI:`, error.message);
+            socket.emit('transcription:error', { error: error.message });
+          });
+
+          existingWs.on('close', () => {
+            console.log(`[${userName}] OpenAI WebSocket fechado`);
+            openAIConnections.delete(userName);
+            
+            const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+            if (keepaliveInterval) {
+              clearInterval(keepaliveInterval);
+              openAIKeepaliveTimers.delete(userName);
+            }
+            
+            socket.emit('transcription:disconnected');
+          });
+          
+          callback({ success: true, message: 'Conexão existente reutilizada' });
+          return;
+        } else {
+          // Conexão antiga está fechada, remover e criar nova
+          console.log(`[${userName}] ⚠️ Conexão OpenAI antiga fechada, criando nova...`);
+          openAIConnections.delete(userName);
+          const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+          if (keepaliveInterval) {
+            clearInterval(keepaliveInterval);
+            openAIKeepaliveTimers.delete(userName);
+          }
+        }
       }
 
       const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -859,5 +934,11 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
   // console.log('✅ Handlers de salas WebSocket configurados');
 }
 
-// Exportar funções para uso em outras partes do sistema
-export { rooms, userToRoom, socketToRoom, openAIConnections };
+// Exportar funções e mapas para uso em outras partes do sistema
+export { 
+  rooms, 
+  userToRoom, 
+  socketToRoom, 
+  openAIConnections,
+  setupRoomsWebSocket 
+};

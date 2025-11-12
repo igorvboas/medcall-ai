@@ -385,6 +385,28 @@ export function ConsultationRoom({
 
         setHasJoinedRoom(true); // ✅ Garantir que flag está setada
 
+        // ✅ NOVO: Restaurar histórico de transcrições
+        if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
+
+          console.log(`🔄 Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
+          
+          // Restaurar cada transcrição no TranscriptionManager
+          if (transcriptionManagerRef.current) {
+
+            response.roomData.transcriptionHistory.forEach((transcription: any) => {
+
+              const displayName = transcription.speaker || 'Desconhecido';
+
+              transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
+
+            });
+
+            console.log('✅ Transcrições históricas restauradas!');
+
+          }
+
+        }
+
         
 
         // ✅ NOVO: Restaurar WebRTC baseado no status da sala e tipo de usuário
@@ -1167,6 +1189,28 @@ export function ConsultationRoom({
           
           console.log('📊 [MÉDICO] Status da sala:', response.roomData?.status);
 
+          // ✅ NOVO: Restaurar histórico de transcrições
+          if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
+
+            console.log(`🔄 [MÉDICO] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
+            
+            // Restaurar cada transcrição no TranscriptionManager
+            if (transcriptionManagerRef.current) {
+
+              response.roomData.transcriptionHistory.forEach((transcription: any) => {
+
+                const displayName = transcription.speaker || 'Desconhecido';
+
+                transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
+
+              });
+
+              console.log('✅ [MÉDICO] Transcrições históricas restauradas!');
+
+            }
+
+          }
+
           
 
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), restaurar WebRTC
@@ -1244,6 +1288,28 @@ export function ConsultationRoom({
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
           
           console.log('📊 [PACIENTE] Status da sala:', response.roomData?.status);
+
+          // ✅ NOVO: Restaurar histórico de transcrições
+          if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
+
+            console.log(`🔄 [PACIENTE] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
+            
+            // Restaurar cada transcrição no TranscriptionManager
+            if (transcriptionManagerRef.current) {
+
+              response.roomData.transcriptionHistory.forEach((transcription: any) => {
+
+                const displayName = transcription.speaker || 'Desconhecido';
+
+                transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
+
+              });
+
+              console.log('✅ [PACIENTE] Transcrições históricas restauradas!');
+
+            }
+
+          }
 
           
 
@@ -2044,14 +2110,20 @@ export function ConsultationRoom({
       console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Tracks detalhe:', stream.getTracks().map(t => `${t.kind}:${t.enabled}:${t.readyState}`));
       
 
-      if (localVideoRef.current) {
+      // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
+      const attachVideoStream = (stream: MediaStream, retries = 10) => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
+        } else if (retries > 0) {
+          console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
+          setTimeout(() => attachVideoStream(stream, retries - 1), 100);
+        } else {
+          console.error('📹 [MÍDIA] ❌ Falha ao anexar stream após múltiplas tentativas!');
+        }
+      };
 
-        localVideoRef.current.srcObject = stream;
-
-        console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
-      } else {
-        console.warn('📹 [MÍDIA] ⚠️ localVideoRef.current não existe!');
-      }
+      attachVideoStream(stream);
 
       localStreamRef.current = stream;
 
@@ -2126,9 +2198,18 @@ export function ConsultationRoom({
           });
           console.log('✅ Stream obtido após retry');
           
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
-          }
+          // Usar a mesma função de anexar com retry
+          const attachVideoStreamRetry = (stream: MediaStream, retries = 10) => {
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = stream;
+              console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo (retry)');
+            } else if (retries > 0) {
+              console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível no retry, tentando novamente... (${retries})`);
+              setTimeout(() => attachVideoStreamRetry(stream, retries - 1), 100);
+            }
+          };
+          
+          attachVideoStreamRetry(stream);
           localStreamRef.current = stream;
           
           // Inicializar AudioProcessor
@@ -2164,6 +2245,17 @@ export function ConsultationRoom({
     if (!localStreamRef.current) {
       console.error('❌ [WEBRTC] Não é possível criar PeerConnection sem stream local');
       throw new Error('Stream local não disponível');
+    }
+
+    // ✅ CORREÇÃO: Limpar peerConnection anterior se existir
+    if (peerConnectionRef.current) {
+      console.log('🧹 [WEBRTC] Limpando peerConnection anterior...');
+      try {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      } catch (error) {
+        console.error('❌ [WEBRTC] Erro ao fechar peerConnection anterior:', error);
+      }
     }
 
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
@@ -2269,13 +2361,30 @@ export function ConsultationRoom({
         //console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
         //console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
         
-        if (remoteVideoRef.current) {
-          // ✅ FIX: Só atribuir se for um stream diferente
-          const currentStream = remoteVideoRef.current.srcObject as MediaStream;
-          if (!currentStream || currentStream.id !== e.streams[0].id) {
-            console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', e.streams[0].id);
-            remoteVideoRef.current.srcObject = e.streams[0];
-            remoteStreamRef.current = e.streams[0];
+        // ✅ CORREÇÃO: Anexar vídeo remoto com retry
+        const attachRemoteStream = (stream: MediaStream, retries = 10) => {
+          if (remoteVideoRef.current) {
+            const currentStream = remoteVideoRef.current.srcObject as MediaStream;
+            if (!currentStream || currentStream.id !== stream.id) {
+              console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', stream.id);
+              remoteVideoRef.current.srcObject = stream;
+              remoteStreamRef.current = stream;
+              return true;
+            } else {
+              console.log('🔗 [WEBRTC] ℹ️ Stream já está atribuído (mesmo ID)');
+              return true;
+            }
+          } else if (retries > 0) {
+            console.warn(`📹 [WEBRTC] ⚠️ remoteVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
+            setTimeout(() => attachRemoteStream(stream, retries - 1), 100);
+            return false;
+          } else {
+            console.error('📹 [WEBRTC] ❌ Falha ao anexar stream remoto após múltiplas tentativas!');
+            return false;
+          }
+        };
+        
+        if (attachRemoteStream(e.streams[0])) {
             
             // Forçar reprodução após um pequeno delay
             setTimeout(() => {
@@ -2306,11 +2415,7 @@ export function ConsultationRoom({
             }, 100);
             
             console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
-          } else {
-            console.log('🔗 [WEBRTC] ℹ️ Stream já está atribuído (mesmo ID)');
-          }
-        } else {
-          console.error('🔗 [WEBRTC] ❌ remoteVideoRef.current não existe!');
+        }
         }
       } else {
         console.warn('🔗 [WEBRTC] ⚠️ Nenhum stream recebido no evento track');

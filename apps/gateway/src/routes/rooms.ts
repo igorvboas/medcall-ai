@@ -1,5 +1,6 @@
 import express from 'express';
 import { Request, Response } from 'express';
+import { rooms } from '../websocket/rooms';
 
 const router = express.Router();
 
@@ -52,15 +53,69 @@ router.get('/:roomId', async (req: Request, res: Response) => {
   try {
     const { roomId } = req.params;
 
-    // TODO: Buscar dados da sala no sistema de salas
+    // Buscar sala no mapa de salas
+    const room = rooms.get(roomId);
+    
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Sala não encontrada ou expirada'
+      });
+    }
+
     res.json({
       success: true,
       roomId: roomId,
+      roomData: {
+        roomName: room.roomName,
+        status: room.status,
+        createdAt: room.createdAt,
+        hostUserName: room.hostUserName,
+        participantUserName: room.participantUserName,
+        transcriptionsCount: room.transcriptions?.length || 0
+      },
       message: 'Informações da sala obtidas'
     });
 
   } catch (error) {
     console.error('Erro ao obter sala:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
+// ✅ NOVO: Endpoint para recuperar histórico de transcrições de uma sala
+router.get('/:roomId/transcriptions', async (req: Request, res: Response) => {
+  try {
+    const { roomId } = req.params;
+
+    console.log(`📝 [API] Solicitação de histórico de transcrições para sala: ${roomId}`);
+
+    // Buscar sala no mapa de salas
+    const room = rooms.get(roomId);
+    
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Sala não encontrada ou expirada'
+      });
+    }
+
+    // Retornar histórico de transcrições
+    res.json({
+      success: true,
+      roomId: roomId,
+      transcriptions: room.transcriptions || [],
+      count: room.transcriptions?.length || 0,
+      roomStatus: room.status
+    });
+
+    console.log(`✅ [API] Retornado ${room.transcriptions?.length || 0} transcrições para sala ${roomId}`);
+
+  } catch (error) {
+    console.error('❌ [API] Erro ao obter transcrições da sala:', error);
     res.status(500).json({
       success: false,
       error: 'Erro interno do servidor'
