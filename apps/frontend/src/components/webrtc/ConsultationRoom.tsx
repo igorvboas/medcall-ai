@@ -623,7 +623,12 @@ export function ConsultationRoom({
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
-          reconnectionAttempts: 10     // Limitar tentativas para não travar
+          reconnectionAttempts: 10,    // Limitar tentativas para não travar
+          
+          // ✅ NOVO: Configuração de transports para fallback
+          transports: ['websocket', 'polling'], // Tentar WebSocket primeiro, depois polling
+          upgrade: true,                  // Permitir upgrade de polling para websocket
+          timeout: 20000                 // 20 segundos de timeout (para cold start do Cloud Run)
         }
       );
       
@@ -688,7 +693,13 @@ export function ConsultationRoom({
 
             reconnectionDelayMax: 5000,    // máximo 5 segundos
 
-            reconnectionAttempts: Infinity // tentar infinitamente
+            reconnectionAttempts: Infinity, // tentar infinitamente
+            
+            // ✅ NOVO: Configuração de transports para fallback
+            transports: ['websocket', 'polling'], // Tentar WebSocket primeiro, depois polling
+            upgrade: true,                  // Permitir upgrade de polling para websocket
+            timeout: 20000,                // 20 segundos de timeout (para cold start do Cloud Run)
+            forceNew: false                // Reusar conexão se possível
 
           }
 
