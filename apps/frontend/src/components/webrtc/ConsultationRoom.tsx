@@ -1310,6 +1310,7 @@ export function ConsultationRoom({
     console.log('🩺 [PACIENTE] Entrando como PARTICIPANTE:', participantName);
 
     setUserName(participantName);
+    userNameRef.current = participantName; // ✅ Atualizar ref também
 
     
 
@@ -1360,14 +1361,26 @@ export function ConsultationRoom({
 
           
 
-          // ✅ FIX: Inicializar mídia E transcrição para o paciente
-          console.log('🩺 [PACIENTE] Inicializando mídia...');
-          await fetchUserMedia();
-          console.log('🩺 [PACIENTE] ✅ Mídia inicializada');
+          // ✅ CORREÇÃO: Inicializar mídia PRIMEIRO (ANTES de tudo)
+          console.log('🩺 [PACIENTE] 1️⃣ Inicializando mídia...');
+          try {
+            await fetchUserMedia();
+            console.log('🩺 [PACIENTE] ✅ Mídia inicializada COM SUCESSO');
+            console.log('🩺 [PACIENTE] localStreamRef.current existe?', !!localStreamRef.current);
+            console.log('🩺 [PACIENTE] Tracks no stream:', localStreamRef.current?.getTracks().length);
+          } catch (error) {
+            console.error('❌ [PACIENTE] ERRO ao inicializar mídia:', error);
+            setErrorMessage('Erro ao acessar câmera/microfone. Verifique as permissões.');
+            return;
+          }
           
-          // Inicializar transcrição
+          // ✅ CORREÇÃO: Inicializar transcrição DEPOIS da mídia
+          console.log('🩺 [PACIENTE] 2️⃣ Inicializando transcrição...');
           await initializeTranscription();
           console.log('🩺 [PACIENTE] ✅ Transcrição inicializada');
+          
+          // ✅ CORREÇÃO: Marcar que está pronto para receber offers
+          console.log('🩺 [PACIENTE] 3️⃣ Pronto para receber offers do médico');
           
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), preparar WebRTC
           const roomStatus = response.roomData?.status;
@@ -1377,8 +1390,12 @@ export function ConsultationRoom({
             
             setTimeout(async () => {
               console.log('🩺 [RELOAD] Criando PeerConnection...');
-              await createPeerConnection();
-              console.log('🩺 [RELOAD] ✅ PeerConnection criado, aguardando offer do médico...');
+              try {
+                await createPeerConnection();
+                console.log('🩺 [RELOAD] ✅ PeerConnection criado, aguardando offer do médico...');
+              } catch (error) {
+                console.error('❌ [RELOAD] Erro ao criar PeerConnection:', error);
+              }
             }, 1000);
           }
         } else {
@@ -2501,8 +2518,8 @@ export function ConsultationRoom({
   // ✅ MODIFICADO: Auto-executar Answer automaticamente
   const createAnswerButton = (offerData: any) => {
 
-    //console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
-    //console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
+    console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
+    console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
     
     // ✅ PROTEÇÃO: Evitar processar múltiplas ofertas
     if (isCallActive) {
@@ -2516,6 +2533,16 @@ export function ConsultationRoom({
       return;
     }
     
+    // ✅ NOVO: Verificar se stream local está disponível
+    if (!localStreamRef.current) {
+      console.warn('⚠️ [AUTO-ANSWER] Stream local ainda não disponível, aguardando...');
+      // Tentar novamente após 1 segundo
+      setTimeout(() => createAnswerButton(offerData), 1000);
+      return;
+    }
+    
+    console.log('✅ [AUTO-ANSWER] Stream local disponível, prosseguindo...');
+    console.log('✅ [AUTO-ANSWER] Tracks disponíveis:', localStreamRef.current.getTracks().length);
 
     // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
 
@@ -2530,12 +2557,12 @@ export function ConsultationRoom({
 
     
 
-    //console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
+    console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
     
     // 🚀 AUTO-EXECUTAR: Chamar answer() automaticamente após pequeno delay
     // O delay garante que todos os estados foram atualizados
     setTimeout(async () => {
-      //console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
+      console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
       
       // Verificar se socket está conectado
       if (!socketRef.current || !socketRef.current.connected) {
@@ -2559,7 +2586,7 @@ export function ConsultationRoom({
         
         setShowAnswerButton(false);
         setIsCallActive(true);
-        //console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
+        console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
       } catch(err) {
         console.error('❌ [AUTO-ANSWER] Erro ao responder chamada automaticamente:', err);
         // Em caso de erro, mostrar botão manual como fallback
