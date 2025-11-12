@@ -311,9 +311,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             roomData: roomDataWithHistory
           });
           
-          // ✅ NOVO: Se host está conectado, notificar para reenviar oferta
+          // ✅ NOVO: Se host está conectado, notificar para RECONECTAR WebRTC
           if (room.hostSocketId) {
-            console.log(`🔔 Notificando host para reenviar oferta após reconexão do participante`);
+            console.log(`🔔 Notificando host para RECONECTAR WebRTC (paciente ${participantName} reconectou)`);
+            io.to(room.hostSocketId).emit('patient-entered-reconnect-webrtc', {
+              roomId: roomId,
+              participantName: participantName,
+              isReconnection: true
+            });
+            
+            // Manter o evento antigo para compatibilidade
             io.to(room.hostSocketId).emit('participantRejoined', {
               roomId: roomId,
               participantName: participantName
@@ -368,6 +375,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       // Notificar host que participante entrou
       io.to(room.hostSocketId).emit('participantJoined', {
+        participantName: participantName
+      });
+
+      // ✅ NOVO: Notificar host para RECONECTAR WebRTC quando paciente entrar
+      console.log(`🔔 Notificando host para RECONECTAR WebRTC (paciente ${participantName} entrou)`);
+      io.to(room.hostSocketId).emit('patient-entered-reconnect-webrtc', {
+        roomId: roomId,
         participantName: participantName
       });
 

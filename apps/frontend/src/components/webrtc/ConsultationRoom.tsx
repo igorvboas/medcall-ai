@@ -1997,6 +1997,58 @@ export function ConsultationRoom({
         // ✅ MUDANÇA: Reduzir delay para 800ms (o suficiente para paciente se conectar ao Socket.IO)
         setTimeout(restartDoctorCall, 800);
       });
+      
+      // ✅ NOVO: Reconectar WebRTC quando paciente entrar/reconectar
+      socketRef.current.on('patient-entered-reconnect-webrtc', (data: any) => {
+        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} entrou/reconectou! Forçando RECONEXÃO WebRTC completa...`);
+        
+        const forceWebRTCReconnect = async () => {
+          try {
+            console.log('🔄 [MÉDICO] Iniciando RECONEXÃO FORÇADA do WebRTC...');
+            
+            // 1. Fechar PeerConnection antiga
+            if (peerConnectionRef.current) {
+              console.log('🧹 [MÉDICO] Encerrando PeerConnection antiga...');
+              try {
+                peerConnectionRef.current.ontrack = null;
+                peerConnectionRef.current.onicecandidate = null;
+                peerConnectionRef.current.oniceconnectionstatechange = null;
+                peerConnectionRef.current.onconnectionstatechange = null;
+                peerConnectionRef.current.close();
+              } catch (closeError) {
+                console.warn('⚠️ [MÉDICO] Erro ao fechar PeerConnection:', closeError);
+              }
+              peerConnectionRef.current = null;
+            }
+            
+            // 2. Resetar estados
+            pendingOfferRef.current = null;
+            didOfferRef.current = false;
+            setDidIOffer(false);
+            setIsCallActive(false);
+            
+            // 3. Garantir mídia local
+            isMediaReadyRef.current = true; // médico já tem mídia
+            if (!localStreamRef.current) {
+              console.log('📹 [MÉDICO] Stream local ausente, recriando...');
+              await fetchUserMedia();
+            }
+            
+            // 4. Aguardar um pouco para o paciente estar pronto
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // 5. Criar nova conexão e enviar offer
+            console.log('📞 [MÉDICO] Criando nova PeerConnection e enviando offer...');
+            await call();
+            console.log('✅ [MÉDICO] WebRTC reconectado com sucesso!');
+          } catch (error) {
+            console.error('❌ [MÉDICO] Erro ao reconectar WebRTC:', error);
+          }
+        };
+        
+        // Executar imediatamente (o delay já está no aguardo acima)
+        forceWebRTCReconnect();
+      });
 
     }
 
