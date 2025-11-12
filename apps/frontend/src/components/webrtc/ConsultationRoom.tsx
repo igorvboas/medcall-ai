@@ -680,6 +680,10 @@ export function ConsultationRoom({
 
             },
 
+            // ✅ CORREÇÃO: FORÇAR NOVA CONEXÃO (não reusar SID antigo após refresh)
+            
+            forceNew: true,                // SEMPRE criar nova conexão (resolve problema de SID expirado)
+
             // ✅ RECONEXÃO AUTOMÁTICA habilitada
 
             reconnection: true,
@@ -713,9 +717,24 @@ export function ConsultationRoom({
           console.error('❌ Erro ao conectar:', error);
 
           
-          // ✅ NOVO: Detectar erro de sessão expirada (SID inválido)
-          if (error.message && error.message.includes('websocket')) {
-            console.warn('⚠️ Erro de WebSocket detectado, pode ser SID expirado');
+          // ✅ CORREÇÃO: Detectar erro de SID inválido e forçar nova conexão
+          if (error.message && (error.message.includes('websocket') || error.message.includes('sid'))) {
+            console.warn('⚠️ Erro de SID/WebSocket detectado, forçando nova conexão...');
+            
+            // Limpar conexão atual
+            if (socketRef.current) {
+              socketRef.current.disconnect();
+              socketRef.current.close();
+              socketRef.current = null;
+            }
+            
+            // Aguardar um pouco e tentar nova conexão
+            setTimeout(() => {
+              console.log('🔄 Tentando criar nova conexão com forceNew...');
+              if (!socketRef.current) {
+                connectSocket();
+              }
+            }, 2000);
           }
 
         });
