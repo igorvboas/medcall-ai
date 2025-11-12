@@ -480,6 +480,12 @@ export function ConsultationRoom({
           
           console.log('🔄 Sala estava ativa, restaurando WebRTC...');
           
+          // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
+          if (roomStatus === 'active') {
+            setIsCallActive(true);
+            console.log('✅ [REJOIN] isCallActive = true (sala está ativa)');
+          }
+          
           // MÉDICO: Reconstruir conexão e criar nova offer
           
           if (userType === 'doctor') {
@@ -1348,6 +1354,10 @@ export function ConsultationRoom({
           if (roomStatus === 'active') {
             console.log('🔄 [RELOAD] Sala ativa detectada! Restaurando WebRTC...');
             
+            // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
+            setIsCallActive(true);
+            console.log('✅ [RELOAD] isCallActive = true (sala já estava ativa)');
+            
             // Aguardar mídia carregar e então iniciar chamada
             fetchUserMedia().then(async () => {
               console.log('👨‍⚕️ [RELOAD] fetchUserMedia concluído');
@@ -1535,6 +1545,11 @@ export function ConsultationRoom({
           if (roomStatus === 'active') {
             console.log('🔄 [RELOAD] Sala ativa detectada! Aguardando offer do médico...');
             console.log('🩺 [RELOAD] ✅ Pronto para receber offer (PeerConnection será criado ao receber offer)');
+            
+            // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
+            setIsCallActive(true);
+            console.log('✅ [RELOAD] isCallActive = true (sala já estava ativa)');
+            
             // ✅ CORREÇÃO: NÃO criar PeerConnection aqui para evitar race condition
             // O createAnswerButton() criará quando receber a offer do médico
           }
