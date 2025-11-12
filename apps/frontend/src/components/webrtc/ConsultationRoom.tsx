@@ -1887,18 +1887,47 @@ export function ConsultationRoom({
       
       // ✅ NOVO: Notificação quando paciente reconecta (refresh)
       socketRef.current.on('participantRejoined', (data: any) => {
-        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Enviando nova oferta...`);
+        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Reiniciando chamada...`);
         
-        // Aguardar um pouco para o paciente estar pronto
-        setTimeout(async () => {
-          if (peerConnectionRef.current && localStreamRef.current) {
-            console.log('🔄 [MÉDICO] Renegociando WebRTC após reconexão do paciente...');
-            await renegotiateWebRTC();
-          } else {
-            console.log('🔄 [MÉDICO] Recriando chamada após reconexão do paciente...');
+        const restartDoctorCall = async () => {
+          try {
+            // Limpar eventual offer pendente / estados
+            pendingOfferRef.current = null;
+            isMediaReadyRef.current = true; // médico já tem mídia pronta
+
+            if (peerConnectionRef.current) {
+              console.log('🧹 [MÉDICO] Encerrando PeerConnection antiga antes de recriar...');
+              try {
+                peerConnectionRef.current.ontrack = null;
+                peerConnectionRef.current.onicecandidate = null;
+                peerConnectionRef.current.close();
+              } catch (closeError) {
+                console.warn('⚠️ [MÉDICO] Erro ao fechar PeerConnection antiga:', closeError);
+              }
+              peerConnectionRef.current = null;
+            }
+
+            // Resetar flags de offer
+            didOfferRef.current = false;
+            setDidIOffer(false);
+            setIsCallActive(false);
+
+            // Garantir stream local disponível
+            if (!localStreamRef.current) {
+              console.log('📹 [MÉDICO] Stream local ausente, chamando fetchUserMedia...');
+              await fetchUserMedia();
+            }
+
+            console.log('📞 [MÉDICO] Iniciando nova chamada após reconexão do paciente...');
             await call();
+            console.log('✅ [MÉDICO] Nova offer enviada após restart do paciente!');
+          } catch (error) {
+            console.error('❌ [MÉDICO] Falha ao reiniciar chamada após reconexão do paciente:', error);
           }
-        }, 2000); // 2 segundos de delay para paciente estar pronto
+        };
+
+        // Aguardar um pouco para o paciente finalizar setup
+        setTimeout(restartDoctorCall, 1500);
       });
 
     }
