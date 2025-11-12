@@ -385,15 +385,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         participantName: participantName
       });
 
-      // Enviar oferta pendente se existir
-      if (room.offer) {
-        console.log(`📤 Enviando oferta pendente para ${participantName} na sala ${roomId}`);
-        io.to(socket.id).emit('newOfferAwaiting', {
-          roomId: roomId,
-          offer: room.offer,
-          offererUserName: room.hostUserName
-        });
-      }
+      // ✅ CORREÇÃO: NÃO enviar oferta pendente aqui pois o médico vai reconectar
+      // e criar uma nova oferta automaticamente. Enviar oferta antiga causava
+      // múltiplas offers simultâneas e loop de reconexões.
+      // A oferta será gerada pelo evento 'patient-entered-reconnect-webrtc'
     });
 
     // ==================== WEBRTC COM ROOMS ====================
