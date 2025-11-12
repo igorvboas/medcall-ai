@@ -532,7 +532,7 @@ export class TranscriptionManager {
     
     console.log('[TRANSCRIPTION] 💓 Iniciando monitoramento de saúde...');
     
-    // Verificar a cada 10 segundos
+    // Verificar a cada 30 segundos (reduzido de 10s para evitar spam)
     this.healthCheckInterval = setInterval(() => {
       // Verificar se está conectado
       if (!this.isConnected) {
@@ -551,8 +551,11 @@ export class TranscriptionManager {
         }
       }
       
-      console.log('[TRANSCRIPTION] 💓 Health check: OK (connected:', this.isConnected, 'transcribing:', this.isTranscribing, ')');
-    }, 10000); // 10 segundos
+      // ✅ Só logar se estiver desconectado ou com problema (reduzir spam de logs)
+      if (!this.isConnected || !this.isTranscribing) {
+        console.log('[TRANSCRIPTION] 💓 Health check: (connected:', this.isConnected, 'transcribing:', this.isTranscribing, ')');
+      }
+    }, 30000); // 30 segundos (reduzido de 10s)
   }
 
   /**

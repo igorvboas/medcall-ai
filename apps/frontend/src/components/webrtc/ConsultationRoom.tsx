@@ -671,6 +671,7 @@ export function ConsultationRoom({
       socketRef.current.on('connect', () => {
         console.log('✅ NOVA CONEXÃO estabelecida!');
         setIsConnected(true);
+        setIsReconnecting(false); // ✅ Desativar indicador de reconexão
         setupSocketListeners();
         
         // 6. Rejuntar à sala se já estava na sala
@@ -745,6 +746,8 @@ export function ConsultationRoom({
           console.log('✅ Conexão estabelecida com o servidor');
 
           setIsConnected(true);
+          
+          setIsReconnecting(false); // ✅ Desativar indicador de reconexão
 
           setupSocketListeners();
 
@@ -3388,7 +3391,7 @@ export function ConsultationRoom({
 
                 | 🎙️ Transcrição: <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
 
-                  {isTranscriptionActive ? 'Ativa (Automática + Reconexão Automática)' : 'Aguardando...'}
+                  {isTranscriptionActive ? 'Ativa' : 'Aguardando...'}
 
                 </span>
 
