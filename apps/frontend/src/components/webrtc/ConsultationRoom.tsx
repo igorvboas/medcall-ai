@@ -1429,18 +1429,35 @@ export function ConsultationRoom({
 
   const resumeRemotePlayback = async () => {
     const video = remoteVideoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.warn('⚠️ [WEBRTC] resumeRemotePlayback chamado mas remoteVideoRef é null');
+      return;
+    }
 
     try {
+      if (!video.srcObject && remoteStreamRef.current) {
+        console.log('ℹ️ [WEBRTC] Reatribuindo stream remoto antes de retomar reprodução');
+        video.srcObject = remoteStreamRef.current;
+      }
+
       video.controls = false;
-      video.muted = false;
+      video.muted = true;
+
       await video.play();
+      console.log('✅ [WEBRTC] Reprodução remota iniciada em modo mudo');
+
       setIsRemotePlaybackBlocked(false);
-      console.log('✅ [WEBRTC] Reprodução remota liberada pelo usuário');
+
+      setTimeout(() => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.muted = false;
+          console.log('🔊 [WEBRTC] Áudio remoto liberado após clique do usuário');
+        }
+      }, 200);
     } catch (error) {
       console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
       video.muted = true;
-      video.controls = true; // deixar usuário apertar play manualmente se necessário
+      video.controls = true; // permitir usuário apertar play manualmente
       setIsRemotePlaybackBlocked(true);
     }
   };
