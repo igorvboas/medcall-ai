@@ -1448,13 +1448,31 @@ export function ConsultationRoom({
       if (!video.srcObject && remoteStreamRef.current) {
         console.log('ℹ️ [WEBRTC] Reatribuindo stream remoto antes de retomar reprodução');
         video.srcObject = remoteStreamRef.current;
-        // Aguardar um pouco para o stream ser carregado
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       if (!video.srcObject) {
         console.error('❌ [WEBRTC] Não há srcObject para reproduzir!');
         return;
+      }
+
+      // ✅ CRÍTICO: Aguardar o vídeo carregar dados suficientes (readyState >= 2)
+      if (video.readyState < 2) {
+        console.log('⏳ [WEBRTC] Aguardando stream carregar dados... (readyState atual:', video.readyState, ')');
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout aguardando loadeddata'));
+          }, 5000);
+
+          const onLoadedData = () => {
+            clearTimeout(timeout);
+            video.removeEventListener('loadeddata', onLoadedData);
+            console.log('✅ [WEBRTC] Stream carregado! (readyState:', video.readyState, ')');
+            resolve();
+          };
+
+          video.addEventListener('loadeddata', onLoadedData);
+          video.load(); // Forçar reload do srcObject
+        });
       }
 
       // Estratégia 1: Tentar play direto sem mute (já estamos em contexto de user gesture)
