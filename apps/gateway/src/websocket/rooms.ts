@@ -18,6 +18,9 @@ const socketToRoom = new Map();
 // Mapa de conexões OpenAI: userName -> WebSocket
 const openAIConnections = new Map();
 
+// Mapa de keepalive timers para conexões OpenAI: userName -> Interval
+const openAIKeepaliveTimers = new Map();
+
 // Mapa separado para timers (não serializar com room data)
 const roomTimers = new Map(); // roomId -> Timeout
 
@@ -31,7 +34,7 @@ function generateRoomId(): string {
 }
 
 /**
- * Limpa sala expirada (5 minutos de inatividade)
+ * Limpa sala expirada (3min vazia, 15min com 1 pessoa)
  */
 function cleanExpiredRoom(roomId: string): void {
   const room = rooms.get(roomId);
@@ -54,7 +57,7 @@ function cleanExpiredRoom(roomId: string): void {
 }
 
 /**
- * Inicia timer de expiração de sala (5 minutos)
+ * Inicia timer de expiração de sala (lógica inteligente baseada em histórico)
  */
 function startRoomExpiration(roomId: string): void {
   const room = rooms.get(roomId);
@@ -65,10 +68,45 @@ function startRoomExpiration(roomId: string): void {
     clearTimeout(roomTimers.get(roomId));
   }
 
-  // Criar novo timer de 5 minutos e armazenar no mapa separado
+  // Contar quantas pessoas estão conectadas
+  const hasHost = room.hostSocketId !== null;
+  const hasParticipant = room.participantSocketId !== null;
+  const connectedCount = (hasHost ? 1 : 0) + (hasParticipant ? 1 : 0);
+
+  // Verificar se sala já esteve ativa (teve 2 pessoas alguma vez)
+  const wasActive = room.status === 'active'; // Status muda para 'active' quando 2ª pessoa entra
+
+  let timeoutMinutes: number;
+  
+  if (connectedCount === 0) {
+    if (wasActive) {
+      // Sala estava ATIVA mas ambos desconectaram: 30 minutos para reconexão
+      timeoutMinutes = 30;
+      console.log(`⏱️ Timer iniciado para sala ATIVA (0 conectados) ${roomId}: ${timeoutMinutes} minutos (reconexão)`);
+    } else {
+      // Sala NUNCA ficou ativa (waiting): 3 minutos
+      timeoutMinutes = 3;
+      console.log(`⏱️ Timer iniciado para sala VAZIA (nunca ativa) ${roomId}: ${timeoutMinutes} minutos`);
+    }
+  } else if (connectedCount === 1) {
+    if (wasActive) {
+      // Sala estava ATIVA, 1 pessoa desconectou: 30 minutos para reconexão
+      timeoutMinutes = 30;
+      console.log(`⏱️ Timer iniciado para sala ATIVA (1 conectado) ${roomId}: ${timeoutMinutes} minutos (reconexão)`);
+    } else {
+      // Sala aguardando 2ª pessoa pela primeira vez: 15 minutos
+      timeoutMinutes = 15;
+      console.log(`⏱️ Timer iniciado para sala AGUARDANDO 2ª pessoa ${roomId}: ${timeoutMinutes} minutos`);
+    }
+  } else {
+    // Sala ATIVA (2 pessoas): SEM timer automático
+    console.log(`✅ Sala ATIVA ${roomId}: timer desabilitado (2 pessoas conectadas)`);
+    return; // Não criar timer quando ambos estão conectados
+  }
+
   const timer = setTimeout(() => {
     cleanExpiredRoom(roomId);
-  }, 5 * 60 * 1000); // 5 minutos
+  }, timeoutMinutes * 60 * 1000);
 
   roomTimers.set(roomId, timer);
 }
@@ -431,6 +469,29 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       openAIWs.on('open', () => {
         console.log(`[${userName}] ✅ Conectado à OpenAI na sala ${roomId}`);
         openAIConnections.set(userName, openAIWs);
+        
+        // ✅ Iniciar keepalive para manter conexão viva (ping a cada 5 minutos)
+        const keepaliveInterval = setInterval(() => {
+          if (openAIWs.readyState === WebSocket.OPEN) {
+            // Enviar ping simples via mensagem vazia ou session.update
+            try {
+              openAIWs.send(JSON.stringify({
+                type: 'session.update',
+                session: {} // Atualização vazia apenas para keepalive
+              }));
+              console.log(`[${userName}] 💓 Keepalive enviado para OpenAI`);
+            } catch (error) {
+              console.error(`[${userName}] ❌ Erro ao enviar keepalive:`, error);
+            }
+          } else {
+            // Se conexão está fechada, limpar interval
+            clearInterval(keepaliveInterval);
+            openAIKeepaliveTimers.delete(userName);
+          }
+        }, 5 * 60 * 1000); // 5 minutos
+        
+        openAIKeepaliveTimers.set(userName, keepaliveInterval);
+        
         callback({ success: true, message: 'Conectado com sucesso' });
       });
 
@@ -457,6 +518,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       openAIWs.on('close', () => {
         console.log(`[${userName}] OpenAI WebSocket fechado`);
         openAIConnections.delete(userName);
+        
+        // Limpar keepalive timer
+        const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+        if (keepaliveInterval) {
+          clearInterval(keepaliveInterval);
+          openAIKeepaliveTimers.delete(userName);
+        }
+        
         socket.emit('transcription:disconnected');
       });
     });
@@ -476,6 +545,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       if (openAIWs) {
         openAIWs.close();
         openAIConnections.delete(userName);
+      }
+      
+      // Limpar keepalive timer
+      const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+      if (keepaliveInterval) {
+        clearInterval(keepaliveInterval);
+        openAIKeepaliveTimers.delete(userName);
       }
     });
 
@@ -767,6 +843,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       if (openAIWs) {
         // openAIWs.close();
         openAIConnections.delete(userName);
+      }
+      
+      // Limpar keepalive timer
+      const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+      if (keepaliveInterval) {
+        clearInterval(keepaliveInterval);
+        openAIKeepaliveTimers.delete(userName);
       }
 
       socketToRoom.delete(socket.id);

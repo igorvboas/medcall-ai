@@ -12,7 +12,8 @@ router.get('/turn-credentials', async (req, res) => {
     }
 
     const client = twilio(accountSid, authToken);
-    const token = await client.tokens.create({ ttl: 3600 });
+    // TTL aumentado de 1h (3600s) para 8h (28800s) para suportar consultas longas
+    const token = await client.tokens.create({ ttl: 28800 });
     res.json({ iceServers: token.iceServers });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to get TURN credentials' });

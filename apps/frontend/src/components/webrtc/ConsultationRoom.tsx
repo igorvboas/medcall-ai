@@ -64,6 +64,10 @@ export function ConsultationRoom({
 
   const [isConnected, setIsConnected] = useState(false);
 
+  const [isReconnecting, setIsReconnecting] = useState(false); // ✅ NOVO: Estado de reconexão
+
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false); // ✅ NOVO: Flag para saber se já entrou na sala
+
   const [isCallActive, setIsCallActive] = useState(false);
 
   const [participantName, setParticipantName] = useState('');
@@ -285,6 +289,146 @@ export function ConsultationRoom({
 
 
 
+  // ✅ NOVO: Função para renegociar WebRTC após desconexão
+
+  const renegotiateWebRTC = async () => {
+
+    if (!peerConnectionRef.current || !socketRef.current || !isConnected) {
+
+      console.log('❌ Não é possível renegociar: conexão não disponível');
+
+      return;
+
+    }
+
+
+
+    console.log('🔄 RENEGOCIAÇÃO: Iniciando...');
+
+    
+
+    try {
+
+      // Se for o host (médico), criar nova offer
+
+      if (userType === 'doctor' && didIOffer) {
+
+        console.log('🔄 RENEGOCIAÇÃO: Criando nova offer...');
+
+        const offer = await peerConnectionRef.current.createOffer({
+
+          iceRestart: true // Força reiniciar ICE (importante para reconexão)
+
+        });
+
+        await peerConnectionRef.current.setLocalDescription(offer);
+
+        
+
+        socketRef.current.emit('newOffer', {
+
+          roomId: roomId,
+
+          offer: offer
+
+        });
+
+        
+
+        console.log('✅ RENEGOCIAÇÃO: Nova offer enviada!');
+
+      } else {
+
+        console.log('⏳ RENEGOCIAÇÃO: Aguardando nova offer do host...');
+
+      }
+
+    } catch (error) {
+
+      console.error('❌ RENEGOCIAÇÃO: Erro ao renegociar:', error);
+
+    }
+
+  };
+
+
+
+  // ✅ NOVO: Função para rejuntar à sala após reconexão
+
+  const rejoinRoom = () => {
+
+    if (!socketRef.current || !roomId) return;
+
+
+
+    console.log('🔄 Rejuntando à sala:', roomId, 'como', userRole);
+
+
+
+    socketRef.current.emit('joinRoom', {
+
+      roomId: roomId,
+
+      participantName: userName
+
+    }, (response: any) => {
+
+      if (response.success) {
+
+        console.log('✅ Rejuntado à sala com sucesso!');
+
+        setRoomData(response.roomData);
+
+        setHasJoinedRoom(true); // ✅ Garantir que flag está setada
+
+        
+
+        // ✅ Reconectar WebRTC se necessário
+
+        if (isCallActive && peerConnectionRef.current) {
+
+          console.log('🔄 Restabelecendo conexão WebRTC...');
+
+          // Renegociar WebRTC após rejuntar
+
+          setTimeout(() => renegotiateWebRTC(), 1000);
+
+        }
+
+        
+
+        // ✅ Reconectar transcrição se estava ativa (ou iniciar automaticamente para médico)
+
+        if (userType === 'doctor') {
+
+          console.log('🔄 Restabelecendo transcrição do médico...');
+
+          // Auto-start novamente
+
+          setTimeout(() => autoStartTranscription(), 1000);
+
+        } else if (isTranscriptionActive && transcriptionManagerRef.current) {
+
+          console.log('🔄 Restabelecendo transcrição...');
+
+          transcriptionManagerRef.current.reconnect();
+
+        }
+
+      } else {
+
+        console.error('❌ Erro ao rejuntar à sala:', response.error);
+
+        alert('Erro ao rejuntar à sala: ' + response.error);
+
+      }
+
+    });
+
+  };
+
+
+
   const connectSocket = () => {
 
       if (window.io) {
@@ -307,7 +451,17 @@ export function ConsultationRoom({
 
               password: "x"
 
-            }
+            },
+
+            // ✅ RECONEXÃO AUTOMÁTICA habilitada
+
+            reconnection: true,
+
+            reconnectionDelay: 1000,       // 1 segundo entre tentativas
+
+            reconnectionDelayMax: 5000,    // máximo 5 segundos
+
+            reconnectionAttempts: Infinity // tentar infinitamente
 
           }
 
@@ -337,11 +491,105 @@ export function ConsultationRoom({
 
 
 
-        socketRef.current.on('disconnect', () => {
+        socketRef.current.on('disconnect', (reason: string) => {
 
-          console.log('🔌 Desconectado do servidor');
+          console.log('🔌 Desconectado do servidor. Motivo:', reason);
 
           setIsConnected(false);
+
+          
+
+          // Mostrar toast/notificação ao usuário
+
+          if (reason === 'io server disconnect') {
+
+            // Servidor desconectou propositalmente (não vai reconectar)
+
+            setIsReconnecting(false);
+
+            alert('Servidor desconectou a sessão. Recarregue a página.');
+
+          } else {
+
+            // Desconexão temporária (vai tentar reconectar)
+
+            setIsReconnecting(true);
+
+            console.log('⏳ Tentando reconectar...');
+
+          }
+
+        });
+
+
+
+        // ✅ NOVO: Listener para reconexão bem-sucedida
+
+        socketRef.current.on('reconnect', (attemptNumber: number) => {
+
+          console.log(`✅ Reconectado após ${attemptNumber} tentativa(s)!`);
+
+          setIsConnected(true);
+
+          setIsReconnecting(false);
+
+          
+
+          // ✅ CRÍTICO: Rejuntar à sala após reconexão
+
+          if (roomId && hasJoinedRoom) {
+
+            console.log(`🔄 RECONEXÃO: Rejuntando à sala ${roomId} após ${attemptNumber} tentativa(s)`);
+
+            
+
+            // Aguardar um pouco para setupSocketListeners() terminar
+
+            setTimeout(() => {
+
+              rejoinRoom();
+
+            }, 500);
+
+          } else {
+
+            console.log('⚠️ RECONEXÃO: Não vai rejuntar (roomId:', roomId, ', hasJoinedRoom:', hasJoinedRoom, ')');
+
+          }
+
+        });
+
+
+
+        // ✅ NOVO: Listener para tentativas de reconexão
+
+        socketRef.current.on('reconnect_attempt', (attemptNumber: number) => {
+
+          console.log(`🔄 Tentativa de reconexão #${attemptNumber}...`);
+
+          setIsReconnecting(true);
+
+        });
+
+
+
+        // ✅ NOVO: Listener para erro de reconexão
+
+        socketRef.current.on('reconnect_error', (error: any) => {
+
+          console.error('❌ Erro ao reconectar:', error);
+
+        });
+
+
+
+        // ✅ NOVO: Listener para falha de reconexão
+
+        socketRef.current.on('reconnect_failed', () => {
+
+          console.error('❌ Falha ao reconectar após todas as tentativas');
+
+          alert('Não foi possível reconectar. Recarregue a página.');
 
         });
 
@@ -731,6 +979,8 @@ export function ConsultationRoom({
 
           setRoomData(response.roomData);
 
+          setHasJoinedRoom(true); // ✅ Marcar que já entrou na sala
+
           console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
 
           
@@ -787,6 +1037,8 @@ export function ConsultationRoom({
           setUserRole(response.role);
 
           setRoomData(response.roomData);
+
+          setHasJoinedRoom(true); // ✅ Marcar que já entrou na sala
 
           setShowParticipantModal(false);
 
@@ -1237,6 +1489,14 @@ export function ConsultationRoom({
       didOfferRef.current = true;
 
       setIsCallActive(true);
+
+      
+
+      // ✅ AUTO-START: Iniciar transcrição automaticamente (médico)
+
+      setTimeout(() => autoStartTranscription(), 2000); // Aguardar 2s para WebRTC estabilizar
+
+      
 
       //console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
       //console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
@@ -1703,7 +1963,24 @@ export function ConsultationRoom({
     };
     
     peerConnectionRef.current.oniceconnectionstatechange = () => {
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] iceConnectionState =', peerConnectionRef.current?.iceConnectionState);
+      const state = peerConnectionRef.current?.iceConnectionState;
+      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] iceConnectionState =', state);
+      
+      // ✅ RECONEXÃO AUTOMÁTICA: Detectar falha e tentar renegociar
+      if (state === 'failed' || state === 'disconnected') {
+        console.log('⚠️ WebRTC desconectado! Estado:', state);
+        
+        // Tentar reconectar após 3 segundos
+        setTimeout(() => {
+          if (peerConnectionRef.current?.iceConnectionState === 'failed' || 
+              peerConnectionRef.current?.iceConnectionState === 'disconnected') {
+            console.log('🔄 Tentando renegociar WebRTC...');
+            renegotiateWebRTC();
+          }
+        }, 3000);
+      } else if (state === 'connected' || state === 'completed') {
+        console.log('✅ WebRTC conectado com sucesso!');
+      }
     };
     
     peerConnectionRef.current.onsignalingstatechange = () => {
@@ -2024,6 +2301,74 @@ export function ConsultationRoom({
 
 
 
+  // ✅ NOVO: Auto-start da transcrição (apenas para médico)
+
+  const autoStartTranscription = async () => {
+
+    if (userType !== 'doctor') return; // Apenas médico tem transcrição
+
+    if (isTranscriptionActive) return; // Já está ativa
+
+    if (!transcriptionManagerRef.current) {
+
+      console.error('❌ AUTO-START: TranscriptionManager não existe!');
+
+      return;
+
+    }
+
+
+
+    console.log('🎙️ AUTO-START: Iniciando transcrição automaticamente...');
+
+    
+
+    // ✅ CRÍTICO: Configurar callbacks ANTES de iniciar
+
+    console.log('🎙️ AUTO-START: Configurando callbacks...');
+
+    setupTranscriptionCallbacks();
+
+    
+
+    setTranscriptionStatus('Conectando...');
+
+    
+
+    try {
+
+      const success = await transcriptionManagerRef.current.init();
+
+      
+
+      if (success) {
+
+        setTranscriptionStatus('Conectado');
+
+        setIsTranscriptionActive(true);
+
+        console.log('✅ AUTO-START: Transcrição iniciada com sucesso!');
+
+      } else {
+
+        setTranscriptionStatus('Erro ao conectar');
+
+        console.error('❌ AUTO-START: Falha ao iniciar transcrição');
+
+      }
+
+    } catch (error) {
+
+      console.error('❌ AUTO-START: Erro ao iniciar transcrição:', error);
+
+      setTranscriptionStatus('Erro');
+
+    }
+
+  };
+
+
+
   const toggleTranscription = async () => {
 
     if (!transcriptionManagerRef.current) {
@@ -2214,6 +2559,54 @@ export function ConsultationRoom({
               {isConnected ? 'Conectado' : 'Desconectado'}
             </span>
 
+            {/* ✅ NOVO: Indicador de reconexão */}
+
+            {isReconnecting && (
+
+              <span className="status-reconnecting" style={{
+
+                marginLeft: '10px',
+
+                color: '#ff9800',
+
+                fontWeight: 'bold',
+
+                animation: 'pulse 1.5s infinite'
+
+              }}>
+
+                🔄 Reconectando...
+
+              </span>
+
+            )}
+
+            
+
+            {/* ✅ NOVO: Indicador de transcrição automática (só para médico) */}
+
+            {userType === 'doctor' && (
+
+              <span style={{
+
+                marginLeft: '10px',
+
+                color: isTranscriptionActive ? '#4caf50' : '#999',
+
+                fontWeight: 'bold'
+
+              }}>
+
+                | 🎙️ Transcrição: <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
+
+                  {isTranscriptionActive ? 'Ativa (Automática + Reconexão Automática)' : 'Aguardando...'}
+
+                </span>
+
+              </span>
+
+            )}
+
           </p>
 
         </div>
@@ -2248,7 +2641,9 @@ export function ConsultationRoom({
 
           
 
-          {userType === 'doctor' && (
+          {/* ✅ DESABILITADO: Transcrição agora é automática */}
+
+          {/* {userType === 'doctor' && (
 
             <button 
 
@@ -2262,7 +2657,7 @@ export function ConsultationRoom({
 
             </button>
 
-          )}
+          )} */}
 
           
 

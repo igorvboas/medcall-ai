@@ -13,6 +13,13 @@ export class TranscriptionManager {
   private lastSpeaker: string | null = null;
   private currentSpeechText: string = '';
   
+  // ✅ NOVO: Reconexão automática
+  private reconnectionAttempts: number = 0;
+  private maxReconnectionAttempts: number = 10;
+  private reconnectionTimer: any = null;
+  private healthCheckInterval: any = null;
+  private lastAudioTime: number = 0;
+  
   // Configurações
   private readonly OPENAI_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
   private readonly AUDIO_FORMAT = 'pcm16';
@@ -51,12 +58,20 @@ export class TranscriptionManager {
     this.socket.on('transcription:error', (data: any) => {
       console.error('[TRANSCRIPTION ERROR] Erro:', data.error);
       this.isConnected = false;
+      
+      // ✅ Tentar reconectar automaticamente em caso de erro
+      console.log('[TRANSCRIPTION] Erro detectado, agendando reconexão...');
+      this.scheduleReconnection();
     });
 
     // Desconexão
     this.socket.on('transcription:disconnected', () => {
       console.log('[TRANSCRIPTION] Desconectado da OpenAI');
       this.isConnected = false;
+      
+      // ✅ Tentar reconectar automaticamente
+      console.log('[TRANSCRIPTION] Desconexão detectada, agendando reconexão...');
+      this.scheduleReconnection();
     });
 
     // ✅ CORREÇÃO: Removido listener duplicado - agora é gerenciado pelo ConsultationRoom
@@ -76,9 +91,24 @@ export class TranscriptionManager {
 
     try {
       await this.connect();
+      
+      // ✅ CRÍTICO: Iniciar transcrição (processar áudio) após conectar
+      console.log('[TRANSCRIPTION] Iniciando processamento de áudio...');
+      this.start(); // Método correto é start(), não startTranscription()
+      
+      // ✅ Iniciar monitoramento de saúde
+      this.startHealthCheck();
+      
+      // ✅ Resetar contador de tentativas após sucesso
+      this.reconnectionAttempts = 0;
+      
       return true;
     } catch (error) {
       console.error('[TRANSCRIPTION ERROR] Erro ao inicializar:', error);
+      
+      // ✅ Tentar reconectar automaticamente
+      this.scheduleReconnection();
+      
       return false;
     }
   }
@@ -134,7 +164,8 @@ export class TranscriptionManager {
         
         // Transcrição de input: Usar Whisper para transcrever áudio do usuário
         input_audio_transcription: {
-          model: 'whisper-1'
+          model: 'whisper-1',
+          language: 'pt' // Forçar idioma Português
         },
         
         // Detecção de voz: VAD (Voice Activity Detection) automático
@@ -352,6 +383,9 @@ export class TranscriptionManager {
       audio: audioBase64
     };
 
+    // ✅ Registrar timestamp do último áudio enviado (para health check)
+    this.lastAudioTime = Date.now();
+
     // console.log('[TRANSCRIPTION] 🎵 Enviando chunk de áudio...', audioBase64.length, 'bytes');
     return this.send(audioMessage);
   }
@@ -404,12 +438,57 @@ export class TranscriptionManager {
   disconnect(): void {
     console.log('[TRANSCRIPTION] Desconectando...');
     
+    // ✅ Parar monitoramento
+    this.stopHealthCheck();
+    this.clearReconnectionTimer();
+    
     if (this.socket) {
       this.socket.emit('transcription:disconnect');
     }
     
     this.isConnected = false;
     this.isTranscribing = false;
+  }
+
+  /**
+   * ✅ NOVO: Reconecta à transcrição após desconexão
+   */
+  async reconnect(): Promise<boolean> {
+    console.log('[TRANSCRIPTION] Reconectando...');
+    
+    // Parar health check temporariamente
+    this.stopHealthCheck();
+    
+    // Primeiro desconectar conexão antiga (se existir)
+    if (this.socket) {
+      this.socket.emit('transcription:disconnect');
+    }
+    this.isConnected = false;
+    this.isTranscribing = false;
+    
+    // Aguardar um pouco antes de reconectar
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Tentar reconectar
+    try {
+      await this.connect();
+      
+      // Iniciar transcrição
+      console.log('[TRANSCRIPTION] Reiniciando transcrição...');
+      this.start();
+      
+      // ✅ Reiniciar health check
+      this.startHealthCheck();
+      
+      // ✅ Resetar contador de tentativas
+      this.reconnectionAttempts = 0;
+      
+      console.log('[TRANSCRIPTION] ✅ Reconexão bem-sucedida!');
+      return true;
+    } catch (error) {
+      console.error('[TRANSCRIPTION ERROR] Falha ao reconectar:', error);
+      return false;
+    }
   }
 
   /**
@@ -434,6 +513,99 @@ export class TranscriptionManager {
       minute: '2-digit', 
       second: '2-digit' 
     });
+  }
+
+  /**
+   * ✅ NOVO: Inicia monitoramento de saúde da transcrição
+   */
+  private startHealthCheck(): void {
+    // Limpar health check anterior se existir
+    this.stopHealthCheck();
+    
+    console.log('[TRANSCRIPTION] 💓 Iniciando monitoramento de saúde...');
+    
+    // Verificar a cada 10 segundos
+    this.healthCheckInterval = setInterval(() => {
+      // Verificar se está conectado
+      if (!this.isConnected) {
+        console.warn('[TRANSCRIPTION] ⚠️ Health check: Desconectado! Tentando reconectar...');
+        this.scheduleReconnection();
+        return;
+      }
+      
+      // Verificar se audioProcessor está ativo
+      if (this.isTranscribing && this.audioProcessor) {
+        const now = Date.now();
+        // Se passou mais de 30 segundos sem processar áudio, pode estar com problema
+        if (this.lastAudioTime > 0 && (now - this.lastAudioTime) > 30000) {
+          console.warn('[TRANSCRIPTION] ⚠️ Health check: Sem áudio há 30s, pode estar travado');
+          // Não reconectar automaticamente por falta de áudio, pode ser silêncio natural
+        }
+      }
+      
+      console.log('[TRANSCRIPTION] 💓 Health check: OK (connected:', this.isConnected, 'transcribing:', this.isTranscribing, ')');
+    }, 10000); // 10 segundos
+  }
+
+  /**
+   * ✅ NOVO: Para monitoramento de saúde
+   */
+  private stopHealthCheck(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+      console.log('[TRANSCRIPTION] Health check parado');
+    }
+  }
+
+  /**
+   * ✅ NOVO: Agenda reconexão com backoff exponencial
+   */
+  private scheduleReconnection(): void {
+    // Limpar timer anterior
+    this.clearReconnectionTimer();
+    
+    // Verificar limite de tentativas
+    if (this.reconnectionAttempts >= this.maxReconnectionAttempts) {
+      console.error('[TRANSCRIPTION] ❌ Limite de tentativas de reconexão atingido');
+      return;
+    }
+    
+    this.reconnectionAttempts++;
+    
+    // Backoff exponencial: 2s, 4s, 8s, 16s... (máx 30s)
+    const delay = Math.min(2000 * Math.pow(2, this.reconnectionAttempts - 1), 30000);
+    
+    console.log(`[TRANSCRIPTION] 🔄 Agendando reconexão #${this.reconnectionAttempts} em ${delay/1000}s...`);
+    
+    this.reconnectionTimer = setTimeout(async () => {
+      console.log(`[TRANSCRIPTION] 🔄 Tentativa de reconexão #${this.reconnectionAttempts}...`);
+      
+      try {
+        const success = await this.reconnect();
+        
+        if (success) {
+          console.log('[TRANSCRIPTION] ✅ Reconexão bem-sucedida!');
+          this.reconnectionAttempts = 0;
+        } else {
+          console.warn('[TRANSCRIPTION] ⚠️ Reconexão falhou, tentando novamente...');
+          this.scheduleReconnection();
+        }
+      } catch (error) {
+        console.error('[TRANSCRIPTION] ❌ Erro na reconexão:', error);
+        this.scheduleReconnection();
+      }
+    }, delay);
+  }
+
+  /**
+   * ✅ NOVO: Limpa timer de reconexão
+   */
+  private clearReconnectionTimer(): void {
+    if (this.reconnectionTimer) {
+      clearTimeout(this.reconnectionTimer);
+      this.reconnectionTimer = null;
+    }
   }
 
   // ✅ CORREÇÃO: Callback quando recebe nova transcrição (transcript puro)
