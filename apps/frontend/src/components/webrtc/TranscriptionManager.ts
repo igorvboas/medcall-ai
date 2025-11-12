@@ -456,6 +456,10 @@ export class TranscriptionManager {
   async reconnect(): Promise<boolean> {
     console.log('[TRANSCRIPTION] Reconectando...');
     
+    // ✅ CORREÇÃO: Salvar transcrições existentes antes de reconectar
+    const savedTranscript = this.currentTranscript;
+    console.log(`[TRANSCRIPTION] 💾 Salvando ${savedTranscript.length} caracteres de transcrição existente`);
+    
     // Parar health check temporariamente
     this.stopHealthCheck();
     
@@ -472,6 +476,10 @@ export class TranscriptionManager {
     // Tentar reconectar
     try {
       await this.connect();
+      
+      // ✅ CORREÇÃO: Restaurar transcrições salvas ANTES de iniciar
+      this.currentTranscript = savedTranscript;
+      console.log(`[TRANSCRIPTION] ✅ Restauradas ${savedTranscript.length} caracteres de transcrição`);
       
       // Iniciar transcrição
       console.log('[TRANSCRIPTION] Reiniciando transcrição...');

@@ -304,6 +304,17 @@ export function ConsultationRoom({
 
 
     console.log('🔄 RENEGOCIAÇÃO: Iniciando...');
+    
+    // ✅ CORREÇÃO: Verificar se stream local ainda está disponível
+    if (!localStreamRef.current) {
+      console.log('❌ RENEGOCIAÇÃO: Stream local não disponível, tentando recriar...');
+      try {
+        await fetchUserMedia();
+      } catch (error) {
+        console.error('❌ RENEGOCIAÇÃO: Erro ao recriar stream:', error);
+        return;
+      }
+    }
 
     
 
@@ -313,7 +324,7 @@ export function ConsultationRoom({
 
       if (userType === 'doctor' && didIOffer) {
 
-        console.log('🔄 RENEGOCIAÇÃO: Criando nova offer...');
+        console.log('🔄 RENEGOCIAÇÃO: Criando nova offer com ICE restart...');
 
         const offer = await peerConnectionRef.current.createOffer({
 
@@ -340,6 +351,14 @@ export function ConsultationRoom({
       } else {
 
         console.log('⏳ RENEGOCIAÇÃO: Aguardando nova offer do host...');
+        
+        // ✅ NOVO: Paciente pode precisar recriar PeerConnection se estiver em estado failed
+        const iceState = peerConnectionRef.current.iceConnectionState;
+        if (iceState === 'failed') {
+          console.log('🔄 RENEGOCIAÇÃO: ICE falhou, recriando PeerConnection...');
+          await createPeerConnection();
+          console.log('✅ RENEGOCIAÇÃO: PeerConnection recriado, aguardando offer...');
+        }
 
       }
 
@@ -749,6 +768,34 @@ export function ConsultationRoom({
             setTimeout(() => {
 
               rejoinRoom();
+              
+              // ✅ NOVO: Reconectar transcrição após rejuntar à sala
+              setTimeout(() => {
+                if (transcriptionManagerRef.current && isTranscriptionActive) {
+                  console.log('🔄 RECONEXÃO: Reconectando transcrição...');
+                  
+                  // Reconfigurar socket
+                  transcriptionManagerRef.current.setSocket(socketRef.current);
+                  
+                  // Tentar reconectar
+                  transcriptionManagerRef.current.reconnect().then(() => {
+                    console.log('✅ RECONEXÃO: Transcrição reconectada!');
+                  }).catch((error) => {
+                    console.error('❌ RECONEXÃO: Erro ao reconectar transcrição:', error);
+                  });
+                }
+                
+                // ✅ NOVO: Renegociar WebRTC para vídeo voltar
+                if (isCallActive && peerConnectionRef.current) {
+                  const state = peerConnectionRef.current.iceConnectionState;
+                  console.log(`🔄 RECONEXÃO: Estado WebRTC: ${state}`);
+                  
+                  if (state === 'disconnected' || state === 'failed') {
+                    console.log('🔄 RECONEXÃO: Renegociando WebRTC...');
+                    setTimeout(() => renegotiateWebRTC(), 2000);
+                  }
+                }
+              }, 1500);
 
             }, 500);
 
@@ -2113,8 +2160,48 @@ export function ConsultationRoom({
       // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
       const attachVideoStream = (stream: MediaStream, retries = 10) => {
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
+          const videoElement = localVideoRef.current;
+          videoElement.srcObject = stream;
           console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
+          
+          // ✅ CORREÇÃO: Adicionar listeners para garantir reprodução contínua
+          videoElement.onloadedmetadata = () => {
+            console.log('📹 [MÍDIA] Metadata carregada, iniciando reprodução...');
+            videoElement.muted = true; // Mute para evitar feedback
+            videoElement.play().then(() => {
+              console.log('📹 [MÍDIA] ✅ Vídeo local iniciado');
+            }).catch((err) => {
+              console.warn('📹 [MÍDIA] ⚠️ Erro ao iniciar vídeo local:', err.message);
+              // Tentar novamente após interação do usuário
+              const handleUserInteraction = () => {
+                videoElement.play().catch(() => {});
+                document.removeEventListener('click', handleUserInteraction);
+              };
+              document.addEventListener('click', handleUserInteraction, { once: true });
+            });
+          };
+          
+          // ✅ NOVO: Monitorar pausas não intencionais e retomar
+          videoElement.onpause = () => {
+            console.warn('📹 [MÍDIA] Vídeo local pausado, tentando retomar...');
+            setTimeout(() => {
+              if (videoElement.srcObject && videoElement.paused) {
+                videoElement.play().catch(() => {});
+              }
+            }, 100);
+          };
+          
+          // ✅ NOVO: Monitorar erros e tentar recuperar
+          videoElement.onerror = (e) => {
+            console.error('📹 [MÍDIA] Erro no vídeo local:', e);
+            // Tentar reatribuir o stream
+            setTimeout(() => {
+              if (localStreamRef.current) {
+                videoElement.srcObject = localStreamRef.current;
+                videoElement.play().catch(() => {});
+              }
+            }, 500);
+          };
         } else if (retries > 0) {
           console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
           setTimeout(() => attachVideoStream(stream, retries - 1), 100);
@@ -2203,6 +2290,18 @@ export function ConsultationRoom({
             if (localVideoRef.current) {
               localVideoRef.current.srcObject = stream;
               console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo (retry)');
+              
+              // ✅ CORREÇÃO: Forçar reprodução do vídeo local
+              setTimeout(() => {
+                if (localVideoRef.current) {
+                  localVideoRef.current.muted = true;
+                  localVideoRef.current.play().then(() => {
+                    console.log('📹 [MÍDIA] ✅ Vídeo local iniciado (retry)');
+                  }).catch((err) => {
+                    console.warn('📹 [MÍDIA] ⚠️ Erro ao iniciar vídeo local (retry):', err.message);
+                  });
+                }
+              }, 100);
             } else if (retries > 0) {
               console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível no retry, tentando novamente... (${retries})`);
               setTimeout(() => attachVideoStreamRetry(stream, retries - 1), 100);
@@ -2364,11 +2463,56 @@ export function ConsultationRoom({
         // ✅ CORREÇÃO: Anexar vídeo remoto com retry
         const attachRemoteStream = (stream: MediaStream, retries = 10) => {
           if (remoteVideoRef.current) {
-            const currentStream = remoteVideoRef.current.srcObject as MediaStream;
+            const videoElement = remoteVideoRef.current;
+            const currentStream = videoElement.srcObject as MediaStream;
             if (!currentStream || currentStream.id !== stream.id) {
               console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', stream.id);
-              remoteVideoRef.current.srcObject = stream;
+              videoElement.srcObject = stream;
               remoteStreamRef.current = stream;
+              
+              // ✅ NOVO: Adicionar listeners para garantir reprodução contínua
+              videoElement.onloadedmetadata = () => {
+                console.log('📹 [WEBRTC] Metadata do vídeo remoto carregada');
+                videoElement.play().then(() => {
+                  console.log('🔗 [WEBRTC] ✅ Vídeo remoto começou a reproduzir');
+                }).catch(err => {
+                  if (err.name === 'NotAllowedError') {
+                    console.warn('🔍 DEBUG [REFERENCIA] [WEBRTC] ⚠️ Autoplay bloqueado (aguardando interação)');
+                    const handleUserInteraction = () => {
+                      videoElement.play().catch(() => {});
+                      document.removeEventListener('click', handleUserInteraction);
+                      document.removeEventListener('touchstart', handleUserInteraction);
+                    };
+                    document.addEventListener('click', handleUserInteraction, { once: true });
+                    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+                  } else {
+                    console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
+                    setTimeout(() => videoElement.play().catch(() => {}), 100);
+                  }
+                });
+              };
+              
+              // ✅ NOVO: Monitorar pausas não intencionais e retomar
+              videoElement.onpause = () => {
+                console.warn('📹 [WEBRTC] Vídeo remoto pausado, tentando retomar...');
+                setTimeout(() => {
+                  if (videoElement.srcObject && videoElement.paused) {
+                    videoElement.play().catch(() => {});
+                  }
+                }, 100);
+              };
+              
+              // ✅ NOVO: Monitorar erros e tentar recuperar
+              videoElement.onerror = (e) => {
+                console.error('📹 [WEBRTC] Erro no vídeo remoto:', e);
+                setTimeout(() => {
+                  if (remoteStreamRef.current) {
+                    videoElement.srcObject = remoteStreamRef.current;
+                    videoElement.play().catch(() => {});
+                  }
+                }, 500);
+              };
+              
               return true;
             } else {
               console.log('🔗 [WEBRTC] ℹ️ Stream já está atribuído (mesmo ID)');
@@ -2385,35 +2529,6 @@ export function ConsultationRoom({
         };
         
         if (attachRemoteStream(e.streams[0])) {
-            
-            // Forçar reprodução após um pequeno delay
-            setTimeout(() => {
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.play().then(() => {
-                  console.log('🔗 [WEBRTC] ✅ Vídeo remoto começou a reproduzir');
-                }).catch(err => {
-                  // ✅ CORREÇÃO: Silenciar erro de autoplay (comum e não crítico)
-                  if (err.name === 'NotAllowedError') {
-                    console.warn('🔍 DEBUG [REFERENCIA] [WEBRTC] ⚠️ Autoplay bloqueado (aguardando interação)');
-                    // Tentar novamente após interação do usuário
-                    const handleUserInteraction = () => {
-                      remoteVideoRef.current?.play().catch(() => {});
-                      document.removeEventListener('click', handleUserInteraction);
-                      document.removeEventListener('touchstart', handleUserInteraction);
-                    };
-                    document.addEventListener('click', handleUserInteraction, { once: true });
-                    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-                  } else {
-                    console.error('🔗 [WEBRTC] ❌ Erro ao reproduzir vídeo remoto:', err);
-                    // Tentar novamente
-                    setTimeout(() => {
-                      remoteVideoRef.current?.play().catch(e => console.error('Retry falhou:', e));
-                    }, 100);
-                  }
-                });
-              }
-            }, 100);
-            
             console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
         }
       } else {
