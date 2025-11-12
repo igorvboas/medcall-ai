@@ -2649,25 +2649,35 @@ export function ConsultationRoom({
         // ✅ CORREÇÃO: Anexar vídeo remoto com retry
         const attachRemoteStream = (stream: MediaStream, retries = 10) => {
           if (remoteVideoRef.current) {
-            const currentStream = remoteVideoRef.current.srcObject as MediaStream;
-            if (!currentStream || currentStream.id !== stream.id) {
-              console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Atribuindo remote stream id=', stream.id);
+            try {
+              const previousStream = remoteVideoRef.current.srcObject as MediaStream | null;
               remoteVideoRef.current.srcObject = stream;
               remoteStreamRef.current = stream;
-              
+
+              if (previousStream && previousStream !== stream) {
+                console.log('🔄 [WEBRTC] Substituindo stream remoto anterior por um novo (id anterior:', previousStream.id, '| novo id:', stream.id, ')');
+              } else if (!previousStream) {
+                console.log('🔗 [WEBRTC] Stream remoto atribuído pela primeira vez (id:', stream.id, ')');
+              } else {
+                console.log('🔁 [WEBRTC] Reaproveitando stream remoto com mesmo id:', stream.id);
+              }
+
               // Forçar play (elemento já tem autoPlay no HTML)
-              setTimeout(() => {
-                if (remoteVideoRef.current) {
-                  remoteVideoRef.current.play().catch((err) => {
-                    console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado:', err.message);
-                  });
-                }
-              }, 100);
-              
+              const playPromise = remoteVideoRef.current.play();
+              if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.catch((err: any) => {
+                  console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado no remoto. Aguardando interação do usuário...', err?.message || err);
+                });
+              }
+
+              remoteVideoRef.current.muted = false;
+              remoteVideoRef.current.controls = false;
+              remoteVideoRef.current.style.opacity = '1';
+
               return true;
-            } else {
-              console.log('🔗 [WEBRTC] ℹ️ Stream já está atribuído (mesmo ID)');
-              return true;
+            } catch (error) {
+              console.error('📹 [WEBRTC] ❌ Erro ao anexar stream remoto:', error);
+              return false;
             }
           } else if (retries > 0) {
             console.warn(`📹 [WEBRTC] ⚠️ remoteVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
