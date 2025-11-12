@@ -280,3 +280,4 @@ gcloud run services update medcall-gateway \
 **Versão:** 2.0 (com limpeza automática de salas vazias)
 
 
+

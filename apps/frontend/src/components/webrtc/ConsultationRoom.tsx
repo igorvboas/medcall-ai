@@ -1430,17 +1430,10 @@ export function ConsultationRoom({
           const roomStatus = response.roomData?.status;
           
           if (roomStatus === 'active') {
-            console.log('🔄 [RELOAD] Sala ativa detectada! Preparando WebRTC para receber offer...');
-            
-            setTimeout(async () => {
-              console.log('🩺 [RELOAD] Criando PeerConnection...');
-              try {
-                await createPeerConnection();
-                console.log('🩺 [RELOAD] ✅ PeerConnection criado, aguardando offer do médico...');
-              } catch (error) {
-                console.error('❌ [RELOAD] Erro ao criar PeerConnection:', error);
-              }
-            }, 1000);
+            console.log('🔄 [RELOAD] Sala ativa detectada! Aguardando offer do médico...');
+            console.log('🩺 [RELOAD] ✅ Pronto para receber offer (PeerConnection será criado ao receber offer)');
+            // ✅ CORREÇÃO: NÃO criar PeerConnection aqui para evitar race condition
+            // O createAnswerButton() criará quando receber a offer do médico
           }
         } else {
 
