@@ -75,6 +75,9 @@ export function ConsultationRoom({
   // ✅ NOVO: Estado para controlar se paciente está pronto para entrar
   const [isPatientReadyToJoin, setIsPatientReadyToJoin] = useState(false);
 
+  // ✅ NOVO: Flag quando o navegador bloqueia o autoplay do vídeo remoto
+  const [isRemotePlaybackBlocked, setIsRemotePlaybackBlocked] = useState(false);
+
   const [transcriptionText, setTranscriptionText] = useState('');
 
   const [transcriptionStatus, setTranscriptionStatus] = useState('Desconectado');
@@ -1424,6 +1427,20 @@ export function ConsultationRoom({
     tryJoin();
   };
 
+  // ✅ NOVO: Permitir que usuário libere áudio/vídeo remoto quando autoplay for bloqueado
+  const resumeRemotePlayback = async () => {
+    if (!remoteVideoRef.current) return;
+    try {
+      remoteVideoRef.current.muted = false;
+      await remoteVideoRef.current.play();
+      setIsRemotePlaybackBlocked(false);
+      console.log('✅ [WEBRTC] Reprodução remota retomada após interação do usuário');
+    } catch (error) {
+      console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
+      setIsRemotePlaybackBlocked(true);
+    }
+  };
+
   // Função para entrar como paciente (participant) - igual ao projeto original
 
   const joinRoomAsParticipant = async (participantName: string) => {
@@ -2662,17 +2679,32 @@ export function ConsultationRoom({
                 console.log('🔁 [WEBRTC] Reaproveitando stream remoto com mesmo id:', stream.id);
               }
 
-              // Forçar play (elemento já tem autoPlay no HTML)
-              const playPromise = remoteVideoRef.current.play();
-              if (playPromise && typeof playPromise.then === 'function') {
-                playPromise.catch((err: any) => {
-                  console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado no remoto. Aguardando interação do usuário...', err?.message || err);
-                });
-              }
-
-              remoteVideoRef.current.muted = false;
               remoteVideoRef.current.controls = false;
               remoteVideoRef.current.style.opacity = '1';
+
+              // Iniciar playback mudo para satisfazer política de autoplay
+              remoteVideoRef.current.muted = true;
+              const playPromise = remoteVideoRef.current.play();
+              if (playPromise && typeof playPromise.then === 'function') {
+                playPromise
+                  .then(() => {
+                    console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
+                    setIsRemotePlaybackBlocked(false);
+                    setTimeout(() => {
+                      if (remoteVideoRef.current) {
+                        remoteVideoRef.current.muted = false;
+                        console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
+                      }
+                    }, 300);
+                  })
+                  .catch((err: any) => {
+                    console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado no remoto. Solicitando interação do usuário...', err?.message || err);
+                    setIsRemotePlaybackBlocked(true);
+                  });
+              } else {
+                remoteVideoRef.current.muted = false;
+                setIsRemotePlaybackBlocked(false);
+              }
 
               return true;
             } catch (error) {
@@ -2688,7 +2720,7 @@ export function ConsultationRoom({
             return false;
           }
         };
-        
+
         if (attachRemoteStream(e.streams[0])) {
             console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
         }
@@ -3397,6 +3429,15 @@ export function ConsultationRoom({
             playsInline
 
           ></video>
+
+          {isRemotePlaybackBlocked && (
+            <div className="remote-playback-overlay">
+              <p>⚠️ O navegador bloqueou o áudio/vídeo remoto.</p>
+              <button type="button" onClick={resumeRemotePlayback}>
+                Liberar áudio e vídeo
+              </button>
+            </div>
+          )}
 
           
 
