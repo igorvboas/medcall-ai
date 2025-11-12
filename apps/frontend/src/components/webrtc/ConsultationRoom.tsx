@@ -2416,7 +2416,6 @@ export function ConsultationRoom({
             
             console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
         }
-        }
       } else {
         console.warn('🔗 [WEBRTC] ⚠️ Nenhum stream recebido no evento track');
       }
