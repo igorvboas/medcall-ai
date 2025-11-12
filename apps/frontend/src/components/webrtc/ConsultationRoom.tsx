@@ -293,9 +293,9 @@ export function ConsultationRoom({
 
   const renegotiateWebRTC = async () => {
 
-    if (!peerConnectionRef.current || !socketRef.current || !isConnected) {
+    if (!socketRef.current || !isConnected) {
 
-      console.log('❌ Não é possível renegociar: conexão não disponível');
+      console.log('❌ Não é possível renegociar: Socket não conectado');
 
       return;
 
@@ -325,14 +325,22 @@ export function ConsultationRoom({
       if (userType === 'doctor' && didIOffer) {
 
         console.log('🔄 RENEGOCIAÇÃO: Criando nova offer com ICE restart...');
+        
+        // ✅ NOVO: Se PeerConnection não existe ou está em estado ruim, recriar
+        if (!peerConnectionRef.current || 
+            peerConnectionRef.current.connectionState === 'failed' ||
+            peerConnectionRef.current.connectionState === 'closed') {
+          console.log('🔄 RENEGOCIAÇÃO: PeerConnection não existe ou falhou, recriando...');
+          await createPeerConnection();
+        }
 
-        const offer = await peerConnectionRef.current.createOffer({
+        const offer = await peerConnectionRef.current!.createOffer({
 
           iceRestart: true // Força reiniciar ICE (importante para reconexão)
 
         });
 
-        await peerConnectionRef.current.setLocalDescription(offer);
+        await peerConnectionRef.current!.setLocalDescription(offer);
 
         
 
@@ -352,10 +360,13 @@ export function ConsultationRoom({
 
         console.log('⏳ RENEGOCIAÇÃO: Aguardando nova offer do host...');
         
-        // ✅ NOVO: Paciente pode precisar recriar PeerConnection se estiver em estado failed
-        const iceState = peerConnectionRef.current.iceConnectionState;
-        if (iceState === 'failed') {
-          console.log('🔄 RENEGOCIAÇÃO: ICE falhou, recriando PeerConnection...');
+        // ✅ NOVO: Paciente precisa recriar PeerConnection se estiver em estado failed/closed
+        if (!peerConnectionRef.current ||
+            peerConnectionRef.current.connectionState === 'failed' ||
+            peerConnectionRef.current.connectionState === 'closed' ||
+            peerConnectionRef.current.iceConnectionState === 'failed' ||
+            peerConnectionRef.current.iceConnectionState === 'closed') {
+          console.log('🔄 RENEGOCIAÇÃO: PeerConnection não existe ou falhou, recriando...');
           await createPeerConnection();
           console.log('✅ RENEGOCIAÇÃO: PeerConnection recriado, aguardando offer...');
         }
@@ -785,14 +796,28 @@ export function ConsultationRoom({
                   });
                 }
                 
-                // ✅ NOVO: Renegociar WebRTC para vídeo voltar
-                if (isCallActive && peerConnectionRef.current) {
-                  const state = peerConnectionRef.current.iceConnectionState;
-                  console.log(`🔄 RECONEXÃO: Estado WebRTC: ${state}`);
+                // ✅ CORREÇÃO: SEMPRE renegociar WebRTC após reconexão do Socket.IO
+                if (isCallActive) {
+                  console.log('🔄 RECONEXÃO: Verificando estado WebRTC...');
                   
-                  if (state === 'disconnected' || state === 'failed') {
-                    console.log('🔄 RECONEXÃO: Renegociando WebRTC...');
-                    setTimeout(() => renegotiateWebRTC(), 2000);
+                  if (peerConnectionRef.current) {
+                    const connectionState = peerConnectionRef.current.connectionState;
+                    const iceState = peerConnectionRef.current.iceConnectionState;
+                    console.log(`🔍 RECONEXÃO: connectionState=${connectionState}, iceConnectionState=${iceState}`);
+                    
+                    // Renegociar se não estiver conectado
+                    if (connectionState !== 'connected' || iceState !== 'connected') {
+                      console.log('🔄 RECONEXÃO: Renegociando WebRTC...');
+                      setTimeout(() => renegotiateWebRTC(), 2000);
+                    } else {
+                      console.log('✅ RECONEXÃO: WebRTC já está conectado, não precisa renegociar');
+                    }
+                  } else {
+                    // PeerConnection não existe mais, médico precisa iniciar nova call
+                    if (userType === 'doctor') {
+                      console.log('🔄 RECONEXÃO: PeerConnection não existe, médico vai recriar chamada...');
+                      setTimeout(() => call(), 2000);
+                    }
                   }
                 }
               }, 1500);
@@ -2521,16 +2546,32 @@ export function ConsultationRoom({
     console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
     console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
     
-    // ✅ PROTEÇÃO: Evitar processar múltiplas ofertas
-    if (isCallActive) {
-      console.warn('⚠️ [AUTO-ANSWER] Chamada já está ativa, ignorando nova oferta');
-      return;
-    }
-    
-    // ✅ PROTEÇÃO: Verificar se já existe uma PeerConnection ativa
-    if (peerConnectionRef.current && peerConnectionRef.current.connectionState !== 'closed') {
-      console.warn('⚠️ [AUTO-ANSWER] PeerConnection já existe, ignorando nova oferta');
-      return;
+    // ✅ CORREÇÃO: Verificar estado da PeerConnection para reconexão
+    if (peerConnectionRef.current) {
+      const state = peerConnectionRef.current.connectionState;
+      const iceState = peerConnectionRef.current.iceConnectionState;
+      
+      console.log(`🔍 [AUTO-ANSWER] PeerConnection existe. connectionState: ${state}, iceConnectionState: ${iceState}`);
+      
+      // Se está conectado/conectando e chamada ativa, ignorar
+      if (isCallActive && (state === 'connected' || state === 'connecting')) {
+        console.warn('⚠️ [AUTO-ANSWER] Chamada já está ativa e conectada, ignorando nova oferta');
+        return;
+      }
+      
+      // Se está failed/disconnected/closed, limpar para aceitar nova oferta
+      if (state === 'failed' || state === 'closed' || state === 'disconnected' || 
+          iceState === 'failed' || iceState === 'closed' || iceState === 'disconnected') {
+        console.log('🔄 [AUTO-ANSWER] Conexão anterior falhou/desconectou, limpando PeerConnection...');
+        try {
+          peerConnectionRef.current.close();
+        } catch (e) {
+          console.warn('Erro ao fechar PeerConnection:', e);
+        }
+        peerConnectionRef.current = null;
+        setIsCallActive(false); // Resetar flag
+        console.log('✅ [AUTO-ANSWER] PeerConnection limpo, prosseguindo com nova oferta');
+      }
     }
     
     // ✅ NOVO: Verificar se stream local está disponível
