@@ -1428,30 +1428,67 @@ export function ConsultationRoom({
   };
 
   const resumeRemotePlayback = async () => {
+    console.log('🔘 [WEBRTC] Botão "Liberar áudio e vídeo" clicado!');
     const video = remoteVideoRef.current;
+    
     if (!video) {
       console.warn('⚠️ [WEBRTC] resumeRemotePlayback chamado mas remoteVideoRef é null');
       return;
     }
 
+    console.log('🔍 [WEBRTC] Estado atual do vídeo:', {
+      srcObject: !!video.srcObject,
+      paused: video.paused,
+      muted: video.muted,
+      readyState: video.readyState
+    });
+
     try {
+      // Garantir que o srcObject está atribuído
       if (!video.srcObject && remoteStreamRef.current) {
         console.log('ℹ️ [WEBRTC] Reatribuindo stream remoto antes de retomar reprodução');
         video.srcObject = remoteStreamRef.current;
+        // Aguardar um pouco para o stream ser carregado
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      if (!video.srcObject) {
+        console.error('❌ [WEBRTC] Não há srcObject para reproduzir!');
+        return;
+      }
+
+      // Estratégia 1: Tentar play direto sem mute (já estamos em contexto de user gesture)
       video.controls = false;
       video.muted = false;
-
+      
+      console.log('▶️ [WEBRTC] Tentando play() com áudio...');
       await video.play();
-      console.log('✅ [WEBRTC] Reprodução remota liberada pelo clique do usuário');
-
+      
+      console.log('✅ [WEBRTC] Reprodução remota liberada com sucesso!');
       setIsRemotePlaybackBlocked(false);
+      
     } catch (error) {
-      console.error('❌ [WEBRTC] Falha ao retomar reprodução remota:', error);
-      video.muted = true;
-      video.controls = true; // permitir usuário apertar play manualmente
-      setIsRemotePlaybackBlocked(true);
+      console.warn('⚠️ [WEBRTC] Play com áudio falhou, tentando com mute primeiro...', error);
+      
+      try {
+        // Estratégia 2: Play mudo, depois desmutar
+        video.muted = true;
+        await video.play();
+        console.log('✅ [WEBRTC] Reprodução muda iniciada, desmutando...');
+        
+        // Aguardar um frame antes de desmutar
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        video.muted = false;
+        
+        console.log('🔊 [WEBRTC] Áudio liberado!');
+        setIsRemotePlaybackBlocked(false);
+        
+      } catch (fallbackError) {
+        console.error('❌ [WEBRTC] Todas as tentativas falharam:', fallbackError);
+        video.muted = false;
+        video.controls = true; // permitir usuário apertar play manualmente
+        alert('Não foi possível iniciar o vídeo automaticamente. Use o botão de play no vídeo.');
+      }
     }
   };
 
