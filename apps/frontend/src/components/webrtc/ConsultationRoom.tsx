@@ -142,6 +142,12 @@ export function ConsultationRoom({
 
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
 
+  // ✅ NOVO: Fila de offers pendentes (para quando mídia ainda não está pronta)
+  
+  const pendingOfferRef = useRef<{offer: RTCSessionDescriptionInit, userName: string} | null>(null);
+  
+  const isMediaReadyRef = useRef<boolean>(false);
+
   
 
   // Variáveis WebRTC
@@ -1412,6 +1418,11 @@ export function ConsultationRoom({
             console.log('🩺 [PACIENTE] ✅ Mídia inicializada COM SUCESSO');
             console.log('🩺 [PACIENTE] localStreamRef.current existe?', !!localStreamRef.current);
             console.log('🩺 [PACIENTE] Tracks no stream:', localStreamRef.current?.getTracks().length);
+            
+            // ✅ NOVO: Marcar mídia como pronta
+            isMediaReadyRef.current = true;
+            console.log('🩺 [PACIENTE] ✅ isMediaReadyRef = true');
+            
           } catch (error) {
             console.error('❌ [PACIENTE] ERRO ao inicializar mídia:', error);
             setErrorMessage('Erro ao acessar câmera/microfone. Verifique as permissões.');
@@ -1425,6 +1436,19 @@ export function ConsultationRoom({
           
           // ✅ CORREÇÃO: Marcar que está pronto para receber offers
           console.log('🩺 [PACIENTE] 3️⃣ Pronto para receber offers do médico');
+          
+          // ✅ NOVO: Processar offer pendente se houver
+          if (pendingOfferRef.current) {
+            console.log('🩺 [PACIENTE] ✅ Processando offer pendente...');
+            const { offer, userName } = pendingOfferRef.current;
+            pendingOfferRef.current = null; // Limpar
+            
+            // Criar objeto compatível com createAnswerButton
+            await createAnswerButton({ 
+              offer: offer, 
+              offererUserName: userName 
+            });
+          }
           
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), preparar WebRTC
           const roomStatus = response.roomData?.status;
@@ -2602,15 +2626,22 @@ export function ConsultationRoom({
       }
     }
     
-    // ✅ NOVO: Verificar se stream local está disponível
-    if (!localStreamRef.current) {
-      console.warn('⚠️ [AUTO-ANSWER] Stream local ainda não disponível, aguardando...');
-      // Tentar novamente após 1 segundo
-      setTimeout(() => createAnswerButton(offerData), 1000);
+    // ✅ CORREÇÃO: Verificar se mídia está pronta
+    if (!isMediaReadyRef.current || !localStreamRef.current) {
+      console.warn('⚠️ [AUTO-ANSWER] Mídia ainda não está pronta, GUARDANDO offer para processar depois...');
+      console.log('⚠️ [AUTO-ANSWER] isMediaReadyRef.current:', isMediaReadyRef.current);
+      console.log('⚠️ [AUTO-ANSWER] localStreamRef.current:', !!localStreamRef.current);
+      
+      // ✅ GUARDAR offer pendente ao invés de tentar novamente
+      pendingOfferRef.current = {
+        offer: offerData.offer,
+        userName: offerData.offererUserName
+      };
+      console.log('✅ [AUTO-ANSWER] Offer guardada! Será processada quando mídia estiver pronta.');
       return;
     }
     
-    console.log('✅ [AUTO-ANSWER] Stream local disponível, prosseguindo...');
+    console.log('✅ [AUTO-ANSWER] Mídia pronta! Processando offer...');
     console.log('✅ [AUTO-ANSWER] Tracks disponíveis:', localStreamRef.current.getTracks().length);
 
     // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
