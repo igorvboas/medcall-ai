@@ -303,7 +303,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     
     // ==================== ENTRAR EM SALA ====================
     
-    socket.on('joinRoom', (data, callback) => {
+    socket.on('joinRoom', async (data, callback) => {
       const { roomId, participantName } = data;
       
       const room = rooms.get(roomId);
@@ -328,11 +328,40 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
         resetRoomExpiration(roomId);
         
+      // ✅ NOVO: Buscar transcrições do banco de dados
+      let transcriptionHistory = room.transcriptions || [];
+      if (room.callSessionId) {
+        try {
+          const { db } = await import('../config/database');
+          const dbUtterances = await db.getSessionUtterances(room.callSessionId);
+          
+          if (dbUtterances && dbUtterances.length > 0) {
+            // Converter utterances do banco para formato do frontend
+            transcriptionHistory = dbUtterances.map((u: any) => ({
+              speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+              text: u.text,
+              timestamp: u.created_at || u.timestamp
+            }));
+            
+            // Mesclar com transcrições em memória (caso haja alguma não salva ainda)
+            const memoryTranscriptions = room.transcriptions || [];
+            const dbTimestamps = new Set(transcriptionHistory.map((t: any) => t.timestamp));
+            const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTimestamps.has(t.timestamp));
+            transcriptionHistory = [...transcriptionHistory, ...uniqueMemory];
+            
+            console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco`);
+          }
+        } catch (error) {
+          console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+          // Usar apenas transcrições em memória se falhar
+        }
+      }
+      
       // ✅ CORREÇÃO: Enviar transcrições históricas para reconexão
       const roomDataWithHistory = {
         ...room,
-        // Enviar histórico de transcrições
-        transcriptionHistory: room.transcriptions || [],
+        // Enviar histórico de transcrições (do banco + memória)
+        transcriptionHistory: transcriptionHistory,
         // ✅ NOVO: Enviar duração atual da chamada
         callDuration: getCallDuration(roomId)
       };
@@ -370,11 +399,39 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           socketToRoom.set(socket.id, roomId);
           resetRoomExpiration(roomId);
           
+          // ✅ NOVO: Buscar transcrições do banco de dados
+          let transcriptionHistory = room.transcriptions || [];
+          if (room.callSessionId) {
+            try {
+              const { db } = await import('../config/database');
+              const dbUtterances = await db.getSessionUtterances(room.callSessionId);
+              
+              if (dbUtterances && dbUtterances.length > 0) {
+                // Converter utterances do banco para formato do frontend
+                transcriptionHistory = dbUtterances.map((u: any) => ({
+                  speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+                  text: u.text,
+                  timestamp: u.created_at || u.timestamp
+                }));
+                
+                // Mesclar com transcrições em memória (caso haja alguma não salva ainda)
+                const memoryTranscriptions = room.transcriptions || [];
+                const dbTimestamps = new Set(transcriptionHistory.map((t: any) => t.timestamp));
+                const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTimestamps.has(t.timestamp));
+                transcriptionHistory = [...transcriptionHistory, ...uniqueMemory];
+                
+                console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco (participant)`);
+              }
+            } catch (error) {
+              console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+            }
+          }
+          
           // ✅ CORREÇÃO: Enviar transcrições históricas para reconexão
           const roomDataWithHistory = {
             ...room,
-            // Enviar histórico de transcrições
-            transcriptionHistory: room.transcriptions || []
+            // Enviar histórico de transcrições (do banco + memória)
+            transcriptionHistory: transcriptionHistory
           };
           
           callback({ 
@@ -436,11 +493,39 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`✅ ${participantName} entrou na sala ${roomId}`);
 
+      // ✅ NOVO: Buscar transcrições do banco de dados
+      let transcriptionHistory = room.transcriptions || [];
+      if (room.callSessionId) {
+        try {
+          const { db } = await import('../config/database');
+          const dbUtterances = await db.getSessionUtterances(room.callSessionId);
+          
+          if (dbUtterances && dbUtterances.length > 0) {
+            // Converter utterances do banco para formato do frontend
+            transcriptionHistory = dbUtterances.map((u: any) => ({
+              speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+              text: u.text,
+              timestamp: u.created_at || u.timestamp
+            }));
+            
+            // Mesclar com transcrições em memória (caso haja alguma não salva ainda)
+            const memoryTranscriptions = room.transcriptions || [];
+            const dbTimestamps = new Set(transcriptionHistory.map((t: any) => t.timestamp));
+            const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTimestamps.has(t.timestamp));
+            transcriptionHistory = [...transcriptionHistory, ...uniqueMemory];
+            
+            console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco (new participant)`);
+          }
+        } catch (error) {
+          console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+        }
+      }
+      
       // ✅ CORREÇÃO: Enviar transcrições históricas (caso seja reconexão ou sala já iniciada)
       const roomDataWithHistory = {
         ...room,
-        // Enviar histórico de transcrições
-        transcriptionHistory: room.transcriptions || [],
+        // Enviar histórico de transcrições (do banco + memória)
+        transcriptionHistory: transcriptionHistory,
         // ✅ NOVO: Enviar duração atual da chamada
         callDuration: getCallDuration(roomId)
       };
@@ -739,13 +824,39 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         return;
       }
 
-      // Salvar transcrição no histórico da sala
-      room.transcriptions.push({
+      // Salvar transcrição no histórico da sala (memória)
+      const transcriptionEntry = {
         speaker: from,
         text: transcription,
         timestamp: new Date().toISOString()
-      });
+      };
+      room.transcriptions.push(transcriptionEntry);
       console.log('[DEBUG] [sendTranscriptionToPeer]')
+      
+      // ✅ NOVO: Salvar transcrição no banco de dados imediatamente
+      if (room.callSessionId) {
+        try {
+          const { db } = await import('../config/database');
+          await db.createUtterance({
+            id: `utterance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            session_id: room.callSessionId,
+            speaker: from === room.hostUserName ? 'doctor' : 'patient',
+            text: transcription,
+            confidence: 0.95, // Alta confiança para transcrições do OpenAI
+            start_ms: Date.now(),
+            end_ms: Date.now(),
+            is_final: true,
+            created_at: new Date().toISOString()
+          });
+          console.log(`💾 [ROOM ${roomId}] Transcrição salva no banco: "${transcription.substring(0, 50)}..."`);
+        } catch (error) {
+          console.error(`❌ [ROOM ${roomId}] Erro ao salvar transcrição no banco:`, error);
+          // Continuar mesmo se falhar (não bloquear transcrição)
+        }
+      } else {
+        console.warn(`⚠️ [ROOM ${roomId}] callSessionId não disponível, transcrição não salva no banco`);
+      }
+      
       resetRoomExpiration(roomId);
 
       console.log(`[ROOM ${roomId}] ${from} -> ${to}: "${transcription}"`);

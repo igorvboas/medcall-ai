@@ -1078,7 +1078,16 @@ export function ConsultationRoom({
 
     transcriptionManagerRef.current.onUIUpdate = (fullText: string) => {
 
-      console.log('📝 [TRANSCRIPTION] Atualizando UI com texto completo');
+      console.log('📝 [TRANSCRIPTION] Atualizando UI com texto completo', fullText.length, 'caracteres');
+      console.log('📝 [TRANSCRIPTION] Preview:', fullText.substring(0, 100) + (fullText.length > 100 ? '...' : ''));
+      
+      // ✅ PROTEÇÃO: Não substituir por texto vazio se já houver conteúdo no manager
+      // O TranscriptionManager já tem proteções, mas adicionamos uma camada extra aqui
+      if (!fullText || fullText.trim().length === 0) {
+        console.warn('[TRANSCRIPTION] ⚠️ Tentativa de atualizar UI com texto vazio - isso não deveria acontecer!');
+        // Não atualizar se vier vazio - o manager deve preservar o histórico
+        return;
+      }
 
       setTranscriptionText(fullText);
 
@@ -1369,29 +1378,23 @@ export function ConsultationRoom({
           isRejoiningRef.current = false;
           console.log('✅ hasJoinedRoomRef = true, isRejoiningRef = false');
 
-          // ✅ NOVO: Restaurar histórico de transcrições
-          if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
-
-            console.log(`🔄 [MÉDICO] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
-            
-            // Restaurar cada transcrição no TranscriptionManager
-            if (transcriptionManagerRef.current) {
-
-              response.roomData.transcriptionHistory.forEach((transcription: any) => {
-
-                const displayName = transcription.speaker || 'Desconhecido';
-
-                transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
-
-              });
-
-              console.log('✅ [MÉDICO] Transcrições históricas restauradas!');
-
+          // ✅ Função auxiliar para restaurar histórico após TranscriptionManager estar pronto
+          const restoreTranscriptionHistory = () => {
+            if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
+              console.log(`🔄 [MÉDICO] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
+              
+              if (transcriptionManagerRef.current) {
+                response.roomData.transcriptionHistory.forEach((transcription: any) => {
+                  const displayName = transcription.speaker || 'Desconhecido';
+                  transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
+                });
+                console.log('✅ [MÉDICO] Transcrições históricas restauradas!');
+              } else {
+                console.warn('⚠️ [MÉDICO] TranscriptionManager não está pronto ainda, tentando novamente...');
+                setTimeout(restoreTranscriptionHistory, 500);
+              }
             }
-
-          }
-
-          
+          };
 
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), restaurar WebRTC
           const roomStatus = response.roomData?.status;
@@ -1410,6 +1413,9 @@ export function ConsultationRoom({
               await initializeTranscription();
               console.log('👨‍⚕️ [RELOAD] Transcrição inicializada');
               
+              // ✅ Restaurar histórico após TranscriptionManager estar pronto
+              restoreTranscriptionHistory();
+              
               // Forçar início da chamada (WebRTC)
               setTimeout(() => {
                 console.log('👨‍⚕️ [RELOAD] Forçando início da chamada após reload...');
@@ -1423,6 +1429,9 @@ export function ConsultationRoom({
               return initializeTranscription();
             }).then(() => {
               console.log('👨‍⚕️ [MÉDICO] ✅ Transcrição inicializada');
+              
+              // ✅ Restaurar histórico após TranscriptionManager estar pronto
+              restoreTranscriptionHistory();
             });
           }
 
@@ -1596,29 +1605,23 @@ export function ConsultationRoom({
           isRejoiningRef.current = false;
           console.log('✅ hasJoinedRoomRef = true, isRejoiningRef = false');
 
-          // ✅ NOVO: Restaurar histórico de transcrições
-          if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
-
-            console.log(`🔄 [PACIENTE] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
-            
-            // Restaurar cada transcrição no TranscriptionManager
-            if (transcriptionManagerRef.current) {
-
-              response.roomData.transcriptionHistory.forEach((transcription: any) => {
-
-                const displayName = transcription.speaker || 'Desconhecido';
-
-                transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
-
-              });
-
-              console.log('✅ [PACIENTE] Transcrições históricas restauradas!');
-
+          // ✅ Função auxiliar para restaurar histórico após TranscriptionManager estar pronto
+          const restoreTranscriptionHistory = () => {
+            if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
+              console.log(`🔄 [PACIENTE] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
+              
+              if (transcriptionManagerRef.current) {
+                response.roomData.transcriptionHistory.forEach((transcription: any) => {
+                  const displayName = transcription.speaker || 'Desconhecido';
+                  transcriptionManagerRef.current!.addTranscriptToUI(transcription.text, displayName);
+                });
+                console.log('✅ [PACIENTE] Transcrições históricas restauradas!');
+              } else {
+                console.warn('⚠️ [PACIENTE] TranscriptionManager não está pronto ainda, tentando novamente...');
+                setTimeout(restoreTranscriptionHistory, 500);
+              }
             }
-
-          }
-
-          
+          };
 
           // ✅ CORREÇÃO: Inicializar mídia PRIMEIRO (ANTES de tudo)
           console.log('🩺 [PACIENTE] 1️⃣ Inicializando mídia...');
@@ -1642,6 +1645,9 @@ export function ConsultationRoom({
           console.log('🩺 [PACIENTE] 2️⃣ Inicializando transcrição...');
           await initializeTranscription();
           console.log('🩺 [PACIENTE] ✅ Transcrição inicializada');
+          
+          // ✅ Restaurar histórico após TranscriptionManager estar pronto
+          restoreTranscriptionHistory();
           
           // ✅ CORREÇÃO: Marcar que está pronto para receber offers
           console.log('🩺 [PACIENTE] 3️⃣ Pronto para receber offers do médico');
@@ -1849,7 +1855,9 @@ export function ConsultationRoom({
 
             
 
-            transcriptionManagerRef.current!.start();
+            // ✅ CORREÇÃO: Preservar histórico se já houver transcrições
+            const hasExistingTranscript = transcriptionManagerRef.current!.getStatus().transcript.length > 0;
+            transcriptionManagerRef.current!.start(hasExistingTranscript);
 
             setIsTranscriptionActive(true);
 
@@ -3287,9 +3295,9 @@ export function ConsultationRoom({
 
         
 
-        // Iniciar transcrição automaticamente
-
-        transcriptionManagerRef.current.start();
+        // ✅ CORREÇÃO: Preservar histórico se já houver transcrições
+        const hasExistingTranscript = transcriptionManagerRef.current.getStatus().transcript.length > 0;
+        transcriptionManagerRef.current.start(hasExistingTranscript);
 
         setTranscriptionStatus('Transcrevendo');
 

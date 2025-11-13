@@ -315,6 +315,7 @@ export class TranscriptionManager {
    */
   addTranscriptToUI(text: string, speaker: string): void {
     console.log(`[TRANSCRIPTION] 📝 Adicionando à UI: [${speaker}]: ${text}`);
+    console.log(`[TRANSCRIPTION] 📊 Estado atual: ${this.currentTranscript.length} caracteres já existentes`);
     
     // ✅ CORREÇÃO: Adicionar como linha completa, não incremental
     // Finalizar fala anterior se houver
@@ -323,11 +324,20 @@ export class TranscriptionManager {
       this.currentSpeechText = '';
     }
     
+    // ✅ PROTEÇÃO: Verificar se o texto não está vazio antes de adicionar
+    if (!text || text.trim().length === 0) {
+      console.warn('[TRANSCRIPTION] ⚠️ Tentativa de adicionar texto vazio, ignorando');
+      return;
+    }
+    
     // Adicionar nova linha completa
-    this.currentTranscript += `[${speaker}]: ${text}\n`;
+    const newLine = `[${speaker}]: ${text}\n`;
+    this.currentTranscript += newLine;
     this.lastSpeaker = speaker;
     
-    // Atualizar UI
+    console.log(`[TRANSCRIPTION] ✅ Adicionado. Novo tamanho: ${this.currentTranscript.length} caracteres`);
+    
+    // Atualizar UI com o texto completo
     this.onUIUpdate?.(this.currentTranscript);
   }
 
@@ -392,11 +402,30 @@ export class TranscriptionManager {
 
   /**
    * Inicia transcrição
+   * @param preserveHistory - Se true, não limpa o histórico existente (útil para reconexões)
    */
-  start(): void {
-    console.log('[TRANSCRIPTION] ▶️ Iniciando transcrição...');
+  start(preserveHistory: boolean = false): void {
+    // ✅ CORREÇÃO: Se já está transcrevendo, não fazer nada (evitar múltiplas chamadas)
+    if (this.isTranscribing) {
+      console.log('[TRANSCRIPTION] ⚠️ Já está transcrevendo, ignorando start() duplicado');
+      return;
+    }
+    
+    console.log('[TRANSCRIPTION] ▶️ Iniciando transcrição...', preserveHistory ? '(preservando histórico)' : '');
     this.isTranscribing = true;
-    this.currentTranscript = '';
+    
+    // ✅ CORREÇÃO CRÍTICA: NUNCA limpar se já houver transcrições, independente do parâmetro
+    // Isso previne perda de dados quando start() é chamado múltiplas vezes
+    if (this.currentTranscript.length > 0) {
+      console.log('[TRANSCRIPTION] 💾 Preservando', this.currentTranscript.length, 'caracteres de transcrição existente (proteção automática)');
+      // NÃO limpar - preservar sempre
+    } else if (!preserveHistory) {
+      // Só limpar se não houver transcrições E não for para preservar
+      this.currentTranscript = '';
+      console.log('[TRANSCRIPTION] 🧹 Limpando transcrição (primeira vez, sem histórico)');
+    } else {
+      console.log('[TRANSCRIPTION] 💾 Preservando histórico (parâmetro preserveHistory=true)');
+    }
 
     // Iniciar processamento de áudio
     if (this.audioProcessor) {
@@ -481,9 +510,9 @@ export class TranscriptionManager {
       this.currentTranscript = savedTranscript;
       console.log(`[TRANSCRIPTION] ✅ Restauradas ${savedTranscript.length} caracteres de transcrição`);
       
-      // Iniciar transcrição
+      // Iniciar transcrição preservando histórico
       console.log('[TRANSCRIPTION] Reiniciando transcrição...');
-      this.start();
+      this.start(true); // ✅ Preservar histórico ao reconectar
       
       // ✅ Reiniciar health check
       this.startHealthCheck();

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPatients } from '@/lib/supabase';
+import io, { Socket } from 'socket.io-client';
 
 interface Patient {
   id: string;
@@ -40,60 +41,66 @@ export function CreateConsultationRoom({ onRoomCreated, onCancel }: CreateConsul
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
   
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
 
-  // Carregar script do Socket.IO (apenas o script)
+  // Conectar ao Socket.IO quando hostName estiver disponível
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
-    document.head.appendChild(script);
+    if (!hostName) return; // aguarda carregar nome do médico
+    if (socketRef.current?.connected) return; // já conectado
+
+    const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001';
+    
+    console.log('🔌 Conectando ao Socket.IO...', gatewayUrl);
+    
+    // Criar conexão Socket.IO com polling primeiro (mais confiável)
+    const socket = io(gatewayUrl, {
+      auth: {
+        userName: hostName,
+        role: 'host',
+        password: 'x'
+      },
+      // Tentar polling primeiro, depois websocket (mais confiável quando backend pode estar lento)
+      transports: ['polling', 'websocket'],
+      timeout: 15000,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      // Forçar upgrade para websocket após conectar via polling
+      upgrade: true
+    });
+
+    socketRef.current = socket;
+
+    // Configurar listeners de conexão
+    socket.on('connect', () => {
+      console.log('✅ Socket.IO conectado via', socket.io.engine.transport.name);
+      setSocketConnected(true);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Socket.IO desconectado:', reason);
+      setSocketConnected(false);
+      
+      // Se foi desconexão forçada pelo servidor, não tentar reconectar
+      if (reason === 'io server disconnect') {
+        console.warn('⚠️ Servidor desconectou a conexão');
+      }
+    });
+
+    socket.on('connect_error', (error: Error) => {
+      console.error('❌ Erro ao conectar Socket.IO:', error.message);
+      console.error('💡 Verifique se o backend está rodando em', gatewayUrl);
+      setSocketConnected(false);
+    });
+
+    // Cleanup ao desmontar
     return () => {
-      // cleanup conexão se existir
       if (socketRef.current) {
-        try { socketRef.current.disconnect(); } catch {}
+        socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, []);
-
-  // Conectar ao Socket.IO somente após ter o hostName carregado
-  useEffect(() => {
-    if (!window || !(window as any).io) return;
-    if (!hostName) return; // aguarda carregar nome do médico
-    if (socketRef.current) return; // já conectado
-
-    try {
-      console.log('🔌 Conectando ao Socket.IO...');
-      socketRef.current = (window as any).io.connect(
-        process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
-        {
-          auth: {
-            userName: hostName,
-            role: 'host',
-            password: 'x'
-          }
-        }
-      );
-
-      // ✅ NOVO: Configurar listeners de conexão
-      socketRef.current.on('connect', () => {
-        console.log('✅ Socket.IO conectado');
-        setSocketConnected(true);
-      });
-
-      socketRef.current.on('disconnect', () => {
-        console.log('❌ Socket.IO desconectado');
-        setSocketConnected(false);
-      });
-
-      socketRef.current.on('connect_error', (error: any) => {
-        console.error('❌ Erro ao conectar Socket.IO:', error);
-        setSocketConnected(false);
-      });
-    } catch (error) {
-      console.error('Erro ao conectar Socket.IO:', error);
-      setSocketConnected(false);
-    }
   }, [hostName]);
 
   // Carregar dados do médico logado

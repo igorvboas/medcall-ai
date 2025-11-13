@@ -5,7 +5,7 @@
   "description": "Audio processing and AI gateway service for MedCall",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--inspect' & tsx watch src/index.ts",
+    "dev": "NODE_OPTIONS='--inspect' tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "jest",
