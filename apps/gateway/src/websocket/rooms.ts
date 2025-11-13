@@ -24,6 +24,10 @@ const openAIKeepaliveTimers = new Map();
 // Mapa separado para timers (não serializar com room data)
 const roomTimers = new Map(); // roomId -> Timeout
 
+// ✅ NOVO: Mapa para timers de duração de chamada
+const callTimers = new Map(); // roomId -> Interval
+const callStartTimes = new Map(); // roomId -> timestamp (em segundos)
+
 // ==================== FUNÇÕES AUXILIARES ====================
 
 /**
@@ -31,6 +35,57 @@ const roomTimers = new Map(); // roomId -> Timeout
  */
 function generateRoomId(): string {
   return 'room-' + crypto.randomBytes(6).toString('hex'); // Ex: room-a1b2c3d4e5f6
+}
+
+/**
+ * ✅ NOVO: Inicia o timer da chamada
+ */
+function startCallTimer(roomId: string, io: SocketIOServer): void {
+  // Se já existe timer, não criar outro
+  if (callTimers.has(roomId)) {
+    console.log(`⏱️ [TIMER] Timer já existe para sala ${roomId}`);
+    return;
+  }
+
+  const startTime = Math.floor(Date.now() / 1000); // timestamp em segundos
+  callStartTimes.set(roomId, startTime);
+  
+  console.log(`⏱️ [TIMER] Iniciando timer para sala ${roomId}`);
+
+  // Emitir atualização a cada segundo
+  const timer = setInterval(() => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const duration = currentTime - startTime;
+    
+    // Emitir para todos na sala
+    io.to(roomId).emit('callTimerUpdate', { duration });
+  }, 1000);
+
+  callTimers.set(roomId, timer);
+}
+
+/**
+ * ✅ NOVO: Para o timer da chamada
+ */
+function stopCallTimer(roomId: string): void {
+  const timer = callTimers.get(roomId);
+  if (timer) {
+    clearInterval(timer);
+    callTimers.delete(roomId);
+    callStartTimes.delete(roomId);
+    console.log(`⏱️ [TIMER] Timer parado para sala ${roomId}`);
+  }
+}
+
+/**
+ * ✅ NOVO: Obtém a duração atual da chamada
+ */
+function getCallDuration(roomId: string): number {
+  const startTime = callStartTimes.get(roomId);
+  if (!startTime) return 0;
+  
+  const currentTime = Math.floor(Date.now() / 1000);
+  return currentTime - startTime;
 }
 
 /**
@@ -51,6 +106,9 @@ function cleanExpiredRoom(roomId: string): void {
     clearTimeout(roomTimers.get(roomId));
     roomTimers.delete(roomId);
   }
+  
+  // ✅ NOVO: Parar timer da chamada
+  stopCallTimer(roomId);
   
   // Remover sala
   rooms.delete(roomId);
@@ -265,7 +323,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       const roomDataWithHistory = {
         ...room,
         // Enviar histórico de transcrições
-        transcriptionHistory: room.transcriptions || []
+        transcriptionHistory: room.transcriptions || [],
+        // ✅ NOVO: Enviar duração atual da chamada
+        callDuration: getCallDuration(roomId)
       };
       
       callback({ 
@@ -273,6 +333,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         role: 'host',
         roomData: roomDataWithHistory
       });
+
+      // ✅ NOVO: Enviar duração atual imediatamente
+      socket.emit('callTimerUpdate', { duration: getCallDuration(roomId) });
 
       // Se já tem participante E já tem oferta, reenviar para o participante
       if (room.participantSocketId && room.offer) {
@@ -358,13 +421,18 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       
       resetRoomExpiration(roomId);
 
+      // ✅ NOVO: Iniciar timer da chamada quando sala ficar ativa
+      startCallTimer(roomId, io);
+
       console.log(`✅ ${participantName} entrou na sala ${roomId}`);
 
       // ✅ CORREÇÃO: Enviar transcrições históricas (caso seja reconexão ou sala já iniciada)
       const roomDataWithHistory = {
         ...room,
         // Enviar histórico de transcrições
-        transcriptionHistory: room.transcriptions || []
+        transcriptionHistory: room.transcriptions || [],
+        // ✅ NOVO: Enviar duração atual da chamada
+        callDuration: getCallDuration(roomId)
       };
 
       callback({ 
@@ -372,6 +440,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         role: 'participant',
         roomData: roomDataWithHistory
       });
+
+      // ✅ NOVO: Enviar duração atual imediatamente
+      socket.emit('callTimerUpdate', { duration: getCallDuration(roomId) });
 
       // Notificar host que participante entrou
       io.to(room.hostSocketId).emit('participantJoined', {

@@ -89,10 +89,9 @@ export function ConsultationRoom({
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
-  // ✅ NOVO: Timer da chamada (em segundos)
+  // ✅ NOVO: Timer da chamada (em segundos) - controlado pelo servidor
   const [callDuration, setCallDuration] = useState(0);
   const [isCallTimerActive, setIsCallTimerActive] = useState(false);
-  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   
 
@@ -1470,32 +1469,7 @@ export function ConsultationRoom({
     tryJoin();
   };
 
-  // ✅ NOVO: Funções do timer da chamada
-  const startCallTimer = () => {
-    if (isCallTimerActive) {
-      console.log('⏱️ Timer já está ativo, ignorando');
-      return;
-    }
-    
-    console.log('⏱️ Iniciando timer da chamada...');
-    setIsCallTimerActive(true);
-    setCallDuration(0);
-    
-    callTimerRef.current = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
-  };
-
-  const stopCallTimer = () => {
-    console.log('⏱️ Parando timer da chamada...');
-    setIsCallTimerActive(false);
-    
-    if (callTimerRef.current) {
-      clearInterval(callTimerRef.current);
-      callTimerRef.current = null;
-    }
-  };
-
+  // ✅ NOVO: Formatar duração da chamada
   const formatCallDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -1506,15 +1480,6 @@ export function ConsultationRoom({
     }
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // ✅ Cleanup do timer quando componente desmontar
-  useEffect(() => {
-    return () => {
-      if (callTimerRef.current) {
-        clearInterval(callTimerRef.current);
-      }
-    };
-  }, []);
 
   const resumeRemotePlayback = async () => {
     console.log('🔘 [WEBRTC] Botão "Liberar áudio e vídeo" clicado!');
@@ -1937,6 +1902,16 @@ export function ConsultationRoom({
       console.log('Participante entrou:', data.participantName);
 
       setParticipantName(data.participantName);
+
+    });
+
+    // ✅ NOVO: Atualização do timer da chamada (servidor)
+
+    socketRef.current.on('callTimerUpdate', (data: any) => {
+
+      const { duration } = data;
+      setCallDuration(duration);
+      setIsCallTimerActive(true);
 
     });
 
@@ -2803,8 +2778,7 @@ export function ConsultationRoom({
         }, 3000);
       } else if (state === 'connected' || state === 'completed') {
         console.log('✅ WebRTC conectado com sucesso!');
-        // ✅ NOVO: Iniciar timer da chamada quando conectar
-        startCallTimer();
+        // Timer é controlado pelo servidor via Socket.IO
       }
     };
     
