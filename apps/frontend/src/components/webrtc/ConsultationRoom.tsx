@@ -1211,27 +1211,39 @@ export function ConsultationRoom({
           
           // ✅ Auto-join se roomId presente na URL (reconexão)
           if (roomId && resolvedName) {
-            console.log('🔄 [PACIENTE] RoomId detectado na URL, aguardando Socket.IO para entrar automaticamente...');
+            console.log('🔄 [PACIENTE] RoomId detectado na URL:', roomId);
+            console.log('🔄 [PACIENTE] Nome do paciente:', resolvedName);
+            console.log('🔄 [PACIENTE] Aguardando Socket.IO para entrar automaticamente...');
+            
+            let attempts = 0;
+            const maxAttempts = 20; // 10 segundos (20 * 500ms)
             
             // Aguardar Socket.IO conectar antes de tentar auto-join
             const waitForSocket = setInterval(() => {
+              attempts++;
+              console.log(`🔄 [PACIENTE] Tentativa ${attempts}/${maxAttempts} - Socket conectado?`, !!socketRef.current?.connected);
+              
               if (socketRef.current && socketRef.current.connected) {
                 clearInterval(waitForSocket);
-                console.log('✅ [PACIENTE] Socket.IO conectado, entrando na sala...');
-                joinRoomAsParticipant(resolvedName);
-              }
-            }, 500);
-            
-            // Timeout de segurança (10 segundos)
-            setTimeout(() => {
-              clearInterval(waitForSocket);
-              if (!hasJoinedRoomRef.current) {
-                console.error('❌ [PACIENTE] Timeout aguardando Socket.IO. Clique no botão para entrar manualmente.');
+                console.log('✅ [PACIENTE] Socket.IO conectado! Entrando na sala...');
+                console.log('✅ [PACIENTE] hasJoinedRoomRef.current:', hasJoinedRoomRef.current);
+                
+                if (!hasJoinedRoomRef.current) {
+                  joinRoomAsParticipant(resolvedName);
+                } else {
+                  console.warn('⚠️ [PACIENTE] Já entrou na sala anteriormente, pulando auto-join');
+                }
+              } else if (attempts >= maxAttempts) {
+                clearInterval(waitForSocket);
+                console.error('❌ [PACIENTE] Timeout aguardando Socket.IO. Mostrando botão para entrada manual.');
                 setIsPatientReadyToJoin(true);
               }
-            }, 10000);
+            }, 500);
           } else {
             // Sem roomId = primeira entrada, aguarda clique no botão
+            console.log('📋 [PACIENTE] Sem roomId na URL, aguardando clique no botão...');
+            console.log('📋 [PACIENTE] roomId atual:', roomId);
+            console.log('📋 [PACIENTE] resolvedName:', resolvedName);
             setIsPatientReadyToJoin(true);
             console.log('✅ [PACIENTE] Pronto! Aguardando clique no botão...');
           }
