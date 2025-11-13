@@ -1209,9 +1209,32 @@ export function ConsultationRoom({
 
           setParticipantName(resolvedName);
           
-          // ✅ NOVO: Marcar que está pronto (mostra botão)
-          setIsPatientReadyToJoin(true);
-          console.log('✅ [PACIENTE] Pronto! Aguardando clique no botão...');
+          // ✅ Auto-join se roomId presente na URL (reconexão)
+          if (roomId && resolvedName) {
+            console.log('🔄 [PACIENTE] RoomId detectado na URL, aguardando Socket.IO para entrar automaticamente...');
+            
+            // Aguardar Socket.IO conectar antes de tentar auto-join
+            const waitForSocket = setInterval(() => {
+              if (socketRef.current && socketRef.current.connected) {
+                clearInterval(waitForSocket);
+                console.log('✅ [PACIENTE] Socket.IO conectado, entrando na sala...');
+                joinRoomAsParticipant(resolvedName);
+              }
+            }, 500);
+            
+            // Timeout de segurança (10 segundos)
+            setTimeout(() => {
+              clearInterval(waitForSocket);
+              if (!hasJoinedRoomRef.current) {
+                console.error('❌ [PACIENTE] Timeout aguardando Socket.IO. Clique no botão para entrar manualmente.');
+                setIsPatientReadyToJoin(true);
+              }
+            }, 10000);
+          } else {
+            // Sem roomId = primeira entrada, aguarda clique no botão
+            setIsPatientReadyToJoin(true);
+            console.log('✅ [PACIENTE] Pronto! Aguardando clique no botão...');
+          }
 
         } catch (e) {
 
