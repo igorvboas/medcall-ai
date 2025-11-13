@@ -43,14 +43,11 @@ function generateRoomId(): string {
 function startCallTimer(roomId: string, io: SocketIOServer): void {
   // Se já existe timer, não criar outro
   if (callTimers.has(roomId)) {
-    console.log(`⏱️ [TIMER] Timer já existe para sala ${roomId}`);
     return;
   }
 
   const startTime = Math.floor(Date.now() / 1000); // timestamp em segundos
   callStartTimes.set(roomId, startTime);
-  
-  console.log(`⏱️ [TIMER] Iniciando timer para sala ${roomId}`);
 
   // Emitir atualização a cada segundo
   const timer = setInterval(() => {
@@ -58,7 +55,19 @@ function startCallTimer(roomId: string, io: SocketIOServer): void {
     const duration = currentTime - startTime;
     
     // Emitir para todos na sala
-    io.to(roomId).emit('callTimerUpdate', { duration });
+    const room = rooms.get(roomId);
+    if (room) {
+      // Emitir para host se estiver conectado
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('callTimerUpdate', { duration });
+      }
+      // Emitir para participante se estiver conectado
+      if (room.participantSocketId) {
+        io.to(room.participantSocketId).emit('callTimerUpdate', { duration });
+      }
+      // Também emitir para a sala inteira (backup)
+      io.to(roomId).emit('callTimerUpdate', { duration });
+    }
   }, 1000);
 
   callTimers.set(roomId, timer);
@@ -73,7 +82,6 @@ function stopCallTimer(roomId: string): void {
     clearInterval(timer);
     callTimers.delete(roomId);
     callStartTimes.delete(roomId);
-    console.log(`⏱️ [TIMER] Timer parado para sala ${roomId}`);
   }
 }
 
@@ -317,6 +325,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         console.log(`🔄 Reconexão do host: ${participantName} na sala ${roomId}`);
         room.hostSocketId = socket.id;
         socketToRoom.set(socket.id, roomId);
+        socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
         resetRoomExpiration(roomId);
         
       // ✅ CORREÇÃO: Enviar transcrições históricas para reconexão
@@ -418,6 +427,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       
       userToRoom.set(participantName, roomId);
       socketToRoom.set(socket.id, roomId);
+      socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
       
       resetRoomExpiration(roomId);
 

@@ -3527,36 +3527,6 @@ export function ConsultationRoom({
 
         </div>
 
-        
-        {/* ✅ NOVO: Botão de Reconexão Manual (aparece só quando desconectado) */}
-        {!isConnected && (
-          <div style={{
-            padding: '10px',
-            backgroundColor: '#ff5722',
-            color: 'white',
-            textAlign: 'center',
-            borderRadius: '5px',
-            margin: '10px 0'
-          }}>
-            <p style={{ margin: '0 0 10px 0' }}>
-              ⚠️ Conexão perdida!
-            </p>
-            <button 
-              onClick={forceNewConnection}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#4caf50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              🔄 Reconectar Agora
-            </button>
-          </div>
-        )}
 
         <div className="room-controls">
 
