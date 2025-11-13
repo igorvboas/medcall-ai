@@ -2037,13 +2037,36 @@ export function ConsultationRoom({
       });
       
       // ✅ NOVO: Reconectar WebRTC quando paciente entrar/reconectar
+      // ✅ CORREÇÃO: Adicionar debounce para evitar múltiplas reconexões simultâneas
+      let reconnectTimeout: NodeJS.Timeout | null = null;
+      let isReconnecting = false;
+      
       socketRef.current.on('patient-entered-reconnect-webrtc', (data: any) => {
-        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} entrou/reconectou! Forçando RECONEXÃO WebRTC completa...`);
+        console.log(`🔔 [MÉDICO] Paciente ${data.participantName} entrou/reconectou!`);
         
-        const forceWebRTCReconnect = async () => {
+        // ✅ Se já está reconectando, ignorar
+        if (isReconnecting) {
+          console.log('⏭️ [MÉDICO] Reconexão já em andamento, ignorando evento duplicado');
+          return;
+        }
+        
+        // ✅ Limpar timeout anterior se houver
+        if (reconnectTimeout) {
+          console.log('🔄 [MÉDICO] Cancelando reconexão anterior (debounce)');
+          clearTimeout(reconnectTimeout);
+        }
+        
+        // ✅ Agendar reconexão com debounce de 1 segundo
+        reconnectTimeout = setTimeout(async () => {
+          if (isReconnecting) {
+            console.log('⏭️ [MÉDICO] Reconexão já em andamento, pulando');
+            return;
+          }
+          
+          isReconnecting = true;
+          console.log('🔄 [MÉDICO] Iniciando RECONEXÃO FORÇADA do WebRTC...');
+          
           try {
-            console.log('🔄 [MÉDICO] Iniciando RECONEXÃO FORÇADA do WebRTC...');
-            
             // 1. Fechar PeerConnection antiga
             if (peerConnectionRef.current) {
               console.log('🧹 [MÉDICO] Encerrando PeerConnection antiga...');
@@ -2081,11 +2104,11 @@ export function ConsultationRoom({
             console.log('✅ [MÉDICO] WebRTC reconectado com sucesso!');
           } catch (error) {
             console.error('❌ [MÉDICO] Erro ao reconectar WebRTC:', error);
+          } finally {
+            isReconnecting = false;
+            reconnectTimeout = null;
           }
-        };
-        
-        // Executar imediatamente (o delay já está no aguardo acima)
-        forceWebRTCReconnect();
+        }, 1000); // Debounce de 1 segundo
       });
 
     }
