@@ -89,6 +89,11 @@ export function ConsultationRoom({
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
+  // ✅ NOVO: Timer da chamada (em segundos)
+  const [callDuration, setCallDuration] = useState(0);
+  const [isCallTimerActive, setIsCallTimerActive] = useState(false);
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   
 
   // Estados para modal do paciente - igual ao projeto original
@@ -1465,6 +1470,52 @@ export function ConsultationRoom({
     tryJoin();
   };
 
+  // ✅ NOVO: Funções do timer da chamada
+  const startCallTimer = () => {
+    if (isCallTimerActive) {
+      console.log('⏱️ Timer já está ativo, ignorando');
+      return;
+    }
+    
+    console.log('⏱️ Iniciando timer da chamada...');
+    setIsCallTimerActive(true);
+    setCallDuration(0);
+    
+    callTimerRef.current = setInterval(() => {
+      setCallDuration(prev => prev + 1);
+    }, 1000);
+  };
+
+  const stopCallTimer = () => {
+    console.log('⏱️ Parando timer da chamada...');
+    setIsCallTimerActive(false);
+    
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+  };
+
+  const formatCallDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // ✅ Cleanup do timer quando componente desmontar
+  useEffect(() => {
+    return () => {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+      }
+    };
+  }, []);
+
   const resumeRemotePlayback = async () => {
     console.log('🔘 [WEBRTC] Botão "Liberar áudio e vídeo" clicado!');
     const video = remoteVideoRef.current;
@@ -2752,6 +2803,8 @@ export function ConsultationRoom({
         }, 3000);
       } else if (state === 'connected' || state === 'completed') {
         console.log('✅ WebRTC conectado com sucesso!');
+        // ✅ NOVO: Iniciar timer da chamada quando conectar
+        startCallTimer();
       }
     };
     
@@ -3435,6 +3488,36 @@ export function ConsultationRoom({
               }}>
 
                 🔄 Reconectando...
+
+              </span>
+
+            )}
+
+            {/* ✅ NOVO: Timer da chamada */}
+
+            {isCallTimerActive && (
+
+              <span style={{
+
+                marginLeft: '15px',
+
+                padding: '4px 12px',
+
+                backgroundColor: '#4CAF50',
+
+                color: 'white',
+
+                borderRadius: '20px',
+
+                fontSize: '0.9em',
+
+                fontWeight: 'bold',
+
+                fontFamily: 'monospace'
+
+              }}>
+
+                ⏱️ {formatCallDuration(callDuration)}
 
               </span>
 
