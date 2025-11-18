@@ -130,7 +130,8 @@ export function useAudioForker({
         // Conectar nós
         source.connect(analyser);
         source.connect(processor);
-        processor.connect(audioContext.destination);
+        // ✅ CORREÇÃO: Conectar ao analyser ao invés de destination (evita interferência)
+        processor.connect(analyser);
 
         // Configurar processamento de áudio via MessagePort
         processor.port.onmessage = (event) => {
@@ -175,7 +176,8 @@ export function useAudioForker({
         // Conectar nós
         source.connect(analyser);
         source.connect(processor);
-        processor.connect(audioContext.destination);
+        // ✅ CORREÇÃO: Conectar ao analyser ao invés de destination (evita interferência)
+        processor.connect(analyser);
 
         // Configurar processamento de áudio (fallback)
         processor.onaudioprocess = (event: any) => {

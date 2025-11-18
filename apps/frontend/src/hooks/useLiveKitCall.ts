@@ -211,9 +211,13 @@ export function useLiveKitCall({
         onAudioData(audioData, Date.now());
       };
 
-      // Conectar os nós
+      // ✅ CORREÇÃO: Usar AnalyserNode como destino (não reproduz áudio)
+      const analyser = audioContextRef.current.createAnalyser();
+      analyser.fftSize = 256;
+      
+      // Conectar os nós (sem conectar ao destination para evitar interferência)
       source.connect(processor);
-      processor.connect(audioContextRef.current.destination);
+      processor.connect(analyser);
 
       audioProcessorRef.current = processor;
       

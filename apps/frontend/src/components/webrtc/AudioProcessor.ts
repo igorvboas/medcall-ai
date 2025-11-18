@@ -44,9 +44,19 @@ export class AudioProcessor {
         1  // 1 canal de saída
       );
 
-      // Conectar nodes
+      // ✅ CORREÇÃO CRÍTICA: Criar AnalyserNode como destino (não reproduz áudio)
+      // O AnalyserNode permite processar áudio sem reproduzi-lo, evitando interferência
+      // com o áudio da chamada WebRTC
+      const analyser = this.audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+
+      // Conectar nodes: source -> processor -> analyser (sem conectar ao destination)
+      // O ScriptProcessorNode precisa estar conectado a algo para funcionar,
+      // mas o AnalyserNode não reproduz áudio, apenas analisa
       this.sourceNode.connect(this.processorNode);
-      this.processorNode.connect(this.audioContext.destination);
+      this.processorNode.connect(analyser);
+      // ✅ NÃO conectar ao destination - isso evita interferência com o áudio da chamada
 
       console.log('✅ AudioProcessor inicializado');
       return true;

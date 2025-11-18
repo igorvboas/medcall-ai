@@ -175,6 +175,33 @@ export function PresentialCallRoom({
         console.log('✅ Entrou na sessão:', data);
       });
 
+      // ✅ NOVO: Handler para receber histórico de transcrições ao reconectar
+      socketInstance.on('transcription:history', (data) => {
+        console.log('📜 Histórico de transcrições recebido:', data);
+        if (data.utterances && Array.isArray(data.utterances)) {
+          // Converter formato do banco para formato do frontend
+          const formattedUtterances = data.utterances.map((u: any) => ({
+            id: u.id,
+            speaker: u.speaker,
+            text: u.text,
+            timestamp: new Date(u.created_at || u.timestamp),
+            confidence: u.confidence || 0,
+            isFinal: u.is_final !== false
+          }));
+
+          // Adicionar IDs ao Set de processados para evitar duplicação
+          formattedUtterances.forEach((u: any) => {
+            processedUtteranceIds.current.add(u.id);
+          });
+
+          // Popular estado com histórico
+          setUtterances(formattedUtterances);
+          console.log(`✅ ${formattedUtterances.length} transcrições históricas carregadas`);
+        } else {
+          console.warn('⚠️ Dados de histórico sem utterances:', data);
+        }
+      });
+
       // Handlers para transcrição
       socketInstance.on('transcription:update', (data) => {
         console.log('📨 Frontend recebeu transcrição:', data);

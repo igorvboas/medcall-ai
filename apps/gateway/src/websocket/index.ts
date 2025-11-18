@@ -33,7 +33,7 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
     setupOnlineConsultationHandlers(socket, notifier);
 
     // Handler para participar de uma sessão
-    socket.on('session:join', (data: SessionJoinData) => {
+    socket.on('session:join', async (data: SessionJoinData) => {
       const { sessionId, userId, role } = data;
       
       if (!sessionId || !userId || !role) {
@@ -53,6 +53,28 @@ export function setupWebSocketHandlers(io: SocketIOServer): void {
         role,
         timestamp: new Date().toISOString(),
       });
+
+      // ✅ NOVO: Buscar e enviar histórico de transcrições
+      try {
+        const { db } = await import('../config/database');
+        const utterances = await db.getSessionUtterances(sessionId);
+        
+        if (utterances && utterances.length > 0) {
+          // Enviar histórico completo via SessionNotifier
+          notifier.emitTranscriptionHistory(sessionId, utterances);
+          
+          if (isDevelopment) {
+            console.log(`📜 ${utterances.length} transcrições históricas enviadas para ${userId} na sessão ${sessionId}`);
+          }
+        } else {
+          if (isDevelopment) {
+            console.log(`📜 Nenhuma transcrição histórica encontrada para sessão ${sessionId}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar histórico de transcrições:', error);
+        // Não bloquear a conexão se houver erro ao buscar histórico
+      }
 
       // Confirmar entrada na sessão
       socket.emit('session:joined', {
@@ -335,6 +357,16 @@ export class SessionNotifier {
       channel,
       isActive,
       timestamp: new Date().toISOString()
+    });
+  }
+
+  // ✅ NOVO: Enviar histórico de transcrições para uma sessão
+  emitTranscriptionHistory(sessionId: string, utterances: any[]) {
+    this.io.to(`session:${sessionId}`).emit('transcription:history', {
+      sessionId,
+      utterances,
+      count: utterances.length,
+      timestamp: new Date().toISOString(),
     });
   }
 }
