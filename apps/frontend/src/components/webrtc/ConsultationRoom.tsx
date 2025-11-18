@@ -231,21 +231,36 @@ export function ConsultationRoom({
   // Estado com ICE servers (começa com STUN + eventual TURN do .env)
   const [iceServersState, setIceServersState] = useState<RTCIceServer[]>(iceServers);
 
-  // Buscar credenciais efêmeras da Twilio via gateway (se disponível)consol
+  // Buscar credenciais efêmeras da Twilio via gateway (se disponível)
+  // ✅ CORREÇÃO: Adicionar ref para evitar múltiplas chamadas
+  const turnCredentialsFetchedRef = useRef<boolean>(false);
   
-  console.log('------> vou chamar a api /api/turn-credentials')
   useEffect(() => {
+    // ✅ CORREÇÃO: Evitar múltiplas chamadas
+    if (turnCredentialsFetchedRef.current) {
+      return;
+    }
+    turnCredentialsFetchedRef.current = true;
+    
     const httpBase = (process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001').replace(/^ws/i, 'http');
+    console.log('🔄 [TURN] Buscando credenciais TURN do gateway...');
+    
     fetch(`${httpBase}/api/turn-credentials`)
       .then(async (r) => {
-        if (!r.ok) return;
+        // ✅ CORREÇÃO: Agora o endpoint sempre retorna 200 (com STUN se Twilio não estiver configurado)
         const data = await r.json();
         if (data && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+          console.log(`✅ [TURN] ${data.iceServers.length} ICE servers recebidos`);
           setIceServersState(data.iceServers as RTCIceServer[]);
+        } else {
+          console.warn('⚠️ [TURN] Nenhum ICE server recebido, usando configuração padrão');
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch((error) => {
+        console.warn('⚠️ [TURN] Erro ao buscar credenciais TURN, usando STUN apenas:', error);
+        // Continuar com STUN apenas - não é crítico
+      });
+  }, []); // ✅ Executar apenas uma vez na montagem
 
   const peerConfiguration: RTCConfiguration = {
     iceServers: iceServersState
@@ -2811,8 +2826,19 @@ export function ConsultationRoom({
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Adicionando', tracks.length, 'tracks locais');
       tracks.forEach((track, index) => {
         console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] addTrack #${index} kind=${track.kind} enabled=${track.enabled} state=${track.readyState}`);
+        
+        // ✅ DEBUG: Verificar se é track de áudio e se está habilitado
+        if (track.kind === 'audio') {
+          console.log(`🔊 [WEBRTC] Track de áudio encontrado: enabled=${track.enabled}, readyState=${track.readyState}, id=${track.id}`);
+        }
+        
         const sender = peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
         console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] sender #${index} criado para ${track.kind}`, sender ? 'ok' : 'fail');
+        
+        // ✅ DEBUG: Verificar sender de áudio
+        if (track.kind === 'audio' && sender) {
+          console.log(`🔊 [WEBRTC] Sender de áudio criado: track.enabled=${sender.track?.enabled}, track.readyState=${sender.track?.readyState}`);
+        }
       });
 
       
@@ -2857,6 +2883,12 @@ export function ConsultationRoom({
     peerConnectionRef.current.ontrack = (e) => {
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] ontrack recebido kind=', e.track.kind, 'streams=', e.streams?.length);
       
+      // ✅ DEBUG CRÍTICO: Verificar track de áudio remoto
+      if (e.track.kind === 'audio') {
+        console.log(`🔊 [WEBRTC] Track de áudio REMOTO recebido: enabled=${e.track.enabled}, readyState=${e.track.readyState}, id=${e.track.id}`);
+        console.log(`🔊 [WEBRTC] Stream remoto tem ${e.streams[0]?.getAudioTracks().length || 0} tracks de áudio`);
+      }
+      
       // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
       if (e.streams && e.streams[0]) {
         //console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
@@ -2900,11 +2932,21 @@ export function ConsultationRoom({
                       console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
                       setIsRemotePlaybackBlocked(false);
                       
-                      // Tentar desmutar após 500ms
+                      // ✅ CORREÇÃO: Tentar desmutar após 500ms e verificar se realmente foi desmutado
                       setTimeout(() => {
-                        if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
+                        if (remoteVideoRef.current) {
+                          const wasMuted = remoteVideoRef.current.muted;
                           remoteVideoRef.current.muted = false;
-                          console.log('🔊 [WEBRTC] Áudio remoto reativado automaticamente');
+                          console.log(`🔊 [WEBRTC] Áudio remoto reativado automaticamente (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
+                          
+                          // ✅ DEBUG: Verificar tracks de áudio do stream
+                          const stream = remoteVideoRef.current.srcObject as MediaStream | null;
+                          if (stream) {
+                            const audioTracks = stream.getAudioTracks();
+                            console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`, 
+                              audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
+                            );
+                          }
                         }
                       }, 500);
                     })
@@ -2923,6 +2965,14 @@ export function ConsultationRoom({
                         console.log('📹 [WEBRTC] ℹ️ Play será retomado automaticamente quando stream tiver dados');
                         setIsRemotePlaybackBlocked(false);
                       }
+                      
+                      // ✅ CORREÇÃO: Tentar desmutar mesmo quando play() falhar
+                      setTimeout(() => {
+                        if (remoteVideoRef.current) {
+                          remoteVideoRef.current.muted = false;
+                          console.log('🔊 [WEBRTC] Áudio desmutado mesmo após falha no play()');
+                        }
+                      }, 1000);
                     });
                 } else {
                   // Fallback para navegadores antigos
@@ -2934,9 +2984,27 @@ export function ConsultationRoom({
                 // ✅ CORREÇÃO: Garantir que o áudio seja desmutado mesmo quando pulamos o play()
                 // (quando o segundo track chega)
                 setTimeout(() => {
-                  if (remoteVideoRef.current && !remoteVideoRef.current.paused) {
+                  if (remoteVideoRef.current) {
+                    const wasMuted = remoteVideoRef.current.muted;
                     remoteVideoRef.current.muted = false;
-                    console.log('🔊 [WEBRTC] Áudio remoto garantido após segundo track');
+                    console.log(`🔊 [WEBRTC] Áudio remoto garantido após segundo track (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
+                    
+                    // ✅ DEBUG: Verificar se o vídeo está tocando
+                    if (remoteVideoRef.current.paused) {
+                      console.warn('⚠️ [WEBRTC] Vídeo remoto está pausado, tentando play()...');
+                      remoteVideoRef.current.play().catch((err) => {
+                        console.error('❌ [WEBRTC] Erro ao fazer play() do vídeo remoto:', err);
+                      });
+                    }
+                    
+                    // ✅ DEBUG: Verificar tracks de áudio do stream
+                    const stream = remoteVideoRef.current.srcObject as MediaStream | null;
+                    if (stream) {
+                      const audioTracks = stream.getAudioTracks();
+                      console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`, 
+                        audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
+                      );
+                    }
                   }
                 }, 500);
               }

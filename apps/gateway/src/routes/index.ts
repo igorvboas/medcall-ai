@@ -7,8 +7,21 @@ router.get('/turn-credentials', async (req, res) => {
   try {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
+    
+    // ✅ CORREÇÃO: Se Twilio não estiver configurado, retornar STUN apenas (não erro 500)
+    // Isso permite que o WebRTC funcione mesmo sem TURN server
     if (!accountSid || !authToken) {
-      return res.status(500).json({ error: 'Twilio credentials not configured' });
+      console.warn('⚠️ Twilio credentials not configured, returning STUN servers only');
+      return res.json({ 
+        iceServers: [
+          {
+            urls: [
+              'stun:stun.l.google.com:19302',
+              'stun:stun1.l.google.com:19302'
+            ]
+          }
+        ]
+      });
     }
 
     const client = twilio(accountSid, authToken);
@@ -16,7 +29,18 @@ router.get('/turn-credentials', async (req, res) => {
     const token = await client.tokens.create({ ttl: 28800 });
     res.json({ iceServers: token.iceServers });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to get TURN credentials' });
+    console.error('❌ Erro ao obter credenciais TURN:', error);
+    // ✅ CORREÇÃO: Em caso de erro, retornar STUN apenas ao invés de erro 500
+    res.json({ 
+      iceServers: [
+        {
+          urls: [
+            'stun:stun.l.google.com:19302',
+            'stun:stun1.l.google.com:19302'
+          ]
+        }
+      ]
+    });
   }
 });
 
