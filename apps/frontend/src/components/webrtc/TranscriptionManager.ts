@@ -206,65 +206,56 @@ export class TranscriptionManager {
   private handleMessage(data: any): void {
     try {
       const message = JSON.parse(data);
-      console.log('[TRANSCRIPTION] 📨 Mensagem recebida:', message.type);
+      // Logs removidos para reduzir poluição no console
 
       switch (message.type) {
         case 'session.created':
-          console.log('[TRANSCRIPTION] ✅ Sessão criada:', message.session);
+          // Log removido
           break;
 
         case 'session.updated':
-          console.log('[TRANSCRIPTION] ✅ Sessão atualizada');
+          // Log removido
           break;
 
         case 'input_audio_buffer.committed':
-          console.log('[TRANSCRIPTION] ✅ Buffer de áudio confirmado');
+          // Log removido
           break;
 
         case 'input_audio_buffer.speech_started':
-          console.log('[TRANSCRIPTION] 🎤 Fala detectada!');
           this.isTranscribing = true;
           break;
 
         case 'input_audio_buffer.speech_stopped':
-          console.log('[TRANSCRIPTION] 🤐 Fala pausada');
           this.finalizeSpeech();
           break;
 
         case 'conversation.item.created':
-          console.log('[TRANSCRIPTION] 💬 Item de conversa criado:', message.item);
-          // ✅ CORREÇÃO: Removido handleTranscription para evitar duplicação
-          // this.handleTranscription(message.item); - REMOVIDO
+          // Log removido
           break;
 
         case 'conversation.item.input_audio_transcription.completed':
-          console.log('[TRANSCRIPTION] 📝 Transcrição de input completa:', message.transcript);
           // Único evento correto: transcrição do áudio do USUÁRIO
           this.processUserTranscription(message.transcript);
           break;
 
         case 'response.created':
-          console.log('[TRANSCRIPTION] 🤖 Resposta criada');
           // Ignorado: não queremos respostas do assistente
           break;
 
         case 'response.output_item.added':
-          console.log('[TRANSCRIPTION] 📤 Item de output adicionado:', message.item);
           // Ignorado: outputs são respostas do assistente
           break;
 
         case 'response.content_part.added':
-          console.log('[TRANSCRIPTION] 📝 Parte de conteúdo adicionada');
           // Ignorado: conteúdo gerado pelo assistente
           break;
 
         case 'response.audio_transcript.delta':
-          console.log('[TRANSCRIPTION] 📝 Delta de transcrição de áudio:', message.delta);
           // Ignorado: transcrição do áudio gerado pelo assistente
           break;
 
         case 'response.done':
-          console.log('[TRANSCRIPTION] ✅ Resposta completa');
+          // Log removido
           break;
 
         case 'error':
@@ -272,7 +263,7 @@ export class TranscriptionManager {
           break;
 
         default:
-          console.log('[TRANSCRIPTION] 📦 Tipo de mensagem:', message.type, message);
+          // Log removido - apenas erros são logados
       }
     } catch (error) {
       console.error('[TRANSCRIPTION ERROR] Erro ao processar mensagem:', error);

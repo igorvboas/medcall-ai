@@ -215,7 +215,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     // ==================== CRIAR SALA ====================
     
     socket.on('createRoom', async (data, callback) => {
-      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone, userAuth } = data;
+      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone, userAuth, consultationType } = data;
       
       // Verificar se usuário já está em outra sala
       if (userToRoom.has(hostName)) {
@@ -252,7 +252,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         patientEmail: patientEmail,
         patientPhone: patientPhone,
         userAuth: userAuth, // ID do user autenticado (Supabase Auth)
-        callSessionId: null // Será preenchido após criar no banco
+        callSessionId: null, // Será preenchido após criar no banco
+        doctorName: null // ✅ Nome do médico (será preenchido quando buscar dados do médico)
       };
       rooms.set(roomId, room);
       userToRoom.set(hostName, roomId);
@@ -262,6 +263,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       startRoomExpiration(roomId);
 
       // ✅ CRIAR CALL_SESSION NO BANCO DE DADOS
+      let consultationId = null;
       try {
         const callSession = await db.createCallSession({
           livekit_room_id: roomId,
@@ -280,10 +282,60 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         });
 
         if (callSession) {
-          console.log(`💾 Call session criada no banco: ${callSession.id}`);
+          console.log(`✅ [CALL_SESSION] Criada no banco: ${callSession.id} para sala ${roomId}`);
           room.callSessionId = callSession.id; // Salvar referência
         } else {
-          console.warn('⚠️ Falha ao criar call_session no banco (sala criada apenas em memória)');
+          console.warn(`⚠️ [CALL_SESSION] Falha ao criar call_session no banco para sala ${roomId} (sala criada apenas em memória)`);
+        }
+
+        // ✅ CRIAR CONSULTA COM STATUS RECORDING QUANDO A SALA É CRIADA
+        // ✅ Também salvar nome do médico na room para uso posterior
+        let doctorName = hostName; // Fallback para hostName
+        if (userAuth && patientId) {
+          try {
+            const doctor = await db.getDoctorByAuth(userAuth);
+            
+            if (doctor && doctor.id) {
+              // ✅ Salvar nome do médico (pode estar em 'name', 'nome', 'full_name', etc.)
+              doctorName = doctor.name || doctor.nome || doctor.full_name || doctor.nome_completo || hostName;
+              room.doctorName = doctorName; // Salvar na room para uso posterior
+              
+              // ✅ Salvar nome do médico também na call_sessions metadata
+              if (callSession && callSession.id) {
+                const currentMetadata = callSession.metadata || {};
+                await db.updateCallSession(roomId, {
+                  metadata: {
+                    ...currentMetadata,
+                    doctorName: doctorName
+                  }
+                });
+              }
+              
+              const consultationTypeValue = consultationType === 'presencial' ? 'PRESENCIAL' : 'TELEMEDICINA';
+              
+              const consultation = await db.createConsultation({
+                doctor_id: doctor.id,
+                patient_id: patientId,
+                patient_name: patientName,
+                consultation_type: consultationTypeValue,
+                status: 'RECORDING',
+                patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`
+              });
+
+              if (consultation) {
+                consultationId = consultation.id;
+                room.consultationId = consultationId;
+                
+                if (callSession && callSession.id) {
+                  await db.updateCallSession(roomId, {
+                    consultation_id: consultationId
+                  });
+                }
+              }
+            }
+          } catch (consultationError) {
+            console.error('❌ Erro ao criar consulta:', consultationError);
+          }
         }
       } catch (error) {
         console.error('❌ Erro ao criar call_session:', error);
@@ -833,28 +885,43 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       room.transcriptions.push(transcriptionEntry);
       console.log('[DEBUG] [sendTranscriptionToPeer]')
       
-      // ✅ NOVO: Salvar transcrição no banco de dados imediatamente
+      // ✅ NOVO: Salvar transcrição em array único (atualizando o registro existente)
       if (room.callSessionId) {
         try {
           const { db } = await import('../config/database');
-          await db.createUtterance({
-            id: `utterance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            session_id: room.callSessionId,
-            speaker: from === room.hostUserName ? 'doctor' : 'patient',
+          
+          // ✅ Determinar speaker e speaker_id com nomes reais
+          const isDoctor = from === room.hostUserName;
+          const speaker = isDoctor ? 'doctor' : 'patient';
+          const speakerId = isDoctor ? room.hostUserName : (room.participantUserName || room.patientName || 'Paciente');
+          
+          // ✅ Salvar no array de conversas (atualiza o registro único)
+          const success = await db.addTranscriptionToSession(room.callSessionId, {
+            speaker: speaker,
+            speaker_id: speakerId,
             text: transcription,
-            confidence: 0.95, // Alta confiança para transcrições do OpenAI
+            confidence: 0.95,
             start_ms: Date.now(),
             end_ms: Date.now(),
-            is_final: true,
-            created_at: new Date().toISOString()
+            doctor_name: room.doctorName || room.hostUserName // ✅ Passar nome do médico
           });
-          console.log(`💾 [ROOM ${roomId}] Transcrição salva no banco: "${transcription.substring(0, 50)}..."`);
+          
+          if (!success) {
+            console.warn(`⚠️ [AUTO-SAVE] Falha ao adicionar transcrição ao array`);
+          }
         } catch (error) {
-          console.error(`❌ [ROOM ${roomId}] Erro ao salvar transcrição no banco:`, error);
+          console.error(`❌ [AUTO-SAVE] Erro ao salvar transcrição no banco:`, error);
           // Continuar mesmo se falhar (não bloquear transcrição)
         }
       } else {
-        console.warn(`⚠️ [ROOM ${roomId}] callSessionId não disponível, transcrição não salva no banco`);
+        console.warn(`⚠️ [AUTO-SAVE] callSessionId não disponível para sala ${roomId}, transcrição não salva no banco`);
+        console.warn(`⚠️ [AUTO-SAVE] Room data:`, { 
+          roomId, 
+          hostUserName: room.hostUserName,
+          participantUserName: room.participantUserName,
+          patientName: room.patientName,
+          hasCallSessionId: !!room.callSessionId 
+        });
       }
       
       resetRoomExpiration(roomId);
@@ -977,10 +1044,11 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       // ==================== SALVAR NO BANCO DE DADOS ====================
       try {
-        // 1. Buscar doctor_id pelo userAuth
+        // 1. Buscar doctor_id pelo userAuth (se necessário para fallback)
         let doctorId = null;
-        if (room.userAuth) {
-          const doctor = await db.getDoctorByAuth(room.userAuth);
+        if (room.userAuth && !room.consultationId) {
+          // Só buscar se não temos consultationId (para fallback)
+          const doctor = await db.getMedicoByUserAuth(room.userAuth);
           if (doctor) {
             doctorId = doctor.id;
             console.log(`👨‍⚕️ Médico encontrado: ${doctor.name} (${doctorId})`);
@@ -989,9 +1057,34 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           }
         }
 
-        // 2. Criar CONSULTATION (se temos doctor_id e patientId)
-        let consultationId = null;
-        if (doctorId && room.patientId) {
+        // 2. Usar CONSULTATION existente ou criar se não existir
+        let consultationId = room.consultationId || null;
+        
+        if (consultationId) {
+          // ✅ Consulta já existe (foi criada quando a sala foi criada)
+          // Atualizar status para PROCESSING
+          try {
+            const { supabase } = await import('../config/database');
+            
+            const { error: updateError } = await supabase
+              .from('consultations')
+              .update({
+                status: 'PROCESSING',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', consultationId);
+            
+            if (updateError) {
+              console.error('❌ Erro ao atualizar status da consulta:', updateError);
+            } else {
+              console.log(`📋 Consulta ${consultationId} atualizada para PROCESSING`);
+            }
+          } catch (updateError) {
+            console.error('❌ Erro ao atualizar consulta:', updateError);
+          }
+        } else if (doctorId && room.patientId) {
+          // ✅ Fallback: criar consulta se não foi criada antes (compatibilidade)
+          console.warn('⚠️ Consulta não encontrada na room, criando nova...');
           const consultation = await db.createConsultation({
             doctor_id: doctorId,
             patient_id: room.patientId,
@@ -1003,13 +1096,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
           if (consultation) {
             consultationId = consultation.id;
-            console.log(`📋 Consulta criada: ${consultationId}`);
+            console.log(`📋 Consulta criada (fallback): ${consultationId}`);
             saveResult.consultationId = consultationId;
           } else {
             console.warn('⚠️ Falha ao criar consulta no banco');
           }
         } else {
-          console.warn('⚠️ Consulta não criada - faltam doctor_id ou patientId');
+          console.warn('⚠️ Consulta não criada/atualizada - faltam doctor_id ou patientId');
         }
 
         // 3. Atualizar CALL_SESSION com consultation_id

@@ -290,23 +290,49 @@ class ASRService {
     return transcriptionResult;
   }
 
-  // Salvar transcrição no banco de dados
+  // Salvar transcrição no banco de dados (usando array único)
   private async saveTranscription(transcription: TranscriptionResult): Promise<void> {
     try {
-      await db.createUtterance({
-        id: transcription.id,
-        session_id: transcription.sessionId,
-        speaker: transcription.speaker,
+      // ✅ Validar sessionId antes de salvar
+      if (!transcription.sessionId) {
+        console.error('❌ [SAVE] sessionId não fornecido, não é possível salvar transcrição');
+        console.error('❌ [SAVE] TranscriptionResult completo:', JSON.stringify(transcription, null, 2));
+        return;
+      }
+
+      // ✅ Garantir que speaker está no formato correto
+      let speaker: 'doctor' | 'patient' | 'system' = 'system';
+      const speakerLower = (transcription.speaker || '').toLowerCase();
+      if (speakerLower.includes('doctor') || speakerLower.includes('médico') || speakerLower.includes('medico') || speakerLower.includes('host')) {
+        speaker = 'doctor';
+      } else if (speakerLower.includes('patient') || speakerLower.includes('paciente') || speakerLower.includes('participant')) {
+        speaker = 'patient';
+      }
+
+      // ✅ Usar addTranscriptionToSession para salvar em array único
+      // Para consultas presenciais, usar o speaker como speaker_id (já que não temos nome real aqui)
+      const speakerId = speaker; // Em consultas presenciais, pode não ter o nome real disponível
+      
+      const success = await db.addTranscriptionToSession(transcription.sessionId, {
+        speaker: speaker,
+        speaker_id: speakerId,
         text: transcription.text,
         confidence: transcription.confidence,
         start_ms: transcription.startTime,
-        end_ms: transcription.endTime,
-        is_final: transcription.is_final,
-        created_at: transcription.timestamp
+        end_ms: transcription.endTime
       });
+
+      if (!success) {
+        console.warn('⚠️ [SAVE] Falha ao adicionar transcrição ao array');
+      } else {
+        console.log(`✅ [SAVE] Transcrição adicionada ao array: [${speaker}] "${transcription.text.substring(0, 30)}..."`);
+      }
     } catch (error) {
-      console.error('Erro ao salvar utterance no banco:', error);
-      throw error;
+      console.error('❌ [SAVE] Erro ao salvar transcrição no banco:', error);
+      if (error instanceof Error) {
+        console.error('❌ [SAVE] Stack trace:', error.stack);
+      }
+      // Não lançar erro para não bloquear o fluxo de transcrição
     }
   }
 
@@ -327,11 +353,20 @@ class ASRService {
       return null;
     }
 
+    // ✅ Mapear speaker para valores aceitos pelo schema ('doctor', 'patient', 'system')
+    let speaker: 'doctor' | 'patient' | 'system' = 'system';
+    const channelLower = audioChunk.channel?.toLowerCase() || '';
+    if (channelLower.includes('doctor') || channelLower.includes('médico') || channelLower.includes('medico') || channelLower.includes('host')) {
+      speaker = 'doctor';
+    } else if (channelLower.includes('patient') || channelLower.includes('paciente') || channelLower.includes('participant')) {
+      speaker = 'patient';
+    }
+
     // Criar resultado de transcrição
     const transcriptionResult: TranscriptionResult = {
       id: randomUUID(),
       sessionId: audioChunk.sessionId,
-      speaker: audioChunk.channel,
+      speaker: speaker, // ✅ Usar valor mapeado
       text: cleanedText,
       confidence: this.calculateWhisperConfidence(result),
       timestamp: new Date().toISOString(),
@@ -340,8 +375,24 @@ class ASRService {
       is_final: true
     };
 
-    // Salvar no banco de dados
-    await this.saveTranscription(transcriptionResult);
+    // ✅ Salvar no banco de dados automaticamente
+    console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
+      sessionId: transcriptionResult.sessionId,
+      speaker: speaker,
+      textLength: cleanedText.length,
+      textPreview: cleanedText.substring(0, 50) + '...'
+    });
+    
+    try {
+      await this.saveTranscription(transcriptionResult);
+      console.log(`✅ [AUTO-SAVE] Transcrição salva automaticamente no banco: ${speaker} - "${cleanedText.substring(0, 30)}..."`);
+    } catch (saveError) {
+      console.error('❌ [AUTO-SAVE] Erro ao salvar transcrição automaticamente:', saveError);
+      if (saveError instanceof Error) {
+        console.error('❌ [AUTO-SAVE] Stack:', saveError.stack);
+      }
+      // Não bloquear o fluxo se o salvamento falhar
+    }
     
     // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
     console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);

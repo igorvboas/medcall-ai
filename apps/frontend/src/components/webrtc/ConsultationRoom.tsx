@@ -15,7 +15,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check } from 'lucide-react';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 
@@ -92,6 +92,13 @@ export function ConsultationRoom({
   // ✅ NOVO: Timer da chamada (em segundos) - controlado pelo servidor
   const [callDuration, setCallDuration] = useState(0);
   const [isCallTimerActive, setIsCallTimerActive] = useState(false);
+
+  // ✅ NOVO: Estado para controlar se o link foi copiado
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // ✅ NOVO: Estado para notificação de paciente entrando
+  const [showPatientJoinedNotification, setShowPatientJoinedNotification] = useState(false);
+  const [patientJoinedName, setPatientJoinedName] = useState('');
 
   
 
@@ -1021,7 +1028,7 @@ export function ConsultationRoom({
 
     transcriptionManagerRef.current.onTranscriptUpdate = (transcript: string) => {
 
-      console.log('🎤 [TRANSCRIPTION] Recebido transcript:', transcript);
+      // Log removido
 
       //console.log('🎤 [TRANSCRIPTION] didOfferRef.current:', didOfferRef.current);
       //console.log('🎤 [TRANSCRIPTION] userType:', userType);
@@ -1029,19 +1036,23 @@ export function ConsultationRoom({
       //console.log('🎤 [TRANSCRIPTION] remoteUserNameRef.current:', remoteUserNameRef.current);
       
 
-      // CASO 1: Sou o OFFERER (médico) - exibir localmente
-
+      // CASO 1: Sou o OFFERER (médico) - exibir localmente E enviar para servidor
       if (didOfferRef.current === true) {
-
-        //console.log('✅ Sou OFFERER - exibindo localmente');
         // Adicionar à UI usando método público do TranscriptionManager
-
         if (transcriptionManagerRef.current) {
-
           transcriptionManagerRef.current.addTranscriptToUI(transcript, userNameRef.current || 'Você');
-
         }
-
+        
+        // ✅ NOVO: Médico também envia transcrição para servidor para salvar no banco
+        if (socketRef.current && roomIdRef.current && userNameRef.current) {
+          socketRef.current.emit('sendTranscriptionToPeer', {
+            roomId: roomIdRef.current,
+            from: userNameRef.current,
+            to: remoteUserNameRef.current || 'patient',
+            transcription: transcript,
+            timestamp: new Date().toISOString()
+          });
+        }
       } 
 
       // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
@@ -1069,7 +1080,7 @@ export function ConsultationRoom({
 
           });
 
-          console.log('📤 [TRANSCRIPTION] Enviado para peer');
+          // Log removido
 
         } else {
 
@@ -1093,8 +1104,7 @@ export function ConsultationRoom({
 
     transcriptionManagerRef.current.onUIUpdate = (fullText: string) => {
 
-      console.log('📝 [TRANSCRIPTION] Atualizando UI com texto completo', fullText.length, 'caracteres');
-      console.log('📝 [TRANSCRIPTION] Preview:', fullText.substring(0, 100) + (fullText.length > 100 ? '...' : ''));
+      // Logs removidos
       
       // ✅ PROTEÇÃO: Não substituir por texto vazio se já houver conteúdo no manager
       // O TranscriptionManager já tem proteções, mas adicionamos uma camada extra aqui
@@ -1926,6 +1936,42 @@ export function ConsultationRoom({
 
       setParticipantName(data.participantName);
 
+      // ✅ NOVO: Mostrar notificação quando paciente entra (apenas para médico)
+      if (userType === 'doctor') {
+        setPatientJoinedName(data.participantName || patientName || 'Paciente');
+        setShowPatientJoinedNotification(true);
+        
+        // ✅ NOVO: Tocar som de notificação
+        try {
+          // Criar um tom de notificação usando Web Audio API
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          // Configurar o som (tom agradável e curto)
+          oscillator.frequency.value = 800; // Frequência em Hz
+          oscillator.type = 'sine'; // Tom suave
+          
+          // Envelope de volume (fade in/out suave)
+          gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+          gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.15);
+        } catch (error) {
+          console.warn('Não foi possível tocar som de notificação:', error);
+        }
+        
+        // Esconder notificação após 5 segundos
+        setTimeout(() => {
+          setShowPatientJoinedNotification(false);
+        }, 5000);
+      }
+
     });
 
     // ✅ NOVO: Atualização do timer da chamada (servidor)
@@ -1998,7 +2044,7 @@ export function ConsultationRoom({
 
     socketRef.current.on('receivedIceCandidateFromServer', (iceCandidate: any) => {
 
-      console.log('ICE candidate recebido:', iceCandidate);
+      // Log removido
 
       addIceCandidate(iceCandidate);
 
@@ -2477,7 +2523,7 @@ export function ConsultationRoom({
 
       await peerConnectionRef.current.addIceCandidate(iceCandidate);
 
-      console.log('✅ ICE candidate adicionado com sucesso');
+      // Log removido
 
     } catch (error) {
 
@@ -2603,9 +2649,7 @@ export function ConsultationRoom({
 
       
       // 🔍 DEBUG [REFERENCIA] MÍDIA OBTIDA
-      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Stream obtido');
-      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Tracks totais:', stream.getTracks().length);
-      console.log('🔍 DEBUG [REFERENCIA] [MEDIA] Tracks detalhe:', stream.getTracks().map(t => `${t.kind}:${t.enabled}:${t.readyState}`));
+      // Logs removidos
       
 
       // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
@@ -2774,18 +2818,18 @@ export function ConsultationRoom({
     }
 
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
-    console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] PeerConnection criada');
+    // Log removido
 
     
 
     // ✅ Monitorar estado da conexão
     peerConnectionRef.current.onconnectionstatechange = () => {
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] connectionState =', peerConnectionRef.current?.connectionState);
+      // Log removido
     };
     
     peerConnectionRef.current.oniceconnectionstatechange = () => {
       const state = peerConnectionRef.current?.iceConnectionState;
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] iceConnectionState =', state);
+      // Log removido
       
       // ✅ RECONEXÃO AUTOMÁTICA: Detectar falha e tentar renegociar
       if (state === 'failed' || state === 'disconnected') {
@@ -2806,7 +2850,7 @@ export function ConsultationRoom({
     };
     
     peerConnectionRef.current.onsignalingstatechange = () => {
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] signalingState =', peerConnectionRef.current?.signalingState);
+      // Log removido
     };
     
     // ✅ CORREÇÃO: Criar remoteStream vazio (será preenchido quando receber tracks)
@@ -2823,7 +2867,7 @@ export function ConsultationRoom({
       //console.log('🔗 [WEBRTC] userType:', userType);
       
 
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] Adicionando', tracks.length, 'tracks locais');
+      // Log removido
       tracks.forEach((track, index) => {
         console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] addTrack #${index} kind=${track.kind} enabled=${track.enabled} state=${track.readyState}`);
         
@@ -2881,13 +2925,7 @@ export function ConsultationRoom({
     
     // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
     peerConnectionRef.current.ontrack = (e) => {
-      console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] ontrack recebido kind=', e.track.kind, 'streams=', e.streams?.length);
-      
-      // ✅ DEBUG CRÍTICO: Verificar track de áudio remoto
-      if (e.track.kind === 'audio') {
-        console.log(`🔊 [WEBRTC] Track de áudio REMOTO recebido: enabled=${e.track.enabled}, readyState=${e.track.readyState}, id=${e.track.id}`);
-        console.log(`🔊 [WEBRTC] Stream remoto tem ${e.streams[0]?.getAudioTracks().length || 0} tracks de áudio`);
-      }
+      // Logs removidos para reduzir poluição no console
       
       // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
       if (e.streams && e.streams[0]) {
@@ -3389,7 +3427,37 @@ export function ConsultationRoom({
 
   };
 
+  // ✅ NOVO: Função para copiar link do paciente
+  const handleCopyPatientLink = async () => {
+    try {
+      const baseUrl = window.location.origin;
+      const patientParams = new URLSearchParams({
+        roomId: roomId,
+        role: 'participant',
+      });
+      
+      if (patientId) {
+        patientParams.append('patientId', patientId);
+      }
+      
+      if (patientName) {
+        patientParams.append('patientName', patientName);
+      }
 
+      const patientLink = `${baseUrl}/consulta/online/patient?${patientParams.toString()}`;
+      
+      await navigator.clipboard.writeText(patientLink);
+      setLinkCopied(true);
+      
+      // Resetar mensagem após 3 segundos
+      setTimeout(() => {
+        setLinkCopied(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      alert('Erro ao copiar link. Tente novamente.');
+    }
+  };
 
   const endRoom = async () => {
 
@@ -3501,6 +3569,40 @@ export function ConsultationRoom({
   return (
 
     <div className="consultation-room-container">
+
+      {/* ✅ NOVO: Notificação de paciente entrando */}
+      {showPatientJoinedNotification && userType === 'doctor' && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+            color: 'white',
+            padding: '1rem 1.5rem',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            minWidth: '300px',
+            animation: 'slideInRight 0.3s ease-out',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowPatientJoinedNotification(false)}
+        >
+          <CheckCircle size={24} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>
+              Paciente Entrou na Sala
+            </div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>
+              {patientJoinedName} está agora na consulta
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
 
@@ -3674,6 +3776,41 @@ export function ConsultationRoom({
           )} */}
 
           
+
+          {/* ✅ NOVO: Botão para copiar link do paciente - apenas para médico */}
+          {userType === 'doctor' && (
+            <button 
+              className="btn-copy-link" 
+              onClick={handleCopyPatientLink}
+              style={{
+                padding: '0.5rem 1rem',
+                background: linkCopied ? '#4caf50' : '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'background 0.3s',
+                marginRight: '10px'
+              }}
+              title="Copiar link da consulta para o paciente"
+            >
+              {linkCopied ? (
+                <>
+                  <Check size={16} />
+                  <span>Link Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={16} />
+                  <span>Copiar Link do Paciente</span>
+                </>
+              )}
+            </button>
+          )}
 
           {userType === 'doctor' && (
 
@@ -4139,6 +4276,17 @@ export function ConsultationRoom({
           transform: translateY(0);
         }
         
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
         .connection-status {
           margin-top: 1.5rem;
           font-size: 0.9rem;

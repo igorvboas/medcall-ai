@@ -239,7 +239,8 @@ export class TranscriptionService extends EventEmitter {
 
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      await this.saveTranscriptionToDatabase(segment);
+      // ✅ Salvar no banco ANTES de enviar (para não perder dados)
+      await this.saveTranscriptionToDatabase(roomName, segment);
       
       // Enviar via LiveKit Data Channel nativo
       await this.sendDataViaRoomService(roomName, {
@@ -272,27 +273,64 @@ export class TranscriptionService extends EventEmitter {
     }
   }
 
-  private async saveTranscriptionToDatabase(segment: TranscriptionSegment): Promise<void> {
+  private async saveTranscriptionToDatabase(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
+      // ✅ NOVO: Buscar session_id a partir do roomName
+      let sessionId: string | null = null;
+      
+      // Tentar buscar session_id da call_sessions usando roomName
+      const { data: callSession, error: sessionError } = await this.supabase
+        .from('call_sessions')
+        .select('id')
+        .or(`livekit_room_id.eq.${roomName},room_name.eq.${roomName}`)
+        .maybeSingle();
+      
+      if (callSession?.id) {
+        sessionId = callSession.id;
+      } else {
+        // Se não encontrou, tentar usar roomName como sessionId (fallback)
+        sessionId = roomName;
+        console.warn(`⚠️ Session ID não encontrado para roomName ${roomName}, usando roomName como sessionId`);
+      }
+      
+      // Mapear speaker baseado no participantId ou participantName
+      let speaker: 'doctor' | 'patient' | 'system' = 'system';
+      const participantLower = (segment.participantId + segment.participantName).toLowerCase();
+      if (participantLower.includes('doctor') || participantLower.includes('médico') || participantLower.includes('medico')) {
+        speaker = 'doctor';
+      } else if (participantLower.includes('patient') || participantLower.includes('paciente')) {
+        speaker = 'patient';
+      }
+      
       const { error } = await this.supabase
-        .from('utterances')
+        .from('transcriptions_med')
         .insert({
           id: segment.id,
+          session_id: sessionId,
+          speaker: speaker,
           text: segment.text,
-          participant_id: segment.participantId,
-          participant_name: segment.participantName,
-          timestamp: segment.timestamp.toISOString(),
-          confidence: segment.confidence,
-          language: segment.language,
-          final: segment.final
+          confidence: segment.confidence || 0.9,
+          start_ms: segment.timestamp.getTime(),
+          end_ms: segment.timestamp.getTime() + 1000, // Assumir 1 segundo de duração
+          is_final: segment.final !== undefined ? segment.final : true,
+          created_at: segment.timestamp.toISOString()
         });
       
       if (error) {
-        console.error('Erro ao salvar transcrição:', error);
+        console.error('❌ Erro ao salvar transcrição no banco:', error);
+        console.error('Dados tentados:', {
+          id: segment.id,
+          session_id: sessionId,
+          speaker,
+          text: segment.text.substring(0, 50) + '...',
+          roomName
+        });
+      } else {
+        console.log(`✅ Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
       }
       
     } catch (error) {
-      console.error('Erro no banco de dados:', error);
+      console.error('❌ Erro no banco de dados ao salvar transcrição:', error);
     }
   }
 

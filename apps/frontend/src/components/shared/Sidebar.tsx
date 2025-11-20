@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
   FileText,
@@ -12,6 +12,7 @@ import {
   Plus,
   LogOut,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SidebarProps {
   expanded: boolean;
@@ -30,6 +31,17 @@ const menuItems = [
 
 export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/auth/signin');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
 
   return (
     <aside
@@ -55,7 +67,7 @@ export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
       </nav>
 
       <div className="bottom">
-        <button className="nav-btn" aria-label="Sair">
+        <button className="nav-btn" aria-label="Sair" onClick={handleLogout}>
           <LogOut size={20} />
           <span className="nav-label">Sair</span>
         </button>

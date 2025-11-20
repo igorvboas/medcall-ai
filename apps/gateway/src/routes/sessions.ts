@@ -187,16 +187,35 @@ router.get('/:sessionId', asyncHandler(async (req: Request, res: Response) => {
     });
   }
 
-  // Buscar utterances e suggestions da sessão
-  const [utterances, suggestions] = await Promise.all([
+  // Buscar utterances, conversas e suggestions da sessão
+  const [utterances, conversations, suggestions] = await Promise.all([
     db.getSessionUtterances(sessionId),
+    db.getSessionConversations(sessionId), // ✅ Array de conversas formatado
     db.getSessionSuggestions(sessionId),
   ]);
 
   res.json({
     session,
-    transcription: utterances,
+    transcription: utterances, // Formato original (linhas separadas)
+    conversations: conversations, // ✅ Novo formato: array de conversas
     suggestions,
+  });
+}));
+
+// Buscar conversas de uma sessão (formato array)
+router.get('/:sessionId/conversations', asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+
+  if (!sessionId) {
+    throw new ValidationError('ID da sessão é obrigatório');
+  }
+
+  const conversations = await db.getSessionConversations(sessionId);
+
+  res.json({
+    sessionId,
+    conversations: conversations, // Array de conversas formatado
+    total: conversations.length
   });
 }));
 
