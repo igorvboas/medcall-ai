@@ -63,6 +63,8 @@ export interface Utterance {
   id: string;
   session_id: string;
   speaker: 'doctor' | 'patient' | 'system';
+  speaker_id?: string | null; // ✅ Nome real do médico/paciente
+  doctor_name?: string | null; // ✅ Nome do médico para busca/filtro
   start_ms: number;
   end_ms: number;
   text: string;

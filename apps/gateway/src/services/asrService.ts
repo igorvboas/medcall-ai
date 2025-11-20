@@ -353,8 +353,8 @@ class ASRService {
       return null;
     }
 
-    // ✅ Mapear speaker para valores aceitos pelo schema ('doctor', 'patient', 'system')
-    let speaker: 'doctor' | 'patient' | 'system' = 'system';
+    // ✅ Mapear speaker para valores aceitos pelo schema ('doctor', 'patient')
+    let speaker: 'doctor' | 'patient' = 'patient'; // Default para patient
     const channelLower = audioChunk.channel?.toLowerCase() || '';
     if (channelLower.includes('doctor') || channelLower.includes('médico') || channelLower.includes('medico') || channelLower.includes('host')) {
       speaker = 'doctor';
@@ -366,7 +366,7 @@ class ASRService {
     const transcriptionResult: TranscriptionResult = {
       id: randomUUID(),
       sessionId: audioChunk.sessionId,
-      speaker: speaker, // ✅ Usar valor mapeado
+      speaker: speaker, // ✅ Usar valor mapeado (sempre 'doctor' ou 'patient')
       text: cleanedText,
       confidence: this.calculateWhisperConfidence(result),
       timestamp: new Date().toISOString(),

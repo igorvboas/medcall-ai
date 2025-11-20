@@ -1048,7 +1048,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         let doctorId = null;
         if (room.userAuth && !room.consultationId) {
           // Só buscar se não temos consultationId (para fallback)
-          const doctor = await db.getMedicoByUserAuth(room.userAuth);
+          const doctor = await db.getDoctorByAuth(room.userAuth);
           if (doctor) {
             doctorId = doctor.id;
             console.log(`👨‍⚕️ Médico encontrado: ${doctor.name} (${doctorId})`);
