@@ -395,7 +395,7 @@ class ASRService {
     });
     
     try {
-      await this.saveTranscription(transcriptionResult);
+    await this.saveTranscription(transcriptionResult);
       console.log(`✅ [AUTO-SAVE] Transcrição salva automaticamente no banco: ${speaker} - "${cleanedText.substring(0, 30)}..."`);
     } catch (saveError) {
       console.error('❌ [AUTO-SAVE] Erro ao salvar transcrição automaticamente:', saveError);

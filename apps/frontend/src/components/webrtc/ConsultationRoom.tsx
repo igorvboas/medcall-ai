@@ -122,9 +122,7 @@ export function ConsultationRoom({
 
   
 
-  // Estado para modal de finalização
-
-  const [showFinishModal, setShowFinishModal] = useState(false);
+  // Estado para modal de finalização (removido - agora redireciona para página)
   
   // Estado para loading da finalização da sala
   const [isEndingRoom, setIsEndingRoom] = useState(false);
@@ -2004,9 +2002,56 @@ export function ConsultationRoom({
 
       } else {
 
-        // Paciente: mostra modal de finalização
+        // Paciente: parar todos os streams e redirecionar para página de finalização
 
-        setShowFinishModal(true);
+        console.log('🏁 [PACIENTE] Sala finalizada, parando streams e redirecionando...');
+
+        // Parar transcrição
+        if (transcriptionManagerRef.current) {
+          transcriptionManagerRef.current.stop();
+          transcriptionManagerRef.current.disconnect();
+        }
+
+        // Limpar AudioProcessor
+        if (audioProcessorRef.current) {
+          audioProcessorRef.current.cleanup();
+        }
+
+        // Parar streams de vídeo e áudio
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => {
+            track.stop();
+            console.log('🛑 [PACIENTE] Track parado:', track.kind);
+          });
+          localStreamRef.current = null;
+        }
+
+        // Fechar conexão WebRTC
+        if (peerConnectionRef.current) {
+          try {
+            peerConnectionRef.current.close();
+            console.log('🛑 [PACIENTE] PeerConnection fechada');
+          } catch (error) {
+            console.warn('⚠️ [PACIENTE] Erro ao fechar PeerConnection:', error);
+          }
+          peerConnectionRef.current = null;
+        }
+
+        // Limpar referências de vídeo remoto
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = null;
+        }
+
+        // Desconectar socket
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+
+        // Redirecionar para página de finalização
+        const patientNameParam = patientName ? encodeURIComponent(patientName) : '';
+        const roomIdParam = roomId ? `&roomId=${roomId}` : '';
+        router.push(`/consulta/finalizada?patientName=${patientNameParam}${roomIdParam}`);
 
       }
 
@@ -4120,39 +4165,7 @@ export function ConsultationRoom({
 
 
 
-      {/* Modal de finalização para paciente */}
-
-      {showFinishModal && (
-
-        <div className="finish-modal-overlay">
-
-          <div className="finish-modal-content">
-
-            <div className="finish-modal-icon">
-              <CheckCircle size={48} />
-            </div>
-
-            <h2>Consulta Finalizada</h2>
-
-            <p>Obrigado por participar da consulta. Você pode fechar esta página.</p>
-
-            <button 
-
-              className="finish-modal-button"
-
-              onClick={() => setShowFinishModal(false)}
-
-            >
-
-              Entendi
-
-            </button>
-
-          </div>
-
-        </div>
-
-      )}
+      {/* Modal de finalização removido - agora redireciona para página /consulta/finalizada */}
 
       {/* Loading overlay durante finalização da sala */}
 

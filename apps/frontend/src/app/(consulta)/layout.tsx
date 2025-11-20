@@ -10,8 +10,11 @@ export default function AppLayout({
 }) {
   const pathname = usePathname();
   
-  // Se for a página do paciente, renderizar sem sidebar e header
-  if (pathname?.includes('/patient')) {
+  // Páginas que devem ser renderizadas sem sidebar e header (página limpa)
+  const cleanPages = ['/patient', '/finalizada'];
+  
+  // Se for uma página que deve ser limpa, renderizar sem layout
+  if (pathname && cleanPages.some(page => pathname.includes(page))) {
     return children;
   }
   
