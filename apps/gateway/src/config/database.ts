@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from './index';
 
 // Configuração do cliente Supabase
+// ✅ IMPORTANTE: Usar service role key para bypassar RLS
 export const supabase = createClient(
   config.SUPABASE_URL,
   config.SUPABASE_SERVICE_ROLE_KEY,
@@ -9,6 +10,7 @@ export const supabase = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+      // ✅ Service role key não precisa de refresh token
     },
     // Configurações específicas para o backend
     db: {
@@ -18,10 +20,18 @@ export const supabase = createClient(
     global: {
       headers: {
         'x-application-name': 'medcall-gateway',
+        // ✅ Garantir que estamos usando service role
+        'apikey': config.SUPABASE_SERVICE_ROLE_KEY,
       },
     },
   }
 );
+
+// ✅ Verificar se a service role key está sendo usada corretamente
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔧 [SUPABASE] Cliente inicializado com SERVICE_ROLE_KEY');
+  console.log('🔧 [SUPABASE] Service role key deve bypassar RLS automaticamente');
+}
 
 // Teste de conexão
 export async function testDatabaseConnection(): Promise<boolean> {
@@ -535,22 +545,54 @@ export const db = {
 
       // ✅ Buscar se já existe um registro único para esta sessão
       // Usar processing_status = 'completed' como flag para identificar o registro único
-      const { data: existingTranscription, error: fetchError } = await supabase
+      // ✅ IMPORTANTE: Buscar TODOS os registros da sessão primeiro para verificar se há duplicatas
+      const { data: allTranscriptions, error: fetchAllError } = await supabase
         .from('transcriptions_med')
         .select('*')
         .eq('session_id', sessionId)
-        .eq('processing_status', 'completed') // ✅ Flag para identificar registro único
-        .maybeSingle();
-
-      if (fetchError) {
-        // PGRST116 = no rows returned (é esperado quando não existe registro ainda)
-        if (fetchError.code !== 'PGRST116') {
-          console.error('❌ [ARRAY-SAVE] Erro ao buscar transcrição:', fetchError);
-          console.error('❌ [ARRAY-SAVE] Código:', fetchError.code);
-          console.error('❌ [ARRAY-SAVE] Mensagem:', fetchError.message);
-          console.error('❌ [ARRAY-SAVE] Detalhes:', fetchError.details);
-          console.error('❌ [ARRAY-SAVE] Hint:', fetchError.hint);
-          return false;
+        .order('created_at', { ascending: true });
+      
+      if (fetchAllError && fetchAllError.code !== 'PGRST116') {
+        console.error('❌ [ARRAY-SAVE] Erro ao buscar transcrições:', fetchAllError);
+        if (fetchAllError.code === '42501') {
+          console.error('❌ [ARRAY-SAVE] Erro de RLS detectado!');
+          console.error('❌ [ARRAY-SAVE] Execute o script SQL: migrations/fix-rls-transcriptions-med.sql');
+        }
+        return false;
+      }
+      
+      // ✅ Encontrar o registro com processing_status = 'completed' (registro único)
+      let existingTranscription = allTranscriptions?.find((t: any) => t.processing_status === 'completed') || null;
+      
+      // ✅ Se há múltiplos registros, usar o mais recente com processing_status = 'completed'
+      // Se não houver nenhum com 'completed', usar o mais recente e atualizar para 'completed'
+      if (!existingTranscription && allTranscriptions && allTranscriptions.length > 0) {
+        console.warn(`⚠️ [ARRAY-SAVE] Encontrados ${allTranscriptions.length} registros para sessão ${sessionId}, mas nenhum com processing_status='completed'`);
+        console.warn(`⚠️ [ARRAY-SAVE] Usando o registro mais recente e atualizando para 'completed'`);
+        // Ordenar por created_at descendente e pegar o mais recente
+        existingTranscription = allTranscriptions.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+      }
+      
+      // ✅ Se há múltiplos registros com 'completed', usar o mais recente e marcar os outros
+      if (allTranscriptions && allTranscriptions.filter((t: any) => t.processing_status === 'completed').length > 1) {
+        console.warn(`⚠️ [ARRAY-SAVE] Múltiplos registros com processing_status='completed' encontrados!`);
+        console.warn(`⚠️ [ARRAY-SAVE] Consolidando em um único registro...`);
+        // Usar o mais recente
+        const completedOnes = allTranscriptions.filter((t: any) => t.processing_status === 'completed');
+        existingTranscription = completedOnes.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        
+        // Marcar os outros como 'error' para não serem usados
+        const otherIds = completedOnes.filter((t: any) => t.id !== existingTranscription.id).map((t: any) => t.id);
+        if (otherIds.length > 0) {
+          await supabase
+            .from('transcriptions_med')
+            .update({ processing_status: 'error' })
+            .in('id', otherIds);
+          console.log(`✅ [ARRAY-SAVE] ${otherIds.length} registros duplicados marcados como 'error'`);
         }
       }
 
@@ -701,11 +743,28 @@ export const db = {
           conversationsCount: conversations.length
         });
 
+        // ✅ Usar service role para bypassar RLS
         const { data: newTranscription, error: insertError } = await supabase
           .from('transcriptions_med')
           .insert(insertData)
           .select()
           .single();
+        
+        // ✅ Log detalhado se houver erro de RLS
+        if (insertError && insertError.code === '42501') {
+          console.error('❌ [ARRAY-SAVE] Erro de RLS ao inserir!');
+          console.error('❌ [ARRAY-SAVE] Código: 42501 (Row Level Security violation)');
+          console.error('❌ [ARRAY-SAVE] A service role key deveria bypassar RLS, mas não está funcionando');
+          console.error('❌ [ARRAY-SAVE] Verifique:');
+          console.error('   1. Se SUPABASE_SERVICE_ROLE_KEY está configurada corretamente no Google Cloud');
+          console.error('   2. Se a service role key é válida no Supabase dashboard');
+          console.error('   3. Execute o script SQL: migrations/fix-rls-transcriptions-med.sql');
+          console.error('❌ [ARRAY-SAVE] Dados tentados:', {
+            session_id: insertData.session_id,
+            speaker: insertData.speaker,
+            has_doctor_name: !!insertData.doctor_name
+          });
+        }
 
         if (insertError) {
           console.error('❌ [ARRAY-SAVE] Erro ao criar transcrição:', insertError);
