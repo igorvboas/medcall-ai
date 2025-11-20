@@ -1853,18 +1853,40 @@ export function ConsultationRoom({
 
 
       // Conectar à OpenAI
+      // ✅ Verificar se socket está conectado antes de tentar
+      if (!socketRef.current || !socketRef.current.connected) {
+        console.error('❌ [PACIENTE] Socket não está conectado! Aguardando conexão...');
+        setTranscriptionStatus('Aguardando conexão...');
+        
+        // Aguardar até o socket conectar (máximo 10 segundos)
+        let attempts = 0;
+        const maxAttempts = 20; // 20 tentativas de 500ms = 10 segundos
+        const checkSocket = setInterval(() => {
+          attempts++;
+          if (socketRef.current && socketRef.current.connected) {
+            clearInterval(checkSocket);
+            console.log('✅ [PACIENTE] Socket conectado, iniciando transcrição...');
+            startPatientTranscription();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkSocket);
+            console.error('❌ [PACIENTE] Timeout aguardando socket conectar');
+            setTranscriptionStatus('Erro: Socket não conectou');
+          }
+        }, 500);
+        
+        return;
+      }
 
       console.log('🎤 [PACIENTE] Conectando à OpenAI...');
+      console.log('🎤 [PACIENTE] Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
 
-      const success = await transcriptionManagerRef.current.init();
+      const startPatientTranscription = async () => {
+        try {
+          const success = await transcriptionManagerRef.current!.init();
 
-      
-
-      if (success) {
-
-        console.log('🎤 [PACIENTE] ✅ Transcrição conectada (aguardando AudioProcessor)');
-
-        setTranscriptionStatus('Conectado');
+          if (success) {
+            console.log('🎤 [PACIENTE] ✅ Transcrição conectada (aguardando AudioProcessor)');
+            setTranscriptionStatus('Conectado');
 
         
 
@@ -3335,34 +3357,51 @@ export function ConsultationRoom({
 
     
 
-    try {
-
-      const success = await transcriptionManagerRef.current.init();
-
+    // ✅ Verificar se socket está conectado antes de tentar
+    if (!socketRef.current || !socketRef.current.connected) {
+      console.error('❌ AUTO-START: Socket não está conectado! Aguardando conexão...');
+      setTranscriptionStatus('Aguardando conexão...');
       
+      // Aguardar até o socket conectar (máximo 10 segundos)
+      let attempts = 0;
+      const maxAttempts = 20; // 20 tentativas de 500ms = 10 segundos
+      const checkSocket = setInterval(() => {
+        attempts++;
+        if (socketRef.current && socketRef.current.connected) {
+          clearInterval(checkSocket);
+          console.log('✅ AUTO-START: Socket conectado, iniciando transcrição...');
+          startTranscriptionAfterSocketReady();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkSocket);
+          console.error('❌ AUTO-START: Timeout aguardando socket conectar');
+          setTranscriptionStatus('Erro: Socket não conectou');
+        }
+      }, 500);
+      
+      return;
+    }
+    
+    startTranscriptionAfterSocketReady();
+  };
+  
+  const startTranscriptionAfterSocketReady = async () => {
+    try {
+      console.log('🎙️ AUTO-START: Socket conectado, iniciando transcrição...');
+      console.log('🎙️ AUTO-START: Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
+      
+      const success = await transcriptionManagerRef.current!.init();
 
       if (success) {
-
         setTranscriptionStatus('Conectado');
-
         setIsTranscriptionActive(true);
-
         console.log('✅ AUTO-START: Transcrição iniciada com sucesso!');
-
       } else {
-
         setTranscriptionStatus('Erro ao conectar');
-
         console.error('❌ AUTO-START: Falha ao iniciar transcrição');
-
       }
-
     } catch (error) {
-
       console.error('❌ AUTO-START: Erro ao iniciar transcrição:', error);
-
       setTranscriptionStatus('Erro');
-
     }
 
   };

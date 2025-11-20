@@ -696,10 +696,18 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     // ==================== TRANSCRIÇÕES COM ROOMS ====================
     
     socket.on('transcription:connect', (data, callback) => {
+      console.log(`🔍 [TRANSCRIPTION] Solicitação de conexão recebida de socket ${socket.id}`);
+      
       const roomId = socketToRoom.get(socket.id);
+      const userName = socket.handshake.auth.userName;
+      
+      console.log(`🔍 [TRANSCRIPTION] Room ID: ${roomId}, User: ${userName}`);
       
       if (!roomId) {
-        callback({ success: false, error: 'Você não está em uma sala' });
+        console.error(`❌ [TRANSCRIPTION] Socket ${socket.id} não está em uma sala`);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Você não está em uma sala. Entre em uma sala primeiro.' });
+        }
         return;
       }
 
@@ -766,9 +774,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
       if (!OPENAI_API_KEY) {
-        callback({ success: false, error: 'OpenAI API Key não configurada' });
+        console.error('❌ [TRANSCRIPTION] OPENAI_API_KEY não configurada!');
+        console.error('❌ [TRANSCRIPTION] Verifique as variáveis de ambiente no gateway');
+        callback({ success: false, error: 'OpenAI API Key não configurada no servidor' });
         return;
       }
+      
+      console.log(`🔗 [TRANSCRIPTION] Tentando conectar à OpenAI para ${userName} na sala ${roomId}`);
 
       const openAIWs = new WebSocket(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
@@ -823,10 +835,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         socket.emit('transcription:message', data.toString());
       });
 
-      openAIWs.on('error', (error) => {
-        console.error(`[${userName}] ❌ Erro OpenAI:`, error.message);
-        socket.emit('transcription:error', { error: error.message });
-        callback({ success: false, error: error.message });
+      openAIWs.on('error', (error: any) => {
+        console.error(`❌ [TRANSCRIPTION] Erro OpenAI para ${userName}:`, error);
+        console.error(`❌ [TRANSCRIPTION] Mensagem:`, error?.message || 'Erro desconhecido');
+        console.error(`❌ [TRANSCRIPTION] Stack:`, error?.stack);
+        socket.emit('transcription:error', { error: error?.message || 'Erro desconhecido ao conectar à OpenAI' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: error?.message || 'Erro desconhecido ao conectar à OpenAI' });
+        }
       });
 
       openAIWs.on('close', () => {

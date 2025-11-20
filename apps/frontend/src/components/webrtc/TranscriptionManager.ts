@@ -120,16 +120,34 @@ export class TranscriptionManager {
     return new Promise((resolve, reject) => {
       console.log('[TRANSCRIPTION] Conectando via proxy backend...');
       
+      // ✅ Verificar se socket está conectado antes de tentar
+      if (!this.socket) {
+        const error = 'Socket não está definido. Chame setSocket() primeiro.';
+        console.error('[TRANSCRIPTION ERROR]', error);
+        reject(new Error(error));
+        return;
+      }
+      
+      if (!this.socket.connected) {
+        const error = 'Socket não está conectado. Aguarde a conexão do socket primeiro.';
+        console.error('[TRANSCRIPTION ERROR]', error);
+        console.error('[TRANSCRIPTION ERROR] Socket state:', this.socket.connected ? 'connected' : 'disconnected');
+        reject(new Error(error));
+        return;
+      }
+      
+      console.log('[TRANSCRIPTION] Socket está conectado, solicitando conexão OpenAI...');
+      
       // Timeout de conexão
       const connectionTimeout = setTimeout(() => {
-        reject(new Error('Timeout na conexão'));
+        reject(new Error('Timeout na conexão com OpenAI (10s)'));
       }, 10000);
 
       // Solicitar conexão ao backend
-      this.socket!.emit('transcription:connect', {}, (response: any) => {
+      this.socket.emit('transcription:connect', {}, (response: any) => {
         clearTimeout(connectionTimeout);
         
-        if (response.success) {
+        if (response && response.success) {
           console.log('[TRANSCRIPTION] ✅ Conectado via proxy!');
           this.isConnected = true;
           
@@ -137,8 +155,10 @@ export class TranscriptionManager {
           setTimeout(() => this.configureSession(), 500);
           resolve();
         } else {
-          console.error('[TRANSCRIPTION ERROR] Falha na conexão:', response.error);
-          reject(new Error(response.error));
+          const errorMsg = response?.error || 'Erro desconhecido ao conectar à OpenAI';
+          console.error('[TRANSCRIPTION ERROR] Falha na conexão:', errorMsg);
+          console.error('[TRANSCRIPTION ERROR] Resposta completa:', response);
+          reject(new Error(errorMsg));
         }
       });
     });
