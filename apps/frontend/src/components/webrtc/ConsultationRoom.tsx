@@ -1853,6 +1853,47 @@ export function ConsultationRoom({
 
 
       // Conectar à OpenAI
+      // ✅ Função auxiliar para iniciar transcrição do paciente
+      const startPatientTranscription = async () => {
+        try {
+          console.log('🎤 [PACIENTE] Conectando à OpenAI...');
+          console.log('🎤 [PACIENTE] Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
+          
+          const success = await transcriptionManagerRef.current!.init();
+
+          if (success) {
+            console.log('🎤 [PACIENTE] ✅ Transcrição conectada (aguardando AudioProcessor)');
+            setTranscriptionStatus('Conectado');
+
+            // Verificar a cada 500ms se audioProcessor está pronto
+            const checkAudioProcessor = setInterval(() => {
+              if (audioProcessorRef.current && audioProcessorRef.current.getStatus().initialized) {
+                console.log('🎤 [PACIENTE] ✅ AudioProcessor pronto, iniciando transcrição...');
+                clearInterval(checkAudioProcessor);
+
+                // ✅ CORREÇÃO: Preservar histórico se já houver transcrições
+                const hasExistingTranscript = transcriptionManagerRef.current!.getStatus().transcript.length > 0;
+                transcriptionManagerRef.current!.start(hasExistingTranscript);
+
+                setIsTranscriptionActive(true);
+                setTranscriptionStatus('Transcrevendo');
+              }
+            }, 500);
+
+            // Timeout de 10 segundos
+            setTimeout(() => {
+              clearInterval(checkAudioProcessor);
+            }, 10000);
+          } else {
+            console.log('🎤 [PACIENTE] ❌ Falha ao conectar transcrição');
+            setTranscriptionStatus('Erro');
+          }
+        } catch (error) {
+          console.error('🎤 [PACIENTE] ❌ Erro ao ativar transcrição automática:', error);
+          setTranscriptionStatus('Erro');
+        }
+      };
+      
       // ✅ Verificar se socket está conectado antes de tentar
       if (!socketRef.current || !socketRef.current.connected) {
         console.error('❌ [PACIENTE] Socket não está conectado! Aguardando conexão...');
@@ -1876,73 +1917,14 @@ export function ConsultationRoom({
         
         return;
       }
-
-      console.log('🎤 [PACIENTE] Conectando à OpenAI...');
-      console.log('🎤 [PACIENTE] Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
-
-      const startPatientTranscription = async () => {
-        try {
-          const success = await transcriptionManagerRef.current!.init();
-
-          if (success) {
-            console.log('🎤 [PACIENTE] ✅ Transcrição conectada (aguardando AudioProcessor)');
-            setTranscriptionStatus('Conectado');
-
-        
-
-        // Verificar a cada 500ms se audioProcessor está pronto
-
-        const checkAudioProcessor = setInterval(() => {
-
-          if (audioProcessorRef.current && audioProcessorRef.current.getStatus().initialized) {
-
-            console.log('🎤 [PACIENTE] ✅ AudioProcessor pronto, iniciando transcrição...');
-
-            clearInterval(checkAudioProcessor);
-
-            
-
-            // ✅ CORREÇÃO: Preservar histórico se já houver transcrições
-            const hasExistingTranscript = transcriptionManagerRef.current!.getStatus().transcript.length > 0;
-            transcriptionManagerRef.current!.start(hasExistingTranscript);
-
-            setIsTranscriptionActive(true);
-
-            setTranscriptionStatus('Transcrevendo');
-
-          }
-
-        }, 500);
-
-        
-
-        // Timeout de 10 segundos
-
-        setTimeout(() => {
-
-          clearInterval(checkAudioProcessor);
-
-        }, 10000);
-
-      } else {
-
-        console.log('🎤 [PACIENTE] ❌ Falha ao conectar transcrição');
-
-        setTranscriptionStatus('Erro');
-
-      }
-
+      
+      // Socket já está conectado, iniciar transcrição diretamente
+      startPatientTranscription();
     } catch (error) {
-
-      console.error('🎤 [PACIENTE] ❌ Erro ao ativar transcrição automática:', error);
-
+      console.error('❌ [PACIENTE] Erro ao ativar transcrição automática:', error);
       setTranscriptionStatus('Erro');
-
     }
-
   };
-
-
 
   const setupSocketListeners = () => {
 
