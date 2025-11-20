@@ -548,10 +548,16 @@ export const db = {
         console.log(`📝 [ARRAY-SAVE] Nenhum registro encontrado, criando novo para sessão: ${sessionId}`);
       }
 
+      // ✅ Validar que o texto não está vazio
+      if (!transcription.text || transcription.text.trim().length === 0) {
+        console.warn('⚠️ [ARRAY-SAVE] Texto vazio, não salvando transcrição');
+        return false;
+      }
+
       // ✅ Criar novo item de conversa simplificado (só speaker e text)
       const conversationItem = {
         speaker: transcription.speaker, // 'doctor' ou 'patient'
-        text: transcription.text
+        text: transcription.text.trim() // Remover espaços extras
       };
 
       if (existingTranscription) {
@@ -643,30 +649,39 @@ export const db = {
           }
         }
 
-        // ✅ Preparar dados para insert (sem doctor_name se coluna não existir)
+        // ✅ Preparar dados para insert
         const insertData: any = {
           session_id: sessionId,
           speaker: mainSpeaker, // ✅ Usar o speaker real (doctor ou patient)
-          speaker_id: mainSpeakerId, // ✅ Usar o nome real
+          speaker_id: mainSpeakerId || mainSpeaker, // ✅ Usar o nome real ou fallback
           text: JSON.stringify(conversations), // ✅ Array JSON simplificado no campo text
           is_final: true,
           start_ms: transcription.start_ms || Date.now(),
           end_ms: transcription.end_ms || Date.now(),
-          confidence: transcription.confidence || 0.95,
+          confidence: transcription.confidence !== undefined && transcription.confidence !== null 
+            ? Number(transcription.confidence) 
+            : 0.95,
           processing_status: 'completed', // ✅ Flag para identificar registro único
           created_at: new Date().toISOString()
         };
 
         // ✅ Adicionar doctor_name apenas se fornecido (pode não existir a coluna ainda)
+        // Tentar adicionar, mas não falhar se a coluna não existir
         if (doctorName) {
-          insertData.doctor_name = doctorName;
+          try {
+            insertData.doctor_name = doctorName;
+          } catch (e) {
+            console.warn('⚠️ [ARRAY-SAVE] Não foi possível adicionar doctor_name (coluna pode não existir)');
+          }
         }
 
         console.log(`💾 [ARRAY-SAVE] Dados para insert:`, {
           session_id: insertData.session_id,
           speaker: insertData.speaker,
+          speaker_id: insertData.speaker_id,
           hasDoctorName: !!insertData.doctor_name,
-          textLength: insertData.text.length
+          textLength: insertData.text.length,
+          conversationsCount: conversations.length
         });
 
         const { data: newTranscription, error: insertError } = await supabase
@@ -689,6 +704,28 @@ export const db = {
             doctor_name: doctorName,
             text_length: JSON.stringify(conversations).length
           });
+          
+          // ✅ Se erro for de coluna não existe (doctor_name), tentar novamente sem ela
+          if (insertError.code === '42703' && insertData.doctor_name) {
+            console.log('🔄 [ARRAY-SAVE] Erro de coluna não existe, tentando novamente sem doctor_name...');
+            const retryData = { ...insertData };
+            delete retryData.doctor_name;
+            
+            const { data: retryTranscription, error: retryError } = await supabase
+              .from('transcriptions_med')
+              .insert(retryData)
+              .select()
+              .single();
+            
+            if (retryError) {
+              console.error('❌ [ARRAY-SAVE] Erro ao criar mesmo sem doctor_name:', retryError);
+              return false;
+            }
+            
+            console.log(`✅ [ARRAY-SAVE] Registro criado sem doctor_name: ${retryTranscription.id}`);
+            return true;
+          }
+          
           return false;
         }
 
