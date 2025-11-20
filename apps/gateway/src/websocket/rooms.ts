@@ -886,13 +886,29 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     });
 
     socket.on('sendTranscriptionToPeer', async (data) => {
+      console.log(`📨 [RECEIVED] Evento sendTranscriptionToPeer recebido:`, {
+        roomId: data.roomId,
+        from: data.from,
+        to: data.to,
+        transcriptionLength: data.transcription?.length || 0,
+        hasTranscription: !!data.transcription
+      });
+      
       const { roomId, transcription, from, to } = data;
       const room = rooms.get(roomId);
 
       if (!room) {
-        console.log(`❌ Transcrição rejeitada: sala ${roomId} não existe`);
+        console.error(`❌ [AUTO-SAVE] Transcrição rejeitada: sala ${roomId} não existe`);
+        console.error(`❌ [AUTO-SAVE] Salas disponíveis:`, Array.from(rooms.keys()));
         return;
       }
+      
+      console.log(`✅ [AUTO-SAVE] Sala encontrada: ${roomId}`, {
+        hasCallSessionId: !!room.callSessionId,
+        callSessionId: room.callSessionId,
+        hostUserName: room.hostUserName,
+        participantUserName: room.participantUserName
+      });
 
       // Salvar transcrição no histórico da sala (memória)
       const transcriptionEntry = {

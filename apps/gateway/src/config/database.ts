@@ -204,8 +204,20 @@ export const db = {
       }
 
       // ✅ Mapear campos conforme schema da tabela transcriptions_med
+      // ✅ VALIDAÇÃO: Se data.id não é um UUID válido, não incluir (deixar banco gerar)
+      let validId: string | undefined = undefined;
+      if (data.id) {
+        // Verificar se é UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(data.id)) {
+          validId = data.id;
+        } else {
+          console.warn(`⚠️ [SAVE] ID fornecido não é UUID válido: "${data.id}", deixando banco gerar`);
+        }
+      }
+      
       const insertData: any = {
-        id: data.id || undefined, // UUID gerado pelo banco se não fornecido
+        id: validId, // UUID gerado pelo banco se não fornecido ou inválido
         session_id: data.session_id, // UUID obrigatório (foreign key para call_sessions)
         speaker: data.speaker || 'system', // 'doctor', 'patient' ou 'system'
         speaker_id: data.speaker_id || data.speaker || null, // ✅ Nome real do médico/paciente
@@ -544,8 +556,13 @@ export const db = {
 
       if (existingTranscription) {
         console.log(`✅ [ARRAY-SAVE] Registro existente encontrado: ${existingTranscription.id}`);
+        console.log(`📊 [ARRAY-SAVE] Conversas atuais no registro:`, {
+          existingId: existingTranscription.id,
+          currentArraySize: existingTranscription.text ? JSON.parse(existingTranscription.text).length : 0
+        });
       } else {
         console.log(`📝 [ARRAY-SAVE] Nenhum registro encontrado, criando novo para sessão: ${sessionId}`);
+        console.log(`📝 [ARRAY-SAVE] Esta será a primeira transcrição desta sessão`);
       }
 
       // ✅ Validar que o texto não está vazio

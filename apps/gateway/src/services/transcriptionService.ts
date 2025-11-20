@@ -302,31 +302,41 @@ export class TranscriptionService extends EventEmitter {
         speaker = 'patient';
       }
       
-      const { error } = await this.supabase
-        .from('transcriptions_med')
-        .insert({
-          id: segment.id,
-          session_id: sessionId,
-          speaker: speaker,
-          text: segment.text,
-          confidence: segment.confidence || 0.9,
-          start_ms: segment.timestamp.getTime(),
-          end_ms: segment.timestamp.getTime() + 1000, // Assumir 1 segundo de duração
-          is_final: segment.final !== undefined ? segment.final : true,
-          created_at: segment.timestamp.toISOString()
-        });
+      // ✅ Usar addTranscriptionToSession em vez de insert direto
+      // Isso garante que todas as transcrições sejam salvas em um único registro (array)
+      const { db } = await import('../config/database');
       
-      if (error) {
-        console.error('❌ Erro ao salvar transcrição no banco:', error);
-        console.error('Dados tentados:', {
-          id: segment.id,
+      // ✅ Validar que sessionId é um UUID válido
+      if (!sessionId || (sessionId.length !== 36 && !sessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
+        console.error('❌ [TRANSCRIPTION-SERVICE] sessionId inválido:', sessionId);
+        console.error('❌ [TRANSCRIPTION-SERVICE] roomName:', roomName);
+        return;
+      }
+      
+      // ✅ Determinar speaker_id (nome real do participante)
+      const speakerId = segment.participantName || segment.participantId || speaker;
+      
+      const success = await db.addTranscriptionToSession(sessionId, {
+        speaker: speaker,
+        speaker_id: speakerId,
+        text: segment.text,
+        confidence: segment.confidence || 0.9,
+        start_ms: segment.timestamp.getTime(),
+        end_ms: segment.timestamp.getTime() + 1000, // Assumir 1 segundo de duração
+        doctor_name: speaker === 'doctor' ? speakerId : undefined
+      });
+      
+      if (!success) {
+        console.error('❌ [TRANSCRIPTION-SERVICE] Erro ao salvar transcrição no banco');
+        console.error('❌ [TRANSCRIPTION-SERVICE] Dados tentados:', {
           session_id: sessionId,
           speaker,
+          speaker_id: speakerId,
           text: segment.text.substring(0, 50) + '...',
           roomName
         });
       } else {
-        console.log(`✅ Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
+        console.log(`✅ [TRANSCRIPTION-SERVICE] Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
       }
       
     } catch (error) {
