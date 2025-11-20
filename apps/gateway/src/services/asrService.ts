@@ -37,12 +37,12 @@ class ASRService {
     temperature: 0.0, // Máxima determinação (era 0.2)
     language: 'pt', // Português brasileiro
     response_format: 'verbose_json' as const,
-    // Prompt para contexto médico brasileiro
-    prompt: 'Esta é uma consulta médica em português brasileiro entre médico e paciente. Use terminologia médica adequada e pontuação correta. Palavras comuns: doutor, dor, sintoma, medicamento, tratamento, exame, diagnóstico, consulta.'
+    // ✅ Prompt melhorado para contexto médico brasileiro e evitar transcrições estranhas
+    prompt: 'Esta é uma consulta médica profissional em português brasileiro entre médico e paciente. Transcreva APENAS o que foi realmente dito na consulta. Use terminologia médica adequada. NÃO invente palavras ou frases. NÃO adicione conteúdo que não foi falado. NÃO transcreva ruído ou silêncio como palavras. Palavras comuns: doutor, dor, sintoma, medicamento, tratamento, exame, diagnóstico, consulta, paciente, médico.'
   };
 
   private isEnabled = false;
-  private enableSimulation = false; // Flag para controlar simulação - DESABILITADA
+  private enableSimulation = false; // Flag para controlar simulação - PERMANENTEMENTE DESABILITADA
   private openai: OpenAI | null = null;
 
   constructor() {
@@ -91,13 +91,10 @@ class ASRService {
     });
 
     if (!this.isEnabled || !this.openai) {
-      console.log(`🔍 DEBUG [ASR] USANDO FALLBACK - ${asrId}`);
-      // Se ASR não está habilitado, usar transcrição baseada em análise real
-      if (this.enableSimulation) {
-        return this.simulateTranscription(audioChunk);
-      } else {
-        return this.generateRealBasedTranscription(audioChunk);
-      }
+      console.warn(`⚠️ [ASR] ASR não está habilitado ou OpenAI não configurado - ${asrId}`);
+      console.warn(`⚠️ [ASR] Não é possível transcrever áudio sem OpenAI Whisper configurado`);
+      // ✅ NÃO usar simulação ou fallback - retornar null se não houver Whisper
+      return null;
     }
 
     try {
@@ -114,11 +111,11 @@ class ASRService {
       return result;
       
     } catch (error) {
-      console.error(`🔍 DEBUG [ASR] ERRO WHISPER - ${asrId}:`, error);
-      
-      // Fallback para análise baseada em características
-      console.log('🔄 Usando fallback para análise baseada em características...');
-      return await this.generateRealBasedTranscription(audioChunk);
+      console.error(`❌ [ASR] ERRO WHISPER - ${asrId}:`, error);
+      console.error(`❌ [ASR] Não é possível transcrever áudio devido a erro no Whisper`);
+      // ✅ NÃO usar fallback - retornar null em caso de erro
+      // Isso evita transcrições incorretas ou simuladas
+      return null;
     }
   }
 
@@ -345,11 +342,25 @@ class ASRService {
     }
 
     // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
-    const cleanedText = this.postProcessTranscription(result.text.trim());
+    const rawText = result.text.trim();
+    
+    // ✅ Filtrar textos inválidos ANTES de processar
+    if (!this.filterInvalidTranscriptions(rawText)) {
+      console.log(`🔇 [ASR] Texto inválido descartado: "${rawText}"`);
+      return null;
+    }
+    
+    const cleanedText = this.postProcessTranscription(rawText);
     
     // Verificar se texto limpo não ficou vazio
     if (!cleanedText || cleanedText.length < 2) {
       console.log(`🔇 Texto muito curto após limpeza: "${cleanedText}"`);
+      return null;
+    }
+    
+    // ✅ Validação adicional: verificar se o texto faz sentido para consulta médica
+    if (!this.filterInvalidTranscriptions(cleanedText)) {
+      console.log(`🔇 [ASR] Texto limpo ainda inválido, descartando: "${cleanedText}"`);
       return null;
     }
 
@@ -584,6 +595,34 @@ class ASRService {
     return processed;
   }
 
+  // ✅ Filtrar textos estranhos que não fazem sentido em consultas médicas
+  private filterInvalidTranscriptions(text: string): boolean {
+    const invalidPatterns = [
+      /se inscreva/i,
+      /inscreva-se/i,
+      /se inscrevam/i,
+      /no nosso canal/i,
+      /no canal/i,
+      /curtam o vídeo/i,
+      /deixe seu like/i,
+      /compartilhe/i,
+      /subscribe/i,
+      /youtube/i,
+      /canal do youtube/i,
+      /tchau.*tchau/i,
+      /oi.*tudo bem.*tchau/i
+    ];
+    
+    for (const pattern of invalidPatterns) {
+      if (pattern.test(text)) {
+        console.warn(`⚠️ [ASR] Texto inválido filtrado: "${text}" (padrão: ${pattern})`);
+        return false; // Texto inválido
+      }
+    }
+    
+    return true; // Texto válido
+  }
+
   // Calcular confiança baseada na resposta do Whisper
   private calculateWhisperConfidence(response: any): number {
     // Se tem informações de segmentos, calcular média
@@ -676,9 +715,14 @@ class ASRService {
   }
 
   // Habilitar/desabilitar simulação (para desenvolvimento)
+  // ✅ DESABILITADO PERMANENTEMENTE - não usar simulação em produção
   public setSimulationEnabled(enabled: boolean): void {
-    this.enableSimulation = enabled;
-    console.log(`🎭 ASR Simulação ${enabled ? 'habilitada' : 'desabilitada'}`);
+    // ✅ FORÇAR sempre desabilitado
+    this.enableSimulation = false;
+    if (enabled) {
+      console.warn(`⚠️ [ASR] Tentativa de habilitar simulação foi bloqueada - simulação está permanentemente desabilitada`);
+    }
+    console.log(`🔇 [ASR] Simulação está permanentemente desabilitada`);
   }
 
   // Verificar se simulação está habilitada
