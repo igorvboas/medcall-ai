@@ -284,8 +284,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         if (callSession) {
           console.log(`✅ [CALL_SESSION] Criada no banco: ${callSession.id} para sala ${roomId}`);
           room.callSessionId = callSession.id; // Salvar referência
+          console.log(`✅ [CALL_SESSION] callSessionId salvo na room: ${room.callSessionId}`);
         } else {
-          console.warn(`⚠️ [CALL_SESSION] Falha ao criar call_session no banco para sala ${roomId} (sala criada apenas em memória)`);
+          console.error(`❌ [CALL_SESSION] Falha ao criar call_session no banco para sala ${roomId} (sala criada apenas em memória)`);
+          console.error(`❌ [CALL_SESSION] Isso impedirá o salvamento de transcrições!`);
         }
 
         // ✅ CRIAR CONSULTA COM STATUS RECORDING QUANDO A SALA É CRIADA
@@ -886,6 +888,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       console.log('[DEBUG] [sendTranscriptionToPeer]')
       
       // ✅ NOVO: Salvar transcrição em array único (atualizando o registro existente)
+      console.log(`🔍 [AUTO-SAVE] Verificando condições para salvar:`, {
+        roomId: roomId,
+        hasCallSessionId: !!room.callSessionId,
+        callSessionId: room.callSessionId,
+        from: from,
+        transcriptionLength: transcription.length
+      });
+
       if (room.callSessionId) {
         try {
           const { db } = await import('../config/database');
@@ -901,7 +911,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             speakerId: speakerId,
             doctorName: room.doctorName || room.hostUserName,
             textLength: transcription.length,
-            roomId: roomId
+            roomId: roomId,
+            environment: process.env.NODE_ENV
           });
           
           // ✅ Salvar no array de conversas (atualiza o registro único)
@@ -919,8 +930,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             console.error(`❌ [AUTO-SAVE] Falha ao adicionar transcrição ao array`);
             console.error(`❌ [AUTO-SAVE] Session ID: ${room.callSessionId}`);
             console.error(`❌ [AUTO-SAVE] Room ID: ${roomId}`);
+            console.error(`❌ [AUTO-SAVE] Verifique os logs anteriores para mais detalhes`);
           } else {
-            console.log(`✅ [AUTO-SAVE] Transcrição salva com sucesso!`);
+            console.log(`✅ [AUTO-SAVE] Transcrição salva com sucesso! Session: ${room.callSessionId}`);
           }
         } catch (error) {
           console.error(`❌ [AUTO-SAVE] Erro ao salvar transcrição no banco:`, error);
@@ -930,14 +942,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           // Continuar mesmo se falhar (não bloquear transcrição)
         }
       } else {
-        console.warn(`⚠️ [AUTO-SAVE] callSessionId não disponível para sala ${roomId}, transcrição não salva no banco`);
-        console.warn(`⚠️ [AUTO-SAVE] Room data:`, { 
+        console.error(`❌ [AUTO-SAVE] callSessionId não disponível para sala ${roomId}, transcrição NÃO será salva no banco!`);
+        console.error(`❌ [AUTO-SAVE] Room data:`, { 
           roomId, 
           hostUserName: room.hostUserName,
           participantUserName: room.participantUserName,
           patientName: room.patientName,
-          hasCallSessionId: !!room.callSessionId 
+          hasCallSessionId: !!room.callSessionId,
+          callSessionId: room.callSessionId
         });
+        console.error(`❌ [AUTO-SAVE] Isso indica que a call_session não foi criada corretamente!`);
       }
       
       resetRoomExpiration(roomId);

@@ -508,8 +508,18 @@ export const db = {
         console.error('❌ [ARRAY-SAVE] Supabase não configurado!');
         console.error('❌ [ARRAY-SAVE] SUPABASE_URL:', config.SUPABASE_URL ? '✅' : '❌');
         console.error('❌ [ARRAY-SAVE] SUPABASE_SERVICE_ROLE_KEY:', config.SUPABASE_SERVICE_ROLE_KEY ? '✅' : '❌');
+        console.error('❌ [ARRAY-SAVE] NODE_ENV:', process.env.NODE_ENV);
         return false;
       }
+
+      // ✅ Log inicial para debug
+      console.log(`💾 [ARRAY-SAVE] Iniciando salvamento:`, {
+        sessionId: sessionId,
+        speaker: transcription.speaker,
+        textLength: transcription.text?.length || 0,
+        hasDoctorName: !!transcription.doctor_name,
+        environment: process.env.NODE_ENV
+      });
 
       // ✅ Buscar se já existe um registro único para esta sessão
       // Usar processing_status = 'completed' como flag para identificar o registro único
@@ -633,21 +643,35 @@ export const db = {
           }
         }
 
+        // ✅ Preparar dados para insert (sem doctor_name se coluna não existir)
+        const insertData: any = {
+          session_id: sessionId,
+          speaker: mainSpeaker, // ✅ Usar o speaker real (doctor ou patient)
+          speaker_id: mainSpeakerId, // ✅ Usar o nome real
+          text: JSON.stringify(conversations), // ✅ Array JSON simplificado no campo text
+          is_final: true,
+          start_ms: transcription.start_ms || Date.now(),
+          end_ms: transcription.end_ms || Date.now(),
+          confidence: transcription.confidence || 0.95,
+          processing_status: 'completed', // ✅ Flag para identificar registro único
+          created_at: new Date().toISOString()
+        };
+
+        // ✅ Adicionar doctor_name apenas se fornecido (pode não existir a coluna ainda)
+        if (doctorName) {
+          insertData.doctor_name = doctorName;
+        }
+
+        console.log(`💾 [ARRAY-SAVE] Dados para insert:`, {
+          session_id: insertData.session_id,
+          speaker: insertData.speaker,
+          hasDoctorName: !!insertData.doctor_name,
+          textLength: insertData.text.length
+        });
+
         const { data: newTranscription, error: insertError } = await supabase
           .from('transcriptions_med')
-          .insert({
-            session_id: sessionId,
-            speaker: mainSpeaker, // ✅ Usar o speaker real (doctor ou patient)
-            speaker_id: mainSpeakerId, // ✅ Usar o nome real
-            text: JSON.stringify(conversations), // ✅ Array JSON simplificado no campo text
-            is_final: true,
-            start_ms: transcription.start_ms || Date.now(),
-            end_ms: transcription.end_ms || Date.now(),
-            confidence: transcription.confidence || 0.95,
-            processing_status: 'completed', // ✅ Flag para identificar registro único
-            doctor_name: doctorName || null, // ✅ Nome do médico (será adicionado como coluna)
-            created_at: new Date().toISOString()
-          })
+          .insert(insertData)
           .select()
           .single();
 
