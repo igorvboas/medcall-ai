@@ -1,12 +1,25 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { ConsultationRoom } from '@/components/webrtc/ConsultationRoom';
+import { ConsentModal } from '@/components/consent/ConsentModal';
 import '@/components/webrtc/webrtc-styles.css';
 
 function PatientConsultationContent() {
   const searchParams = useSearchParams();
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [showConsent, setShowConsent] = useState(true);
+  
+  // Verificar se já deu consentimento anteriormente (localStorage)
+  useEffect(() => {
+    const consentKey = `consent_${searchParams?.get('roomId') || 'default'}`;
+    const hasConsented = localStorage.getItem(consentKey);
+    if (hasConsented === 'true') {
+      setConsentGiven(true);
+      setShowConsent(false);
+    }
+  }, [searchParams]);
   
   if (!searchParams) {
     return (
@@ -31,6 +44,31 @@ function PatientConsultationContent() {
     );
   }
 
+  const handleAcceptConsent = () => {
+    // Salvar consentimento no localStorage
+    const consentKey = `consent_${roomId}`;
+    localStorage.setItem(consentKey, 'true');
+    setConsentGiven(true);
+    setShowConsent(false);
+  };
+
+  const handleRejectConsent = () => {
+    alert('Você precisa aceitar o termo de consentimento para participar da consulta.');
+    window.location.href = '/';
+  };
+
+  // Mostrar modal de consentimento se ainda não foi dado
+  if (showConsent && !consentGiven) {
+    return (
+      <ConsentModal
+        onAccept={handleAcceptConsent}
+        onReject={handleRejectConsent}
+        patientName={patientName || undefined}
+      />
+    );
+  }
+
+  // Mostrar sala de consulta após consentimento
   return (
     <div style={{ height: '100vh', overflow: 'hidden' }}>
       <ConsultationRoom 
