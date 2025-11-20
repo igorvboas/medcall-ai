@@ -503,6 +503,14 @@ export const db = {
     doctor_name?: string; // ✅ Nome do médico para busca/filtro
   }): Promise<boolean> {
     try {
+      // ✅ Verificar se Supabase está configurado
+      if (!config.SUPABASE_URL || !config.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error('❌ [ARRAY-SAVE] Supabase não configurado!');
+        console.error('❌ [ARRAY-SAVE] SUPABASE_URL:', config.SUPABASE_URL ? '✅' : '❌');
+        console.error('❌ [ARRAY-SAVE] SUPABASE_SERVICE_ROLE_KEY:', config.SUPABASE_SERVICE_ROLE_KEY ? '✅' : '❌');
+        return false;
+      }
+
       // ✅ Buscar se já existe um registro único para esta sessão
       // Usar processing_status = 'completed' como flag para identificar o registro único
       const { data: existingTranscription, error: fetchError } = await supabase
@@ -516,6 +524,10 @@ export const db = {
         // PGRST116 = no rows returned (é esperado quando não existe registro ainda)
         if (fetchError.code !== 'PGRST116') {
           console.error('❌ [ARRAY-SAVE] Erro ao buscar transcrição:', fetchError);
+          console.error('❌ [ARRAY-SAVE] Código:', fetchError.code);
+          console.error('❌ [ARRAY-SAVE] Mensagem:', fetchError.message);
+          console.error('❌ [ARRAY-SAVE] Detalhes:', fetchError.details);
+          console.error('❌ [ARRAY-SAVE] Hint:', fetchError.hint);
           return false;
         }
       }
@@ -575,9 +587,13 @@ export const db = {
         if (updateError) {
           console.error('❌ [ARRAY-SAVE] Erro ao atualizar transcrição:', updateError);
           console.error('❌ [ARRAY-SAVE] ID do registro:', existingTranscription.id);
+          console.error('❌ [ARRAY-SAVE] Session ID:', sessionId);
           console.error('❌ [ARRAY-SAVE] Código:', updateError.code);
           console.error('❌ [ARRAY-SAVE] Mensagem:', updateError.message);
           console.error('❌ [ARRAY-SAVE] Detalhes:', updateError.details);
+          console.error('❌ [ARRAY-SAVE] Hint:', updateError.hint);
+          console.error('❌ [ARRAY-SAVE] Array size:', conversations.length);
+          console.error('❌ [ARRAY-SAVE] Text length:', JSON.stringify(conversations).length);
           return false;
         }
 
@@ -640,6 +656,15 @@ export const db = {
           console.error('❌ [ARRAY-SAVE] Código:', insertError.code);
           console.error('❌ [ARRAY-SAVE] Mensagem:', insertError.message);
           console.error('❌ [ARRAY-SAVE] Detalhes:', insertError.details);
+          console.error('❌ [ARRAY-SAVE] Hint:', insertError.hint);
+          console.error('❌ [ARRAY-SAVE] Session ID:', sessionId);
+          console.error('❌ [ARRAY-SAVE] Dados tentados:', {
+            session_id: sessionId,
+            speaker: mainSpeaker,
+            speaker_id: mainSpeakerId,
+            doctor_name: doctorName,
+            text_length: JSON.stringify(conversations).length
+          });
           return false;
         }
 

@@ -895,6 +895,15 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           const speaker = isDoctor ? 'doctor' : 'patient';
           const speakerId = isDoctor ? room.hostUserName : (room.participantUserName || room.patientName || 'Paciente');
           
+          console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
+            sessionId: room.callSessionId,
+            speaker: speaker,
+            speakerId: speakerId,
+            doctorName: room.doctorName || room.hostUserName,
+            textLength: transcription.length,
+            roomId: roomId
+          });
+          
           // ✅ Salvar no array de conversas (atualiza o registro único)
           const success = await db.addTranscriptionToSession(room.callSessionId, {
             speaker: speaker,
@@ -907,10 +916,17 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           });
           
           if (!success) {
-            console.warn(`⚠️ [AUTO-SAVE] Falha ao adicionar transcrição ao array`);
+            console.error(`❌ [AUTO-SAVE] Falha ao adicionar transcrição ao array`);
+            console.error(`❌ [AUTO-SAVE] Session ID: ${room.callSessionId}`);
+            console.error(`❌ [AUTO-SAVE] Room ID: ${roomId}`);
+          } else {
+            console.log(`✅ [AUTO-SAVE] Transcrição salva com sucesso!`);
           }
         } catch (error) {
           console.error(`❌ [AUTO-SAVE] Erro ao salvar transcrição no banco:`, error);
+          if (error instanceof Error) {
+            console.error(`❌ [AUTO-SAVE] Stack:`, error.stack);
+          }
           // Continuar mesmo se falhar (não bloquear transcrição)
         }
       } else {

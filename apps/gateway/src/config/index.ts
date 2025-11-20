@@ -69,10 +69,21 @@ const envSchema = z.object({
 // Valida e exporta as configurações
 function validateEnv() {
   try {
-    return envSchema.parse(process.env);
+    const parsed = envSchema.parse(process.env);
+    
+    // ✅ Log de configuração (sem mostrar valores sensíveis)
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔧 [CONFIG] Ambiente: PRODUÇÃO');
+      console.log('🔧 [CONFIG] SUPABASE_URL:', parsed.SUPABASE_URL ? '✅ Configurado' : '❌ Não configurado');
+      console.log('🔧 [CONFIG] SUPABASE_SERVICE_ROLE_KEY:', parsed.SUPABASE_SERVICE_ROLE_KEY ? '✅ Configurado' : '❌ Não configurado');
+    }
+    
+    return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      console.error('❌ [CONFIG] Erro de configuração:');
+      console.error(missingVars.join('\n'));
       throw new Error(`Configuração inválida:\n${missingVars.join('\n')}`);
     }
     throw error;
