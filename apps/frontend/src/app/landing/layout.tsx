@@ -4,7 +4,7 @@ import './landing.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 export const metadata: Metadata = {
-  title: 'EVA - Plataforma de Consultas Médicas com IA',
+  title: 'Auton Health - Plataforma de Consultas Médicas com IA',
   description: 'Revolucione suas consultas médicas com transcrição em tempo real, sugestões clínicas inteligentes e documentação automática.',
 };
 

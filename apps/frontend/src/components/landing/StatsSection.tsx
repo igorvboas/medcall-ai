@@ -37,7 +37,7 @@ export function StatsSection() {
             </div>
             <div className="stat-content">
               <h3 className="stat-number">41.2 mil médicos</h3>
-              <p className="stat-description">que amam e utilizam a Eva em suas consultas</p>
+              <p className="stat-description">que amam e utilizam o Auton Health em suas consultas</p>
             </div>
           </div>
 
@@ -53,7 +53,7 @@ export function StatsSection() {
             </div>
             <div className="stat-content">
               <h3 className="stat-number">122.7 mil consultas</h3>
-              <p className="stat-description">realizadas em média por mês através da Eva</p>
+              <p className="stat-description">realizadas em média por mês através do Auton Health</p>
             </div>
           </div>
         </motion.div>
