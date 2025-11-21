@@ -26,10 +26,30 @@ export function ActiveConsultationBanner() {
 
   useEffect(() => {
     checkActiveConsultation();
-    // Verificar a cada 30 segundos se há consulta em andamento
-    const interval = setInterval(checkActiveConsultation, 30000);
-    return () => clearInterval(interval);
+    
+    // Polling adaptativo baseado no status da consulta ativa
+    const intervalId = setInterval(() => {
+      checkActiveConsultation();
+    }, 5000); // Verificar a cada 5 segundos (balance entre responsividade e performance)
+
+    return () => clearInterval(intervalId);
   }, []);
+
+  // Polling adicional quando há consulta ativa para atualizar status mais rapidamente
+  useEffect(() => {
+    if (!activeConsultation) return;
+
+    const status = activeConsultation.status;
+    
+    // Para status que mudam frequentemente, fazer polling mais rápido
+    if (['PROCESSING', 'RECORDING'].includes(status)) {
+      const fastInterval = setInterval(() => {
+        checkActiveConsultation();
+      }, 3000); // 3 segundos para status de processamento
+
+      return () => clearInterval(fastInterval);
+    }
+  }, [activeConsultation?.status]);
 
   const checkActiveConsultation = async () => {
     try {

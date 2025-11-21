@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
@@ -3898,10 +3898,76 @@ function ConsultasPageContent() {
     };
   }, [dashboardLoaded]);
 
+  // Função para carregar lista de consultas
+  const loadConsultations = useCallback(async (silent = false) => {
+    try {
+      if (!silent) {
+        setError(null);
+      }
+      const response = await fetchConsultations(currentPage, 20);
+      
+      // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
+      setConsultations(prev => {
+        // Comparar IDs e status para detectar mudanças
+        const hasChanges = prev.length !== response.consultations.length ||
+          prev.some((oldConsultation, index) => {
+            const newConsultation = response.consultations[index];
+            if (!newConsultation) return true;
+            return oldConsultation.id !== newConsultation.id ||
+                   oldConsultation.status !== newConsultation.status ||
+                   oldConsultation.etapa !== newConsultation.etapa ||
+                   oldConsultation.updated_at !== newConsultation.updated_at;
+          });
+
+        if (hasChanges) {
+          return response.consultations;
+        }
+        return prev;
+      });
+      
+      setTotalPages(response.pagination.totalPages);
+      setTotalConsultations(response.pagination.total);
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
+      }
+    }
+  }, [currentPage]);
+
+  // Carregar lista de consultas inicialmente
+  useEffect(() => {
+    loadConsultations();
+  }, [loadConsultations]);
+
+  // Polling automático para atualizar lista de consultas (especialmente status)
+  useEffect(() => {
+    // Só fazer polling na lista se não houver consulta específica aberta
+    if (consultaId) return;
+
+    // Verificar se há consultas em processamento na lista atual
+    const hasProcessingConsultations = consultations.some(c => 
+      ['PROCESSING', 'RECORDING'].includes(c.status)
+    );
+
+    // Se há consultas processando, fazer polling mais frequente
+    const pollingInterval = hasProcessingConsultations ? 5000 : 15000; // 5s se processando, 15s caso contrário
+
+    const intervalId = setInterval(async () => {
+      try {
+        await loadConsultations(true); // Modo silencioso para não mostrar loading
+      } catch (error) {
+        // Erro silencioso - não mostrar ao usuário
+      }
+    }, pollingInterval);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [consultations, consultaId, loadConsultations]); // Re-executar quando consultas mudarem ou consultaId mudar
+
   // Carregar detalhes quando houver consulta_id na URL
   useEffect(() => {
     if (consultaId) {
-      console.log('🔍 useEffect - Carregando detalhes para consulta:', consultaId);
       fetchConsultaDetails(consultaId);
       // Resetar o estado do visualizador de soluções quando mudar de consulta
       setShowSolutionsViewer(false);
@@ -3909,6 +3975,82 @@ function ConsultasPageContent() {
       setConsultaDetails(null);
     }
   }, [consultaId]);
+
+  // Polling automático para atualizar status da consulta (SEMPRE ativo quando há consulta aberta)
+  useEffect(() => {
+    if (!consultaId) return;
+
+    // Determinar intervalo baseado no status atual
+    const getPollingInterval = (currentStatus: string | null) => {
+      if (!currentStatus) return 5000; // Default: 5 segundos
+      
+      // Status que mudam frequentemente: polling mais rápido
+      if (['PROCESSING', 'RECORDING'].includes(currentStatus)) {
+        return 3000; // 3 segundos
+      }
+      // Status estáveis: polling menos frequente
+      if (['COMPLETED', 'ERROR', 'CANCELLED'].includes(currentStatus)) {
+        return 30000; // 30 segundos (só para verificar mudanças raras)
+      }
+      // Status intermediários
+      return 5000; // 5 segundos
+    };
+
+    const currentStatus = consultaDetails?.status || null;
+    const pollingInterval = getPollingInterval(currentStatus);
+
+    const intervalId = setInterval(async () => {
+      try {
+        // Buscar dados diretamente da API (com cache busting para garantir dados frescos)
+        const response = await fetch(`/api/consultations/${consultaId}?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const newConsultation = data.consultation;
+          
+          if (!newConsultation) {
+            return;
+          }
+
+          const newStatus = newConsultation.status;
+          const newEtapa = newConsultation.etapa;
+          const newSolucaoEtapa = newConsultation.solucao_etapa;
+          const newUpdatedAt = newConsultation.updated_at;
+
+          // Comparar com os dados atuais (usar consultaDetails do estado, não a variável local)
+          // Isso garante que sempre comparamos com o estado mais recente
+          setConsultaDetails(prev => {
+            if (!prev) {
+              return newConsultation;
+            }
+
+            // Verificar mudanças em campos importantes
+            const statusChanged = prev.status !== newStatus;
+            const etapaChanged = prev.etapa !== newEtapa;
+            const solucaoEtapaChanged = prev.solucao_etapa !== newSolucaoEtapa;
+            const updatedAtChanged = prev.updated_at !== newUpdatedAt;
+
+            // Se QUALQUER campo importante mudou, atualizar
+            if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
+              return newConsultation;
+            }
+
+            // Nenhuma mudança detectada
+            return prev; // Retornar o mesmo objeto para evitar re-render desnecessário
+          });
+        }
+      } catch (error) {
+        // Erro silencioso - não mostrar ao usuário
+      }
+    }, pollingInterval);
+
+    // Cleanup: parar polling quando componente desmontar ou consulta mudar
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [consultaId, consultaDetails?.status]); // Re-executar quando consultaId ou status mudar
 
   // Carregar dados de atividade física quando a etapa for ATIVIDADE_FISICA
   useEffect(() => {
@@ -4041,22 +4183,11 @@ function ConsultasPageContent() {
     }
   };
 
-  const loadConsultations = async () => {
+  const fetchConsultaDetails = async (id: string, silent = false) => {
     try {
-      setError(null);
-      const response = await fetchConsultations(currentPage, 20);
-      
-      setConsultations(response.consultations);
-      setTotalPages(response.pagination.totalPages);
-      setTotalConsultations(response.pagination.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
-    }
-  };
-
-  const fetchConsultaDetails = async (id: string) => {
-    try {
-      setLoadingDetails(true);
+      if (!silent) {
+        setLoadingDetails(true);
+      }
       setError(null);
       //console.log('🔍 Carregando detalhes da consulta:', id);
       const response = await fetch(`/api/consultations/${id}`);
@@ -4067,11 +4198,39 @@ function ConsultasPageContent() {
       }
       
       const data = await response.json();
-      setConsultaDetails(data.consultation);
+      const newConsultation = data.consultation;
+      
+      // Sempre atualizar para garantir que mudanças no banco sejam refletidas
+      // A comparação anterior estava impedindo atualizações quando o status mudava no banco
+      setConsultaDetails(prev => {
+        if (!prev) {
+          return newConsultation;
+        }
+        
+        // Comparar campos importantes para log
+        const statusChanged = prev.status !== newConsultation.status;
+        const etapaChanged = prev.etapa !== newConsultation.etapa;
+        const solucaoEtapaChanged = prev.solucao_etapa !== newConsultation.solucao_etapa;
+        const updatedAtChanged = prev.updated_at !== newConsultation.updated_at;
+        
+        if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
+          console.log(`📝 Dados da consulta atualizados:`, {
+            status: `${prev.status} → ${newConsultation.status}`,
+            etapa: `${prev.etapa} → ${newConsultation.etapa}`,
+            solucao_etapa: `${prev.solucao_etapa} → ${newConsultation.solucao_etapa}`,
+            updated_at: `${prev.updated_at} → ${newConsultation.updated_at}`
+          });
+        }
+        
+        // Sempre retornar novo objeto para garantir atualização
+        return newConsultation;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes da consulta');
     } finally {
-      setLoadingDetails(false);
+      if (!silent) {
+        setLoadingDetails(false);
+      }
     }
   };
 

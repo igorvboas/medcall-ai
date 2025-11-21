@@ -323,7 +323,7 @@ export default function ConfiguracoesPage() {
           <div className="form-group">
             <label htmlFor="crm" className="form-label">
               <Hash className="form-section-icon" style={{ width: '16px', height: '16px', display: 'inline', marginRight: '8px' }} />
-              CRM
+              Número de Registro do Profissional
             </label>
             <input
               type="text"
@@ -332,8 +332,11 @@ export default function ConfiguracoesPage() {
               value={formData.crm}
               onChange={handleInputChange}
               className="form-input"
-              placeholder="12345-SP"
+              placeholder="Ex: 12345-SP (opcional)"
             />
+            <div className="form-helper-text" style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Campo opcional. Preencha apenas se você possuir um número de registro profissional.
+            </div>
           </div>
 
           <div className="form-group">
