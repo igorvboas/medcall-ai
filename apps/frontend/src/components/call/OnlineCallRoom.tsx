@@ -65,6 +65,8 @@ export function OnlineCallRoom({
   const router = useRouter();
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState<boolean>(true);
+  const [suggestionsPanelVisible, setSuggestionsPanelVisible] = useState<boolean>(true);
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     isConnected: false,
     isConnecting: false,
@@ -603,6 +605,29 @@ export function OnlineCallRoom({
               </button>
             )}
             
+            {userRole === 'doctor' && (
+              <button 
+                onClick={() => {
+                  setSuggestionsEnabled(!suggestionsEnabled);
+                  if (!suggestionsEnabled) {
+                    setSuggestions([]);
+                    setSuggestionsPanelVisible(true);
+                  } else {
+                    setSuggestionsPanelVisible(false);
+                  }
+                }}
+                className={`control-btn ${suggestionsEnabled ? 'suggestions-active' : 'suggestions-inactive'}`}
+                title={suggestionsEnabled ? 'Desativar Sugestões de IA' : 'Ativar Sugestões de IA'}
+                style={{
+                  background: suggestionsEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                  border: suggestionsEnabled ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(107, 114, 128, 0.3)',
+                  color: suggestionsEnabled ? '#16a34a' : '#6b7280'
+                }}
+              >
+                <Brain size={24} />
+              </button>
+            )}
+            
             <button 
               onClick={handleFinalizeSession}
               className="control-btn end"
@@ -628,25 +653,48 @@ export function OnlineCallRoom({
             />
           </div>
 
-          {/* Sugestões de IA */}
-          <div className="form-card">
-            <h3 className="form-section-title">
-              <Brain className="form-section-icon" />
-              Sugestões de IA
-            </h3>
-            <SuggestionsPanel 
-              suggestions={suggestions}
-              onSuggestionUsed={(suggestionId) => {
-                if (socket && connectionState.isConnected) {
-                  socket.emit('suggestion:use', {
-                    sessionId,
-                    suggestionId,
-                    timestamp: new Date().toISOString()
-                  });
-                }
-              }}
-            />
-          </div>
+          {/* Sugestões de IA - Só aparece se estiver habilitado e visível */}
+          {userRole === 'doctor' && suggestionsEnabled && suggestionsPanelVisible && suggestions.length > 0 && (
+            <div className="form-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 className="form-section-title">
+                  <Brain className="form-section-icon" />
+                  Sugestões de IA
+                </h3>
+                <button
+                  onClick={() => setSuggestionsPanelVisible(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Fechar painel de sugestões"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <SuggestionsPanel 
+                suggestions={suggestions}
+                enabled={true}
+                onClose={() => setSuggestionsPanelVisible(false)}
+                onSuggestionUsed={(suggestionId) => {
+                  if (socket && connectionState.isConnected) {
+                    socket.emit('suggestion:use', {
+                      sessionId,
+                      suggestionId,
+                      timestamp: new Date().toISOString()
+                    });
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* Dados do Paciente */}
           <div className="form-card">

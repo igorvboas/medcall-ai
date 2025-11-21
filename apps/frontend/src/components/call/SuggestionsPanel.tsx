@@ -1,6 +1,7 @@
 'use client';
 
-import { Brain, CheckCircle, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Brain, CheckCircle, Clock, Power, PowerOff, X } from 'lucide-react';
 
 interface Suggestion {
   id: string;
@@ -15,9 +16,18 @@ interface Suggestion {
 interface SuggestionsPanelProps {
   suggestions: Suggestion[];
   onSuggestionUsed?: (suggestionId: string) => void;
+  enabled?: boolean;
+  onToggleEnabled?: (enabled: boolean) => void;
+  onClose?: () => void;
 }
 
-export function SuggestionsPanel({ suggestions, onSuggestionUsed }: SuggestionsPanelProps) {
+export function SuggestionsPanel({ 
+  suggestions, 
+  onSuggestionUsed,
+  enabled = true,
+  onToggleEnabled,
+  onClose
+}: SuggestionsPanelProps) {
   const getSuggestionIcon = (type: string) => {
     switch (type) {
       case 'question':
@@ -44,6 +54,14 @@ export function SuggestionsPanel({ suggestions, onSuggestionUsed }: SuggestionsP
     }
   };
 
+  const handleToggle = () => {
+    if (onToggleEnabled) {
+      onToggleEnabled(!enabled);
+    }
+  };
+
+  const visibleSuggestions = enabled ? suggestions : [];
+
   return (
     <div className="suggestions-panel">
       <div className="suggestions-header">
@@ -51,17 +69,53 @@ export function SuggestionsPanel({ suggestions, onSuggestionUsed }: SuggestionsP
           <Brain className="w-4 h-4" />
           Sugestões de IA
         </h4>
-        <span className="suggestion-count">{suggestions.length} sugestões</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {enabled && <span className="suggestion-count">{visibleSuggestions.length} sugestões</span>}
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#6b7280',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              title="Fechar painel de sugestões"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(107, 114, 128, 0.1)';
+                e.currentTarget.style.color = '#dc2626';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="suggestions-content">
-        {suggestions.length === 0 ? (
+        {!enabled ? (
+          <div className="suggestions-empty">
+            <PowerOff className="w-8 h-8 opacity-50" />
+            <p>Sugestões de IA desativadas</p>
+            <span>Clique no botão acima para ativar</span>
+          </div>
+        ) : visibleSuggestions.length === 0 ? (
           <div className="suggestions-empty">
             <Brain className="w-8 h-8 opacity-50" />
             <p>Aguardando sugestões...</p>
           </div>
         ) : (
-          suggestions.map((suggestion) => (
+          visibleSuggestions.map((suggestion) => (
             <div 
               key={suggestion.id} 
               className={`suggestion suggestion-${suggestion.type} ${suggestion.used ? 'used' : ''}`}

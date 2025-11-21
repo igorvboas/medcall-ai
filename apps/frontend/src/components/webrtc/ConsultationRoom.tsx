@@ -15,7 +15,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle, Copy, Check } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain } from 'lucide-react';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 
@@ -119,6 +119,8 @@ export function ConsultationRoom({
   // Estados para sugestões de IA
 
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState<boolean>(true);
+  const [suggestionsPanelVisible, setSuggestionsPanelVisible] = useState<boolean>(true);
 
   
 
@@ -3845,37 +3847,79 @@ export function ConsultationRoom({
 
           {/* ✅ NOVO: Botão para copiar link do paciente - apenas para médico */}
           {userType === 'doctor' && (
-            <button 
-              className="btn-copy-link" 
-              onClick={handleCopyPatientLink}
-              style={{
-                padding: '0.5rem 1rem',
-                background: linkCopied ? '#4caf50' : '#2196f3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'background 0.3s',
-                marginRight: '10px'
-              }}
-              title="Copiar link da consulta para o paciente"
-            >
-              {linkCopied ? (
-                <>
-                  <Check size={16} />
-                  <span>Link Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={16} />
-                  <span>Copiar Link do Paciente</span>
-                </>
-              )}
-            </button>
+            <>
+              <button 
+                className="btn-copy-link" 
+                onClick={handleCopyPatientLink}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: linkCopied ? '#4caf50' : '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'background 0.3s',
+                  marginRight: '10px'
+                }}
+                title="Copiar link da consulta para o paciente"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check size={16} />
+                    <span>Link Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    <span>Copiar Link do Paciente</span>
+                  </>
+                )}
+              </button>
+              
+              {/* Botão para ativar/desativar sugestões de IA */}
+              <button 
+                onClick={() => {
+                  setSuggestionsEnabled(!suggestionsEnabled);
+                  if (!suggestionsEnabled) {
+                    setAiSuggestions([]);
+                    setSuggestionsPanelVisible(true);
+                  } else {
+                    setSuggestionsPanelVisible(false);
+                  }
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: suggestionsEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                  color: suggestionsEnabled ? '#16a34a' : '#6b7280',
+                  border: suggestionsEnabled ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(107, 114, 128, 0.3)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  marginRight: '10px'
+                }}
+                title={suggestionsEnabled ? 'Desativar Sugestões de IA' : 'Ativar Sugestões de IA'}
+              >
+                {suggestionsEnabled ? (
+                  <>
+                    <Brain size={16} style={{ color: '#16a34a' }} />
+                    <span>Sugestões IA</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain size={16} style={{ color: '#6b7280', opacity: 0.5 }} />
+                    <span>Sugestões IA</span>
+                  </>
+                )}
+              </button>
+            </>
           )}
 
           {userType === 'doctor' && (
@@ -4067,13 +4111,17 @@ export function ConsultationRoom({
 
 
 
-      {/* 🤖 Painel de Sugestões de IA - Apenas para médicos */}
+      {/* 🤖 Painel de Sugestões de IA - Apenas para médicos - Só aparece se estiver habilitado e visível */}
 
-      {userType === 'doctor' && aiSuggestions.length > 0 && (
+      {userType === 'doctor' && suggestionsEnabled && suggestionsPanelVisible && aiSuggestions.length > 0 && (
 
         <SuggestionsPanel
 
           suggestions={aiSuggestions}
+
+          enabled={true}
+
+          onClose={() => setSuggestionsPanelVisible(false)}
 
           onUseSuggestion={(suggestionId) => {
 
