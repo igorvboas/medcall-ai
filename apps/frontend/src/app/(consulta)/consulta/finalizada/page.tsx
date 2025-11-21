@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, Clock, FileText, Home } from 'lucide-react';
 
-export default function ConsultaFinalizadaPage() {
+function ConsultaFinalizadaContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const patientName = searchParams?.get('patientName') || 'Paciente';
@@ -204,6 +204,24 @@ export default function ConsultaFinalizadaPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function ConsultaFinalizadaPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{ color: 'white', fontSize: '18px' }}>Carregando...</div>
+      </div>
+    }>
+      <ConsultaFinalizadaContent />
+    </Suspense>
   );
 }
 

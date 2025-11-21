@@ -81,17 +81,16 @@ const nextConfig = {
       };
     }
 
-    // Permitir importação de worklets (apenas se worklet-loader estiver instalado)
-    // Comentado para evitar erros de build se não estiver instalado
-    // config.module.rules.push({
-    //   test: /\.worklet\.(js|ts)$/,
-    //   use: {
-    //     loader: 'worklet-loader',
-    //     options: {
-    //       name: 'static/worklets/[name].[hash:8].[ext]',
-    //     },
-    //   },
-    // });
+    // Permitir importação de worklets
+    config.module.rules.push({
+      test: /\.worklet\.(js|ts)$/,
+      use: {
+        loader: 'worklet-loader',
+        options: {
+          name: 'static/worklets/[name].[hash:8].[ext]',
+        },
+      },
+    });
 
     return config;
   },
@@ -126,15 +125,15 @@ const nextConfig = {
     ];
   },
 
-  // Rewrites para API (desabilitado para Vercel - usar variáveis de ambiente)
-  // async rewrites() {
-  //   return [
-  //     {
-  //       source: '/api/gateway/:path*',
-  //       destination: `${process.env.GATEWAY_URL || 'http://localhost:3001'}/api/:path*`,
-  //     },
-  //   ];
-  // },
+  // Rewrites para API
+  async rewrites() {
+    return [
+      {
+        source: '/api/gateway/:path*',
+        destination: `${process.env.GATEWAY_URL || 'http://localhost:3001'}/api/:path*`,
+      },
+    ];
+  },
 
   // Configurações de transpilação
   transpilePackages: [
@@ -144,7 +143,7 @@ const nextConfig = {
   ],
 
   // Configurações de output
-  // output: 'standalone', // Comentado para Vercel - Vercel usa seu próprio sistema de build
+  output: 'standalone',
   
   // Configurações de compilação
   compiler: {
