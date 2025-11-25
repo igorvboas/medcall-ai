@@ -2280,23 +2280,9 @@ interface SuplementacaoItem {
 }
 
 function SuplemementacaoSection({ 
-  consultaId,
-  selectedField,
-  chatMessages,
-  isTyping,
-  chatInput,
-  onFieldSelect,
-  onSendMessage,
-  onChatInputChange
+  consultaId
 }: {
   consultaId: string;
-  selectedField: { fieldPath: string; label: string } | null;
-  chatMessages: ChatMessage[];
-  isTyping: boolean;
-  chatInput: string;
-  onFieldSelect: (fieldPath: string, label: string) => void;
-  onSendMessage: () => void;
-  onChatInputChange: (value: string) => void;
 }) {
   // Dados mockados baseados no exemplo fornecido
   const mockData = {
@@ -4745,148 +4731,55 @@ function ConsultasPageContent() {
             </div>
           </div>
 
-          <div className="details-two-column-layout">
-            {/* Coluna Esquerda - Chat com IA */}
-            <div className="chat-column">
-              <div className="chat-container">
-                <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Suplementação</h3>
-                  {selectedField && (
-                    <p className="chat-field-indicator">
-                      <Sparkles className="w-4 h-4 inline mr-1" />
-                      Editando: <strong>{selectedField.label}</strong>
-                    </p>
-                  )}
-                </div>
-                
-                <div className="chat-messages">
-                  {!selectedField ? (
-                    <div className="chat-empty-state">
-                      <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo de Suplementação clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
-                      </p>
-                    </div>
-                  ) : chatMessages.length === 0 ? (
-                    <div className="chat-empty-state">
-                      <p className="text-gray-500 text-center">
-                        Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {chatMessages.map((message, index) => (
-                        <div 
-                          key={index} 
-                          className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
-                        >
-                          <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
-                            {message.role === 'user' ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                          </div>
-                          <div className="message-content">
-                            <p>{message.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {isTyping && (
-                        <div className="message ai-message">
-                          <div className="message-avatar ai-avatar">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <div className="message-content">
-                            <div className="typing-indicator">
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="chat-input-area">
-                  <input 
-                    type="text"
-                    className="chat-input"
-                    placeholder="Digite sua mensagem..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
-                    disabled={!selectedField || isTyping}
-                  />
-                  <button 
-                    className="chat-send-button"
-                    onClick={handleSendAIMessage}
-                    disabled={!selectedField || !chatInput.trim() || isTyping}
-                  >
-                    <FileText className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+          <div className="anamnese-container">
+            <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>Protocolo de Suplementação</h2>
+              <button
+                onClick={handleSaveSuplemementacaoAndContinue}
+                disabled={isSaving}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  background: isSaving ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.background = '#059669';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.background = '#10b981';
+                  }
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar e Avançar para Hábitos de Vida
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* Coluna Direita - Suplementação */}
-            <div className="anamnese-column">
-              <div className="anamnese-container">
-                <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo de Suplementação</h2>
-                  <button
-                    onClick={handleSaveSuplemementacaoAndContinue}
-                    disabled={isSaving}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: isSaving ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: isSaving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#059669';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#10b981';
-                      }
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Salvar e Avançar para Hábitos de Vida
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="anamnese-content">
-                  <SuplemementacaoSection 
-                    consultaId={consultaId}
-                    selectedField={selectedField}
-                    chatMessages={chatMessages}
-                    isTyping={isTyping}
-                    chatInput={chatInput}
-                    onFieldSelect={handleFieldSelect}
-                    onSendMessage={handleSendAIMessage}
-                    onChatInputChange={setChatInput}
-                  />
-                </div>
-              </div>
+            <div className="anamnese-content">
+              <SuplemementacaoSection 
+                consultaId={consultaId}
+              />
             </div>
           </div>
         </div>
