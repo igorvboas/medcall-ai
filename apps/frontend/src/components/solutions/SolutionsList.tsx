@@ -5,12 +5,10 @@ import {
   ArrowLeft, 
   Clock, 
   AlertCircle,
-  Dna,
   Brain,
   Apple,
   Pill,
-  Dumbbell,
-  Leaf
+  Dumbbell
 } from 'lucide-react';
 
 interface SolutionsData {
@@ -82,16 +80,8 @@ export default function SolutionsList({ consultaId, onBack, onSolutionSelect, so
 
     return [
       {
-        id: 'ltb',
-        name: 'LTB',
-        icon: <Dna className="w-8 h-8" />,
-        description: 'Limpeza Total do Bioma',
-        hasData: !!solutions.ltb,
-        dataCount: solutions.ltb ? 1 : 0
-      },
-      {
         id: 'mentalidade',
-        name: 'Mentalidade',
+        name: 'Livro da Vida',
         icon: <Brain className="w-8 h-8" />,
         description: 'Transformação Mental e Emocional',
         hasData: !!solutions.mentalidade,
@@ -120,14 +110,6 @@ export default function SolutionsList({ consultaId, onBack, onSolutionSelect, so
         description: 'Programa de Exercícios',
         hasData: solutions.exercicios.length > 0,
         dataCount: solutions.exercicios.length
-      },
-      {
-        id: 'habitos',
-        name: 'Hábitos de Vida',
-        icon: <Leaf className="w-8 h-8" />,
-        description: 'Transformação de Estilo de Vida',
-        hasData: !!solutions.habitos,
-        dataCount: solutions.habitos ? 1 : 0
       }
     ];
   };

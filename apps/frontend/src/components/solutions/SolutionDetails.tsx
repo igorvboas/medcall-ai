@@ -6,12 +6,10 @@ import {
   Download, 
   Printer, 
   Share,
-  Dna,
   Brain,
   Apple,
   Pill,
   Dumbbell,
-  Leaf,
   FileText
 } from 'lucide-react';
 
@@ -25,15 +23,9 @@ export default function SolutionDetails({ solutionId, solutionData, onBack }: So
   
   const getSolutionInfo = () => {
     switch (solutionId) {
-      case 'ltb':
-        return {
-          title: 'Limpeza Total do Bioma (LTB)',
-          icon: <Dna className="w-8 h-8" />,
-          description: 'Protocolo completo de desintoxicação e limpeza biológica'
-        };
       case 'mentalidade':
         return {
-          title: 'Mentalidade do Paciente',
+          title: 'Livro da Vida',
           icon: <Brain className="w-8 h-8" />,
           description: 'Transformação mental e emocional'
         };
@@ -54,12 +46,6 @@ export default function SolutionDetails({ solutionId, solutionData, onBack }: So
           title: 'Programa de Exercícios',
           icon: <Dumbbell className="w-8 h-8" />,
           description: 'Treinos e atividades físicas'
-        };
-      case 'habitos':
-        return {
-          title: 'Hábitos de Vida',
-          icon: <Leaf className="w-8 h-8" />,
-          description: 'Transformação de estilo de vida'
         };
       default:
         return {
@@ -82,8 +68,6 @@ export default function SolutionDetails({ solutionId, solutionData, onBack }: So
     }
 
     switch (solutionId) {
-      case 'ltb':
-        return renderLTBContent(solutionData);
       case 'mentalidade':
         return renderMentalidadeContent(solutionData);
       case 'alimentacao':
@@ -92,79 +76,10 @@ export default function SolutionDetails({ solutionId, solutionData, onBack }: So
         return renderSuplementacaoContent(solutionData);
       case 'exercicios':
         return renderExerciciosContent(solutionData);
-      case 'habitos':
-        return renderHabitosContent(solutionData);
       default:
         return renderGenericContent(solutionData);
     }
   };
-
-  const renderLTBContent = (data: any) => (
-    <div className="solution-content">
-      <div className="solution-section">
-        <h3>Objetivo Principal</h3>
-        <p>{data.objetivo_principal || 'Não especificado'}</p>
-      </div>
-
-      <div className="solution-section">
-        <h3>Urgência</h3>
-        <p>{data.urgencia || 'Não especificada'}</p>
-      </div>
-
-      {data.fase1_duracao && (
-        <div className="solution-section">
-          <h3>Fase 1 - Limpeza</h3>
-          <p><strong>Duração:</strong> {data.fase1_duracao}</p>
-          <p><strong>Objetivo:</strong> {data.fase1_objetivo}</p>
-        </div>
-      )}
-
-      {data.fase2_duracao && (
-        <div className="solution-section">
-          <h3>Fase 2 - Desparasitação</h3>
-          <p><strong>Duração:</strong> {data.fase2_duracao}</p>
-          <p><strong>Objetivo:</strong> {data.fase2_objetivo}</p>
-        </div>
-      )}
-
-      {data.fase3_duracao && (
-        <div className="solution-section">
-          <h3>Fase 3 - Reconstrução</h3>
-          <p><strong>Duração:</strong> {data.fase3_duracao}</p>
-          <p><strong>Objetivo:</strong> {data.fase3_objetivo}</p>
-        </div>
-      )}
-
-      {data.cronograma_mes1_foco && (
-        <div className="solution-section">
-          <h3>Cronograma</h3>
-          <div className="cronograma-grid">
-            {data.cronograma_mes1_foco && (
-              <div className="cronograma-item">
-                <h4>Mês 1</h4>
-                <p><strong>Foco:</strong> {data.cronograma_mes1_foco}</p>
-                <p><strong>Ações:</strong> {data.cronograma_mes1_acoes}</p>
-              </div>
-            )}
-            {data.cronograma_mes2_foco && (
-              <div className="cronograma-item">
-                <h4>Mês 2</h4>
-                <p><strong>Foco:</strong> {data.cronograma_mes2_foco}</p>
-                <p><strong>Ações:</strong> {data.cronograma_mes2_acoes}</p>
-              </div>
-            )}
-            {data.cronograma_mes3_4_foco && (
-              <div className="cronograma-item">
-                <h4>Meses 3-4</h4>
-                <p><strong>Foco:</strong> {data.cronograma_mes3_4_foco}</p>
-                <p><strong>Ações:</strong> {data.cronograma_mes3_4_acoes}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   const renderMentalidadeContent = (data: any) => (
     <div className="solution-content">
@@ -279,53 +194,6 @@ export default function SolutionDetails({ solutionId, solutionData, onBack }: So
           ))}
         </div>
       </div>
-    </div>
-  );
-
-  const renderHabitosContent = (data: any) => (
-    <div className="solution-content">
-      <div className="solution-section">
-        <h3>Metas por Período</h3>
-        {data.mes_1_2_meta && (
-          <div className="meta-item">
-            <h4>Meses 1-2</h4>
-            <p><strong>Foco:</strong> {data.mes_1_2_foco}</p>
-            <p><strong>Meta:</strong> {data.mes_1_2_meta}</p>
-            <p><strong>Mudanças Simultâneas (máx):</strong> {data.mes_1_2_mudancas_simultaneas_maximo}</p>
-          </div>
-        )}
-        {data.mes_3_4_meta && (
-          <div className="meta-item">
-            <h4>Meses 3-4</h4>
-            <p><strong>Foco:</strong> {data.mes_3_4_foco}</p>
-            <p><strong>Meta:</strong> {data.mes_3_4_meta}</p>
-          </div>
-        )}
-        {data.mes_5_6_meta && (
-          <div className="meta-item">
-            <h4>Meses 5-6</h4>
-            <p><strong>Foco:</strong> {data.mes_5_6_foco}</p>
-            <p><strong>Meta:</strong> {data.mes_5_6_meta}</p>
-          </div>
-        )}
-      </div>
-
-      {data.ritual_matinal_sequencia && (
-        <div className="solution-section">
-          <h3>Ritual Matinal</h3>
-          <p><strong>Sequência:</strong> {data.ritual_matinal_sequencia}</p>
-          <p><strong>Regra:</strong> {data.ritual_matinal_regra}</p>
-        </div>
-      )}
-
-      {data.apps_recomendados && (
-        <div className="solution-section">
-          <h3>Recursos Recomendados</h3>
-          <p><strong>Apps:</strong> {data.apps_recomendados}</p>
-          {data.livros && <p><strong>Livros:</strong> {data.livros}</p>}
-          {data.comunidades && <p><strong>Comunidades:</strong> {data.comunidades}</p>}
-        </div>
-      )}
     </div>
   );
 
