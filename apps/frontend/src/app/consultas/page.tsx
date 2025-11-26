@@ -2257,6 +2257,16 @@ function MentalidadeSection({
       );
     }
 
+    // Construir o fieldPath completo para o webhook
+    let fullFieldPath = '';
+    if (type === 'resumo') {
+      fullFieldPath = 'mentalidade_data.resumo_executivo';
+    } else if (type === 'higiene_sono' && fieldPath) {
+      fullFieldPath = `mentalidade_data.higiene_sono.${fieldPath}`;
+    } else if (type === 'padrao' && padraoNum && fieldPath) {
+      fullFieldPath = `mentalidade_data.padrao_${String(padraoNum).padStart(2, '0')}.${fieldPath}`;
+    }
+
     return (
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         <div style={{ flex: 1 }}>
@@ -2271,20 +2281,36 @@ function MentalidadeSection({
             {displayValue}
           </div>
         </div>
-        <button
-          onClick={() => handleStartEdit(type, padraoNum, fieldPath)}
-          style={{
-            padding: '5px',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: '#666',
-            marginTop: '25px'
-          }}
-          title="Editar"
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
+        <div style={{ display: 'flex', gap: '5px', marginTop: '25px' }}>
+          {onFieldSelect && fullFieldPath && (
+            <button
+              onClick={() => onFieldSelect(fullFieldPath, label)}
+              style={{
+                padding: '5px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+              title="Editar com IA"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => handleStartEdit(type, padraoNum, fieldPath)}
+            style={{
+              padding: '5px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#666'
+            }}
+            title="Editar manualmente"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     );
   };
@@ -3197,7 +3223,10 @@ function ConsultasPageContent() {
       const webhookEndpoints = getWebhookEndpoints();
       const webhookHeaders = getWebhookHeaders();
       
-      const webhookUrl = (isSolucaoLTB || isSolucaoMentalidade || isSolucaoSuplemementacao || isSolucaoHabitosVida)
+      // Usar webhook específico para Livro da Vida (Mentalidade)
+      const webhookUrl = isSolucaoMentalidade
+        ? webhookEndpoints.edicaoLivroDaVida
+        : (isSolucaoLTB || isSolucaoSuplemementacao || isSolucaoHabitosVida)
         ? webhookEndpoints.edicaoSolucao
         : isDiagnostico 
         ? webhookEndpoints.edicaoDiagnostico
