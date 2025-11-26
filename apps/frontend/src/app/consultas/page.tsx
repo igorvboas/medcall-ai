@@ -1761,8 +1761,76 @@ function MentalidadeSection({
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
 }) {
-  // Dados mockados baseados no exemplo fornecido
-  const mockData = {
+  // Estados para carregamento dinâmico
+  const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    loadMentalidadeData();
+  }, [consultaId]);
+
+  // Listener para recarregar dados quando a IA processar
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadMentalidadeData();
+    };
+
+    window.addEventListener('mentalidade-data-refresh', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('mentalidade-data-refresh', handleRefresh);
+    };
+  }, []);
+
+  const loadMentalidadeData = async () => {
+    try {
+      setLoadingDetails(true);
+      setError(null);
+      
+      console.log('🔍 [FRONTEND-LTV] Carregando dados de mentalidade para consulta:', consultaId);
+      
+      const response = await fetch(`/api/solucao-mentalidade/${consultaId}`);
+      
+      console.log('📡 [FRONTEND-LTV] Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(errorData.error || 'Erro ao carregar dados de mentalidade');
+      }
+      
+      const data = await response.json();
+      console.log('✅ [FRONTEND-LTV] Dados recebidos:', data);
+      
+      if (data.mentalidade_data) {
+        setLivroVidaData({
+          resumo_executivo: data.mentalidade_data.resumo_executivo || '',
+          higiene_sono: data.mentalidade_data.higiene_sono || mockData.higiene_sono,
+          padrao_01: data.mentalidade_data.padrao_01 || null,
+          padrao_02: data.mentalidade_data.padrao_02 || null,
+          padrao_03: data.mentalidade_data.padrao_03 || null,
+          padrao_04: data.mentalidade_data.padrao_04 || null,
+          padrao_05: data.mentalidade_data.padrao_05 || null,
+          padrao_06: data.mentalidade_data.padrao_06 || null,
+          padrao_07: data.mentalidade_data.padrao_07 || null,
+          padrao_08: data.mentalidade_data.padrao_08 || null,
+          padrao_09: data.mentalidade_data.padrao_09 || null,
+          padrao_10: data.mentalidade_data.padrao_10 || null
+        });
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('❌ [FRONTEND-LTV] Erro ao carregar mentalidade:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar mentalidade');
+      setLoading(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // Dados mockados como fallback (mantido para compatibilidade)
+  const mockData: any = {
     resumo_executivo: "Lucas, após análise profunda de sua trajetória, foram identificados 8 padrões mentais, emocionais e relacionais centrais que mantêm seu quadro de fadiga crônica, autocrítica severa e dificuldade de avançar para uma vida plena. Os padrões raiz principais são: 'Crença de Inadequação Pessoal (Não sou suficiente)', 'Padrão de Hiperalerta/Vigília Crônica', 'Autocrítica Severa e Perfeccionismo', e 'Procrastinação Autoprotetora'. Estes padrões, originados em experiências gestacionais e familiares marcadas por insegurança e conflito, desencadeiam sentimentos de fracasso, insegurança existencial e bloqueios ao prazer e à autocompaixão.\n\nA boa notícia é que, com empenho genuíno e aplicação consistente das orientações integradas aqui propostas, é plenamente possível reverter este ciclo e construir uma Nova Vida Extraordinária. Transformar padrões tão antigos exige coragem, método e perseverança, mas cada passo dado na direção certa gera efeito dominó positivo em múltiplas áreas da sua vida. O caminho é profundo, mas absolutamente viável: você não está preso ao seu passado, e sim pronto para ressignificá-lo. Com a sequência estratégica sugerida, a restauração da energia vital, do prazer e do sentido de viver será não apenas possível, mas provável.",
     higiene_sono: {
       horario_dormir_recomendado: "23:00",
@@ -1873,7 +1941,7 @@ function MentalidadeSection({
   const parsePadrao = (jsonString: string | null): PadraoItem | null => {
     if (!jsonString) return null;
     try {
-      return typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+      return typeof jsonString === 'string' ? JSON.parse(jsonString) as PadraoItem : jsonString;
     } catch {
       return null;
     }
@@ -1892,6 +1960,7 @@ function MentalidadeSection({
   
   const padrao08Data = parsePadrao("{\"padrao\": \"Desconexão de Propósito e Prazer\", \"categorias\": [\"bloqueio_desenvolvimento_espiritual\", \"padrão_emocional\"], \"prioridade\": 8, \"areas_impacto\": [\"propósito\", \"desenvolvimento_espiritual\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Vida Adulta Jovem (21-26 anos)\", \"contexto_provavel\": \"Possivelmente emergiu como consequência do ciclo de autocrítica, hiperalerta e segurança condicional, bloqueando o acesso ao prazer e ao sentido existencial autêntico. Inicialmente, serviu como defesa contra frustrações profundas. Tornou-se limitante ao gerar vazio existencial, desânimo e dificuldade de se engajar com a vida de forma plena.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"A desconexão de propósito e prazer é alimentada pela crença de valor condicional e insuficiência, que esvaziam a motivação intrínseca e bloqueiam o acesso ao prazer. Relaciona-se com a procrastinação, pois o vazio existencial dificulta o engajamento em ações significativas.\", \"alimentado_por\": [\"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": [\"Procrastinação Autoprotetora\"]}, \"manifestacoes_atuais\": [\"Sensação de vazio e falta de sentido mesmo com metas claras\", \"Dificuldade de sentir prazer mesmo em atividades antes prazerosas\", \"Desânimo persistente e falta de motivação autêntica\", \"Busca por sentido apenas no desempenho e conquistas externas\"], \"orientacoes_transformacao\": [{\"nome\": \"Exploração de Propósito Autêntico (Ikigai/Logoterapia)\", \"passo\": 1, \"como_fazer\": \"Responda por escrito: (1) O que me dá alegria genuína, mesmo sem reconhecimento? (2) O que eu faria se não precisasse provar nada a ninguém? (3) Como posso contribuir para o mundo com meus dons únicos? Faça um mapa Ikigai (o que amo, sei fazer, o mundo precisa, posso ser pago) e reflita sobre ações possíveis.\", \"o_que_fazer\": \"Dedicar tempo semanal para investigar valores, paixões e contribuições além do desempenho.\", \"porque_funciona\": \"A investigação ativa do propósito (Logoterapia, Ikigai) reconecta a motivação intrínseca, amplia o sentido existencial e reduz o vazio gerado por padrões de desempenho condicional.\"}, {\"nome\": \"Práticas de Gratidão e Mindfulness Prazeroso\", \"passo\": 2, \"como_fazer\": \"Todos os dias, registre 3 experiências prazerosas ou motivos de gratidão, por menores que sejam. Pratique mindfulness durante essas experiências, focando nas sensações corporais prazerosas sem julgamento ou cobrança de resultado.\", \"o_que_fazer\": \"Cultivar diariamente a atenção ao prazer e à gratidão para reabilitar o sistema de recompensa natural.\", \"porque_funciona\": \"A prática de gratidão e mindfulness prazeroso ativa as redes cerebrais de recompensa e prazer, recondicionando o cérebro a buscar e valorizar pequenas alegrias, base para reconstrução do sentido de vida.\"}]}");
   
+  // @ts-ignore - mockData will be replaced by dynamic data from API
   const [livroVidaData, setLivroVidaData] = useState<{
     resumo_executivo: string;
     higiene_sono: HigieneSono;
@@ -1978,6 +2047,7 @@ function MentalidadeSection({
   // Função para definir valor em campo aninhado
   const setNestedValue = (obj: any, path: string, value: any): void => {
     if (path.includes('.')) {
+      // @ts-ignore
       const parts = path.split('.');
       const lastPart = parts.pop()!;
       let current = obj;
@@ -2012,47 +2082,90 @@ function MentalidadeSection({
   };
 
   // Função para salvar edição
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingField) return;
 
-    const newData = { ...livroVidaData };
-    
-    if (editingField.type === 'resumo') {
-      newData.resumo_executivo = editValue;
-    } else if (editingField.type === 'higiene_sono' && editingField.fieldPath) {
-      const fieldPath = editingField.fieldPath;
-      let finalValue: any = editValue;
+    try {
+      setLoadingDetails(true);
+
+      const newData = { ...livroVidaData };
+      let fieldName = '';
+      let valueToSave: any = editValue;
       
-      // Verificar se o campo original era array
-      const originalValue = getNestedValue(newData.higiene_sono, fieldPath);
-      if (Array.isArray(originalValue)) {
-        finalValue = editValue.split('\n').filter(line => line.trim());
-      }
-      
-      setNestedValue(newData.higiene_sono, fieldPath, finalValue);
-    } else if (editingField.padraoNum && editingField.fieldPath) {
-      const padraoKey = `padrao_${String(editingField.padraoNum).padStart(2, '0')}` as keyof typeof newData;
-      const padrao = { ...(newData[padraoKey] as PadraoItem) };
-      if (padrao) {
+      if (editingField.type === 'resumo') {
+        fieldName = 'resumo_executivo';
+        valueToSave = editValue;
+        newData.resumo_executivo = editValue;
+      } else if (editingField.type === 'higiene_sono' && editingField.fieldPath) {
+        fieldName = 'higiene_sono';
         const fieldPath = editingField.fieldPath;
         let finalValue: any = editValue;
         
         // Verificar se o campo original era array
-        const originalValue = getNestedValue(padrao, fieldPath);
+        const originalValue = getNestedValue(newData.higiene_sono, fieldPath);
         if (Array.isArray(originalValue)) {
           finalValue = editValue.split('\n').filter(line => line.trim());
-        } else if (typeof originalValue === 'number') {
-          finalValue = parseFloat(editValue) || 0;
         }
         
+        setNestedValue(newData.higiene_sono, fieldPath, finalValue);
+        valueToSave = newData.higiene_sono;
+      } else if (editingField.padraoNum && editingField.fieldPath) {
+        const padraoNum = editingField.padraoNum;
+        fieldName = `padrao_${String(padraoNum).padStart(2, '0')}`;
+        const padraoKey = fieldName as keyof typeof newData;
+        const padrao = { ...(newData[padraoKey] as PadraoItem) };
+        
+        if (padrao) {
+          const fieldPath = editingField.fieldPath;
+          let finalValue: any = editValue;
+          
+          // Verificar se o campo original era array
+          const originalValue = getNestedValue(padrao, fieldPath);
+          if (Array.isArray(originalValue)) {
+            finalValue = editValue.split('\n').filter(line => line.trim());
+          } else if (typeof originalValue === 'number') {
+            finalValue = parseFloat(editValue) || 0;
+          }
+          
         setNestedValue(padrao, fieldPath, finalValue);
-        newData[padraoKey] = padrao;
+        (newData as any)[padraoKey] = padrao;
+        valueToSave = padrao;
+        }
       }
+      
+      // Atualizar estado local primeiro (UX responsivo)
+      setLivroVidaData(newData);
+      setEditingField(null);
+      setEditValue('');
+      
+      // Salvar no banco de dados
+      console.log('💾 [FRONTEND-LTV] Salvando campo:', { fieldName, valueToSave });
+      
+      const response = await fetch(`/api/solucao-mentalidade/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fieldPath: `mentalidade_data.${fieldName}`,
+          value: valueToSave
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao salvar' }));
+        throw new Error(errorData.error || 'Erro ao salvar alteração');
+      }
+
+      console.log('✅ [FRONTEND-LTV] Campo salvo com sucesso no banco');
+      
+    } catch (error) {
+      console.error('❌ [FRONTEND-LTV] Erro ao salvar campo:', error);
+      alert('Erro ao salvar alteração. Tente novamente.');
+      
+      // Recarregar dados para sincronizar com o banco
+      await loadMentalidadeData();
+    } finally {
+      setLoadingDetails(false);
     }
-    
-    setLivroVidaData(newData);
-    setEditingField(null);
-    setEditValue('');
   };
 
   // Função para cancelar edição
@@ -2085,6 +2198,7 @@ function MentalidadeSection({
           <textarea
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            disabled={loadingDetails}
             style={{ 
               width: '100%', 
               minHeight: '100px', 
@@ -2092,33 +2206,47 @@ function MentalidadeSection({
               fontSize: '14px',
               border: '1px solid #ddd',
               borderRadius: '4px',
-              fontFamily: 'inherit'
+              fontFamily: 'inherit',
+              opacity: loadingDetails ? 0.6 : 1
             }}
           />
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
             <button
               onClick={handleSaveEdit}
+              disabled={loadingDetails}
               style={{
                 padding: '8px 16px',
-                background: '#4CAF50',
+                background: loadingDetails ? '#9ca3af' : '#4CAF50',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: 'pointer'
+                cursor: loadingDetails ? 'not-allowed' : 'pointer',
+                opacity: loadingDetails ? 0.7 : 1
               }}
             >
-              <Save className="w-4 h-4 inline mr-1" />
-              Salvar
+              {loadingDetails ? (
+                <>
+                  <div className="loading-spinner-small" style={{ display: 'inline-block', marginRight: '5px' }}></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 inline mr-1" />
+                  Salvar
+                </>
+              )}
             </button>
             <button
               onClick={handleCancelEdit}
+              disabled={loadingDetails}
               style={{
                 padding: '8px 16px',
-                background: '#f44336',
+                background: loadingDetails ? '#9ca3af' : '#f44336',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: 'pointer'
+                cursor: loadingDetails ? 'not-allowed' : 'pointer',
+                opacity: loadingDetails ? 0.7 : 1
               }}
             >
               <X className="w-4 h-4 inline mr-1" />
@@ -2241,6 +2369,39 @@ function MentalidadeSection({
     );
   };
 
+  // Mostrar loading no primeiro carregamento
+  if (loading && !error) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando dados do Livro da Vida...</p>
+      </div>
+    );
+  }
+
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <div className="anamnese-error">
+        <p style={{ color: '#f44336' }}>❌ {error}</p>
+        <button 
+          onClick={loadMentalidadeData}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            background: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="anamnese-sections">
       {/* Resumo Executivo */}
@@ -2284,56 +2445,16 @@ function SuplemementacaoSection({
 }: {
   consultaId: string;
 }) {
-  // Dados mockados baseados no exemplo fornecido
-  const mockData = {
-    suplementos: [
-      {
-        nome: "Magnésio bisglicinato quelato!",
-        objetivo: "Restaurar relaxamento parassimpático, reduzir hiperatividade do eixo HPA, melhorar fadiga matinal e qualidade do sono em quadro de estresse crônico e insônia. Forma bisglicinato é altamente biodisponível e segura para o perfil apresentado. ⚠️ Evitar uso em insuficiência renal, hipermagnesemia ou bloqueio cardíaco sem marca-passo.",
-        dosagem: "400mg de magnésio elementar, à noite (dose única diária)",
-        horario: "21:00 antes de dormir (separar por 2h de ferro, cálcio e zinco)",
-        inicio: "15/10/2025",
-        termino: "Uso contínuo"
-      }
-    ],
-    fitoterapicos: [
-      {
-        nome: "Withania somnifera (Ashwagandha) extrato padronizado 5% withanólidos",
-        objetivo: "Modular o eixo HPA, reduzir ansiedade, melhorar sono e fadiga vital em contexto de alerta crônico e depressão leve. Evidência robusta para fadiga, insônia leve e restauração circardiana. ⚠️ Não associar se hipertireoidismo ativo; atenção em doenças autoimunes e uso de anti-hipertensivos/drogas para tireoide.",
-        dosagem: "600mg/dia (extrato padronizado), dividido em 2x de 300mg",
-        horario: "08:00 após café da manhã e 21:00 antes de dormir",
-        inicio: "15/10/2025",
-        termino: "15/04/2026"
-      }
-    ],
-    homeopatia: [
-      {
-        nome: "Ignatia amara 30CH",
-        objetivo: "Tratar bloqueio vital psórico, insônia mantida, tristeza profunda e histórico de trauma afetivo-gestacional, favorecendo o reequilíbrio emocional e neurovegetativo. Ausência de contraindicação formal para uso conjunto com Ashwagandha.",
-        dosagem: "5 glóbulos sublingual",
-        horario: "20:30 antes de dormir, boca limpa, 15min sem comer/beber, evitar café/menta/cânfora à noite",
-        inicio: "15/10/2025",
-        termino: "Uso contínuo – reavaliar em 3 meses"
-      }
-    ],
-    florais_bach: [
-      {
-        nome: "White Chestnut + Mustard + Elm + Olive (fórmula combinada)",
-        objetivo: "Controlar pensamentos obsessivos (White Chestnut), lidar com tristeza profunda (Mustard), tratar fadiga mental/física (Olive) e sensação de sobrecarga e autoexigência (Elm), compondo suporte emocional central para este caso de exaustão vital.",
-        dosagem: "4 gotas da fórmula combinada sublingual",
-        horario: "08:00, 12:00, 16:00 e 20:00 (4x ao dia, sublingual)",
-        inicio: "15/10/2025",
-        termino: "15/01/2026"
-      }
-    ]
-  };
-
   const [suplementacaoData, setSuplementacaoData] = useState<{
     suplementos: SuplementacaoItem[];
     fitoterapicos: SuplementacaoItem[];
     homeopatia: SuplementacaoItem[];
     florais_bach: SuplementacaoItem[];
-  }>(mockData);
+  } | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [editingItem, setEditingItem] = useState<{
     category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach';
@@ -2341,6 +2462,63 @@ function SuplemementacaoSection({
     field: keyof SuplementacaoItem;
   } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    loadSuplementacaoData();
+  }, [consultaId]);
+
+  // Listener para recarregar dados quando a IA processar
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadSuplementacaoData();
+    };
+
+    window.addEventListener('suplementacao-data-refresh', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('suplementacao-data-refresh', handleRefresh);
+    };
+  }, []);
+
+  const loadSuplementacaoData = async () => {
+    try {
+      setLoadingDetails(true);
+      setError(null);
+      
+      console.log('🔍 Carregando dados de suplementação para consulta:', consultaId);
+      
+      const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
+      
+      console.log('📡 Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Erro na resposta:', errorData);
+        throw new Error(errorData.error || 'Erro ao carregar dados de suplementação');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Dados de suplementação recebidos:', data);
+      console.log('📊 Estrutura suplementacao_data:', {
+        hasData: !!data.suplementacao_data,
+        suplementos: data.suplementacao_data?.suplementos?.length || 0,
+        fitoterapicos: data.suplementacao_data?.fitoterapicos?.length || 0,
+        homeopatia: data.suplementacao_data?.homeopatia?.length || 0,
+        florais_bach: data.suplementacao_data?.florais_bach?.length || 0
+      });
+      
+      setSuplementacaoData(data.suplementacao_data);
+      setLoading(false);
+    } catch (err) {
+      console.error('❌ Erro ao carregar suplementação:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar suplementação');
+      setLoading(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   // Função para iniciar edição
   const handleStartEdit = (
@@ -2348,19 +2526,62 @@ function SuplemementacaoSection({
     index: number,
     field: keyof SuplementacaoItem
   ) => {
+    if (!suplementacaoData) return;
     setEditingItem({ category, index, field });
     setEditValue(suplementacaoData[category][index][field]);
   };
 
   // Função para salvar edição
-  const handleSaveEdit = () => {
-    if (!editingItem) return;
+  const handleSaveEdit = async () => {
+    if (!editingItem || !suplementacaoData) return;
 
-    const newData = { ...suplementacaoData };
-    newData[editingItem.category][editingItem.index][editingItem.field] = editValue;
-    setSuplementacaoData(newData);
-    setEditingItem(null);
-    setEditValue('');
+    try {
+      setIsSaving(true);
+      
+      // Atualizar localmente primeiro
+      const newData = { ...suplementacaoData };
+      newData[editingItem.category][editingItem.index][editingItem.field] = editValue;
+      setSuplementacaoData(newData);
+      
+      // Salvar no banco de dados
+      console.log('💾 Salvando campo:', {
+        category: editingItem.category,
+        index: editingItem.index,
+        field: editingItem.field,
+        value: editValue
+      });
+
+      const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: editingItem.category,
+          index: editingItem.index,
+          field: editingItem.field,
+          value: editValue
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao salvar' }));
+        throw new Error(errorData.error || 'Erro ao salvar alteração');
+      }
+
+      console.log('✅ Campo salvo com sucesso');
+      
+      // Limpar estado de edição
+      setEditingItem(null);
+      setEditValue('');
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar campo:', error);
+      alert('Erro ao salvar alteração. Tente novamente.');
+      
+      // Recarregar dados para sincronizar com o banco
+      await loadSuplementacaoData();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Função para cancelar edição
@@ -2368,6 +2589,50 @@ function SuplemementacaoSection({
     setEditingItem(null);
     setEditValue('');
   };
+
+  // Mostrar loading no primeiro carregamento
+  if (loading && !error) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando dados de suplementação...</p>
+      </div>
+    );
+  }
+
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <div className="anamnese-error">
+        <p style={{ color: '#f44336' }}>❌ {error}</p>
+        <button 
+          onClick={loadSuplementacaoData}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            background: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
+
+  // Se não houver dados, mostrar mensagem
+  if (!suplementacaoData) {
+    return (
+      <div className="anamnese-sections">
+        <p style={{ color: '#666', fontStyle: 'italic' }}>
+          Nenhum dado de suplementação encontrado para esta consulta.
+        </p>
+      </div>
+    );
+  }
 
   // Função para renderizar célula editável
   const renderEditableCell = (
@@ -2386,37 +2651,42 @@ function SuplemementacaoSection({
           <textarea
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            disabled={isSaving}
             style={{ 
               flex: 1, 
               minHeight: '60px', 
               padding: '5px',
               fontSize: '14px',
               border: '1px solid #ddd',
-              borderRadius: '4px'
+              borderRadius: '4px',
+              opacity: isSaving ? 0.6 : 1
             }}
           />
           <button
             onClick={handleSaveEdit}
+            disabled={isSaving}
             style={{
               padding: '5px 10px',
-              background: '#4CAF50',
+              background: isSaving ? '#ccc' : '#4CAF50',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer'
+              cursor: isSaving ? 'not-allowed' : 'pointer'
             }}
+            title={isSaving ? 'Salvando...' : 'Salvar'}
           >
-            <Save className="w-4 h-4" />
+            {isSaving ? '...' : <Save className="w-4 h-4" />}
           </button>
           <button
             onClick={handleCancelEdit}
+            disabled={isSaving}
             style={{
               padding: '5px 10px',
-              background: '#f44336',
+              background: isSaving ? '#ccc' : '#f44336',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer'
+              cursor: isSaving ? 'not-allowed' : 'pointer'
             }}
           >
             <X className="w-4 h-4" />
@@ -2430,12 +2700,14 @@ function SuplemementacaoSection({
         <span style={{ flex: 1 }}>{value || '-'}</span>
         <button
           onClick={() => handleStartEdit(category, index, field)}
+          disabled={loadingDetails || isSaving}
           style={{
             padding: '5px',
             background: 'transparent',
             border: 'none',
-            cursor: 'pointer',
-            color: '#666'
+            cursor: (loadingDetails || isSaving) ? 'not-allowed' : 'pointer',
+            color: '#666',
+            opacity: (loadingDetails || isSaving) ? 0.5 : 1
           }}
           title="Editar"
         >
@@ -2550,16 +2822,31 @@ function AlimentacaoSection({
   const loadAlimentacaoData = async () => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`/api/solutions/${consultaId}`);
+      console.log('🔍 [FRONTEND] Carregando dados de alimentação para consulta:', consultaId);
+      
+      const response = await fetch(`/api/alimentacao/${consultaId}`);
+      
+      console.log('📡 [FRONTEND] Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setAlimentacaoData(data.solutions.alimentacao);
+        console.log('✅ [FRONTEND] Dados recebidos:', data);
+        console.log('📊 [FRONTEND] Estrutura alimentacao_data:', {
+          cafe_da_manha: data.alimentacao_data?.cafe_da_manha?.length || 0,
+          almoco: data.alimentacao_data?.almoco?.length || 0,
+          cafe_da_tarde: data.alimentacao_data?.cafe_da_tarde?.length || 0,
+          jantar: data.alimentacao_data?.jantar?.length || 0
+        });
+        
+        setAlimentacaoData(data.alimentacao_data);
+      } else {
+        console.error('❌ [FRONTEND] Erro na resposta:', response.statusText);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados de Alimentação:', error);
+      console.error('❌ [FRONTEND] Erro ao carregar dados de Alimentação:', error);
     } finally {
       setLoadingDetails(false);
-      setLoading(false); // ✅ CORREÇÃO: Atualizar estado loading
+      setLoading(false);
     }
   };
 
@@ -2654,11 +2941,27 @@ function AlimentacaoSection({
     setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
   };
 
+  console.log('🔍 [FRONTEND] AlimentacaoSection - Estado atual:', {
+    loading,
+    hasData: !!alimentacaoData,
+    dataStructure: alimentacaoData ? Object.keys(alimentacaoData) : []
+  });
+
   if (loading) {
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
         <p>Carregando dados de alimentação...</p>
+      </div>
+    );
+  }
+
+  if (!alimentacaoData) {
+    return (
+      <div className="anamnese-sections">
+        <p style={{ color: '#666', fontStyle: 'italic' }}>
+          Nenhum dado de alimentação encontrado para esta consulta.
+        </p>
       </div>
     );
   }
@@ -2671,20 +2974,17 @@ function AlimentacaoSection({
   ];
 
   const getRefeicaoData = (refeicaoKey: string) => {
-    if (!alimentacaoData || !Array.isArray(alimentacaoData)) return [];
+    if (!alimentacaoData) {
+      console.log('⚠️ [FRONTEND] alimentacaoData não existe');
+      return [];
+    }
     
-    // Filtrar os dados por tipo de alimento baseado na refeição
-    const tipoMap: { [key: string]: string[] } = {
-      'cafe_da_manha': ['proteinas', 'carboidratos', 'frutas'],
-      'almoco': ['proteinas', 'carboidratos', 'vegetais'],
-      'cafe_da_tarde': ['frutas', 'carboidratos'],
-      'jantar': ['proteinas', 'vegetais']
-    };
+    // Retornar os dados diretamente da propriedade da refeição
+    const dados = alimentacaoData[refeicaoKey as keyof typeof alimentacaoData] || [];
     
-    const tiposPermitidos = tipoMap[refeicaoKey] || [];
-    return alimentacaoData.filter(item => 
-      tiposPermitidos.includes(item.tipo_de_alimentos)
-    );
+    console.log(`📋 [FRONTEND] Dados para ${refeicaoKey}:`, dados.length, 'itens');
+    
+    return Array.isArray(dados) ? dados : [];
   };
 
   return (
@@ -4006,6 +4306,13 @@ function ConsultasPageContent() {
   // Função para renderizar o conteúdo baseado no status e etapa
   const renderConsultationContent = () => {
     if (!consultaDetails) return null;
+
+    // 🔍 DEBUG: Log do status e etapa da consulta
+    console.log('🔍 DEBUG renderConsultationContent:', {
+      status: consultaDetails.status,
+      etapa: consultaDetails.etapa,
+      solucao_etapa: consultaDetails.solucao_etapa
+    });
 
     // STATUS = PROCESSING
     if (consultaDetails.status === 'PROCESSING') {

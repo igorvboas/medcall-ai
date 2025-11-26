@@ -48,7 +48,7 @@ export async function POST(
       );
     }
 
-    const actualTableName = 's_agente_mentalidade_do_paciente';
+    const actualTableName = 's_agente_mentalidade_2';
 
     // Buscar o paciente_id da consulta primeiro
     const { data: consultation } = await supabase
@@ -64,85 +64,51 @@ export async function POST(
       );
     }
 
-    // Primeiro, limpar registros duplicados se existirem
-    console.log('🧹 Limpando registros duplicados Mentalidade...');
-    
-    // Buscar todos os registros duplicados
-    const { data: allRecords } = await supabase
-      .from(actualTableName)
-      .select('*')
-      .eq('user_id', userId)
-      .eq('consulta_id', consultaId)
-      .order('created_at', { ascending: false });
-
-    if (allRecords && allRecords.length > 1) {
-      console.log(`🗑️ Encontrados ${allRecords.length} registros duplicados Mentalidade, removendo os mais antigos...`);
-      
-      // Manter apenas o mais recente, deletar os outros
-      const recordsToDelete = allRecords.slice(1);
-      for (const record of recordsToDelete) {
-        await supabase
-          .from(actualTableName)
-          .delete()
-          .eq('id', record.id);
-      }
-      console.log(`✅ Removidos ${recordsToDelete.length} registros duplicados Mentalidade`);
-    }
-
-    // Agora buscar o registro único (ou criar se não existir)
-    console.log('🔍 Buscando registro único Mentalidade...');
+    // Buscar registro existente (filtrar APENAS por consulta_id)
+    console.log('🔍 [MENTALIDADE] Buscando registro para consulta_id:', consultaId);
     
     const { data: existingRecord, error: fetchError } = await supabase
       .from(actualTableName)
       .select('*')
-      .eq('user_id', userId)
       .eq('consulta_id', consultaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
-    console.log('📊 Registro Mentalidade encontrado:', existingRecord);
-    console.log('❌ Erro ao buscar Mentalidade:', fetchError);
+    console.log('📊 [MENTALIDADE] Registro encontrado:', existingRecord ? 'Sim' : 'Não');
 
-    if (existingRecord) {
-      console.log('✅ Atualizando registro existente Mentalidade ID:', existingRecord.id);
-      // Atualizar registro existente
-      const updateData: any = { [fieldName]: value };
-      
-      const { error: updateError } = await supabase
-        .from(actualTableName)
-        .update(updateData)
-        .eq('id', existingRecord.id);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar campo Mentalidade:', updateError);
-        return NextResponse.json(
-          { error: 'Erro ao atualizar campo' },
-          { status: 500 }
-        );
-      }
-      console.log('✅ Registro Mentalidade atualizado com sucesso');
-    } else {
-      console.log('➕ Criando novo registro Mentalidade');
-      // Criar novo registro
-      const insertData: any = {
-        user_id: userId,
-        paciente_id: consultation.patient_id,
-        consulta_id: consultaId,
-        [fieldName]: value
-      };
-
-      const { error: insertError } = await supabase
-        .from(actualTableName)
-        .insert(insertData);
-
-      if (insertError) {
-        console.error('❌ Erro ao criar registro Mentalidade:', insertError);
-        return NextResponse.json(
-          { error: 'Erro ao criar registro' },
-          { status: 500 }
-        );
-      }
-      console.log('✅ Novo registro Mentalidade criado com sucesso');
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: 'Registro de mentalidade não encontrado. Por favor, carregue os dados primeiro.' },
+        { status: 404 }
+      );
     }
+
+    console.log('✅ [MENTALIDADE] Atualizando registro ID:', existingRecord.id);
+    
+    // Preparar valor para salvar (stringify se for objeto)
+    let valueToSave = value;
+    if (typeof value === 'object' && value !== null) {
+      valueToSave = JSON.stringify(value);
+    }
+    
+    // Atualizar registro existente
+    const updateData: any = { [fieldName]: valueToSave };
+    
+    const { error: updateError } = await supabase
+      .from(actualTableName)
+      .update(updateData)
+      .eq('id', existingRecord.id);
+
+    if (updateError) {
+      console.error('❌ [MENTALIDADE] Erro ao atualizar:', updateError);
+      return NextResponse.json(
+        { error: 'Erro ao atualizar campo' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('✅ [MENTALIDADE] Campo atualizado com sucesso');
 
     console.log('✅ Campo Mentalidade atualizado com sucesso');
 
