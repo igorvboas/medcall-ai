@@ -15,7 +15,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle, Copy, Check, Brain } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles } from 'lucide-react';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 
@@ -129,6 +129,9 @@ export function ConsultationRoom({
   // Estado para loading da finalização da sala
   const [isEndingRoom, setIsEndingRoom] = useState(false);
 
+  // Estado para geração de anamnese
+  const [isGeneratingAnamnese, setIsGeneratingAnamnese] = useState(false);
+
   
 
   // Refs para WebRTC
@@ -144,6 +147,10 @@ export function ConsultationRoom({
   const localStreamRef = useRef<MediaStream | null>(null);
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
+
+  // Refs para polling de anamnese
+  const anamnesePollingRef = useRef<NodeJS.Timeout | null>(null);
+  const anamneseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   
 
@@ -3495,6 +3502,81 @@ export function ConsultationRoom({
 
   };
 
+  // Função para fazer polling do status da consulta quando anamnese está sendo gerada
+  const startAnamnesePolling = (consultationId: string) => {
+    // Limpar qualquer polling anterior
+    if (anamnesePollingRef.current) {
+      clearInterval(anamnesePollingRef.current);
+    }
+    if (anamneseTimeoutRef.current) {
+      clearTimeout(anamneseTimeoutRef.current);
+    }
+
+    console.log('🔄 Iniciando polling para verificar status da anamnese...');
+    
+    anamnesePollingRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/consultations/${consultationId}`);
+        if (!response.ok) {
+          console.error('Erro ao verificar status da consulta');
+          return;
+        }
+        
+        const data = await response.json();
+        const consultation = data.consultation;
+        
+        console.log('📊 Status da consulta:', consultation.status);
+        
+        // Se o status mudou para VALID_ANAMNESE, abrir nova aba
+        if (consultation.status === 'VALID_ANAMNESE') {
+          console.log('✅ Anamnese pronta! Abrindo nova aba...');
+          
+          if (anamnesePollingRef.current) {
+            clearInterval(anamnesePollingRef.current);
+            anamnesePollingRef.current = null;
+          }
+          if (anamneseTimeoutRef.current) {
+            clearTimeout(anamneseTimeoutRef.current);
+            anamneseTimeoutRef.current = null;
+          }
+          
+          setIsGeneratingAnamnese(false);
+          
+          // Abrir nova aba com a tela de anamnese (sem fechar a videochamada)
+          const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${consultationId}`;
+          window.open(anamneseUrl, '_blank');
+          
+          // Mostrar notificação na página atual
+          alert('✅ Anamnese gerada com sucesso!\n\nUma nova aba foi aberta com a anamnese.');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status da consulta:', error);
+      }
+    }, 3000); // Verificar a cada 3 segundos
+    
+    // Limpar polling após 5 minutos (timeout de segurança)
+    anamneseTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Timeout: Polling de anamnese encerrado após 5 minutos');
+      if (anamnesePollingRef.current) {
+        clearInterval(anamnesePollingRef.current);
+        anamnesePollingRef.current = null;
+      }
+      setIsGeneratingAnamnese(false);
+    }, 300000); // 5 minutos
+  };
+
+  // Limpar polling quando componente desmontar
+  useEffect(() => {
+    return () => {
+      if (anamnesePollingRef.current) {
+        clearInterval(anamnesePollingRef.current);
+      }
+      if (anamneseTimeoutRef.current) {
+        clearTimeout(anamneseTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // ✅ NOVO: Função para copiar link do paciente
   const handleCopyPatientLink = async () => {
     try {
@@ -3923,17 +4005,142 @@ export function ConsultationRoom({
           )}
 
           {userType === 'doctor' && (
+            <>
+              {/* Botão Gerar Anamnese */}
+              <button 
+                onClick={async () => {
+                  if (isGeneratingAnamnese) return;
+                  
+                  try {
+                    setIsGeneratingAnamnese(true);
+                    
+                    // Obter consultationId
+                    const { supabase } = await import('@/lib/supabase');
+                    const { data: { session } } = await supabase.auth.getSession();
+                    
+                    let doctorId: string | null = null;
+                    if (session?.user?.id) {
+                      const { data: medico } = await supabase
+                        .from('medicos')
+                        .select('id')
+                        .eq('user_auth', session.user.id)
+                        .single();
+                      doctorId = medico?.id || null;
+                    }
+                    
+                    let consultationId: string | null = null;
+                    const { data: callSession } = await supabase
+                      .from('call_sessions')
+                      .select('consultation_id')
+                      .or(`room_name.eq.${roomId},livekit_room_id.eq.${roomId}`)
+                      .single();
+                    consultationId = callSession?.consultation_id || null;
+                    
+                    if (!consultationId && doctorId) {
+                      const { data: consultation } = await supabase
+                        .from('consultations')
+                        .select('id')
+                        .eq('doctor_id', doctorId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                      consultationId = consultation?.id || null;
+                    }
+                    
+                    if (!consultationId) {
+                      alert('Não foi possível identificar a consulta. Tente novamente.');
+                      setIsGeneratingAnamnese(false);
+                      return;
+                    }
+                    
+                    // Chamar webhook de anamnese
+                    const webhookEndpoints = getWebhookEndpoints();
+                    const webhookHeaders = getWebhookHeaders();
+                    
+                    const response = await fetch(webhookEndpoints.anamnese, {
+                      method: 'POST',
+                      headers: webhookHeaders,
+                      body: JSON.stringify({
+                        consultationId: consultationId,
+                        doctorId: doctorId,
+                        patientId: patientId || 'unknown'
+                      }),
+                    });
 
-            <button 
-              className="btn-end-room" 
-              onClick={endRoom}
-              disabled={isEndingRoom}
-            >
+                    if (!response.ok) {
+                      throw new Error('Erro ao acionar geração de anamnese');
+                    }
 
-              {isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}
+                    // Atualizar status da consulta para PROCESSING
+                    await fetch(`/api/consultations/${consultationId}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        status: 'PROCESSING',
+                        etapa: 'ANAMNESE'
+                      }),
+                    });
 
-            </button>
+                    // Iniciar polling para verificar quando anamnese estiver pronta
+                    startAnamnesePolling(consultationId);
+                    
+                    // Mostrar mensagem informativa
+                    alert('✅ Anamnese sendo gerada!\n\nVocê será redirecionado automaticamente quando estiver pronta.\n\nPor favor, aguarde...');
+                    
+                  } catch (error) {
+                    console.error('Erro ao gerar anamnese:', error);
+                    alert('Erro ao gerar anamnese. Tente novamente.');
+                    setIsGeneratingAnamnese(false);
+                  }
+                }}
+                disabled={isGeneratingAnamnese}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: isGeneratingAnamnese ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  marginRight: '10px',
+                  opacity: isGeneratingAnamnese ? 0.7 : 1
+                }}
+                title="Gerar anamnese da consulta"
+              >
+                {isGeneratingAnamnese ? (
+                  <>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTop: '2px solid white',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <span>Gerando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Gerar Anamnese</span>
+                  </>
+                )}
+              </button>
 
+              <button 
+                className="btn-end-room" 
+                onClick={endRoom}
+                disabled={isEndingRoom}
+              >
+                {isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}
+              </button>
+            </>
           )}
 
 

@@ -5599,6 +5599,7 @@ function ConsultasPageContent() {
             </button>
             <h1 className="consultas-title">Detalhes da Consulta</h1>
           </div>
+          
           {typeof contentType !== 'string' ? contentType : null}
         </div>
       );
@@ -5680,7 +5681,6 @@ function ConsultasPageContent() {
               </div>
             </div>
           </div>
-
 
         </div>
 
