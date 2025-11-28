@@ -131,6 +131,12 @@ export function ConsultationRoom({
 
   // Estado para geração de anamnese
   const [isGeneratingAnamnese, setIsGeneratingAnamnese] = useState(false);
+  
+  // ✅ NOVO: Estado para saber se anamnese está pronta para acessar
+  const [anamneseReady, setAnamneseReady] = useState(false);
+  
+  // ✅ NOVO: ID da consulta atual (para usar no botão "Acessar Anamnese")
+  const [currentConsultationId, setCurrentConsultationId] = useState<string | null>(null);
 
   
 
@@ -3512,6 +3518,9 @@ export function ConsultationRoom({
       clearTimeout(anamneseTimeoutRef.current);
     }
 
+    // Guardar o ID da consulta para usar no botão "Acessar Anamnese"
+    setCurrentConsultationId(consultationId);
+
     console.log('🔄 Iniciando polling para verificar status da anamnese...');
     
     anamnesePollingRef.current = setInterval(async () => {
@@ -3525,11 +3534,11 @@ export function ConsultationRoom({
         const data = await response.json();
         const consultation = data.consultation;
         
-        console.log('📊 Status da consulta:', consultation.status);
+        console.log('📊 Status da consulta:', consultation.status, '| Etapa:', consultation.etapa);
         
-        // Se o status mudou para VALID_ANAMNESE, abrir nova aba
-        if (consultation.status === 'VALID_ANAMNESE') {
-          console.log('✅ Anamnese pronta! Abrindo nova aba...');
+        // ✅ NOVO: Verificar se status=VALIDATION e etapa=ANAMNESE
+        if (consultation.status === 'VALIDATION' && consultation.etapa === 'ANAMNESE') {
+          console.log('✅ Anamnese pronta! Atualizando botão...');
           
           if (anamnesePollingRef.current) {
             clearInterval(anamnesePollingRef.current);
@@ -3541,13 +3550,10 @@ export function ConsultationRoom({
           }
           
           setIsGeneratingAnamnese(false);
+          setAnamneseReady(true);
           
-          // Abrir nova aba com a tela de anamnese (sem fechar a videochamada)
-          const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${consultationId}`;
-          window.open(anamneseUrl, '_blank');
-          
-          // Mostrar notificação na página atual
-          alert('✅ Anamnese gerada com sucesso!\n\nUma nova aba foi aberta com a anamnese.');
+          // Mostrar notificação na página atual (sem abrir nova aba automaticamente)
+          alert('✅ Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar.');
         }
       } catch (error) {
         console.error('Erro ao verificar status da consulta:', error);
@@ -3667,12 +3673,16 @@ export function ConsultationRoom({
               const webhookEndpoints = getWebhookEndpoints();
               const webhookHeaders = getWebhookHeaders();
               
+              // ✅ NOVO: Adicionar consulta_finalizada: true ao finalizar consulta
               const webhookData = {
                 consultationId,
                 doctorId: doctorId || null,
                 patientId: patientId || 'unknown',
-                transcription: transcriptionText
+                transcription: transcriptionText,
+                consulta_finalizada: true  // ✅ Consulta está sendo finalizada
               };
+              
+              console.log('📤 Enviando transcrição final para webhook (consulta_finalizada: true):', webhookData);
 
               await fetch(webhookEndpoints.transcricao, {
                 method: 'POST',
@@ -4006,15 +4016,22 @@ export function ConsultationRoom({
 
           {userType === 'doctor' && (
             <>
-              {/* Botão Gerar Anamnese */}
+              {/* Botão Gerar Anamnese / Acessar Anamnese */}
               <button 
                 onClick={async () => {
+                  // ✅ Se anamnese já está pronta, abrir em nova aba
+                  if (anamneseReady && currentConsultationId) {
+                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
+                    window.open(anamneseUrl, '_blank');
+                    return;
+                  }
+                  
                   if (isGeneratingAnamnese) return;
                   
                   try {
                     setIsGeneratingAnamnese(true);
                     
-                    // Obter consultationId
+                    // Obter consultationId e doctorId
                     const { supabase } = await import('@/lib/supabase');
                     const { data: { session } } = await supabase.auth.getSession();
                     
@@ -4053,22 +4070,28 @@ export function ConsultationRoom({
                       return;
                     }
                     
-                    // Chamar webhook de anamnese
+                    // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
                     const webhookEndpoints = getWebhookEndpoints();
                     const webhookHeaders = getWebhookHeaders();
                     
-                    const response = await fetch(webhookEndpoints.anamnese, {
+                    const webhookData = {
+                      consultationId: consultationId,
+                      doctorId: doctorId || null,
+                      patientId: patientId || 'unknown',
+                      transcription: transcriptionText,
+                      consulta_finalizada: false  // ✅ Consulta continua ativa
+                    };
+                    
+                    console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
+                    
+                    const response = await fetch(webhookEndpoints.transcricao, {
                       method: 'POST',
                       headers: webhookHeaders,
-                      body: JSON.stringify({
-                        consultationId: consultationId,
-                        doctorId: doctorId,
-                        patientId: patientId || 'unknown'
-                      }),
+                      body: JSON.stringify(webhookData),
                     });
 
                     if (!response.ok) {
-                      throw new Error('Erro ao acionar geração de anamnese');
+                      throw new Error('Erro ao enviar transcrição para gerar anamnese');
                     }
 
                     // Atualizar status da consulta para PROCESSING
@@ -4087,7 +4110,7 @@ export function ConsultationRoom({
                     startAnamnesePolling(consultationId);
                     
                     // Mostrar mensagem informativa
-                    alert('✅ Anamnese sendo gerada!\n\nVocê será redirecionado automaticamente quando estiver pronta.\n\nPor favor, aguarde...');
+                    alert('✅ Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.');
                     
                   } catch (error) {
                     console.error('Erro ao gerar anamnese:', error);
@@ -4098,7 +4121,7 @@ export function ConsultationRoom({
                 disabled={isGeneratingAnamnese}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: isGeneratingAnamnese ? '#9ca3af' : '#10b981',
+                  background: anamneseReady ? '#3b82f6' : (isGeneratingAnamnese ? '#9ca3af' : '#10b981'),
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
@@ -4111,7 +4134,7 @@ export function ConsultationRoom({
                   marginRight: '10px',
                   opacity: isGeneratingAnamnese ? 0.7 : 1
                 }}
-                title="Gerar anamnese da consulta"
+                title={anamneseReady ? "Abrir anamnese em nova aba" : "Gerar anamnese da consulta"}
               >
                 {isGeneratingAnamnese ? (
                   <>
@@ -4124,6 +4147,11 @@ export function ConsultationRoom({
                       animation: 'spin 1s linear infinite'
                     }}></div>
                     <span>Gerando...</span>
+                  </>
+                ) : anamneseReady ? (
+                  <>
+                    <CheckCircle size={16} />
+                    <span>Acessar Anamnese</span>
                   </>
                 ) : (
                   <>
