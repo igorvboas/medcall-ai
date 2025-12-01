@@ -183,7 +183,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'analise_contexto',
+        consultaId: context.sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';
@@ -612,7 +615,7 @@ class SuggestionService extends EventEmitter {
     try {
       // Determinar se é situação de emergência
       if (contextAnalysis.urgency_level === 'critica') {
-        return await this.generateEmergencySuggestions(contextAnalysis);
+        return await this.generateEmergencySuggestions(contextAnalysis, context.sessionId);
       }
 
       // Gerar sugestões normais
@@ -634,7 +637,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'sugestoes_contextuais',
+        consultaId: context.sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';
@@ -705,7 +711,7 @@ class SuggestionService extends EventEmitter {
   /**
    * Gera sugestões para situações de emergência
    */
-  private async generateEmergencySuggestions(contextAnalysis: ContextAnalysis): Promise<AISuggestion[]> {
+  private async generateEmergencySuggestions(contextAnalysis: ContextAnalysis, sessionId?: string): Promise<AISuggestion[]> {
     const prompt = PromptTemplate.generateEmergencyPrompt({
       criticalSymptoms: contextAnalysis.symptoms
     });
@@ -720,7 +726,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'sugestoes_emergencia',
+        consultaId: sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';

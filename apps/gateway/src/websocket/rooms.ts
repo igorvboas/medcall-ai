@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import WebSocket from 'ws';
 import { db } from '../config/database';
 import { suggestionService } from '../services/suggestionService';
+import { aiPricingService } from '../services/aiPricingService';
 
 // ==================== ESTRUTURAS DE DADOS ====================
 
@@ -20,6 +21,9 @@ const openAIConnections = new Map();
 
 // Mapa de keepalive timers para conexões OpenAI: userName -> Interval
 const openAIKeepaliveTimers = new Map();
+
+// 📊 Mapa para rastrear tempo de uso da Realtime API: userName -> { startTime, roomId }
+const openAIUsageTracker = new Map<string, { startTime: number; roomId: string }>();
 
 // Mapa separado para timers (não serializar com room data)
 const roomTimers = new Map(); // roomId -> Timeout
@@ -856,6 +860,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         console.log(`[${userName}] ✅ Conectado à OpenAI na sala ${roomId}`);
         openAIConnections.set(userName, openAIWs);
         
+        // 📊 Iniciar tracking de uso da Realtime API
+        openAIUsageTracker.set(userName, { 
+          startTime: Date.now(), 
+          roomId: roomId 
+        });
+        console.log(`📊 [AI_PRICING] Iniciando tracking Realtime API para ${userName}`);
+        
         // ✅ Iniciar keepalive para manter conexão viva (ping a cada 5 minutos)
         const keepaliveInterval = setInterval(() => {
           if (openAIWs.readyState === WebSocket.OPEN) {
@@ -905,9 +916,22 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         }
       });
 
-      openAIWs.on('close', () => {
+      openAIWs.on('close', async () => {
         console.log(`[${userName}] OpenAI WebSocket fechado`);
         openAIConnections.delete(userName);
+        
+        // 📊 Registrar uso da Realtime API
+        const usageData = openAIUsageTracker.get(userName);
+        if (usageData) {
+          const durationMs = Date.now() - usageData.startTime;
+          const room = rooms.get(usageData.roomId);
+          const consultaId = room?.callSessionId || usageData.roomId;
+          
+          await aiPricingService.logRealtimeUsage(durationMs, consultaId);
+          console.log(`📊 [AI_PRICING] Realtime API encerrada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos`);
+          
+          openAIUsageTracker.delete(userName);
+        }
         
         // Limpar keepalive timer
         const keepaliveInterval = openAIKeepaliveTimers.get(userName);
@@ -930,9 +954,22 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       openAIWs.send(data);
     });
 
-    socket.on('transcription:disconnect', () => {
+    socket.on('transcription:disconnect', async () => {
       const openAIWs = openAIConnections.get(userName);
       if (openAIWs) {
+        // 📊 Registrar uso da Realtime API antes de fechar
+        const usageData = openAIUsageTracker.get(userName);
+        if (usageData) {
+          const durationMs = Date.now() - usageData.startTime;
+          const room = rooms.get(usageData.roomId);
+          const consultaId = room?.callSessionId || usageData.roomId;
+          
+          await aiPricingService.logRealtimeUsage(durationMs, consultaId);
+          console.log(`📊 [AI_PRICING] Realtime API desconectada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos`);
+          
+          openAIUsageTracker.delete(userName);
+        }
+        
         openAIWs.close();
         openAIConnections.delete(userName);
       }
@@ -963,12 +1000,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         return;
       }
       
-      console.log(`✅ [AUTO-SAVE] Sala encontrada: ${roomId}`, {
-        hasCallSessionId: !!room.callSessionId,
-        callSessionId: room.callSessionId,
-        hostUserName: room.hostUserName,
-        participantUserName: room.participantUserName
-      });
+      //console.log(`✅ [AUTO-SAVE] Sala encontrada: ${roomId}`, {
+      //  hasCallSessionId: !!room.callSessionId,
+      //  callSessionId: room.callSessionId,
+      //  hostUserName: room.hostUserName,
+      //  participantUserName: room.participantUserName
+      //});
 
       // Salvar transcrição no histórico da sala (memória)
       const transcriptionEntry = {
@@ -980,13 +1017,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       console.log('[DEBUG] [sendTranscriptionToPeer]')
       
       // ✅ NOVO: Salvar transcrição em array único (atualizando o registro existente)
-      console.log(`🔍 [AUTO-SAVE] Verificando condições para salvar:`, {
-        roomId: roomId,
-        hasCallSessionId: !!room.callSessionId,
-        callSessionId: room.callSessionId,
-        from: from,
-        transcriptionLength: transcription.length
-      });
+      //console.log(`🔍 [AUTO-SAVE] Verificando condições para salvar:`, {
+      //  roomId: roomId,
+      //  hasCallSessionId: !!room.callSessionId,
+      //  callSessionId: room.callSessionId,
+      //  from: from,
+      //  transcriptionLength: transcription.length
+      //});
 
       if (room.callSessionId) {
         try {
@@ -999,18 +1036,18 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             ? (room.doctorName || room.hostUserName) 
             : (room.participantUserName || room.patientName || 'Paciente');
           
-          console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
-            sessionId: room.callSessionId,
-            speaker: speaker,
-            speakerId: speakerId,
-            doctorName: room.doctorName || room.hostUserName,
-            textLength: transcription.length,
-            roomId: roomId,
-            socketId: socket.id,
-            hostSocketId: room.hostSocketId,
-            isDoctor: isDoctor,
-            environment: process.env.NODE_ENV
-          });
+          //console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
+          //  sessionId: room.callSessionId,
+          //  speaker: speaker,
+          //  speakerId: speakerId,
+          //  doctorName: room.doctorName || room.hostUserName,
+          //  textLength: transcription.length,
+          //  roomId: roomId,
+          //  socketId: socket.id,
+          //  hostSocketId: room.hostSocketId,
+          //  isDoctor: isDoctor,
+          //  environment: process.env.NODE_ENV
+          //});
           
           // ✅ Salvar no array de conversas (atualiza o registro único)
           const success = await db.addTranscriptionToSession(room.callSessionId, {
@@ -1076,7 +1113,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       // 🤖 GERAÇÃO DE SUGESTÕES DE IA
       // Disparar análise de IA a cada 5 transcrições
       if (room.transcriptions.length % 5 === 0 && room.transcriptions.length > 0) {
-        console.log(`🤖 [ROOM ${roomId}] Disparando análise de IA (${room.transcriptions.length} transcrições)`);
+        //console.log(`🤖 [ROOM ${roomId}] Disparando análise de IA (${room.transcriptions.length} transcrições)`);
         
         try {
           // Calcular duração da sessão em minutos
@@ -1097,13 +1134,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           };
 
           // Gerar sugestões (executa em background)
-          console.log(`🤖 [ROOM ${roomId}] Iniciando geração de sugestões com sessionId: ${context.sessionId}`);
+          //nsole.log(`🤖 [ROOM ${roomId}] Iniciando geração de sugestões com sessionId: ${context.sessionId}`);
           
           suggestionService.generateSuggestions(context).then(result => {
-            console.log(`🤖 [ROOM ${roomId}] Resultado da IA:`, result ? `${result.suggestions.length} sugestões` : 'null');
+            //nsole.log(`🤖 [ROOM ${roomId}] Resultado da IA:`, result ? `${result.suggestions.length} sugestões` : 'null');
             
             if (result && result.suggestions.length > 0) {
-              console.log(`✅ [ROOM ${roomId}] ${result.suggestions.length} sugestões geradas`);
+              //console.log(`✅ [ROOM ${roomId}] ${result.suggestions.length} sugestões geradas`);
               
               // Enviar sugestões APENAS para o MÉDICO (host)
               if (room.hostSocketId) {
@@ -1116,7 +1153,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                 };
                 
                 io.to(room.hostSocketId).emit('ai:suggestions', suggestionData);
-                console.log(`📤 [ROOM ${roomId}] Sugestões enviadas para o médico:`, suggestionData.suggestions.map(s => s.content.substring(0, 50) + '...'));
+                //console.log(`📤 [ROOM ${roomId}] Sugestões enviadas para o médico:`, suggestionData.suggestions.map(s => s.content.substring(0, 50) + '...'));
               } else {
                 console.warn(`⚠️ [ROOM ${roomId}] Host socket não encontrado para enviar sugestões`);
               }

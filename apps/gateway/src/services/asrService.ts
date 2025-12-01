@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
 import FormData from 'form-data';
+import { aiPricingService } from './aiPricingService';
 
 export interface TranscriptionResult {
   id: string;
@@ -525,6 +526,12 @@ class ASRService {
         
         console.log(`✅ WHISPER API RESPONDEU!`);
         console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
+        
+        // 📊 Registrar uso do Whisper para monitoramento de custos
+        await aiPricingService.logWhisperUsage(
+          audioChunk.duration,
+          audioChunk.sessionId
+        );
         
         return this.processWhisperResponse(result, audioChunk);
         
