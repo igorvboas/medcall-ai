@@ -925,10 +925,17 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         if (usageData) {
           const durationMs = Date.now() - usageData.startTime;
           const room = rooms.get(usageData.roomId);
-          const consultaId = room?.callSessionId || usageData.roomId;
+          
+          // Prioridade: consultationId > callSessionId > roomId
+          // consultationId é o UUID real da consulta na tabela consultations
+          const consultaId = room?.consultationId || null;
+          
+          if (!consultaId) {
+            console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
+          }
           
           await aiPricingService.logRealtimeUsage(durationMs, consultaId);
-          console.log(`📊 [AI_PRICING] Realtime API encerrada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos`);
+          console.log(`📊 [AI_PRICING] Realtime API encerrada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos - consultaId: ${consultaId}`);
           
           openAIUsageTracker.delete(userName);
         }
@@ -962,10 +969,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         if (usageData) {
           const durationMs = Date.now() - usageData.startTime;
           const room = rooms.get(usageData.roomId);
-          const consultaId = room?.callSessionId || usageData.roomId;
+          
+          // Prioridade: consultationId > callSessionId > null
+          const consultaId = room?.consultationId || null;
+          
+          if (!consultaId) {
+            console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
+          }
           
           await aiPricingService.logRealtimeUsage(durationMs, consultaId);
-          console.log(`📊 [AI_PRICING] Realtime API desconectada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos`);
+          console.log(`📊 [AI_PRICING] Realtime API desconectada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos - consultaId: ${consultaId}`);
           
           openAIUsageTracker.delete(userName);
         }
