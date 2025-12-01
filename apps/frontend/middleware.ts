@@ -11,7 +11,7 @@ export async function middleware(req: NextRequest) {
 
   // ✅ Pular verificação de auth para assets e APIs públicas
   const { pathname } = req.nextUrl;
-  const publicPaths = ['/auth', '/', '/api/public'];
+  const publicPaths = ['/auth', '/', '/api/public', '/fail'];
   if (publicPaths.some(path => pathname.startsWith(path) || pathname === '/')) {
     return response;
   }

@@ -383,27 +383,57 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         resetRoomExpiration(roomId);
         
       // ✅ NOVO: Buscar transcrições do banco de dados
-      let transcriptionHistory = room.transcriptions || [];
+      let transcriptionHistory: any[] = room.transcriptions || [];
       if (room.callSessionId) {
         try {
           const { db } = await import('../config/database');
           const dbUtterances = await db.getSessionUtterances(room.callSessionId);
           
           if (dbUtterances && dbUtterances.length > 0) {
-            // Converter utterances do banco para formato do frontend
-            transcriptionHistory = dbUtterances.map((u: any) => ({
-              speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
-              text: u.text,
-              timestamp: u.created_at || u.timestamp
-            }));
+            // ✅ CORREÇÃO: Fazer parse do JSON e extrair cada conversa individualmente
+            const parsedTranscriptions: any[] = [];
+            
+            for (const u of dbUtterances) {
+              try {
+                const parsed = JSON.parse(u.text);
+                if (Array.isArray(parsed)) {
+                  // Array de conversas - adicionar cada uma individualmente
+                  for (const conv of parsed) {
+                    parsedTranscriptions.push({
+                      speaker: conv.speaker === 'doctor' 
+                        ? room.hostUserName 
+                        : room.participantUserName || 'Paciente',
+                      text: conv.text,
+                      timestamp: u.created_at
+                    });
+                  }
+                } else {
+                  // Fallback: texto simples (não é array)
+                  parsedTranscriptions.push({
+                    speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+                    text: u.text,
+                    timestamp: u.created_at
+                  });
+                }
+              } catch {
+                // Não é JSON válido - usar como texto simples
+                parsedTranscriptions.push({
+                  speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+                  text: u.text,
+                  timestamp: u.created_at
+                });
+              }
+            }
+            
+            transcriptionHistory = parsedTranscriptions;
             
             // Mesclar com transcrições em memória (caso haja alguma não salva ainda)
             const memoryTranscriptions = room.transcriptions || [];
-            const dbTimestamps = new Set(transcriptionHistory.map((t: any) => t.timestamp));
-            const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTimestamps.has(t.timestamp));
+            const dbTexts = new Set(transcriptionHistory.map((t: any) => t.text));
+            const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTexts.has(t.text));
             transcriptionHistory = [...transcriptionHistory, ...uniqueMemory];
             
-            console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco`);
+            console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco (host)`);
           }
         } catch (error) {
           console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
@@ -454,24 +484,54 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           resetRoomExpiration(roomId);
           
           // ✅ NOVO: Buscar transcrições do banco de dados
-          let transcriptionHistory = room.transcriptions || [];
+          let transcriptionHistory: any[] = room.transcriptions || [];
           if (room.callSessionId) {
             try {
               const { db } = await import('../config/database');
               const dbUtterances = await db.getSessionUtterances(room.callSessionId);
               
               if (dbUtterances && dbUtterances.length > 0) {
-                // Converter utterances do banco para formato do frontend
-                transcriptionHistory = dbUtterances.map((u: any) => ({
-                  speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
-                  text: u.text,
-                  timestamp: u.created_at || u.timestamp
-                }));
+                // ✅ CORREÇÃO: Fazer parse do JSON e extrair cada conversa individualmente
+                const parsedTranscriptions: any[] = [];
+                
+                for (const u of dbUtterances) {
+                  try {
+                    const parsed = JSON.parse(u.text);
+                    if (Array.isArray(parsed)) {
+                      // Array de conversas - adicionar cada uma individualmente
+                      for (const conv of parsed) {
+                        parsedTranscriptions.push({
+                          speaker: conv.speaker === 'doctor' 
+                            ? room.hostUserName 
+                            : room.participantUserName || 'Paciente',
+                          text: conv.text,
+                          timestamp: u.created_at
+                        });
+                      }
+                    } else {
+                      // Fallback: texto simples (não é array)
+                      parsedTranscriptions.push({
+                        speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+                        text: u.text,
+                        timestamp: u.created_at
+                      });
+                    }
+                  } catch {
+                    // Não é JSON válido - usar como texto simples
+                    parsedTranscriptions.push({
+                      speaker: u.speaker === 'doctor' ? room.hostUserName : room.participantUserName || 'Paciente',
+                      text: u.text,
+                      timestamp: u.created_at
+                    });
+                  }
+                }
+                
+                transcriptionHistory = parsedTranscriptions;
                 
                 // Mesclar com transcrições em memória (caso haja alguma não salva ainda)
                 const memoryTranscriptions = room.transcriptions || [];
-                const dbTimestamps = new Set(transcriptionHistory.map((t: any) => t.timestamp));
-                const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTimestamps.has(t.timestamp));
+                const dbTexts = new Set(transcriptionHistory.map((t: any) => t.text));
+                const uniqueMemory = memoryTranscriptions.filter((t: any) => !dbTexts.has(t.text));
                 transcriptionHistory = [...transcriptionHistory, ...uniqueMemory];
                 
                 console.log(`📜 [ROOM ${roomId}] ${transcriptionHistory.length} transcrições históricas carregadas do banco (participant)`);
@@ -932,10 +992,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         try {
           const { db } = await import('../config/database');
           
-          // ✅ Determinar speaker e speaker_id com nomes reais
-          const isDoctor = from === room.hostUserName;
+          // ✅ CORREÇÃO: Usar socket.id para identificar quem é o médico (mais confiável que comparar nomes)
+          const isDoctor = socket.id === room.hostSocketId;
           const speaker = isDoctor ? 'doctor' : 'patient';
-          const speakerId = isDoctor ? room.hostUserName : (room.participantUserName || room.patientName || 'Paciente');
+          const speakerId = isDoctor 
+            ? (room.doctorName || room.hostUserName) 
+            : (room.participantUserName || room.patientName || 'Paciente');
           
           console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
             sessionId: room.callSessionId,
@@ -944,6 +1006,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             doctorName: room.doctorName || room.hostUserName,
             textLength: transcription.length,
             roomId: roomId,
+            socketId: socket.id,
+            hostSocketId: room.hostSocketId,
+            isDoctor: isDoctor,
             environment: process.env.NODE_ENV
           });
           

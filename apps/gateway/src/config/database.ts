@@ -256,13 +256,13 @@ export const db = {
         return null;
       }
 
-      console.log(`💾 [SAVE] Tentando salvar transcrição:`, {
-        session_id: insertData.session_id,
-        speaker: insertData.speaker,
-        text_length: insertData.text.length,
-        start_ms: insertData.start_ms,
-        end_ms: insertData.end_ms
-      });
+      //console.log(`💾 [SAVE] Tentando salvar transcrição:`, {
+      //  session_id: insertData.session_id,
+      //  speaker: insertData.speaker,
+      //  text_length: insertData.text.length,
+      //  start_ms: insertData.start_ms,
+      //  end_ms: insertData.end_ms
+      //});
 
       const { data: utterance, error } = await supabase
         .from('transcriptions_med')
@@ -535,13 +535,13 @@ export const db = {
       }
 
       // ✅ Log inicial para debug
-      console.log(`💾 [ARRAY-SAVE] Iniciando salvamento:`, {
-        sessionId: sessionId,
-        speaker: transcription.speaker,
-        textLength: transcription.text?.length || 0,
-        hasDoctorName: !!transcription.doctor_name,
-        environment: process.env.NODE_ENV
-      });
+      //console.log(`💾 [ARRAY-SAVE] Iniciando salvamento:`, {
+      //  sessionId: sessionId,
+      //  speaker: transcription.speaker,
+      //  textLength: transcription.text?.length || 0,
+      //  hasDoctorName: !!transcription.doctor_name,
+      //  environment: process.env.NODE_ENV
+      //});
 
       // ✅ Buscar se já existe um registro único para esta sessão
       // Usar processing_status = 'completed' como flag para identificar o registro único

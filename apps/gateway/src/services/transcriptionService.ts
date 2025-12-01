@@ -296,9 +296,9 @@ export class TranscriptionService extends EventEmitter {
       // Mapear speaker baseado no participantId ou participantName
       let speaker: 'doctor' | 'patient' | 'system' = 'system';
       const participantLower = (segment.participantId + segment.participantName).toLowerCase();
-      if (participantLower.includes('doctor') || participantLower.includes('médico') || participantLower.includes('medico')) {
+      if (participantLower.includes('doctor') || participantLower.includes('médico') || participantLower.includes('Medico')) {
         speaker = 'doctor';
-      } else if (participantLower.includes('patient') || participantLower.includes('paciente')) {
+      } else if (participantLower.includes('patient') || participantLower.includes('Paciente')) {
         speaker = 'patient';
       }
       
