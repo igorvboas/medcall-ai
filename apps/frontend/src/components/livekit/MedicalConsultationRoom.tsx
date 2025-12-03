@@ -193,7 +193,7 @@ export function MedicalConsultationRoom({
       const { data: callSession } = await supabase
         .from('call_sessions')
         .select('consultation_id')
-        .or(`room_name.eq.${roomName},livekit_room_id.eq.${roomName},id.eq.${sessionId}`)
+        .or(`room_name.eq.${roomName},room_id.eq.${roomName},id.eq.${sessionId}`)
         .single();
 
       let consultationId = callSession?.consultation_id;

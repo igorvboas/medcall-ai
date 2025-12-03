@@ -34,7 +34,7 @@ async function runMigration() {
   session_type VARCHAR(20) DEFAULT 'online' CHECK (session_type IN ('presencial', 'online')),
   participants JSONB NOT NULL DEFAULT '{}'::jsonb,
   room_name VARCHAR(255),
-  livekit_room_id VARCHAR(255),
+  room_id VARCHAR(255),
   status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'error')),
   consent BOOLEAN NOT NULL DEFAULT false,
   started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

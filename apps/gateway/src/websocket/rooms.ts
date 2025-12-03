@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { db } from '../config/database';
+import { db, logError, logWarning } from '../config/database';
 import { suggestionService } from '../services/suggestionService';
 import { aiPricingService } from '../services/aiPricingService';
 
@@ -270,7 +270,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       let consultationId = null;
       try {
         const callSession = await db.createCallSession({
-          livekit_room_id: roomId,
+          room_id: roomId,
           room_name: roomName || 'Sala sem nome',
           session_type: 'online',
           participants: {
@@ -292,6 +292,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         } else {
           console.error(`❌ [CALL_SESSION] Falha ao criar call_session no banco para sala ${roomId} (sala criada apenas em memória)`);
           console.error(`❌ [CALL_SESSION] Isso impedirá o salvamento de transcrições!`);
+          logError(
+            `Falha ao criar call_session no banco - transcrições não serão salvas`,
+            'error',
+            null,
+            { roomId, hostName, patientId, patientName }
+          );
         }
 
         // ✅ CRIAR CONSULTA COM STATUS RECORDING QUANDO A SALA É CRIADA
@@ -341,10 +347,22 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             }
           } catch (consultationError) {
             console.error('❌ Erro ao criar consulta:', consultationError);
+            logError(
+              `Erro ao criar consulta ao criar sala`,
+              'error',
+              null,
+              { roomId, hostName, patientId, patientName, error: consultationError instanceof Error ? consultationError.message : String(consultationError) }
+            );
           }
         }
       } catch (error) {
         console.error('❌ Erro ao criar call_session:', error);
+        logError(
+          `Exceção ao criar call_session`,
+          'error',
+          null,
+          { roomId, hostName, error: error instanceof Error ? error.message : String(error) }
+        );
         // Continuar mesmo se falhar (sala funciona em memória)
       }
 
@@ -441,6 +459,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           }
         } catch (error) {
           console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+          // Logar erro no banco
+          logError(
+            `Erro ao buscar transcrições do banco para host`,
+            'error',
+            room.consultationId || null,
+            { roomId, error: error instanceof Error ? error.message : String(error) }
+          );
           // Usar apenas transcrições em memória se falhar
         }
       }
@@ -542,6 +567,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
               }
             } catch (error) {
               console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+              // Logar erro no banco
+              logError(
+                `Erro ao buscar transcrições do banco para participante reconectando`,
+                'error',
+                room.consultationId || null,
+                { roomId, error: error instanceof Error ? error.message : String(error) }
+              );
             }
           }
           
@@ -636,6 +668,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           }
         } catch (error) {
           console.error(`❌ [ROOM ${roomId}] Erro ao buscar transcrições do banco:`, error);
+          // Logar erro no banco
+          logError(
+            `Erro ao buscar transcrições do banco para novo participante`,
+            'error',
+            room.consultationId || null,
+            { roomId, error: error instanceof Error ? error.message : String(error) }
+          );
         }
       }
       
@@ -769,6 +808,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       
       if (!roomId) {
         console.error(`❌ [TRANSCRIPTION] Socket ${socket.id} não está em uma sala`);
+        // Logar warning no banco (não é um erro crítico)
+        logWarning(
+          `Tentativa de conexão de transcrição sem estar em sala`,
+          null,
+          { socketId: socket.id, userName }
+        );
         if (typeof callback === 'function') {
           callback({ success: false, error: 'Você não está em uma sala. Entre em uma sala primeiro.' });
         }
@@ -840,6 +885,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       if (!OPENAI_API_KEY) {
         console.error('❌ [TRANSCRIPTION] OPENAI_API_KEY não configurada!');
         console.error('❌ [TRANSCRIPTION] Verifique as variáveis de ambiente no gateway');
+        // Logar erro crítico de configuração
+        const room = rooms.get(roomId);
+        logError(
+          `OPENAI_API_KEY não configurada no servidor`,
+          'error',
+          room?.consultationId || null,
+          { roomId, userName }
+        );
         callback({ success: false, error: 'OpenAI API Key não configurada no servidor' });
         return;
       }
@@ -910,6 +963,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         console.error(`❌ [TRANSCRIPTION] Erro OpenAI para ${userName}:`, error);
         console.error(`❌ [TRANSCRIPTION] Mensagem:`, error?.message || 'Erro desconhecido');
         console.error(`❌ [TRANSCRIPTION] Stack:`, error?.stack);
+        // Logar erro de conexão OpenAI
+        const room = rooms.get(roomId);
+        logError(
+          `Erro na conexão WebSocket com OpenAI Realtime API`,
+          'error',
+          room?.consultationId || null,
+          { roomId, userName, errorMessage: error?.message || 'Erro desconhecido', errorStack: error?.stack }
+        );
         socket.emit('transcription:error', { error: error?.message || 'Erro desconhecido ao conectar à OpenAI' });
         if (typeof callback === 'function') {
           callback({ success: false, error: error?.message || 'Erro desconhecido ao conectar à OpenAI' });
@@ -926,9 +987,20 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           const durationMs = Date.now() - usageData.startTime;
           const room = rooms.get(usageData.roomId);
           
-          // Prioridade: consultationId > callSessionId > roomId
-          // consultationId é o UUID real da consulta na tabela consultations
-          const consultaId = room?.consultationId || null;
+          // Prioridade: consultationId da room > buscar do banco pelo roomId
+          let consultaId = room?.consultationId || null;
+          
+          // Se não encontrou na room, buscar do banco de dados
+          if (!consultaId && usageData.roomId) {
+            console.log(`🔍 [AI_PRICING] Buscando consultaId do banco para room ${usageData.roomId}...`);
+            consultaId = await db.getConsultationIdByRoomId(usageData.roomId);
+            
+            // Atualizar a room em memória se encontrou
+            if (consultaId && room) {
+              room.consultationId = consultaId;
+              console.log(`✅ [AI_PRICING] consultaId recuperado do banco: ${consultaId}`);
+            }
+          }
           
           if (!consultaId) {
             console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
@@ -955,6 +1027,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       const openAIWs = openAIConnections.get(userName);
       
       if (!openAIWs || openAIWs.readyState !== WebSocket.OPEN) {
+        // Logar warning de conexão não disponível
+        const roomId = socketToRoom.get(socket.id);
+        const room = roomId ? rooms.get(roomId) : null;
+        logWarning(
+          `Tentativa de enviar transcrição sem conexão OpenAI ativa`,
+          room?.consultationId || null,
+          { userName, roomId, wsReadyState: openAIWs?.readyState }
+        );
         socket.emit('transcription:error', { error: 'Não conectado à OpenAI' });
         return;
       }
@@ -970,8 +1050,20 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           const durationMs = Date.now() - usageData.startTime;
           const room = rooms.get(usageData.roomId);
           
-          // Prioridade: consultationId > callSessionId > null
-          const consultaId = room?.consultationId || null;
+          // Prioridade: consultationId da room > buscar do banco pelo roomId
+          let consultaId = room?.consultationId || null;
+          
+          // Se não encontrou na room, buscar do banco de dados
+          if (!consultaId && usageData.roomId) {
+            console.log(`🔍 [AI_PRICING] Buscando consultaId do banco para room ${usageData.roomId}...`);
+            consultaId = await db.getConsultationIdByRoomId(usageData.roomId);
+            
+            // Atualizar a room em memória se encontrou
+            if (consultaId && room) {
+              room.consultationId = consultaId;
+              console.log(`✅ [AI_PRICING] consultaId recuperado do banco: ${consultaId}`);
+            }
+          }
           
           if (!consultaId) {
             console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
@@ -1010,6 +1102,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       if (!room) {
         console.error(`❌ [AUTO-SAVE] Transcrição rejeitada: sala ${roomId} não existe`);
         console.error(`❌ [AUTO-SAVE] Salas disponíveis:`, Array.from(rooms.keys()));
+        // Logar warning - sala não encontrada
+        logWarning(
+          `Transcrição rejeitada: sala não existe`,
+          null,
+          { roomId, salasDisponiveis: Array.from(rooms.keys()), userName }
+        );
         return;
       }
       
@@ -1078,6 +1176,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             console.error(`❌ [AUTO-SAVE] Session ID: ${room.callSessionId}`);
             console.error(`❌ [AUTO-SAVE] Room ID: ${roomId}`);
             console.error(`❌ [AUTO-SAVE] Verifique os logs anteriores para mais detalhes`);
+            // Logar erro de salvamento de transcrição
+            logError(
+              `Falha ao adicionar transcrição ao array no banco`,
+              'error',
+              room.consultationId || null,
+              { roomId, sessionId: room.callSessionId, speaker, textLength: transcription.length }
+            );
           } else {
             console.log(`✅ [AUTO-SAVE] Transcrição salva com sucesso! Session: ${room.callSessionId}`);
           }
@@ -1086,6 +1191,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           if (error instanceof Error) {
             console.error(`❌ [AUTO-SAVE] Stack:`, error.stack);
           }
+          // Logar erro de exceção ao salvar
+          logError(
+            `Erro ao salvar transcrição no banco`,
+            'error',
+            room.consultationId || null,
+            { roomId, sessionId: room.callSessionId, error: error instanceof Error ? error.message : String(error) }
+          );
           // Continuar mesmo se falhar (não bloquear transcrição)
         }
       } else {
@@ -1099,6 +1211,17 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           callSessionId: room.callSessionId
         });
         console.error(`❌ [AUTO-SAVE] Isso indica que a call_session não foi criada corretamente!`);
+        // Logar warning - sessão não configurada corretamente
+        logWarning(
+          `callSessionId não disponível - transcrição não será salva no banco`,
+          room.consultationId || null,
+          { 
+            roomId, 
+            hostUserName: room.hostUserName,
+            participantUserName: room.participantUserName,
+            patientName: room.patientName
+          }
+        );
       }
       
       resetRoomExpiration(roomId);
@@ -1128,28 +1251,51 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       if (room.transcriptions.length % 5 === 0 && room.transcriptions.length > 0) {
         //console.log(`🤖 [ROOM ${roomId}] Disparando análise de IA (${room.transcriptions.length} transcrições)`);
         
-        try {
-          // Calcular duração da sessão em minutos
-          const sessionDuration = Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (1000 * 60));
-          
-          // Preparar contexto para o suggestionService
-          const context = {
-            sessionId: room.callSessionId || roomId, // Usar callSessionId (UUID) se disponível
-            patientName: room.patientName || room.participantUserName || 'Paciente',
-            sessionDuration: sessionDuration,
-            consultationType: 'online',
-            utterances: room.transcriptions.map((t: any) => ({
-              speaker: t.speaker === room.hostUserName ? 'doctor' : 'patient',
-              text: t.text,
-              timestamp: t.timestamp
-            })),
-            specialty: 'clinica_geral'
-          };
+        // ✅ Usar IIFE async para resolver o consultationId corretamente antes de chamar o serviço
+        (async () => {
+          try {
+            // Buscar consultationId correto (UUID) para vincular custos corretamente
+            let consultationId = room.consultationId;
+            // console.log(`🕵️ [DEBUG_ID] ID em memória para ${roomId}: ${consultationId}`);
+            
+            if (!consultationId) {
+              // Tentar buscar do banco se não estiver na memória
+              // console.log(`🕵️ [DEBUG_ID] Buscando ID no banco para ${roomId}...`);
+              consultationId = await db.getConsultationIdByRoomId(roomId);
+              // console.log(`🕵️ [DEBUG_ID] Resultado do banco para ${roomId}: ${consultationId}`);
 
-          // Gerar sugestões (executa em background)
-          //nsole.log(`🤖 [ROOM ${roomId}] Iniciando geração de sugestões com sessionId: ${context.sessionId}`);
-          
-          suggestionService.generateSuggestions(context).then(result => {
+              if (consultationId) {
+                // Atualizar cache na room se ainda existir
+                const currentRoom = rooms.get(roomId);
+                if (currentRoom) {
+                  currentRoom.consultationId = consultationId;
+                }
+              } else {
+                console.warn(`⚠️ [AI_PRICING] Não foi possível encontrar consultation_id para sala ${roomId}. Usando fallback.`);
+              }
+            }
+
+            // Calcular duração da sessão em minutos
+            const sessionDuration = Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (1000 * 60));
+            
+            // Preparar contexto para o suggestionService
+            const context = {
+              // ✅ Usar consultationId (UUID da tabela consultations) - NÃO usar callSessionId pois é de outra tabela!
+              sessionId: consultationId || null, // Se não tiver consultationId, passar null para evitar ID errado
+              patientName: room.patientName || room.participantUserName || 'Paciente',
+              sessionDuration: sessionDuration,
+              consultationType: 'online',
+              utterances: room.transcriptions.map((t: any) => ({
+                speaker: t.speaker === room.hostUserName ? 'doctor' : 'patient',
+                text: t.text,
+                timestamp: t.timestamp
+              })),
+              specialty: 'clinica_geral'
+            };
+
+            // Gerar sugestões
+            const result = await suggestionService.generateSuggestions(context);
+            
             //nsole.log(`🤖 [ROOM ${roomId}] Resultado da IA:`, result ? `${result.suggestions.length} sugestões` : 'null');
             
             if (result && result.suggestions.length > 0) {
@@ -1169,17 +1315,25 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                 //console.log(`📤 [ROOM ${roomId}] Sugestões enviadas para o médico:`, suggestionData.suggestions.map(s => s.content.substring(0, 50) + '...'));
               } else {
                 console.warn(`⚠️ [ROOM ${roomId}] Host socket não encontrado para enviar sugestões`);
+                logWarning(
+                  `Host socket não encontrado para enviar sugestões de IA`,
+                  room.consultationId || null,
+                  { roomId, suggestionsCount: result.suggestions.length }
+                );
               }
             } else {
               console.log(`📭 [ROOM ${roomId}] Nenhuma sugestão gerada ou resultado nulo`);
             }
-          }).catch(error => {
+          } catch (error) {
             console.error(`❌ [ROOM ${roomId}] Erro ao gerar sugestões:`, error);
-          });
-          
-        } catch (error) {
-          console.error(`❌ [ROOM ${roomId}] Erro ao preparar contexto para IA:`, error);
-        }
+            logError(
+              `Erro ao gerar sugestões de IA`,
+              'error',
+              room.consultationId || null,
+              { roomId, error: error instanceof Error ? error.message : String(error) }
+            );
+          }
+        })();
       }
     });
 
@@ -1239,25 +1393,44 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         
         if (consultationId) {
           // ✅ Consulta já existe (foi criada quando a sala foi criada)
-          // Atualizar status para PROCESSING
+          // Atualizar status para PROCESSING e registrar fim da consulta
           try {
             const { supabase } = await import('../config/database');
+            
+            // ✅ Calcular duração em minutos (duracao é REAL no banco)
+            const duracaoSegundos = calculateDuration(room.createdAt);
+            const duracaoMinutos = duracaoSegundos / 60; // Converter para minutos
+            const consultaFim = new Date().toISOString();
             
             const { error: updateError } = await supabase
               .from('consultations')
               .update({
                 status: 'PROCESSING',
-                updated_at: new Date().toISOString()
+                consulta_fim: consultaFim, // ✅ Registrar fim da consulta
+                duracao: duracaoMinutos, // ✅ Duração em minutos
+                updated_at: consultaFim
               })
               .eq('id', consultationId);
             
             if (updateError) {
               console.error('❌ Erro ao atualizar status da consulta:', updateError);
+              logError(
+                `Erro ao atualizar status da consulta para PROCESSING`,
+                'error',
+                consultationId,
+                { roomId, error: updateError.message }
+              );
             } else {
-              console.log(`📋 Consulta ${consultationId} atualizada para PROCESSING`);
+              console.log(`📋 Consulta ${consultationId} atualizada para PROCESSING (duração: ${duracaoMinutos.toFixed(2)} min)`);
             }
           } catch (updateError) {
             console.error('❌ Erro ao atualizar consulta:', updateError);
+            logError(
+              `Exceção ao atualizar consulta`,
+              'error',
+              consultationId,
+              { roomId, error: updateError instanceof Error ? updateError.message : String(updateError) }
+            );
           }
         } else if (doctorId && room.patientId) {
           // ✅ Fallback: criar consulta se não foi criada antes (compatibilidade)
@@ -1275,11 +1448,47 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             consultationId = consultation.id;
             console.log(`📋 Consulta criada (fallback): ${consultationId}`);
             saveResult.consultationId = consultationId;
+            
+            // ✅ Atualizar consulta_fim e duracao (já que a consulta foi criada no fim)
+            try {
+              const { supabase } = await import('../config/database');
+              const duracaoSegundos = calculateDuration(room.createdAt);
+              const duracaoMinutos = duracaoSegundos / 60;
+              
+              await supabase
+                .from('consultations')
+                .update({
+                  consulta_fim: new Date().toISOString(),
+                  duracao: duracaoMinutos
+                })
+                .eq('id', consultationId);
+              
+              console.log(`📋 Consulta ${consultationId} atualizada com duração: ${duracaoMinutos.toFixed(2)} min`);
+            } catch (updateError) {
+              console.error('❌ Erro ao atualizar duração da consulta fallback:', updateError);
+              logError(
+                `Erro ao atualizar duração da consulta fallback`,
+                'error',
+                consultationId,
+                { roomId, error: updateError instanceof Error ? updateError.message : String(updateError) }
+              );
+            }
           } else {
             console.warn('⚠️ Falha ao criar consulta no banco');
+            logError(
+              `Falha ao criar consulta no banco (fallback)`,
+              'error',
+              null,
+              { roomId, doctorId, patientId: room.patientId, patientName: room.patientName }
+            );
           }
         } else {
           console.warn('⚠️ Consulta não criada/atualizada - faltam doctor_id ou patientId');
+          logWarning(
+            `Consulta não criada/atualizada - faltam doctor_id ou patientId`,
+            null,
+            { roomId, hasDoctorId: !!doctorId, hasPatientId: !!room.patientId }
+          );
         }
 
         // 3. Atualizar CALL_SESSION com consultation_id
@@ -1319,6 +1528,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             saveResult.transcriptionId = transcription.id;
           } else {
             console.warn('⚠️ Falha ao salvar transcrição no banco');
+            logError(
+              `Falha ao salvar transcrição completa no banco ao finalizar consulta`,
+              'error',
+              consultationId,
+              { roomId, transcriptionsCount: room.transcriptions.length }
+            );
           }
         }
 
@@ -1326,6 +1541,12 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       } catch (error) {
         console.error('❌ Erro ao salvar no banco de dados:', error);
         saveResult.error = 'Erro ao salvar alguns dados no banco';
+        logError(
+          `Erro geral ao salvar dados no banco ao finalizar consulta`,
+          'error',
+          room.consultationId || null,
+          { roomId, error: error instanceof Error ? error.message : String(error) }
+        );
       }
       // ================================================================
 

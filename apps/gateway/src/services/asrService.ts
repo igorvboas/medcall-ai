@@ -1,5 +1,5 @@
 import { ProcessedAudioChunk } from './audioProcessor';
-import { db } from '../config/database';
+import { db, logError, logWarning } from '../config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
@@ -66,6 +66,12 @@ class ASRService {
         console.log('✅ OpenAI Whisper ASR Service habilitado');
       } catch (error) {
         console.error('❌ Erro ao inicializar OpenAI:', error);
+        logError(
+          `Erro ao inicializar OpenAI Whisper ASR`,
+          'error',
+          null,
+          { error: error instanceof Error ? error.message : String(error) }
+        );
         this.isEnabled = false;
       }
     } else {
@@ -114,6 +120,12 @@ class ASRService {
     } catch (error) {
       console.error(`❌ [ASR] ERRO WHISPER - ${asrId}:`, error);
       console.error(`❌ [ASR] Não é possível transcrever áudio devido a erro no Whisper`);
+      logError(
+        `Erro no processamento de áudio via Whisper ASR`,
+        'error',
+        audioChunk.sessionId,
+        { asrId, channel: audioChunk.channel, duration: audioChunk.duration, error: error instanceof Error ? error.message : String(error) }
+      );
       // ✅ NÃO usar fallback - retornar null em caso de erro
       // Isso evita transcrições incorretas ou simuladas
       return null;
@@ -295,6 +307,11 @@ class ASRService {
       if (!transcription.sessionId) {
         console.error('❌ [SAVE] sessionId não fornecido, não é possível salvar transcrição');
         console.error('❌ [SAVE] TranscriptionResult completo:', JSON.stringify(transcription, null, 2));
+        logWarning(
+          `sessionId não fornecido ao salvar transcrição - transcrição perdida`,
+          null,
+          { speaker: transcription.speaker, textLength: transcription.text?.length || 0 }
+        );
         return;
       }
 
@@ -330,6 +347,12 @@ class ASRService {
       if (error instanceof Error) {
         console.error('❌ [SAVE] Stack trace:', error.stack);
       }
+      logError(
+        `Erro ao salvar transcrição no banco de dados`,
+        'error',
+        transcription.sessionId,
+        { speaker: transcription.speaker, textLength: transcription.text?.length || 0, error: error instanceof Error ? error.message : String(error) }
+      );
       // Não lançar erro para não bloquear o fluxo de transcrição
     }
   }
@@ -403,6 +426,12 @@ class ASRService {
       if (saveError instanceof Error) {
         console.error('❌ [AUTO-SAVE] Stack:', saveError.stack);
       }
+      logError(
+        `Erro no auto-save de transcrição Whisper`,
+        'error',
+        transcriptionResult.sessionId,
+        { speaker, textLength: cleanedText?.length || 0, error: saveError instanceof Error ? saveError.message : String(saveError) }
+      );
       // Não bloquear o fluxo se o salvamento falhar
     }
     
@@ -446,6 +475,11 @@ class ASRService {
       const wavValidation = this.validateWavBuffer(audioChunk.audioBuffer);
       if (!wavValidation.isValid) {
         console.error(`❌ Buffer WAV inválido para ${audioChunk.channel}:`, wavValidation.errors);
+        logWarning(
+          `Buffer WAV inválido detectado - áudio não processado`,
+          audioChunk.sessionId,
+          { channel: audioChunk.channel, errors: wavValidation.errors, bufferSize: audioChunk.audioBuffer.length }
+        );
         return null;
       }
       console.log(`✅ Buffer WAV válido para ${audioChunk.channel}:`, wavValidation.info);
@@ -556,6 +590,20 @@ class ASRService {
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error status: ${error.status || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error message: ${error.message || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error type: ${error.type || 'N/A'}`);
+      
+      logError(
+        `Erro na API Whisper - transcrição não realizada`,
+        'error',
+        audioChunk.sessionId,
+        { 
+          channel: audioChunk.channel, 
+          bufferSize: audioChunk.audioBuffer.length, 
+          duration: audioChunk.duration,
+          errorCode: error.code || 'N/A',
+          errorStatus: error.status || 'N/A',
+          errorMessage: error.message || 'Erro desconhecido'
+        }
+      );
       
       // Se for erro de rede ou API, lançar para usar fallback
       if (error.code === 'ENOTFOUND' || error.status >= 500) {
@@ -780,11 +828,23 @@ class ASRService {
           }
         } catch (error) {
           console.error('❌ Erro ao gerar sugestões:', error);
+          logError(
+            `Erro ao gerar sugestões via ASR Service`,
+            'error',
+            transcription.sessionId,
+            { error: error instanceof Error ? error.message : String(error) }
+          );
         }
       });
 
     } catch (error) {
       console.error('❌ Erro no trigger de sugestões:', error);
+      logError(
+        `Erro no trigger de sugestões ASR`,
+        'error',
+        transcription.sessionId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 

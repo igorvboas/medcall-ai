@@ -3653,7 +3653,7 @@ export function ConsultationRoom({
               const { data: callSession } = await supabase
                 .from('call_sessions')
                 .select('consultation_id')
-                .or(`room_name.eq.${roomId},livekit_room_id.eq.${roomId}`)
+                .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
                 .single();
               consultationId = callSession?.consultation_id || null;
 
@@ -4049,7 +4049,7 @@ export function ConsultationRoom({
                     const { data: callSession } = await supabase
                       .from('call_sessions')
                       .select('consultation_id')
-                      .or(`room_name.eq.${roomId},livekit_room_id.eq.${roomId}`)
+                      .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
                       .single();
                     consultationId = callSession?.consultation_id || null;
                     

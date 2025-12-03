@@ -110,6 +110,8 @@ export const db = {
     
     if (error) {
       console.error('Erro ao criar sessão:', error);
+      // Log assíncrono para não bloquear
+      logError(`Erro ao criar sessão no banco`, 'error', null, { error: error.message, code: error.code });
       return null;
     }
     
@@ -125,6 +127,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao buscar sessão:', error);
+      logError(`Erro ao buscar sessão no banco`, 'error', null, { sessionId: id, error: error.message, code: error.code });
       return null;
     }
     
@@ -141,6 +144,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao buscar utterances:', error);
+      logError(`Erro ao buscar utterances no banco`, 'error', null, { sessionId, error: error.message, code: error.code });
       return [];
     }
     
@@ -157,6 +161,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao atualizar sessão:', error);
+      logError(`Erro ao atualizar sessão no banco`, 'error', null, { sessionId: id, error: error.message, code: error.code });
       return false;
     }
     
@@ -309,6 +314,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao buscar utterances:', error);
+      logError(`Erro ao buscar utterances da sessão`, 'error', null, { sessionId, limit, error: error.message, code: error.code });
       return [];
     }
     
@@ -331,6 +337,7 @@ export const db = {
       
       if (error) {
         console.error('Erro ao buscar conversas:', error);
+        logError(`Erro ao buscar conversas no banco`, 'error', null, { sessionId, error: error.message, code: error.code });
         return [];
       }
       
@@ -344,10 +351,12 @@ export const db = {
         return Array.isArray(conversations) ? conversations : [];
       } catch (parseError) {
         console.error('Erro ao fazer parse do JSON de conversas:', parseError);
+        logError(`Erro ao fazer parse do JSON de conversas`, 'error', null, { sessionId, error: parseError instanceof Error ? parseError.message : String(parseError) });
         return [];
       }
     } catch (error) {
       console.error('Erro ao buscar conversas:', error);
+      logError(`Exceção ao buscar conversas`, 'error', null, { sessionId, error: error instanceof Error ? error.message : String(error) });
       return [];
     }
   },
@@ -362,6 +371,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao criar sugestão:', error);
+      logError(`Erro ao criar sugestão no banco`, 'error', null, { sessionId: data.session_id, type: data.type, error: error.message, code: error.code });
       return null;
     }
     
@@ -377,6 +387,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao buscar sugestões:', error);
+      logError(`Erro ao buscar sugestões da sessão`, 'error', null, { sessionId, error: error.message, code: error.code });
       return [];
     }
     
@@ -391,6 +402,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao marcar sugestão como usada:', error);
+      logError(`Erro ao marcar sugestão como usada`, 'error', null, { suggestionId: id, error: error.message, code: error.code });
       return false;
     }
     
@@ -405,6 +417,7 @@ export const db = {
       .eq('id', id);
     if (error) {
       console.error('Erro ao atualizar consulta:', error);
+      logError(`Erro ao atualizar consulta no banco`, 'error', id, { error: error.message, code: error.code });
       return false;
     }
     return true;
@@ -418,6 +431,7 @@ export const db = {
       .single();
     if (error) {
       console.error('Erro ao criar transcrição:', error);
+      logError(`Erro ao criar transcrição no banco`, 'error', data.consultation_id || null, { error: error.message, code: error.code });
       return null;
     }
     return row;
@@ -431,6 +445,7 @@ export const db = {
       .single();
     if (error) {
       console.error('Erro ao criar documento:', error);
+      logError(`Erro ao criar documento no banco`, 'error', data.consultation_id || null, { error: error.message, code: error.code, title: data.title });
       return null;
     }
     return row;
@@ -450,6 +465,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao buscar médico:', error);
+      logError(`Erro ao buscar médico por userAuth`, 'error', null, { userAuthId, error: error.message, code: error.code });
       return null;
     }
     
@@ -467,23 +483,50 @@ export const db = {
     status?: string;
     patient_context?: string;
   }): Promise<any | null> {
+    const now = new Date().toISOString();
     const { data: consultation, error } = await supabase
       .from('consultations')
       .insert({
         ...data,
         status: data.status || 'CREATED',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        consulta_inicio: now, // ✅ Registrar início da consulta
+        created_at: now,
+        updated_at: now
       })
       .select()
       .single();
     
     if (error) {
       console.error('Erro ao criar consulta:', error);
+      logError(`Erro ao criar consulta no banco`, 'error', null, { doctorId: data.doctor_id, patientId: data.patient_id, error: error.message, code: error.code });
       return null;
     }
     
     return consultation;
+  },
+
+  /**
+   * Busca o consultation_id (UUID da consulta) a partir do room_id
+   * Útil para recuperar o ID da consulta quando não está disponível em memória
+   */
+  async getConsultationIdByRoomId(roomId: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('call_sessions')
+        .select('consultation_id')
+        .eq('room_id', roomId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Erro ao buscar consultation_id por roomId:', error);
+        return null;
+      }
+      
+      return data?.consultation_id || null;
+    } catch (error) {
+      console.error('Exceção ao buscar consultation_id por roomId:', error);
+      return null;
+    }
   },
 
   /**
@@ -501,10 +544,11 @@ export const db = {
         ...data,
         updated_at: new Date().toISOString()
       })
-      .eq('livekit_room_id', roomId); // Buscar por livekit_room_id que é o roomId
+      .eq('room_id', roomId); // Buscar por room_id que é o roomId
     
     if (error) {
       console.error('Erro ao atualizar call_session:', error);
+      logError(`Erro ao atualizar call_session`, 'error', data.consultation_id || null, { roomId, error: error.message, code: error.code });
       return false;
     }
     
@@ -558,6 +602,7 @@ export const db = {
           console.error('❌ [ARRAY-SAVE] Erro de RLS detectado!');
           console.error('❌ [ARRAY-SAVE] Execute o script SQL: migrations/fix-rls-transcriptions-med.sql');
         }
+        logError(`Erro ao buscar transcrições para adicionar ao array`, 'error', null, { sessionId, error: fetchAllError.message, code: fetchAllError.code });
         return false;
       }
       
@@ -669,6 +714,13 @@ export const db = {
           console.error('❌ [ARRAY-SAVE] Hint:', updateError.hint);
           console.error('❌ [ARRAY-SAVE] Array size:', conversations.length);
           console.error('❌ [ARRAY-SAVE] Text length:', JSON.stringify(conversations).length);
+          logError(`Erro ao atualizar array de transcrições`, 'error', null, { 
+            sessionId, 
+            recordId: existingTranscription.id, 
+            arraySize: conversations.length,
+            error: updateError.message, 
+            code: updateError.code 
+          });
           return false;
         }
 
@@ -764,6 +816,13 @@ export const db = {
             speaker: insertData.speaker,
             has_doctor_name: !!insertData.doctor_name
           });
+          logError(`Erro de RLS ao inserir transcrição`, 'error', null, { 
+            sessionId, 
+            speaker: mainSpeaker, 
+            error: insertError.message, 
+            code: insertError.code,
+            hint: 'Verificar configuração do SUPABASE_SERVICE_ROLE_KEY'
+          });
         }
 
         if (insertError) {
@@ -780,6 +839,15 @@ export const db = {
             doctor_name: doctorName,
             text_length: JSON.stringify(conversations).length
           });
+          // Log no banco apenas se não for erro de RLS (já logado acima)
+          if (insertError.code !== '42501') {
+            logError(`Erro ao criar registro de transcrição`, 'error', null, { 
+              sessionId, 
+              speaker: mainSpeaker, 
+              error: insertError.message, 
+              code: insertError.code 
+            });
+          }
           
           // ✅ Se erro for de coluna não existe (doctor_name), tentar novamente sem ela
           if (insertError.code === '42703' && insertData.doctor_name) {
@@ -813,6 +881,11 @@ export const db = {
       if (error instanceof Error) {
         console.error('❌ [ARRAY-SAVE] Stack:', error.stack);
       }
+      logError(`Exceção ao adicionar transcrição ao array`, 'error', null, { 
+        sessionId, 
+        speaker: transcription.speaker, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
       return false;
     }
   },
@@ -821,7 +894,7 @@ export const db = {
    * Cria call_session ao criar sala
    */
   async createCallSession(data: {
-    livekit_room_id: string;
+    room_id: string;
     room_name: string;
     session_type: string;
     participants: any;
@@ -842,6 +915,7 @@ export const db = {
     
     if (error) {
       console.error('Erro ao criar call_session:', error);
+      logError(`Erro ao criar call_session no banco`, 'error', null, { roomId: data.room_id, roomName: data.room_name, error: error.message, code: error.code });
       return null;
     }
     
@@ -870,11 +944,85 @@ export const db = {
     
     if (error) {
       console.error('Erro ao salvar transcrição:', error);
+      logError(`Erro ao salvar transcrição da consulta no banco`, 'error', data.consultation_id, { error: error.message, code: error.code });
       return null;
     }
     
     return transcription;
   },
 };
+
+// ==================== LOG DE ERROS ====================
+
+/**
+ * Interface para log de erros
+ */
+export interface LogErro {
+  id?: number;
+  created_at?: string;
+  payload?: Record<string, any>;
+  motivo: string;
+  consulta_id?: string | null;
+  tipo: 'error' | 'warning';
+}
+
+/**
+ * Registra um erro ou warning na tabela log_erros
+ * @param motivo Descrição do erro/warning
+ * @param tipo Tipo: 'error' ou 'warning'
+ * @param consultaId ID da consulta (opcional)
+ * @param payload Dados adicionais em formato JSON (opcional)
+ */
+export async function logError(
+  motivo: string,
+  tipo: 'error' | 'warning' = 'error',
+  consultaId?: string | null,
+  payload?: Record<string, any>
+): Promise<void> {
+  try {
+    const logData: Partial<LogErro> = {
+      motivo,
+      tipo,
+      consulta_id: consultaId || null,
+      payload: payload || undefined
+    };
+
+    const { error } = await supabase
+      .from('log_erros')
+      .insert(logData);
+
+    if (error) {
+      // Não logar recursivamente se der erro ao logar
+      console.error('❌ [LOG_ERROS] Falha ao salvar log no banco:', error.message);
+    } else {
+      console.log(`📋 [LOG_ERROS] ${tipo.toUpperCase()} registrado: ${motivo.substring(0, 100)}...`);
+    }
+  } catch (err) {
+    // Falha silenciosa para não quebrar o fluxo principal
+    console.error('❌ [LOG_ERROS] Exceção ao salvar log:', err);
+  }
+}
+
+/**
+ * Versão simplificada para erros
+ */
+export async function logErrorSimple(
+  motivo: string,
+  consultaId?: string | null,
+  payload?: Record<string, any>
+): Promise<void> {
+  return logError(motivo, 'error', consultaId, payload);
+}
+
+/**
+ * Versão simplificada para warnings
+ */
+export async function logWarning(
+  motivo: string,
+  consultaId?: string | null,
+  payload?: Record<string, any>
+): Promise<void> {
+  return logError(motivo, 'warning', consultaId, payload);
+}
 
 export default supabase;

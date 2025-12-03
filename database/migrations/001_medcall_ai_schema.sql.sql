@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS call_sessions (
     
     -- Metadados da sessão
     room_name VARCHAR(255),
-    livekit_room_id VARCHAR(255),
+    room_id VARCHAR(255),
     
     -- Controle de estado
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'error')),

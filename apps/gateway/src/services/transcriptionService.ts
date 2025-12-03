@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { RoomServiceClient, AccessToken, DataPacket_Kind } from 'livekit-server-sdk';
 import { randomUUID } from 'crypto';
 import { TextEncoder } from 'util';
+import { logError, logWarning } from '../config/database';
 
 interface TranscriptionSegment {
   id: string;
@@ -77,6 +78,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao iniciar transcrição:', error);
+      logError(
+        `Erro ao iniciar transcrição`,
+        'error',
+        consultationId || null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
       throw error;
     }
   }
@@ -110,6 +117,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao parar transcrição:', error);
+      logError(
+        `Erro ao parar transcrição`,
+        'error',
+        null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
       throw error;
     }
   }
@@ -128,6 +141,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao processar chunk de áudio:', error);
+      logError(
+        `Erro ao processar chunk de áudio`,
+        'error',
+        null,
+        { roomName, participantId: audioChunk.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -179,6 +198,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao processar áudio bufferizado:', error);
+      logError(
+        `Erro ao processar áudio bufferizado`,
+        'error',
+        null,
+        { roomName, participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -210,6 +235,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro na transcrição:', error);
+      logError(
+        `Erro na transcrição de áudio via OpenAI Whisper`,
+        'error',
+        null,
+        { language: options.language, model: options.model, error: error instanceof Error ? error.message : String(error) }
+      );
       return null;
     }
   }
@@ -254,6 +285,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('❌ Erro ao enviar transcrição:', error);
+      logError(
+        `Erro ao enviar transcrição para sala`,
+        'error',
+        null,
+        { roomName, participantId: segment.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -270,6 +307,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao enviar dados via RoomServiceClient:', error);
+      logError(
+        `Erro ao enviar dados via RoomServiceClient LiveKit`,
+        'error',
+        null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -282,7 +325,7 @@ export class TranscriptionService extends EventEmitter {
       const { data: callSession, error: sessionError } = await this.supabase
         .from('call_sessions')
         .select('id')
-        .or(`livekit_room_id.eq.${roomName},room_name.eq.${roomName}`)
+        .or(`room_id.eq.${roomName},room_name.eq.${roomName}`)
         .maybeSingle();
       
       if (callSession?.id) {
@@ -335,12 +378,24 @@ export class TranscriptionService extends EventEmitter {
           text: segment.text.substring(0, 50) + '...',
           roomName
         });
+        logError(
+          `Erro ao salvar transcrição no banco via TranscriptionService`,
+          'error',
+          null,
+          { sessionId, speaker, speakerId, roomName, textLength: segment.text.length }
+        );
       } else {
         console.log(`✅ [TRANSCRIPTION-SERVICE] Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
       }
       
     } catch (error) {
       console.error('❌ Erro no banco de dados ao salvar transcrição:', error);
+      logError(
+        `Erro no banco de dados ao salvar transcrição via TranscriptionService`,
+        'error',
+        null,
+        { roomName, participantId: segment.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 

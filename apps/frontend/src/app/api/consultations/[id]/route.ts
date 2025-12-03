@@ -92,34 +92,34 @@ export async function GET(
       // Primeiro tentar buscar por consultation_id
       let { data: callSession } = await supabase
         .from('call_sessions')
-        .select('livekit_room_id')
+        .select('room_id')
         .eq('consultation_id', consultationId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
       // Se não encontrar, buscar pela data de criação próxima (pode ter sido criado antes da consulta)
-      if (!callSession || !callSession.livekit_room_id) {
+      if (!callSession || !callSession.room_id) {
         const consultationCreatedAt = new Date(consultation.created_at);
         const fiveMinutesAgo = new Date(consultationCreatedAt.getTime() - 5 * 60 * 1000);
         const fiveMinutesLater = new Date(consultationCreatedAt.getTime() + 5 * 60 * 1000);
         
         const { data: callSessions } = await supabase
           .from('call_sessions')
-          .select('livekit_room_id, created_at')
+          .select('room_id, created_at')
           .gte('created_at', fiveMinutesAgo.toISOString())
           .lte('created_at', fiveMinutesLater.toISOString())
           .order('created_at', { ascending: false })
           .limit(5);
         
-        // Pegar a mais recente que tenha livekit_room_id
+        // Pegar a mais recente que tenha room_id
         if (callSessions && callSessions.length > 0) {
-          callSession = callSessions.find(cs => cs.livekit_room_id) || null;
+          callSession = callSessions.find(cs => cs.room_id) || null;
         }
       }
       
-      if (callSession && callSession.livekit_room_id) {
-        roomId = callSession.livekit_room_id;
+      if (callSession && callSession.room_id) {
+        roomId = callSession.room_id;
       }
     }
 

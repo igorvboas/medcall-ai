@@ -6,7 +6,7 @@
  * associado à consulta. Se o médico for tester, ai_pricing.tester = true
  */
 
-import { supabase } from '../config/database';
+import { supabase, logError } from '../config/database';
 
 // Tipos de LLM suportados
 export type LLMType = 
@@ -143,6 +143,12 @@ class AIPricingService {
 
     } catch (error) {
       console.error('❌ [AI_PRICING] Erro ao verificar se médico é tester:', error);
+      logError(
+        `Erro ao verificar se médico é tester`,
+        'error',
+        consultaId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
       return false; // Em caso de erro, assume que não é tester (registra como produção)
     }
   }
@@ -210,6 +216,12 @@ class AIPricingService {
 
       if (error) {
         console.error('❌ Erro ao registrar ai_pricing:', error.message);
+        logError(
+          `Erro ao registrar ai_pricing no banco`,
+          'error',
+          record.consulta_id || null,
+          { error: error.message, model: record.LLM, etapa: record.etapa, token: record.token }
+        );
         return false;
       }
 
@@ -218,6 +230,12 @@ class AIPricingService {
       return true;
     } catch (error) {
       console.error('❌ Erro ao registrar ai_pricing:', error);
+      logError(
+        `Exceção ao registrar ai_pricing`,
+        'error',
+        record.consulta_id || null,
+        { error: error instanceof Error ? error.message : String(error), model: record.LLM, etapa: record.etapa }
+      );
       return false;
     }
   }
@@ -323,6 +341,12 @@ class AIPricingService {
 
       if (error) {
         console.error('❌ Erro ao buscar custos:', error.message);
+        logError(
+          `Erro ao buscar custos de AI por consulta`,
+          'error',
+          consultaId,
+          { error: error.message }
+        );
         return null;
       }
 
@@ -349,6 +373,12 @@ class AIPricingService {
       return result;
     } catch (error) {
       console.error('❌ Erro ao buscar custos:', error);
+      logError(
+        `Exceção ao buscar custos de AI por consulta`,
+        'error',
+        consultaId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
       return null;
     }
   }
@@ -380,6 +410,12 @@ class AIPricingService {
 
       if (error) {
         console.error('❌ Erro ao buscar custos totais:', error.message);
+        logError(
+          `Erro ao buscar custos totais de AI`,
+          'error',
+          null,
+          { error: error.message, startDate: startDate?.toISOString(), endDate: endDate?.toISOString() }
+        );
         return null;
       }
 
@@ -416,6 +452,12 @@ class AIPricingService {
       return result;
     } catch (error) {
       console.error('❌ Erro ao buscar custos totais:', error);
+      logError(
+        `Exceção ao buscar custos totais de AI`,
+        'error',
+        null,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
       return null;
     }
   }
