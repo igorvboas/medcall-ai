@@ -41,7 +41,7 @@ steps:
       - |
         gcloud --quiet auth configure-docker ${_REGION}-docker.pkg.dev
 
-  # Build Docker image using the monorepo Dockerfile
+  # Build Docker image using the monorepo Dockerfileee
   - id: "docker build"
     name: "gcr.io/cloud-builders/docker"
     args:
@@ -77,4 +77,3 @@ steps:
       - "--concurrency=80"
       - "--timeout=300"
       - "--clear-secrets"
-      - "--set-env-vars=NODE_ENV=production"
