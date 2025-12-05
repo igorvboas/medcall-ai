@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from 'next-themes';
 
-// Detecta se está em ambiente de teste (homolog ou localhost)
+// Detecta se está em ambiente de teste (homolog ou localhost) ---
 function isTestEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
   const hostname = window.location.hostname;
