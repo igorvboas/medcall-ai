@@ -1,6 +1,6 @@
 # MedCall AI
 
--> PRIMEIRO DEPLOY PARA HOMOLOG
+-> TERCEIRO DEPLOY PARA HOMOLOG
 
 AI-powered real-time transcription and analysis for medical video calls......
 
