@@ -1,6 +1,6 @@
 # MedCall AI
 
--> 9° DEPLOY PARA HOMOLOG
+-> 10° DEPLOY PARA HOMOLOG
 
 AI-powered real-time transcription and analysis for medical video calls......
 
