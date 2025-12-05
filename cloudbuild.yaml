@@ -58,6 +58,7 @@ steps:
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA"
 
   # Deploy to Cloud Run
+  # IMPORTANTE: Configure as variáveis sensíveis diretamente no Console do Cloud Run
   - id: "deploy cloud run"
     name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "gcloud"
@@ -75,9 +76,5 @@ steps:
       - "--max-instances=10"
       - "--concurrency=80"
       - "--timeout=300"
+      - "--clear-secrets"
       - "--set-env-vars=NODE_ENV=production"
-      - "--set-secrets=LIVEKIT_URL=LIVEKIT_URL:latest,LIVEKIT_API_KEY=LIVEKIT_API_KEY:latest,LIVEKIT_API_SECRET=LIVEKIT_API_SECRET:latest,SUPABASE_URL=SUPABASE_URL:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest"
-
-# Example build command (from repo root):
-# gcloud builds submit --region=${_REGION} --config=cloudbuild.yaml \
-#   --substitutions=_SERVICE=medcall-gateway,_REGION=us-central1,_REPO=medcall
