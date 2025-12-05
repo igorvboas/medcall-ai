@@ -22,6 +22,16 @@ options:
   machineType: E2_HIGHCPU_8
 
 steps:
+  # Create Artifact Registry repository if it doesn't exist
+  - id: "create artifact registry repo"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud artifacts repositories describe ${_REPO} --location=${_REGION} || \
+        gcloud artifacts repositories create ${_REPO} --repository-format=docker --location=${_REGION} --description="MedCall HomologDocker images"
+
   # Configure gcloud to use Artifact Registry Docker auth
   - id: "auth to artifact registry"
     name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
