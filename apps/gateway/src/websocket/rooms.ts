@@ -760,6 +760,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       console.log(`📥 Nova resposta na sala ${roomId}`);
 
+      // ✅ NOVO: Atualizar webrtc_active = true quando a conexão WebRTC é estabelecida
+      // (host + participant conectados E tem offer + answer)
+      if (room.hostSocketId && room.participantSocketId && room.offer && room.answer) {
+        console.log(`🔗 [WebRTC] Conexão estabelecida na sala ${roomId}`);
+        db.setWebRTCActive(roomId, true);
+      }
+
       // Enviar resposta para host
       io.to(room.hostSocketId).emit('answerResponse', {
         roomId: roomId,
@@ -1497,6 +1504,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             consultation_id: consultationId,
             status: 'ended',
             ended_at: new Date().toISOString(),
+            webrtc_active: false, // ✅ NOVO: Garantir que webrtc_active seja false ao encerrar
             metadata: {
               transcriptionsCount: room.transcriptions.length,
               duration: calculateDuration(room.createdAt),
@@ -1507,6 +1515,9 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           if (updated) {
             console.log(`💾 Call session atualizada: ${room.callSessionId}`);
           }
+        } else {
+          // ✅ NOVO: Mesmo sem callSessionId, atualizar webrtc_active
+          db.setWebRTCActive(roomId, false);
         }
 
         // 4. Salvar TRANSCRIÇÕES (raw_text completo)
@@ -1597,6 +1608,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           if (socket.id === room.hostSocketId) {
             console.log(`⚠️ Host desconectou da sala ${roomId}`);
             room.hostSocketId = null;
+            
+            // ✅ NOVO: Atualizar webrtc_active = false quando host desconecta
+            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (host desconectou)`);
+            db.setWebRTCActive(roomId, false);
           }
           
           // Se participante desconectou
@@ -1608,6 +1623,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             }
             room.participantUserName = null;
             room.participantSocketId = null;
+            
+            // ✅ NOVO: Atualizar webrtc_active = false quando participante desconecta
+            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (participante desconectou)`);
+            db.setWebRTCActive(roomId, false);
           }
 
           // Continuar com timer de expiração (permite reconexão)

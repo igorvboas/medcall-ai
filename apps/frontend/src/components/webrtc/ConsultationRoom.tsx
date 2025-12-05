@@ -2072,7 +2072,64 @@ export function ConsultationRoom({
 
     });
 
+    // ✅ NOVO: Sala foi encerrada pelo administrador
+    socketRef.current.on('roomTerminatedByAdmin', (data: any) => {
+      console.log('🛑 [ADMIN] Sala encerrada pelo administrador:', data);
+      
+      // Mostrar mensagem para o usuário
+      alert(`A consulta foi encerrada pelo administrador.\n\nMotivo: ${data.reason || 'Encerramento administrativo'}`);
+      
+      // Parar transcrição
+      if (transcriptionManagerRef.current) {
+        transcriptionManagerRef.current.stop();
+        transcriptionManagerRef.current.disconnect();
+      }
 
+      // Limpar AudioProcessor
+      if (audioProcessorRef.current) {
+        audioProcessorRef.current.cleanup();
+      }
+
+      // Parar streams de vídeo e áudio
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🛑 [ADMIN-TERMINATE] Track parado:', track.kind);
+        });
+        localStreamRef.current = null;
+      }
+
+      // Fechar conexão WebRTC
+      if (peerConnectionRef.current) {
+        try {
+          peerConnectionRef.current.close();
+          console.log('🛑 [ADMIN-TERMINATE] PeerConnection fechada');
+        } catch (error) {
+          console.warn('⚠️ [ADMIN-TERMINATE] Erro ao fechar PeerConnection:', error);
+        }
+        peerConnectionRef.current = null;
+      }
+
+      // Limpar referências de vídeo remoto
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      // Desconectar socket
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+
+      // Redirecionar baseado no tipo de usuário
+      if (userType === 'doctor') {
+        router.push('/consulta/nova');
+      } else {
+        const patientNameParam = patientName ? encodeURIComponent(patientName) : '';
+        const roomIdParam = roomId ? `&roomId=${roomId}` : '';
+        router.push(`/consulta/finalizada?patientName=${patientNameParam}${roomIdParam}`);
+      }
+    });
 
     // WebRTC listeners
 

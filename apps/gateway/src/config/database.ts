@@ -537,6 +537,7 @@ export const db = {
     status?: string;
     ended_at?: string;
     metadata?: any;
+    webrtc_active?: boolean;
   }): Promise<boolean> {
     const { error } = await supabase
       .from('call_sessions')
@@ -552,6 +553,28 @@ export const db = {
       return false;
     }
     
+    return true;
+  },
+
+  /**
+   * Atualiza status de conexão WebRTC ativa
+   */
+  async setWebRTCActive(roomId: string, active: boolean): Promise<boolean> {
+    const { error } = await supabase
+      .from('call_sessions')
+      .update({
+        webrtc_active: active,
+        updated_at: new Date().toISOString()
+      })
+      .eq('room_id', roomId);
+    
+    if (error) {
+      console.error('Erro ao atualizar webrtc_active:', error);
+      logError(`Erro ao atualizar webrtc_active`, 'error', null, { roomId, active, error: error.message, code: error.code });
+      return false;
+    }
+    
+    console.log(`✅ [WebRTC] Sala ${roomId} - webrtc_active = ${active}`);
     return true;
   },
 
