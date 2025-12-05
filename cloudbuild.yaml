@@ -32,7 +32,7 @@ steps:
         gcloud artifacts repositories describe ${_REPO} --location=${_REGION} || \
         gcloud artifacts repositories create ${_REPO} --repository-format=docker --location=${_REGION} --description="MedCall HomologDocker images"
 
-  # Configure gcloud to use Artifact Registry Docker auth
+  # Configure gcloud to use Artifact Registry Docker auth  f
   - id: "auth to artifact registry"
     name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "bash"
@@ -78,8 +78,3 @@ steps:
       - "--timeout=300"
       - "--clear-secrets"
       - "--set-env-vars=NODE_ENV=production"
-EKIT_API_SECRET:latest,SUPABASE_URL=SUPABASE_URL:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,JWT_SECRET=JWT_SECRET:latest"
-
-# Example build command (from repo root):
-# gcloud builds submit --region=${_REGION} --config=cloudbuild.yaml \
-#   --substitutions=_SERVICE=medcall-gateway,_REGION=us-central1,_REPO=medcall
