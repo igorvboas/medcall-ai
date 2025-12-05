@@ -1,12 +1,19 @@
 'use client';
 
-import { Search, Bell, User, LogOut, ChevronDown, Moon, Sun, Settings } from 'lucide-react';
+import { Search, Bell, User, LogOut, ChevronDown, Moon, Sun, Settings, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from 'next-themes';
+
+// Detecta se está em ambiente de teste (homolog ou localhost)
+function isTestEnvironment(): boolean {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('medcall-ai-homolog');
+}
 
 export function Header() {
   const { user, signOut, loading } = useAuth();
@@ -17,6 +24,7 @@ export function Header() {
   const [loadingMedico, setLoadingMedico] = useState(true);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isTestEnv, setIsTestEnv] = useState(false);
 
   // Extrair dados do usuário diretamente do useAuth
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
@@ -25,6 +33,7 @@ export function Header() {
   // Aguarda a hidratação para evitar erro de mismatch
   useEffect(() => {
     setMounted(true);
+    setIsTestEnv(isTestEnvironment());
   }, []);
 
   // Buscar dados do médico
@@ -81,12 +90,21 @@ export function Header() {
 
 
   return (
-    <header className="header main-header">
-      <div className="header-content main-header-content">
+    <>
+      {/* Banner de Ambiente de Teste */}
+      {mounted && isTestEnv && (
+        <div className="test-environment-banner">
+          <AlertTriangle className="test-env-icon" />
+          <span>⚠️ AMBIENTE DE TESTE ⚠️</span>
+          <AlertTriangle className="test-env-icon" />
+        </div>
+      )}
 
+      <header className={`header main-header ${mounted && isTestEnv ? 'header-test-env' : ''}`}>
+        <div className="header-content main-header-content">
 
-        {/* Right Side Actions */}
-        <div className="header-actions">
+          {/* Right Side Actions */}
+          <div className="header-actions">
 
           {/* Theme Toggle */}
           <button 
@@ -171,8 +189,9 @@ export function Header() {
               </div>
             )}
           </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
