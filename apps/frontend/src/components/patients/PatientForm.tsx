@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle, Upload, Trash2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
+import { supabase } from '@/lib/supabase';
 import './PatientForm.css';
 
 // Tipos locais para pacientes
@@ -69,6 +70,9 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
 
   const [errors, setErrors] = useState<Partial<CreatePatientData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [medicalFiles, setMedicalFiles] = useState<Array<{ id: string; name: string; url: string; file?: File }>>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
   useEffect(() => {
@@ -174,6 +178,89 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
     } else {
       return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+  };
+
+  // Manipular seleção de arquivos
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach(async (file) => {
+      // Validar tamanho (máximo 10MB)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert(`O arquivo ${file.name} excede o tamanho máximo de 10MB`);
+        return;
+      }
+
+      // Validar tipo
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`O arquivo ${file.name} não é um tipo permitido. Use PDF, DOC, DOCX, JPG ou PNG`);
+        return;
+      }
+
+      const fileId = Math.random().toString(36).substr(2, 9);
+      setUploadingFiles(prev => [...prev, fileId]);
+
+      try {
+        // Se estiver editando um paciente, fazer upload para o Supabase
+        if (patient?.id) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `paciente_${patient.id}_historico_${Date.now()}.${fileExt}`;
+          const filePath = `pacientes/historicos/${fileName}`;
+
+          const { error: uploadError, data } = await supabase.storage
+            .from('medical_files')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('medical_files')
+            .getPublicUrl(filePath);
+
+          setMedicalFiles(prev => [...prev, { id: fileId, name: file.name, url: publicUrl }]);
+        } else {
+          // Se estiver criando, apenas adicionar à lista (será enviado depois)
+          setMedicalFiles(prev => [...prev, { id: fileId, name: file.name, url: '', file }]);
+        }
+      } catch (error: any) {
+        console.error('Erro ao fazer upload:', error);
+        alert(`Erro ao fazer upload do arquivo ${file.name}: ${error.message}`);
+      } finally {
+        setUploadingFiles(prev => prev.filter(id => id !== fileId));
+      }
+    });
+
+    // Limpar input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remover arquivo
+  const handleRemoveFile = async (fileId: string, fileUrl: string) => {
+    try {
+      // Se tiver URL, tentar deletar do Supabase
+      if (fileUrl && patient?.id) {
+        const filePath = fileUrl.split('/').slice(-2).join('/');
+        await supabase.storage
+          .from('medical_files')
+          .remove([filePath]);
+      }
+
+      setMedicalFiles(prev => prev.filter(f => f.id !== fileId));
+    } catch (error) {
+      console.error('Erro ao remover arquivo:', error);
+      // Remover da lista mesmo se der erro no Supabase
+      setMedicalFiles(prev => prev.filter(f => f.id !== fileId));
     }
   };
 
@@ -389,53 +476,154 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         </div>
 
         {/* Informações Médicas */}
-        <div className="form-section">
+        <div className="form-section medical-info-section">
           <div className="section-header">
             <FileText className="section-icon" />
             <h3 className="section-title">Informações Médicas</h3>
           </div>
           
-          <div className="form-grid">
-            <div className="form-field full-width">
-              <label htmlFor="medical_history" className="field-label">
-                Histórico Médico
-              </label>
+          <div className="medical-info-grid">
+            <div className="medical-info-card">
+              <div className="medical-info-header">
+                <label htmlFor="medical_history" className="field-label medical-label">
+                  <FileText className="field-icon" size={18} />
+                  Histórico Médico
+                </label>
+                <span className="char-count">
+                  {formData.medical_history?.length || 0} caracteres
+                </span>
+              </div>
               <textarea
                 id="medical_history"
                 value={formData.medical_history}
                 onChange={(e) => handleChange('medical_history', e.target.value)}
-                className="form-textarea"
-                placeholder="Descreva o histórico médico do paciente..."
-                rows={3}
+                className="form-textarea medical-textarea"
+                placeholder="Exemplo:&#10;- Hipertensão diagnosticada em 2018&#10;- Diabetes tipo 2 desde 2020&#10;- Cirurgia de apendicite em 2015&#10;- Histórico familiar de doenças cardíacas"
+                rows={6}
+                style={{
+                  resize: 'vertical',
+                  minHeight: '120px',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.6'
+                }}
               />
+              <div className="field-hint">
+                <span className="hint-text">Dica: Liste doenças, cirurgias, condições crônicas e histórico familiar</span>
+              </div>
+              
+              {/* Upload de Arquivos de Histórico */}
+              <div className="medical-files-upload">
+                <div className="medical-files-header">
+                  <label className="medical-files-label">
+                    <FileText className="field-icon" size={16} />
+                    Arquivos de Histórico Médico
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="medical-files-upload-btn"
+                    disabled={isSubmitting || uploadingFiles.length > 0}
+                  >
+                    <Upload size={16} />
+                    Adicionar Arquivo
+                  </button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleFileSelect}
+                  className="medical-files-input"
+                  disabled={isSubmitting || uploadingFiles.length > 0}
+                />
+                <p className="medical-files-hint">
+                  Formatos aceitos: PDF, DOC, DOCX, JPG, PNG (máximo 10MB por arquivo)
+                </p>
+                
+                {medicalFiles.length > 0 && (
+                  <div className="medical-files-list">
+                    {medicalFiles.map((file) => (
+                      <div key={file.id} className="medical-file-item">
+                        <FileText size={16} className="medical-file-icon" />
+                        <span className="medical-file-name" title={file.name}>
+                          {file.name}
+                        </span>
+                        {uploadingFiles.includes(file.id) ? (
+                          <span className="medical-file-status">Enviando...</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(file.id, file.url)}
+                            className="medical-file-remove"
+                            disabled={isSubmitting}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="form-field full-width">
-              <label htmlFor="allergies" className="field-label">
-                Alergias
-              </label>
+            <div className="medical-info-card">
+              <div className="medical-info-header">
+                <label htmlFor="allergies" className="field-label medical-label">
+                  <AlertTriangle className="field-icon" size={18} />
+                  Alergias
+                </label>
+                <span className="char-count">
+                  {formData.allergies?.length || 0} caracteres
+                </span>
+              </div>
               <textarea
                 id="allergies"
                 value={formData.allergies}
                 onChange={(e) => handleChange('allergies', e.target.value)}
-                className="form-textarea"
-                placeholder="Liste as alergias conhecidas..."
-                rows={2}
+                className="form-textarea medical-textarea"
+                placeholder="Exemplo:&#10;- Penicilina (reação: urticária)&#10;- Amendoim (anafilaxia)&#10;- Látex (irritação cutânea)&#10;- Nenhuma alergia conhecida"
+                rows={5}
+                style={{
+                  resize: 'vertical',
+                  minHeight: '100px',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.6'
+                }}
               />
+              <div className="field-hint">
+                <span className="hint-text">Importante: Liste todas as alergias conhecidas, incluindo reações</span>
+              </div>
             </div>
 
-            <div className="form-field full-width">
-              <label htmlFor="current_medications" className="field-label">
-                Medicamentos em Uso
-              </label>
+            <div className="medical-info-card">
+              <div className="medical-info-header">
+                <label htmlFor="current_medications" className="field-label medical-label">
+                  <FileText className="field-icon" size={18} />
+                  Medicamentos em Uso
+                </label>
+                <span className="char-count">
+                  {formData.current_medications?.length || 0} caracteres
+                </span>
+              </div>
               <textarea
                 id="current_medications"
                 value={formData.current_medications}
                 onChange={(e) => handleChange('current_medications', e.target.value)}
-                className="form-textarea"
-                placeholder="Liste os medicamentos que o paciente está tomando..."
-                rows={2}
+                className="form-textarea medical-textarea"
+                placeholder="Exemplo:&#10;- Losartana 50mg - 1x ao dia (manhã)&#10;- Metformina 850mg - 2x ao dia (manhã e noite)&#10;- Omeprazol 20mg - 1x ao dia (jejum)&#10;- Nenhum medicamento em uso"
+                rows={5}
+                style={{
+                  resize: 'vertical',
+                  minHeight: '100px',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.6'
+                }}
               />
+              <div className="field-hint">
+                <span className="hint-text">Inclua nome do medicamento, dosagem e frequência de uso</span>
+              </div>
             </div>
           </div>
         </div>

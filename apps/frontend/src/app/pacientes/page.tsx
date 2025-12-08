@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash } from 'lucide-react';
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
@@ -79,12 +79,15 @@ export default function PatientsPage() {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-
+  const isInitialMount = useRef(true);
 
   // Buscar pacientes
-  const fetchPatients = async (page = 1, search = '', status = 'all') => {
+  const fetchPatients = async (page = 1, search = '', status = 'all', showLoading = false) => {
     try {
-      setLoading(true);
+      // Só mostra loading se for carregamento inicial ou se explicitamente solicitado
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
 
       const params = new URLSearchParams({
@@ -124,13 +127,15 @@ export default function PatientsPage() {
       console.error('❌ Erro ao buscar pacientes:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   // Carregar pacientes na montagem do componente
   useEffect(() => {
-    fetchPatients();
+    fetchPatients(1, '', 'all', true); // Mostra loading no carregamento inicial
   }, []);
 
   // Fechar modal com tecla ESC
@@ -160,11 +165,19 @@ export default function PatientsPage() {
     };
   }, [showForm, editingPatient]);
 
-  // Buscar pacientes quando filtros mudarem
+  // Buscar pacientes quando filtros mudarem (com debounce)
   useEffect(() => {
+    // Ignorar a primeira renderização (já foi feita busca no useEffect inicial)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Debounce de 1 segundo para evitar muitas requisições enquanto o usuário digita
+    // Não mostra tela de loading durante busca com filtros
     const timeoutId = setTimeout(() => {
-      fetchPatients(1, searchTerm, statusFilter);
-    }, 300);
+      fetchPatients(1, searchTerm, statusFilter, false);
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, statusFilter]);
@@ -199,7 +212,7 @@ export default function PatientsPage() {
       console.log('✅ Paciente criado com sucesso:', result);
 
       setShowForm(false);
-      fetchPatients(pagination.page, searchTerm, statusFilter);
+      fetchPatients(pagination.page, searchTerm, statusFilter, false);
     } catch (err) {
       console.error('❌ Erro ao criar paciente:', err);
       setError(err instanceof Error ? err.message : 'Erro ao criar paciente');
@@ -225,7 +238,7 @@ export default function PatientsPage() {
       }
 
       setEditingPatient(null);
-      fetchPatients(pagination.page, searchTerm, statusFilter);
+      fetchPatients(pagination.page, searchTerm, statusFilter, false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar paciente');
     }
@@ -247,7 +260,7 @@ export default function PatientsPage() {
         throw new Error('Erro ao deletar paciente');
       }
 
-      fetchPatients(pagination.page, searchTerm, statusFilter);
+      fetchPatients(pagination.page, searchTerm, statusFilter, false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar paciente');
     }
@@ -329,7 +342,7 @@ export default function PatientsPage() {
               <p className="error-message">{error}</p>
             </div>
             <button 
-              onClick={() => fetchPatients()}
+              onClick={() => fetchPatients(pagination.page, searchTerm, statusFilter, true)}
               className="btn btn-secondary"
             >
               Tentar Novamente
@@ -359,7 +372,6 @@ export default function PatientsPage() {
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
-                    fetchPatients(1, e.target.value, statusFilter);
                   }}
                   className="search-input"
                 />
@@ -371,7 +383,6 @@ export default function PatientsPage() {
                   onChange={(e) => {
                     const newStatus = e.target.value as 'all' | 'active' | 'inactive' | 'archived';
                     setStatusFilter(newStatus);
-                    fetchPatients(1, searchTerm, newStatus);
                   }}
                   className="status-filter"
                 >
@@ -490,7 +501,7 @@ export default function PatientsPage() {
                 <button 
                   className="pagination-btn" 
                   disabled={pagination.page === 1}
-                  onClick={() => fetchPatients(pagination.page - 1, searchTerm, statusFilter)}
+                  onClick={() => fetchPatients(pagination.page - 1, searchTerm, statusFilter, false)}
                 >
                   <span>‹</span>
                 </button>
@@ -500,7 +511,7 @@ export default function PatientsPage() {
                   <>
                     <button 
                       className="pagination-number"
-                      onClick={() => fetchPatients(1, searchTerm, statusFilter)}
+                      onClick={() => fetchPatients(1, searchTerm, statusFilter, false)}
                     >
                       1
                     </button>
@@ -517,7 +528,7 @@ export default function PatientsPage() {
                     <button 
                       key={pageNum}
                       className={`pagination-number ${pageNum === pagination.page ? 'active' : ''}`}
-                      onClick={() => fetchPatients(pageNum, searchTerm, statusFilter)}
+                      onClick={() => fetchPatients(pageNum, searchTerm, statusFilter, false)}
                     >
                       {pageNum}
                     </button>
@@ -530,7 +541,7 @@ export default function PatientsPage() {
                     {pagination.page < pagination.totalPages - 3 && <span className="pagination-dots">...</span>}
                     <button 
                       className="pagination-number"
-                      onClick={() => fetchPatients(pagination.totalPages, searchTerm, statusFilter)}
+                      onClick={() => fetchPatients(pagination.totalPages, searchTerm, statusFilter, false)}
                     >
                       {pagination.totalPages}
                     </button>
@@ -540,7 +551,7 @@ export default function PatientsPage() {
                 <button 
                   className="pagination-btn"
                   disabled={pagination.page === pagination.totalPages}
-                  onClick={() => fetchPatients(pagination.page + 1, searchTerm, statusFilter)}
+                  onClick={() => fetchPatients(pagination.page + 1, searchTerm, statusFilter, false)}
                 >
                   <span>›</span>
                 </button>
