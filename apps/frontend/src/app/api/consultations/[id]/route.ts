@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { syncConsultationToGoogleCalendar, removeConsultationFromGoogleCalendar } from '@/lib/google-calendar-service';
 
 // GET /api/consultations/[id] - Buscar detalhes de uma consulta específica
 export async function GET(
@@ -160,10 +161,10 @@ export async function PATCH(
     const doctorAuthId = user.id;
     const consultationId = params.id;
 
-    // Buscar médico na tabela medicos
+    // Buscar médico na tabela medicos (incluindo nome)
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -218,6 +219,28 @@ export async function PATCH(
 
     console.log('✅ Consulta atualizada com sucesso:', updatedConsultation);
 
+    // Sincronizar alterações com Google Calendar (se o médico tiver conectado)
+    try {
+      const syncResult = await syncConsultationToGoogleCalendar(supabase, medico.id, {
+        id: updatedConsultation.id,
+        patient_name: updatedConsultation.patient_name,
+        consultation_type: updatedConsultation.consultation_type,
+        consulta_inicio: updatedConsultation.consulta_inicio,
+        created_at: updatedConsultation.created_at,
+        duration: updatedConsultation.duration,
+        notes: updatedConsultation.notes,
+        doctor_name: medico.name, // Nome do médico para o evento
+        google_event_id: updatedConsultation.google_event_id,
+        google_calendar_id: updatedConsultation.google_calendar_id,
+      });
+
+      if (syncResult.success && syncResult.eventId) {
+        console.log('📅 Consulta sincronizada com Google Calendar:', syncResult.eventId);
+      }
+    } catch (syncError) {
+      console.warn('⚠️ Erro ao sincronizar com Google Calendar:', syncError);
+    }
+
     return NextResponse.json({
       consultation: updatedConsultation,
       message: 'Consulta atualizada com sucesso'
@@ -269,10 +292,10 @@ export async function DELETE(
 
     console.log('🔍 DEBUG [REFERENCIA: VALIDAR_CONSULTA] Validando se consulta pertence ao médico');
     
-    // Validar que a consulta pertence ao médico
+    // Validar que a consulta pertence ao médico (e buscar dados do Google Calendar)
     const { data: existingConsultation, error: checkError } = await supabase
       .from('consultations')
-      .select('id')
+      .select('id, google_event_id, google_calendar_id')
       .eq('id', consultationId)
       .eq('doctor_id', medico.id)
       .single();
@@ -283,6 +306,18 @@ export async function DELETE(
         { error: 'Consulta não encontrada ou você não tem permissão para excluí-la' },
         { status: 404 }
       );
+    }
+
+    // Remover evento do Google Calendar (se existir)
+    if (existingConsultation.google_event_id) {
+      try {
+        console.log('📅 Removendo evento do Google Calendar:', existingConsultation.google_event_id);
+        // Passa skipDbUpdate=true para não atualizar o banco pois vamos deletar a seguir
+        await removeConsultationFromGoogleCalendar(supabase, medico.id, existingConsultation, true);
+      } catch (syncError) {
+        console.warn('⚠️ Erro ao remover do Google Calendar:', syncError);
+        // Continuar com a exclusão mesmo se falhar no Google Calendar
+      }
     }
 
     console.log('🔍 DEBUG [REFERENCIA: EXCLUIR_TABELAS_ANAMNESE] Iniciando exclusão das tabelas de anamnese/prontuário');

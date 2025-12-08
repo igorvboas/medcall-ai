@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn, RefreshCw, Check, X, Loader2, Pencil, Trash2 } from 'lucide-react';
 import './agenda.css';
 
 interface ConsultationEvent {
@@ -18,6 +18,16 @@ interface ConsultationEvent {
   duration: number; // em minutos
 }
 
+interface GoogleCalendarStatus {
+  connected: boolean;
+  syncEnabled?: boolean;
+  googleEmail?: string;
+  calendarId?: string;
+  calendarName?: string;
+  lastSyncAt?: string;
+  isExpired?: boolean;
+}
+
 // Sem dados mock – inicia vazio e carrega da API
 const mockConsultations: ConsultationEvent[] = [];
 
@@ -30,16 +40,113 @@ const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function AgendaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [consultations, setConsultations] = useState<ConsultationEvent[]>(mockConsultations);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  
+  // Estados do Google Calendar
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus>({ connected: false });
+  const [googleCalendarLoading, setGoogleCalendarLoading] = useState(true);
+  const [showGoogleMenu, setShowGoogleMenu] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Estados do Modal de Edição
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingConsultation, setEditingConsultation] = useState<ConsultationEvent | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    date: '',
+    time: '',
+    type: 'TELEMEDICINA' as 'PRESENCIAL' | 'TELEMEDICINA'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Estados do Modal de Confirmação de Exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [consultationToDelete, setConsultationToDelete] = useState<ConsultationEvent | null>(null);
 
   const today = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
+
+  // Verificar query params do OAuth callback
+  useEffect(() => {
+    const connected = searchParams.get('google_calendar_connected');
+    const error = searchParams.get('google_calendar_error');
+    
+    if (connected === 'true') {
+      setNotification({ type: 'success', message: 'Google Calendar conectado com sucesso!' });
+      // Limpar URL
+      router.replace('/agenda', { scroll: false });
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        'access_denied': 'Acesso negado. Você cancelou a autorização.',
+        'no_code': 'Erro na autorização. Tente novamente.',
+        'invalid_state': 'Sessão inválida. Faça login novamente.',
+        'config_error': 'Erro de configuração. Contate o suporte.',
+        'token_exchange_failed': 'Erro ao obter autorização do Google.',
+        'incomplete_tokens': 'Tokens incompletos. Tente novamente.',
+        'medico_not_found': 'Médico não encontrado.',
+        'save_failed': 'Erro ao salvar conexão.',
+        'unknown': 'Erro desconhecido. Tente novamente.',
+      };
+      setNotification({ type: 'error', message: errorMessages[error] || 'Erro ao conectar Google Calendar.' });
+      router.replace('/agenda', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // Carregar status do Google Calendar
+  useEffect(() => {
+    const loadGoogleCalendarStatus = async () => {
+      try {
+        const res = await fetch('/api/auth/google-calendar/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGoogleCalendarStatus(data);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar status do Google Calendar:', error);
+      } finally {
+        setGoogleCalendarLoading(false);
+      }
+    };
+    loadGoogleCalendarStatus();
+  }, []);
+
+  // Auto-hide notification
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Função para conectar Google Calendar
+  const handleConnectGoogleCalendar = () => {
+    window.location.href = '/api/auth/google-calendar/authorize';
+  };
+
+  // Função para desconectar Google Calendar
+  const handleDisconnectGoogleCalendar = async () => {
+    if (!confirm('Tem certeza que deseja desconectar o Google Calendar?')) return;
+    
+    try {
+      const res = await fetch('/api/auth/google-calendar/disconnect', { method: 'POST' });
+      if (res.ok) {
+        setGoogleCalendarStatus({ connected: false });
+        setNotification({ type: 'success', message: 'Google Calendar desconectado.' });
+      } else {
+        setNotification({ type: 'error', message: 'Erro ao desconectar.' });
+      }
+    } catch (error) {
+      setNotification({ type: 'error', message: 'Erro ao desconectar.' });
+    }
+    setShowGoogleMenu(false);
+  };
 
   // Carregar consultas do mês atual
   useEffect(() => {
@@ -239,10 +346,137 @@ export default function AgendaPage() {
     router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient)}&consultation_type=${consultation.type}`);
   };
 
+  // Função para abrir modal de edição
+  const handleOpenEditModal = (consultation: ConsultationEvent) => {
+    setEditingConsultation(consultation);
+    
+    // Formatar data para o input (YYYY-MM-DD)
+    const dateStr = consultation.date.toISOString().split('T')[0];
+    
+    setEditFormData({
+      date: dateStr,
+      time: consultation.time,
+      type: consultation.type
+    });
+    
+    setEditModalOpen(true);
+  };
+
+  // Função para fechar modal
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setEditingConsultation(null);
+    setEditFormData({ date: '', time: '', type: 'TELEMEDICINA' });
+  };
+
+  // Função para salvar edições
+  const handleSaveEdit = async () => {
+    if (!editingConsultation) return;
+    
+    setIsSaving(true);
+    try {
+      // Criar datetime combinando data e hora
+      const [year, month, day] = editFormData.date.split('-').map(Number);
+      const [hours, minutes] = editFormData.time.split(':').map(Number);
+      const consultaInicio = new Date(year, month - 1, day, hours, minutes).toISOString();
+
+      const response = await fetch(`/api/consultations/${editingConsultation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consulta_inicio: consultaInicio,
+          consultation_type: editFormData.type
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao atualizar consulta');
+      }
+
+      // Atualizar lista local
+      setConsultations(prev => prev.map(c => {
+        if (c.id === editingConsultation.id) {
+          return {
+            ...c,
+            date: new Date(year, month - 1, day),
+            time: editFormData.time,
+            type: editFormData.type
+          };
+        }
+        return c;
+      }));
+
+      setNotification({ type: 'success', message: 'Consulta atualizada com sucesso!' });
+      handleCloseEditModal();
+    } catch (error: any) {
+      console.error('Erro ao atualizar consulta:', error);
+      setNotification({ type: 'error', message: error.message || 'Erro ao atualizar consulta' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Função para abrir modal de confirmação de exclusão
+  const handleOpenDeleteModal = (consultation: ConsultationEvent) => {
+    setConsultationToDelete(consultation);
+    setDeleteModalOpen(true);
+  };
+
+  // Função para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setConsultationToDelete(null);
+  };
+
+  // Função para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!consultationToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      console.log('Excluindo consulta:', consultationToDelete.id);
+      
+      const response = await fetch(`/api/consultations/${consultationToDelete.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      console.log('Resposta da exclusão:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao excluir consulta');
+      }
+
+      // Remover da lista local
+      setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
+      
+      setNotification({ type: 'success', message: 'Consulta excluída com sucesso!' });
+      handleCloseDeleteModal();
+      handleCloseEditModal();
+    } catch (error: any) {
+      console.error('Erro ao excluir consulta:', error);
+      setNotification({ type: 'error', message: error.message || 'Erro ao excluir consulta' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const days = viewMode === 'month' ? getDaysInMonth() : viewMode === 'week' ? getDaysInWeek() : getDayView();
 
   return (
     <div className="agenda-container">
+      {/* Notificação */}
+      {notification && (
+        <div className={`agenda-notification ${notification.type}`}>
+          {notification.type === 'success' ? <Check className="notification-icon" /> : <X className="notification-icon" />}
+          <span>{notification.message}</span>
+          <button className="notification-close" onClick={() => setNotification(null)}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="agenda-header">
         <div className="agenda-title-section">
           <h1 className="agenda-title">Agenda</h1>
@@ -250,6 +484,64 @@ export default function AgendaPage() {
         </div>
         
         <div className="agenda-actions">
+          {/* Botão Google Calendar */}
+          <div className="google-calendar-wrapper">
+            {googleCalendarLoading ? (
+              <button className="btn btn-google-calendar loading" disabled>
+                <Loader2 className="btn-icon spinning" />
+                Carregando...
+              </button>
+            ) : googleCalendarStatus.connected ? (
+              <>
+                <button 
+                  className="btn btn-google-calendar connected"
+                  onClick={() => setShowGoogleMenu(!showGoogleMenu)}
+                >
+                  <svg className="google-icon" viewBox="0 0 24 24" width="18" height="18">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  <Check className="btn-icon check-icon" size={14} />
+                  Sincronizado
+                </button>
+                
+                {/* Menu dropdown */}
+                {showGoogleMenu && (
+                  <div className="google-calendar-menu">
+                    <div className="google-menu-header">
+                      <span className="google-menu-email">{googleCalendarStatus.googleEmail}</span>
+                      {googleCalendarStatus.lastSyncAt && (
+                        <span className="google-menu-sync">
+                          Última sync: {new Date(googleCalendarStatus.lastSyncAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="google-menu-divider" />
+                    <button className="google-menu-item" onClick={handleDisconnectGoogleCalendar}>
+                      <X size={16} />
+                      Desconectar
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button 
+                className="btn btn-google-calendar"
+                onClick={handleConnectGoogleCalendar}
+              >
+                <svg className="google-icon" viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Conectar Google Calendar
+              </button>
+            )}
+          </div>
+
           <Link href="/consulta/nova" className="btn btn-primary">
             <Plus className="btn-icon" />
             Nova Consulta
@@ -444,8 +736,36 @@ export default function AgendaPage() {
                               <Clock className="time-icon" />
                               {consultation.time}
                             </div>
-                            <div className={`consultation-status ${getStatusColor(consultation.status)}`}>
-                              {consultation.status}
+                            <div className="consultation-header-right">
+                              <div className={`consultation-status ${getStatusColor(consultation.status)}`}>
+                                {consultation.status}
+                              </div>
+                              {/* Botões de Editar e Excluir (apenas para agendamentos) */}
+                              {consultation.status === 'AGENDAMENTO' && (
+                                <div className="consultation-card-actions">
+                                  <button
+                                    className="btn-card-action btn-edit"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditModal(consultation);
+                                    }}
+                                    title="Editar agendamento"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    className="btn-card-action btn-delete"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDeleteModal(consultation);
+                                    }}
+                                    title="Excluir agendamento"
+                                    disabled={isDeleting}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
@@ -525,6 +845,157 @@ export default function AgendaPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Edição */}
+      {editModalOpen && editingConsultation && (
+        <div className="modal-overlay" onClick={handleCloseEditModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Editar Agendamento</h2>
+              <button className="modal-close" onClick={handleCloseEditModal}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {/* Informações do Paciente (readonly) */}
+              <div className="form-group">
+                <label className="form-label">Paciente</label>
+                <div className="form-value-readonly">
+                  <User size={16} />
+                  {editingConsultation.patient}
+                </div>
+              </div>
+
+              {/* Data */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-date">Data da Consulta</label>
+                <input
+                  type="date"
+                  id="edit-date"
+                  className="form-input"
+                  value={editFormData.date}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+
+              {/* Horário */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-time">Horário</label>
+                <input
+                  type="time"
+                  id="edit-time"
+                  className="form-input"
+                  value={editFormData.time}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, time: e.target.value }))}
+                />
+              </div>
+
+              {/* Tipo de Atendimento */}
+              <div className="form-group">
+                <label className="form-label">Tipo de Atendimento</label>
+                <div className="form-radio-group">
+                  <label className={`form-radio-option ${editFormData.type === 'TELEMEDICINA' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="consultation-type"
+                      value="TELEMEDICINA"
+                      checked={editFormData.type === 'TELEMEDICINA'}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, type: e.target.value as 'TELEMEDICINA' | 'PRESENCIAL' }))}
+                    />
+                    <Video size={16} />
+                    Telemedicina
+                  </label>
+                  <label className={`form-radio-option ${editFormData.type === 'PRESENCIAL' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="consultation-type"
+                      value="PRESENCIAL"
+                      checked={editFormData.type === 'PRESENCIAL'}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, type: e.target.value as 'TELEMEDICINA' | 'PRESENCIAL' }))}
+                    />
+                    <User size={16} />
+                    Presencial
+                  </label>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn btn-danger"
+                onClick={() => handleOpenDeleteModal(editingConsultation)}
+                disabled={isDeleting || isSaving}
+              >
+                <Trash2 className="btn-icon" />
+                Excluir
+              </button>
+              <div className="modal-footer-right">
+                <button 
+                  className="btn btn-secondary"
+                  onClick={handleCloseEditModal}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving || !editFormData.date || !editFormData.time}
+                >
+                  {isSaving ? <Loader2 className="btn-icon spinning" /> : <Check className="btn-icon" />}
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteModalOpen && consultationToDelete && (
+        <div className="modal-overlay" onClick={handleCloseDeleteModal}>
+          <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Confirmar Exclusão</h2>
+              <button className="modal-close" onClick={handleCloseDeleteModal}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="confirm-icon-wrapper">
+                <Trash2 size={48} className="confirm-icon-delete" />
+              </div>
+              <p className="confirm-message">
+                Tem certeza que deseja excluir a consulta de <strong>{consultationToDelete.patient}</strong>?
+              </p>
+              <p className="confirm-warning">
+                Esta ação irá remover a consulta do sistema e do Google Calendar (se sincronizado). Esta ação não pode ser desfeita.
+              </p>
+            </div>
+
+            <div className="modal-footer modal-footer-center">
+              <button 
+                className="btn btn-secondary"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-danger"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 className="btn-icon spinning" /> : <Trash2 className="btn-icon" />}
+                {isDeleting ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

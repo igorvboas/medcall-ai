@@ -3185,6 +3185,16 @@ function ConsultasPageContent() {
   const [consultationToDelete, setConsultationToDelete] = useState<Consultation | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Estados para modal de edição de agendamento
+  const [showEditAgendamentoModal, setShowEditAgendamentoModal] = useState(false);
+  const [editingAgendamento, setEditingAgendamento] = useState<Consultation | null>(null);
+  const [editAgendamentoForm, setEditAgendamentoForm] = useState({
+    date: '',
+    time: '',
+    type: 'TELEMEDICINA' as 'PRESENCIAL' | 'TELEMEDICINA'
+  });
+  const [isSavingAgendamento, setIsSavingAgendamento] = useState(false);
+
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
     setSelectedField({ fieldPath, label });
@@ -3832,7 +3842,82 @@ function ConsultasPageContent() {
   // Função para editar consulta
   const handleEditConsultation = (e: React.MouseEvent, consultation: Consultation) => {
     e.stopPropagation(); // Previne a abertura da consulta
-    router.push(`/consultas?consulta_id=${consultation.id}`);
+    
+    // Se for agendamento, abre o modal de edição
+    if (consultation.status === 'AGENDAMENTO') {
+      // Determinar data/hora do agendamento
+      const dateTime = consultation.consulta_inicio 
+        ? new Date(consultation.consulta_inicio) 
+        : new Date(consultation.created_at);
+      
+      const dateStr = dateTime.toISOString().split('T')[0];
+      const timeStr = dateTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      setEditAgendamentoForm({
+        date: dateStr,
+        time: timeStr,
+        type: consultation.consultation_type
+      });
+      setEditingAgendamento(consultation);
+      setShowEditAgendamentoModal(true);
+    } else {
+      // Para outras consultas, abre os detalhes
+      router.push(`/consultas?consulta_id=${consultation.id}`);
+    }
+  };
+
+  // Função para fechar modal de edição de agendamento
+  const handleCloseEditAgendamentoModal = () => {
+    setShowEditAgendamentoModal(false);
+    setEditingAgendamento(null);
+    setEditAgendamentoForm({ date: '', time: '', type: 'TELEMEDICINA' });
+  };
+
+  // Função para salvar edição de agendamento
+  const handleSaveAgendamentoEdit = async () => {
+    if (!editingAgendamento) return;
+    
+    setIsSavingAgendamento(true);
+    try {
+      // Criar datetime combinando data e hora
+      const [year, month, day] = editAgendamentoForm.date.split('-').map(Number);
+      const [hours, minutes] = editAgendamentoForm.time.split(':').map(Number);
+      const consultaInicio = new Date(year, month - 1, day, hours, minutes).toISOString();
+
+      const response = await fetch(`/api/consultations/${editingAgendamento.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consulta_inicio: consultaInicio,
+          consultation_type: editAgendamentoForm.type
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao atualizar agendamento');
+      }
+
+      // Atualizar lista local
+      setConsultations(prev => prev.map(c => {
+        if (c.id === editingAgendamento.id) {
+          return {
+            ...c,
+            consulta_inicio: consultaInicio,
+            consultation_type: editAgendamentoForm.type
+          };
+        }
+        return c;
+      }));
+
+      alert('Agendamento atualizado com sucesso!');
+      handleCloseEditAgendamentoModal();
+    } catch (error: any) {
+      console.error('Erro ao atualizar agendamento:', error);
+      alert(error.message || 'Erro ao atualizar agendamento');
+    } finally {
+      setIsSavingAgendamento(false);
+    }
   };
 
   // Função para abrir modal de confirmação de exclusão
@@ -6109,7 +6194,7 @@ function ConsultasPageContent() {
                 Tem certeza que deseja excluir a consulta de <strong>{consultationToDelete.patient_name}</strong>?
               </p>
               <p className="modal-warning">
-                Esta ação não pode ser desfeita. Todos os dados da consulta serão permanentemente removidos.
+                Esta ação irá remover a consulta do sistema e do Google Calendar (se sincronizado). Esta ação não pode ser desfeita.
               </p>
             </div>
             
@@ -6138,6 +6223,125 @@ function ConsultasPageContent() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edição de Agendamento */}
+      {showEditAgendamentoModal && editingAgendamento && (
+        <div className="modal-overlay" onClick={handleCloseEditAgendamentoModal}>
+          <div className="modal-content edit-agendamento-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Editar Agendamento</h3>
+              <button className="modal-close-btn" onClick={handleCloseEditAgendamentoModal}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {/* Paciente (readonly) */}
+              <div className="form-group">
+                <label className="form-label">Paciente</label>
+                <div className="form-readonly-value">
+                  <User className="w-4 h-4" />
+                  {editingAgendamento.patient_name}
+                </div>
+              </div>
+
+              {/* Data */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-agendamento-date">Data da Consulta</label>
+                <input
+                  type="date"
+                  id="edit-agendamento-date"
+                  className="form-input"
+                  value={editAgendamentoForm.date}
+                  onChange={(e) => setEditAgendamentoForm(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+
+              {/* Horário */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-agendamento-time">Horário</label>
+                <input
+                  type="time"
+                  id="edit-agendamento-time"
+                  className="form-input"
+                  value={editAgendamentoForm.time}
+                  onChange={(e) => setEditAgendamentoForm(prev => ({ ...prev, time: e.target.value }))}
+                />
+              </div>
+
+              {/* Tipo de Atendimento */}
+              <div className="form-group">
+                <label className="form-label">Tipo de Atendimento</label>
+                <div className="form-radio-group">
+                  <label className={`form-radio-option ${editAgendamentoForm.type === 'TELEMEDICINA' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="agendamento-type"
+                      value="TELEMEDICINA"
+                      checked={editAgendamentoForm.type === 'TELEMEDICINA'}
+                      onChange={(e) => setEditAgendamentoForm(prev => ({ ...prev, type: e.target.value as 'TELEMEDICINA' | 'PRESENCIAL' }))}
+                    />
+                    <Video className="w-4 h-4" />
+                    Telemedicina
+                  </label>
+                  <label className={`form-radio-option ${editAgendamentoForm.type === 'PRESENCIAL' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="agendamento-type"
+                      value="PRESENCIAL"
+                      checked={editAgendamentoForm.type === 'PRESENCIAL'}
+                      onChange={(e) => setEditAgendamentoForm(prev => ({ ...prev, type: e.target.value as 'TELEMEDICINA' | 'PRESENCIAL' }))}
+                    />
+                    <User className="w-4 h-4" />
+                    Presencial
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer modal-footer-between">
+              <button 
+                className="modal-button delete-button"
+                onClick={() => {
+                  handleCloseEditAgendamentoModal();
+                  setConsultationToDelete(editingAgendamento);
+                  setShowDeleteModal(true);
+                }}
+                disabled={isSavingAgendamento}
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir
+              </button>
+              <div className="modal-footer-right">
+                <button 
+                  className="modal-button cancel-button"
+                  onClick={handleCloseEditAgendamentoModal}
+                  disabled={isSavingAgendamento}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-button save-button"
+                  onClick={handleSaveAgendamentoEdit}
+                  disabled={isSavingAgendamento || !editAgendamentoForm.date || !editAgendamentoForm.time}
+                >
+                  {isSavingAgendamento ? (
+                    <>
+                      <div className="loading-spinner-small"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Salvar
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

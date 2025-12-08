@@ -4371,3 +4371,220 @@
     font-size: 18px;
   }
 }
+
+/* ========================================
+   Modal de Edição de Agendamento
+   ======================================== */
+
+.edit-agendamento-modal {
+  max-width: 450px;
+}
+
+.edit-agendamento-modal .modal-header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.dark .edit-agendamento-modal .modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.dark .modal-close-btn {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.dark .modal-close-btn:hover {
+  background: #4b5563;
+  color: #ffffff;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.dark .form-label {
+  color: #e5e7eb;
+}
+
+.form-readonly-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.dark .form-readonly-value {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #374151;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #d4a574;
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+}
+
+.dark .form-input {
+  background: #374151;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dark .form-input:focus {
+  border-color: #d4a574;
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.2);
+}
+
+.form-radio-group {
+  display: flex;
+  gap: 12px;
+}
+
+.form-radio-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.form-radio-option input[type="radio"] {
+  display: none;
+}
+
+.form-radio-option:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.form-radio-option.selected {
+  border-color: #d4a574;
+  background: #fef7ed;
+  color: #92400e;
+}
+
+.dark .form-radio-option {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+}
+
+.dark .form-radio-option:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #374151;
+}
+
+.dark .form-radio-option.selected {
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.1);
+  color: #d4a574;
+}
+
+.modal-footer-between {
+  justify-content: space-between;
+}
+
+.modal-footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-button.save-button {
+  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+}
+
+.modal-button.save-button:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(212, 165, 116, 0.4);
+  background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+}
+
+/* Responsividade do modal de edição */
+@media (max-width: 480px) {
+  .edit-agendamento-modal {
+    max-width: 100%;
+    margin: 16px;
+  }
+
+  .form-radio-group {
+    flex-direction: column;
+  }
+
+  .modal-footer-between {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .modal-footer-right {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer-right .modal-button {
+    width: 100%;
+  }
+
+  .modal-footer-between .delete-button {
+    width: 100%;
+  }
+}

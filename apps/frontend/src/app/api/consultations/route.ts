@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { syncConsultationToGoogleCalendar } from '@/lib/google-calendar-service';
 
 // GET /api/consultations - Listar consultas do médico logado
 export async function GET(request: NextRequest) {
@@ -111,10 +112,10 @@ export async function POST(request: NextRequest) {
     const { supabase, session, user } = authResult;
     const doctorAuthId = user.id;
 
-    // Buscar médico na tabela medicos usando a FK do auth.users
+    // Buscar médico na tabela medicos usando a FK do auth.users (incluindo nome)
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -192,6 +193,41 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Consulta criada com sucesso:', consultation.id, status === 'AGENDAMENTO' ? '(Agendamento)' : '');
+
+    // Sincronizar com Google Calendar (se o médico tiver conectado)
+    try {
+      const syncResult = await syncConsultationToGoogleCalendar(supabase, medico.id, {
+        id: consultation.id,
+        patient_name: consultation.patient_name,
+        consultation_type: consultation.consultation_type,
+        consulta_inicio: consultation.consulta_inicio,
+        created_at: consultation.created_at,
+        duration: consultation.duration,
+        notes: consultation.notes,
+        doctor_name: medico.name, // Nome do médico para o evento
+      });
+
+      if (syncResult.success && syncResult.eventId) {
+        console.log('📅 Consulta sincronizada com Google Calendar:', syncResult.eventId);
+        // Buscar consulta atualizada com google_event_id
+        const { data: updatedConsultation } = await supabase
+          .from('consultations')
+          .select('*')
+          .eq('id', consultation.id)
+          .single();
+        
+        if (updatedConsultation) {
+          return NextResponse.json(updatedConsultation, { status: 201 });
+        }
+      } else if (!syncResult.success && syncResult.error) {
+        console.warn('⚠️ Falha ao sincronizar com Google Calendar:', syncResult.error);
+        // Não retorna erro, a consulta foi criada com sucesso no banco
+      }
+    } catch (syncError) {
+      console.warn('⚠️ Erro ao sincronizar com Google Calendar:', syncError);
+      // Não retorna erro, a consulta foi criada com sucesso no banco
+    }
+
     return NextResponse.json(consultation, { status: 201 });
 
   } catch (error) {
