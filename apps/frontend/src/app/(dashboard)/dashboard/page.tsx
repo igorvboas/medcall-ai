@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -101,6 +101,9 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState<string>('7d');
+  const [chartPeriodType, setChartPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('year');
+  const [chartSelectedDate, setChartSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [chartSelectedMonth, setChartSelectedMonth] = useState<string>(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const isMock = process.env.NEXT_PUBLIC_MOCK === 'true' || process.env.MOCK_MODE === 'true';
   const [consultationDates, setConsultationDates] = useState<Date[]>([]);
 
@@ -123,6 +126,7 @@ export default function DashboardPage() {
     }
   }, [dashboardData]);
 
+  // Carregar dados iniciais do dashboard
   useEffect(() => {
     if (isMock) {
       const today = new Date();
@@ -167,11 +171,78 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [isMock, selectedYear, selectedPeriod]);
 
+  // Função para atualizar apenas os dados do gráfico sem recarregar toda a página
+  const fetchChartData = useCallback(async () => {
+    if (!dashboardData) return;
+    
+    try {
+      // Construir parâmetros para o gráfico de Presencial/Telemedicina
+      let chartParams = '';
+      if (chartPeriodType === 'day') {
+        chartParams = `&chartPeriod=day&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+      } else if (chartPeriodType === 'week') {
+        chartParams = `&chartPeriod=week&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+      } else if (chartPeriodType === 'month') {
+        chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
+      } else {
+        chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(selectedYear)}`;
+      }
+      
+      const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar dados do gráfico');
+      }
+      
+      const data = await response.json();
+      
+      // Atualizar apenas os dados do gráfico, mantendo o resto dos dados
+      setDashboardData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          graficos: {
+            ...prev.graficos,
+            consultasPorDia: data.graficos?.consultasPorDia || prev.graficos.consultasPorDia
+          }
+        };
+      });
+    } catch (err) {
+      console.error('Erro ao atualizar gráfico:', err);
+      // Não mostrar erro global, apenas logar
+    }
+  }, [dashboardData, chartPeriodType, chartSelectedDate, chartSelectedMonth, selectedYear, selectedPeriod]);
+
+  // Atualizar apenas o gráfico quando os filtros do gráfico mudarem
+  useEffect(() => {
+    if (isMock || !dashboardData) return;
+    
+    // Usar um pequeno delay para evitar múltiplas chamadas rápidas
+    const timeoutId = setTimeout(() => {
+      fetchChartData();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [fetchChartData, isMock]);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}`);
+      
+      // Construir parâmetros para o gráfico de Presencial/Telemedicina
+      let chartParams = '';
+      if (chartPeriodType === 'day') {
+        chartParams = `&chartPeriod=day&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+      } else if (chartPeriodType === 'week') {
+        chartParams = `&chartPeriod=week&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+      } else if (chartPeriodType === 'month') {
+        chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
+      } else {
+        chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(selectedYear)}`;
+      }
+      
+      const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
       
       if (!response.ok) {
         throw new Error('Erro ao carregar dados do dashboard');
@@ -187,6 +258,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -321,15 +393,60 @@ export default function DashboardPage() {
             <div className="card-dark chart-card">
               <div className="card-header">
                 <div className="card-title">Atendimentos Presencial/Telemedicina</div>
-                <div className="card-actions">
+                <div className="card-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <select 
                     className="year-select"
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    value={chartPeriodType}
+                    onChange={(e) => setChartPeriodType(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                    style={{ minWidth: '100px' }}
                   >
-                    <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
-                    <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                    <option value="day">Dia</option>
+                    <option value="week">Semana</option>
+                    <option value="month">Mês</option>
+                    <option value="year">Ano</option>
                   </select>
+                  
+                  {chartPeriodType === 'day' && (
+                    <input
+                      type="date"
+                      className="year-select"
+                      value={chartSelectedDate}
+                      onChange={(e) => setChartSelectedDate(e.target.value)}
+                      style={{ minWidth: '140px' }}
+                    />
+                  )}
+                  
+                  {chartPeriodType === 'week' && (
+                    <input
+                      type="date"
+                      className="year-select"
+                      value={chartSelectedDate}
+                      onChange={(e) => setChartSelectedDate(e.target.value)}
+                      style={{ minWidth: '140px' }}
+                    />
+                  )}
+                  
+                  {chartPeriodType === 'month' && (
+                    <input
+                      type="month"
+                      className="year-select"
+                      value={chartSelectedMonth}
+                      onChange={(e) => setChartSelectedMonth(e.target.value)}
+                      style={{ minWidth: '140px' }}
+                    />
+                  )}
+                  
+                  {chartPeriodType === 'year' && (
+                    <select 
+                      className="year-select"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      style={{ minWidth: '100px' }}
+                    >
+                      <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                      <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                    </select>
+                  )}
                   {/* download button removed */}
                 </div>
               </div>

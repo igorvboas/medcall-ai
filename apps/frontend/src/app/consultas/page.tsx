@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Save, X, Sparkles, Edit, Plus, Trash2, Pencil,
+  Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search,
   Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -62,6 +62,8 @@ interface Consultation {
   };
   prescription?: string;
   next_appointment?: string;
+  consulta_inicio?: string;
+  consulta_fim?: string;
   created_at: string;
   updated_at: string;
   consulta_inicio?: string;
@@ -129,11 +131,14 @@ interface AnamneseData {
 }
 
 // Função para buscar consultas da API
-async function fetchConsultations(page: number = 1, limit: number = 20): Promise<ConsultationsResponse> {
+async function fetchConsultations(page: number = 1, limit: number = 20, search: string = '', status: string = 'all'): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
   });
+
+  if (search) params.append('search', search);
+  if (status && status !== 'all') params.append('status', status);
 
   const response = await fetch(`/api/consultations?${params}`, {
     method: 'GET',
@@ -357,6 +362,8 @@ function AnamneseSection({
   //console.log('🔍 AnamneseSection readOnly:', readOnly);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sinteseAnalitica, setSinteseAnalitica] = useState<any>(null);
+  const [loadingSintese, setLoadingSintese] = useState(false);
 
   // Função para selecionar campo para edição com IA
   const handleAIEdit = (fieldPath: string, label: string) => {
@@ -450,6 +457,7 @@ function AnamneseSection({
 
   useEffect(() => {
     fetchAnamneseData();
+    fetchSinteseAnalitica();
   }, [consultaId]);
 
   // Listener para recarregar dados de anamnese quando a IA processar
@@ -500,6 +508,30 @@ function AnamneseSection({
     }
   };
 
+  const fetchSinteseAnalitica = async () => {
+    try {
+      setLoadingSintese(true);
+      const response = await fetch(`/api/sintese-analitica/${consultaId}`);
+      
+      if (!response.ok) {
+        // Se não encontrar, retornar null (não é erro)
+        if (response.status === 404) {
+          setSinteseAnalitica(null);
+          return;
+        }
+        throw new Error('Erro ao buscar síntese analítica');
+      }
+      
+      const data = await response.json();
+      setSinteseAnalitica(data);
+    } catch (err) {
+      console.error('❌ Erro ao carregar síntese analítica:', err);
+      setSinteseAnalitica(null);
+    } finally {
+      setLoadingSintese(false);
+    }
+  };
+
   // Mostrar loading apenas no primeiro carregamento
   if (loading && !error) {
     console.log('🔍 AnamneseSection - Mostrando loading...');
@@ -542,6 +574,137 @@ function AnamneseSection({
             <strong>Atenção:</strong> {error}. Os campos estão sendo exibidos vazios.
           </div>
         </div>
+      )}
+
+      {/* Síntese Analítica - Resumo da Anamnese */}
+      {sinteseAnalitica && (
+        <CollapsibleSection title="Síntese Analítica do Paciente (Resumo da Anamnese)" defaultOpen={true}>
+          <div className="anamnese-subsection" style={{ 
+            background: '#f8fafc', 
+            padding: '20px', 
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            marginBottom: '20px'
+          }}>
+            {sinteseAnalitica.sintese && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Síntese</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.sintese}</p>
+              </div>
+            )}
+            
+            {sinteseAnalitica.tres_linhas && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Três Linhas</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.tres_linhas}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.eixo_causal_principal && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Eixo Causal Principal</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.eixo_causal_principal}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.perpetuadores && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Perpetuadores</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.perpetuadores}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.achados_criticos_urgentes && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#dc2626', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Achados Críticos Urgentes</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.achados_criticos_urgentes}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.achados_criticos_importantes && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Achados Críticos Importantes</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.achados_criticos_importantes}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.psicoemocional && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Psicoemocional</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.psicoemocional}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.intervencao_imediata && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#dc2626', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Intervenção Imediata</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.intervencao_imediata}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.proximas_etapas && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Próximas Etapas</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.proximas_etapas}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.exames_faltantes && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Exames Faltantes</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.exames_faltantes}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.encaminhar && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Encaminhar</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.encaminhar}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.pontos_atencao && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Pontos de Atenção</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.pontos_atencao}</p>
+              </div>
+            )}
+
+            {sinteseAnalitica.prognostico && (
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Prognóstico</h4>
+                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.prognostico}</p>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+              {sinteseAnalitica.complexidade && (
+                <div>
+                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Complexidade</h4>
+                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.complexidade}</p>
+                </div>
+              )}
+              {sinteseAnalitica.urgencia && (
+                <div>
+                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Urgência</h4>
+                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.urgencia}</p>
+                </div>
+              )}
+              {sinteseAnalitica.prontidao_mudanca && (
+                <div>
+                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Prontidão para Mudança</h4>
+                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.prontidao_mudanca}</p>
+                </div>
+              )}
+              {sinteseAnalitica.confiabilidade && (
+                <div>
+                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Confiabilidade</h4>
+                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.confiabilidade}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* Dados do Paciente */}
@@ -3148,6 +3311,9 @@ function ConsultasPageContent() {
   const [totalConsultations, setTotalConsultations] = useState(0);
   const [cssLoaded, setCssLoaded] = useState(false);
   const [dashboardLoaded, setDashboardLoaded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const isInitialMount = useRef(true);
   
   // Estados para visualização de detalhes
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
@@ -3194,6 +3360,11 @@ function ConsultasPageContent() {
     type: 'TELEMEDICINA' as 'PRESENCIAL' | 'TELEMEDICINA'
   });
   const [isSavingAgendamento, setIsSavingAgendamento] = useState(false);
+
+  // Estados para modal de confirmação de avanço de etapa
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [advanceAction, setAdvanceAction] = useState<(() => Promise<void>) | null>(null);
+  const [advanceMessage, setAdvanceMessage] = useState<string>('');
 
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
@@ -3398,15 +3569,39 @@ function ConsultasPageContent() {
   };
 
   // Carregar consultas só depois que dashboard e CSS estiverem carregados
+  // Este useEffect é para mudanças de página e carregamento inicial
   useEffect(() => {
     const executeLoad = async () => {
       if (!consultaId && dashboardLoaded && cssLoaded) {
-        await loadConsultations();
+        // Se for mudança de página (não primeira renderização), não mostra loading
+        const showLoading = isInitialMount.current;
+        await loadConsultations(showLoading);
       }
     };
     
     executeLoad();
   }, [currentPage, consultaId, dashboardLoaded, cssLoaded]);
+
+  // Buscar consultas quando filtros mudarem (com debounce)
+  useEffect(() => {
+    // Ignorar a primeira renderização (já foi feita busca no useEffect inicial)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Não fazer busca se ainda não carregou dashboard/CSS ou se estiver em detalhes
+    if (!dashboardLoaded || !cssLoaded || consultaId) {
+      return;
+    }
+
+    // Debounce de 1 segundo para evitar muitas requisições enquanto o usuário digita
+    const timeoutId = setTimeout(() => {
+      loadConsultations(false); // Não mostra loading durante busca com filtros
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, statusFilter]);
 
   // Verificar se o dashboard está completamente carregado
   useEffect(() => {
@@ -3496,12 +3691,13 @@ function ConsultasPageContent() {
   }, [dashboardLoaded]);
 
   // Função para carregar lista de consultas
-  const loadConsultations = useCallback(async (silent = false) => {
+  const loadConsultations = useCallback(async (showLoading = false) => {
     try {
-      if (!silent) {
-        setError(null);
+      if (showLoading) {
+        setLoading(true);
       }
-      const response = await fetchConsultations(currentPage, 20);
+      setError(null);
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter);
       
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -3525,11 +3721,13 @@ function ConsultasPageContent() {
       setTotalPages(response.pagination.totalPages);
       setTotalConsultations(response.pagination.total);
     } catch (err) {
-      if (!silent) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
+    } finally {
+      if (showLoading) {
+        setLoading(false);
       }
     }
-  }, [currentPage]);
+  }, [currentPage, searchTerm, statusFilter]);
 
   // Carregar lista de consultas inicialmente
   useEffect(() => {
@@ -3551,7 +3749,7 @@ function ConsultasPageContent() {
 
     const intervalId = setInterval(async () => {
       try {
-        await loadConsultations(true); // Modo silencioso para não mostrar loading
+        await loadConsultations(false); // Modo silencioso para não mostrar loading
       } catch (error) {
         // Erro silencioso - não mostrar ao usuário
       }
@@ -3749,6 +3947,37 @@ function ConsultasPageContent() {
     }
   };
 
+  // Função para selecionar solução
+  const handleSelectSolucao = async (solucaoEtapa: 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA') => {
+    if (!consultaId) return;
+    
+    try {
+      setIsSaving(true);
+      
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: solucaoEtapa
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Recarregar detalhes da consulta
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao selecionar solução:', error);
+      alert('Erro ao selecionar solução. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveAtividadeFisicaAndContinue = async () => {
     if (!consultaId) return;
 
@@ -3796,6 +4025,21 @@ function ConsultasPageContent() {
       
       const data = await response.json();
       const newConsultation = data.consultation;
+      
+      // Logs para debug de consulta_inicio e consulta_fim
+      console.log('📅 Dados da consulta recebidos:', {
+        consulta_inicio: newConsultation?.consulta_inicio,
+        consulta_fim: newConsultation?.consulta_fim,
+        created_at: newConsultation?.created_at,
+        todas_as_colunas_consulta: Object.keys(newConsultation || {}).filter(k => 
+          k.toLowerCase().includes('consulta') || 
+          k.toLowerCase().includes('inicio') || 
+          k.toLowerCase().includes('fim') ||
+          k.toLowerCase().includes('start') ||
+          k.toLowerCase().includes('end')
+        )
+      });
+      console.log('📅 Objeto completo da consulta (verificar consulta_fim):', newConsultation);
       
       // Sempre atualizar para garantir que mudanças no banco sejam refletidas
       // A comparação anterior estava impedindo atualizações quando o status mudava no banco
@@ -4026,6 +4270,30 @@ function ConsultasPageContent() {
     }
   };
 
+  // Função para solicitar confirmação antes de avançar
+  const requestAdvanceConfirmation = (action: () => Promise<void>, message: string) => {
+    setAdvanceAction(() => action);
+    setAdvanceMessage(message);
+    setShowAdvanceModal(true);
+  };
+
+  // Função para confirmar avanço de etapa
+  const confirmAdvance = async () => {
+    if (advanceAction) {
+      setShowAdvanceModal(false);
+      await advanceAction();
+      setAdvanceAction(null);
+      setAdvanceMessage('');
+    }
+  };
+
+  // Função para cancelar avanço
+  const cancelAdvance = () => {
+    setShowAdvanceModal(false);
+    setAdvanceAction(null);
+    setAdvanceMessage('');
+  };
+
   // Função para salvar alterações do DIAGNÓSTICO e mudar para etapa de SOLUÇÃO
   const handleSaveDiagnosticoAndContinue = async () => {
     if (!consultaId || !consultaDetails) return;
@@ -4208,6 +4476,38 @@ function ConsultasPageContent() {
     });
   };
 
+  const formatTime = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDateOnly = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatConsultaHorario = (consulta: Consultation) => {
+    if (consulta.consulta_inicio && consulta.consulta_fim) {
+      const data = formatDateOnly(consulta.consulta_inicio);
+      const inicio = formatTime(consulta.consulta_inicio);
+      const fim = formatTime(consulta.consulta_fim);
+      return `${data} ${inicio} - ${fim}`;
+    } else if (consulta.consulta_inicio) {
+      const data = formatDateOnly(consulta.consulta_inicio);
+      const inicio = formatTime(consulta.consulta_inicio);
+      return `${data} ${inicio}`;
+    } else {
+      return formatFullDate(consulta.created_at);
+    }
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return 'N/A';
     const hours = Math.floor(seconds / 3600);
@@ -4376,7 +4676,7 @@ function ConsultasPageContent() {
           <p>{error}</p>
           <button 
             className="retry-button"
-            onClick={() => consultaId ? fetchConsultaDetails(consultaId) : loadConsultations()}
+            onClick={() => consultaId ? fetchConsultaDetails(consultaId) : loadConsultations(true)}
           >
             Tentar novamente
           </button>
@@ -4395,37 +4695,6 @@ function ConsultasPageContent() {
     );
   }
 
-  // Função para selecionar uma solução
-  const handleSelectSolucao = async (solucaoEtapa: string) => {
-    if (!consultaId) return;
-
-    try {
-      setIsSaving(true);
-      
-      // Atualiza a consulta com a solução selecionada
-      const response = await fetch(`/api/consultations/${consultaId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          solucao_etapa: solucaoEtapa
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar consulta');
-      }
-
-      // Recarrega os dados da consulta
-      await fetchConsultaDetails(consultaId);
-    } catch (error) {
-      console.error('Erro ao selecionar solução:', error);
-      alert('Erro ao selecionar solução. Tente novamente.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // Função para renderizar o conteúdo baseado no status e etapa
   const renderConsultationContent = () => {
@@ -4557,6 +4826,11 @@ function ConsultasPageContent() {
 
       // ETAPA = SOLUCAO
       if (consultaDetails.etapa === 'SOLUCAO') {
+        // Se não houver solucao_etapa definida, mostrar tela de seleção
+        if (!consultaDetails.solucao_etapa) {
+          return 'SELECT_SOLUCAO';
+        }
+        
         // Se for MENTALIDADE, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
           return 'SOLUCAO_MENTALIDADE';
@@ -4616,10 +4890,307 @@ function ConsultasPageContent() {
     
     const contentType = renderConsultationContent();
 
+    // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
+    if (typeof contentType === 'string' && contentType === 'SELECT_SOLUCAO') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Selecionar Solução</h1>
+          </div>
+
+          <div style={{
+            padding: '40px 20px',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              <h2 style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: '#1f2937',
+                marginBottom: '12px'
+              }}>
+                Escolha uma das soluções para continuar:
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                color: '#6b7280',
+                margin: 0
+              }}>
+                Selecione a solução que deseja implementar para este paciente.
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px',
+              marginTop: '40px'
+            }}>
+              {/* Livro da Vida */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('MENTALIDADE')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Livro da Vida</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Transformação Mental e Emocional</p>
+              </div>
+
+              {/* Alimentação */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ALIMENTACAO')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+                    <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Alimentação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Plano Nutricional Personalizado</p>
+              </div>
+
+              {/* Suplementação */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
+                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
+                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Suplementação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Protocolo de Suplementos</p>
+              </div>
+
+              {/* Atividade Física */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6.5 6.5h11l-1 7h-9l1-7z"></path>
+                    <path d="M9.5 6.5V4.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2"></path>
+                    <path d="M12 13.5v5"></path>
+                    <path d="M8 16.5h8"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Atividade Física</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Programa de Exercícios</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // Se for DIAGNOSTICO, renderiza a tela de diagnóstico
     if (typeof contentType === 'string' && contentType === 'DIAGNOSTICO') {
       //console.log('🔍 Renderizando tela de DIAGNOSTICO para consulta:', consultaId);
       return (
+        <>
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
             <button 
@@ -4651,8 +5222,32 @@ function ConsultasPageContent() {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                  <span className="info-label">Data/Hora Início</span>
+                  <span className="info-value">
+                    {consultaDetails.consulta_inicio 
+                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
+                      : formatFullDate(consultaDetails.created_at)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Data/Hora Fim</span>
+                  <span className="info-value">
+                    {(() => {
+                      console.log('🔍 Renderizando Data/Hora Fim:', {
+                        consulta_fim: consultaDetails.consulta_fim,
+                        existe: !!consultaDetails.consulta_fim
+                      });
+                      return consultaDetails.consulta_fim 
+                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
+                        : 'N/A';
+                    })()}
+                  </span>
                 </div>
               </div>
 
@@ -4784,7 +5379,15 @@ function ConsultasPageContent() {
                 <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h2>Diagnóstico Integrativo</h2>
                   <button
-                    onClick={handleSaveDiagnosticoAndContinue}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      requestAdvanceConfirmation(
+                        handleSaveDiagnosticoAndContinue,
+                        'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
+                      );
+                    }}
                     disabled={isSaving}
                     style={{
                       display: 'flex',
@@ -4818,8 +5421,8 @@ function ConsultasPageContent() {
                       </>
                     ) : (
                       <>
-                        <Save className="w-4 h-4" />
-                        Salvar Alterações
+                        <ArrowRight className="w-4 h-4" />
+                        Avançar
                       </>
                     )}
                   </button>
@@ -4855,6 +5458,355 @@ function ConsultasPageContent() {
                     </div>
                   </CollapsibleSection>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {showAdvanceModal && (
+          <div className="modal-overlay" onClick={cancelAdvance}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+                <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+              </div>
+              
+              <div className="modal-body">
+                <p className="modal-text" style={{ marginBottom: '15px' }}>
+                  {advanceMessage}
+                </p>
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="modal-button cancel-button"
+                  onClick={cancelAdvance}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-button"
+                  onClick={confirmAdvance}
+                  disabled={isSaving}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="loading-spinner-small"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      Avançar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
+      );
+    }
+
+    // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
+    if (typeof contentType === 'string' && contentType === 'SELECT_SOLUCAO') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Selecionar Solução</h1>
+          </div>
+
+          <div style={{
+            padding: '40px 20px',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              <h2 style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: '#1f2937',
+                marginBottom: '12px'
+              }}>
+                Escolha uma das soluções para continuar:
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                color: '#6b7280',
+                margin: 0
+              }}>
+                Selecione a solução que deseja implementar para este paciente.
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px',
+              marginTop: '40px'
+            }}>
+              {/* Livro da Vida */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('MENTALIDADE')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Livro da Vida</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Transformação Mental e Emocional</p>
+              </div>
+
+              {/* Alimentação */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ALIMENTACAO')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+                    <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Alimentação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Plano Nutricional Personalizado</p>
+              </div>
+
+              {/* Suplementação */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
+                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
+                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Suplementação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Protocolo de Suplementos</p>
+              </div>
+
+              {/* Atividade Física */}
+              <div
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6.5 6.5h11l-1 7h-9l1-7z"></path>
+                    <path d="M9.5 6.5V4.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2"></path>
+                    <path d="M12 13.5v5"></path>
+                    <path d="M8 16.5h8"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Atividade Física</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Programa de Exercícios</p>
               </div>
             </div>
           </div>
@@ -4897,8 +5849,32 @@ function ConsultasPageContent() {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                  <span className="info-label">Data/Hora Início</span>
+                  <span className="info-value">
+                    {consultaDetails.consulta_inicio 
+                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
+                      : formatFullDate(consultaDetails.created_at)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Data/Hora Fim</span>
+                  <span className="info-value">
+                    {(() => {
+                      console.log('🔍 Renderizando Data/Hora Fim:', {
+                        consulta_fim: consultaDetails.consulta_fim,
+                        existe: !!consultaDetails.consulta_fim
+                      });
+                      return consultaDetails.consulta_fim 
+                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
+                        : 'N/A';
+                    })()}
+                  </span>
                 </div>
               </div>
 
@@ -5121,8 +6097,32 @@ function ConsultasPageContent() {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                  <span className="info-label">Data/Hora Início</span>
+                  <span className="info-value">
+                    {consultaDetails.consulta_inicio 
+                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
+                      : formatFullDate(consultaDetails.created_at)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Data/Hora Fim</span>
+                  <span className="info-value">
+                    {(() => {
+                      console.log('🔍 Renderizando Data/Hora Fim:', {
+                        consulta_fim: consultaDetails.consulta_fim,
+                        existe: !!consultaDetails.consulta_fim
+                      });
+                      return consultaDetails.consulta_fim 
+                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
+                        : 'N/A';
+                    })()}
+                  </span>
                 </div>
               </div>
 
@@ -5484,8 +6484,32 @@ function ConsultasPageContent() {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                  <span className="info-label">Data/Hora Início</span>
+                  <span className="info-value">
+                    {consultaDetails.consulta_inicio 
+                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
+                      : formatFullDate(consultaDetails.created_at)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-block">
+                <div className="info-icon-wrapper">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Data/Hora Fim</span>
+                  <span className="info-value">
+                    {(() => {
+                      console.log('🔍 Renderizando Data/Hora Fim:', {
+                        consulta_fim: consultaDetails.consulta_fim,
+                        existe: !!consultaDetails.consulta_fim
+                      });
+                      return consultaDetails.consulta_fim 
+                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
+                        : 'N/A';
+                    })()}
+                  </span>
                 </div>
               </div>
 
@@ -5733,8 +6757,32 @@ function ConsultasPageContent() {
                 <Calendar className="w-5 h-5" />
               </div>
               <div className="info-content">
-                <span className="info-label">Data/Hora</span>
-                <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
+                <span className="info-label">Data/Hora Início</span>
+                <span className="info-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatFullDate(consultaDetails.created_at)}
+                </span>
+              </div>
+            </div>
+
+            <div className="info-block">
+              <div className="info-icon-wrapper">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="info-content">
+                <span className="info-label">Data/Hora Fim</span>
+                <span className="info-value">
+                  {(() => {
+                    console.log('🔍 Renderizando Data/Hora Fim (Anamnese):', {
+                      consulta_fim: consultaDetails.consulta_fim,
+                      existe: !!consultaDetails.consulta_fim
+                    });
+                    return consultaDetails.consulta_fim 
+                      ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
+                      : 'N/A';
+                  })()}
+                </span>
               </div>
             </div>
 
@@ -5873,7 +6921,15 @@ function ConsultasPageContent() {
               <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2>Anamnese Integrativa - Identificação e Avaliação Inicial</h2>
                 <button
-                  onClick={handleSaveAndContinue}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    requestAdvanceConfirmation(
+                      handleSaveAndContinue,
+                      'Você está prestes a avançar para a etapa de Diagnóstico. Esta ação iniciará o processamento do diagnóstico integrativo. Deseja continuar?'
+                    );
+                  }}
                   disabled={isSaving}
                   style={{
                     display: 'flex',
@@ -5907,8 +6963,8 @@ function ConsultasPageContent() {
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" />
-                      Salvar Alterações
+                      <ArrowRight className="w-4 h-4" />
+                      Avançar
                     </>
                   )}
                 </button>
@@ -5932,6 +6988,58 @@ function ConsultasPageContent() {
             </div>
           </div>
         </div>
+        {showAdvanceModal && (
+          <div className="modal-overlay" onClick={cancelAdvance}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+                <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+              </div>
+              
+              <div className="modal-body">
+                <p className="modal-text" style={{ marginBottom: '15px' }}>
+                  {advanceMessage}
+                </p>
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="modal-button cancel-button"
+                  onClick={cancelAdvance}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-button"
+                  onClick={confirmAdvance}
+                  disabled={isSaving}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="loading-spinner-small"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      Avançar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5955,6 +7063,93 @@ function ConsultasPageContent() {
             Nova Consulta
           </button>
         </div>
+      </div>
+
+      {/* Filtros de Busca */}
+      <div className="filters-section" style={{
+        marginBottom: '24px',
+        display: 'flex',
+        gap: '16px',
+        alignItems: 'center'
+      }}>
+        <div className="search-container" style={{
+          position: 'relative',
+          flex: 1,
+          maxWidth: '400px'
+        }}>
+          <Search className="search-icon" size={20} style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#9ca3af',
+            pointerEvents: 'none',
+            zIndex: 1
+          }} />
+          <input
+            type="text"
+            placeholder="Buscar consultas..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+            }}
+            className="search-input"
+            style={{
+              width: '100%',
+              padding: '12px 16px 12px 44px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: '#ffffff',
+              color: '#111827',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#d4a574';
+              e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#e5e7eb';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+        </div>
+        
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+          }}
+          className="status-filter"
+          style={{
+            padding: '12px 16px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            fontSize: '14px',
+            backgroundColor: '#ffffff',
+            color: '#111827',
+            cursor: 'pointer',
+            minWidth: '180px',
+            transition: 'all 0.2s ease'
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = '#d4a574';
+            e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = '#e5e7eb';
+            e.target.style.boxShadow = 'none';
+          }}
+        >
+          <option value="all">Todos os status</option>
+          <option value="CREATED">Criada</option>
+          <option value="RECORDING">Gravando</option>
+          <option value="PROCESSING">Processando</option>
+          <option value="VALIDATION">Validação</option>
+          <option value="COMPLETED">Concluída</option>
+          <option value="ERROR">Erro</option>
+          <option value="CANCELLED">Cancelada</option>
+        </select>
       </div>
 
       <div className="consultas-table-container">
@@ -6347,6 +7542,60 @@ function ConsultasPageContent() {
         </div>
       )}
 
+      {/* Modal de Confirmação de Avanço de Etapa */}
+      {showAdvanceModal && (
+        <div className="modal-overlay" onClick={cancelAdvance}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                <ArrowRight className="w-6 h-6" />
+              </div>
+              <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+            </div>
+            
+            <div className="modal-body">
+              <p className="modal-text" style={{ marginBottom: '15px' }}>
+                {advanceMessage}
+              </p>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="modal-button cancel-button"
+                onClick={cancelAdvance}
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="modal-button"
+                onClick={confirmAdvance}
+                disabled={isSaving}
+                style={{
+                  background: '#10b981',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4" />
+                    Avançar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -6374,4 +7623,5 @@ export default function ConsultasPage() {
     </Suspense>
   );
 }
+
 

@@ -376,3 +376,275 @@
     font-size: 16px;
   }
 }
+
+/* Medical Info Section - Enhanced Styles */
+.medical-info-section {
+  margin-bottom: 40px;
+}
+
+.medical-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.medical-info-card {
+  background: #FAFAFA;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.medical-info-card:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.medical-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.medical-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+}
+
+.field-icon {
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.char-count {
+  font-size: 12px;
+  color: #9CA3AF;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.medical-textarea {
+  background: #FFFFFF;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #1F2937;
+  line-height: 1.6;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.medical-textarea:focus {
+  outline: none;
+  border-color: #A6CE39;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(166, 206, 57, 0.1);
+}
+
+.medical-textarea:hover:not(:focus) {
+  border-color: #D1D5DB;
+}
+
+.medical-textarea::placeholder {
+  color: #9CA3AF;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.field-hint {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* Responsive adjustments for medical info */
+@media (max-width: 768px) {
+  .medical-info-card {
+    padding: 16px;
+  }
+
+  .medical-info-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .char-count {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .medical-info-card {
+    padding: 14px;
+  }
+
+  .medical-label {
+    font-size: 14px;
+  }
+
+  .medical-textarea {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+}
+
+/* Medical Files Upload Styles */
+.medical-files-upload {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.medical-files-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.medical-files-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+}
+
+.medical-files-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.medical-files-upload-btn:hover:not(:disabled) {
+  background: #E5E7EB;
+  border-color: #9CA3AF;
+}
+
+.medical-files-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.medical-files-input {
+  display: none;
+}
+
+.medical-files-hint {
+  font-size: 12px;
+  color: #6B7280;
+  margin: 8px 0 12px 0;
+  line-height: 1.4;
+}
+
+.medical-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.medical-file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.medical-file-item:hover {
+  border-color: #D1D5DB;
+  background: #F9FAFB;
+}
+
+.medical-file-icon {
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.medical-file-name {
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.medical-file-status {
+  font-size: 12px;
+  color: #6B7280;
+  font-style: italic;
+}
+
+.medical-file-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #EF4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.medical-file-remove:hover:not(:disabled) {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.medical-file-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .medical-files-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .medical-files-upload-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

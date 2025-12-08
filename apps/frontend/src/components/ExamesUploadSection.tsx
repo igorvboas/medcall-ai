@@ -133,13 +133,13 @@ export default function ExamesUploadSection({
         <div className="exames-upload-description">
           <p>Faça upload dos exames laboratoriais do paciente para processamento automatizado.</p>
           <p>
-            <strong>Formatos aceitos:</strong> PDF, DOC, DOCX, JPG, PNG (máximo 10MB por arquivo)
+            <strong>Formatos aceitos:</strong> PDF, DOC, DOCX, JPG, PNG (máximo 10MB por arquivo, até 50 arquivos)
           </p>
         </div>
 
         <FileUpload
           onFilesChange={handleFilesChange}
-          maxFiles={10}
+          maxFiles={50}
           maxSizePerFile={10}
           acceptedTypes={['application/pdf', '.doc', '.docx', 'image/jpeg', 'image/png']}
           disabled={disabled || isProcessing}

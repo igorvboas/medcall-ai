@@ -45,7 +45,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
   
   const suffix = isDevelopment ? '-teste' : '';
   
-  console.log('🔗 Webhook endpoints configurados:', {
+  console.log('🔗🔗 Webhook endpoints configurados:', {
     baseUrl: config.baseUrl,
     suffix,
     isDevelopment,
