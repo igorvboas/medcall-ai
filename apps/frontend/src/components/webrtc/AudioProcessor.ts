@@ -4,9 +4,10 @@
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
-  private processorNode: ScriptProcessorNode | null = null;
+  private processorNode: ScriptProcessorNode | AudioWorkletNode | null = null; // ✅ Suporta ambos (moderno e fallback)
   private isProcessing: boolean = false;
   private audioStream: MediaStream | null = null;
+  private useAudioWorklet: boolean = false; // ✅ Flag para usar AudioWorklet quando disponível
 
   // Configurações de áudio
   private readonly SAMPLE_RATE = 24000; // OpenAI espera 24kHz
@@ -37,16 +38,53 @@ export class AudioProcessor {
       // Criar source node do stream
       this.sourceNode = this.audioContext.createMediaStreamSource(this.audioStream);
       
-      // Criar processor node (ScriptProcessor)
-      this.processorNode = this.audioContext.createScriptProcessor(
-        this.BUFFER_SIZE, 
-        1, // 1 canal de entrada (mono)
-        1  // 1 canal de saída
-      );
+      // ✅ NOVO: Tentar usar AudioWorklet (API moderna) primeiro, com fallback para ScriptProcessorNode
+      if (this.audioContext.audioWorklet) {
+        try {
+          console.log('🔄 [AudioProcessor] Tentando carregar AudioWorklet (API moderna)...');
+          await this.audioContext.audioWorklet.addModule('/worklets/transcription-audio-processor.js');
+          
+          // Criar AudioWorkletNode
+          this.processorNode = new AudioWorkletNode(this.audioContext, 'transcription-audio-processor');
+          this.useAudioWorklet = true;
+          
+          // ✅ CORREÇÃO: Conectar ao AnalyserNode (não reproduz áudio)
+          const analyser = this.audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          
+          this.sourceNode.connect(this.processorNode);
+          this.processorNode.connect(analyser);
+          
+          console.log('✅ AudioProcessor: AudioWorkletNode conectado (API moderna, sem reprodução de áudio)');
+        } catch (workletError) {
+          console.warn('⚠️ [AudioProcessor] AudioWorklet não disponível, usando ScriptProcessorNode (fallback):', workletError);
+          this.useAudioWorklet = false;
+        }
+      } else {
+        console.warn('⚠️ [AudioProcessor] AudioWorklet não suportado neste navegador, usando ScriptProcessorNode (fallback)');
+        this.useAudioWorklet = false;
+      }
+      
+      // ✅ FALLBACK: Usar ScriptProcessorNode se AudioWorklet não estiver disponível
+      if (!this.useAudioWorklet) {
+        this.processorNode = this.audioContext.createScriptProcessor(
+          this.BUFFER_SIZE, 
+          1, // 1 canal de entrada (mono)
+          1  // 1 canal de saída
+        );
 
-      // Conectar nodes
-      this.sourceNode.connect(this.processorNode);
-      this.processorNode.connect(this.audioContext.destination);
+        // ✅ CORREÇÃO CRÍTICA: Usar GainNode com gain 0 conectado ao destination
+        // Isso permite que o ScriptProcessorNode funcione corretamente sem reproduzir áudio
+        const silentGain = this.audioContext.createGain();
+        silentGain.gain.value = 0; // Silencioso - processa mas não reproduz
+
+        // Conectar nodes: source -> processor -> silentGain -> destination
+        this.sourceNode.connect(this.processorNode);
+        this.processorNode.connect(silentGain);
+        silentGain.connect(this.audioContext.destination);
+        
+        console.log('✅ AudioProcessor: ScriptProcessorNode conectado via GainNode silencioso (gain=0) [FALLBACK]');
+      }
 
       console.log('✅ AudioProcessor inicializado');
       return true;
@@ -66,34 +104,67 @@ export class AudioProcessor {
       return false;
     }
 
-    console.log('▶️ Iniciando processamento de áudio...');
+    console.log(`▶️ Iniciando processamento de áudio (${this.useAudioWorklet ? 'AudioWorklet' : 'ScriptProcessorNode'})...`);
     this.isProcessing = true;
 
-    // Handler de processamento de áudio
-    this.processorNode.onaudioprocess = (audioEvent) => {
-      if (!this.isProcessing) return;
+    // ✅ NOVO: Handler diferente para AudioWorklet vs ScriptProcessorNode
+    if (this.useAudioWorklet && this.processorNode instanceof AudioWorkletNode) {
+      // AudioWorklet usa MessagePort para comunicação
+      this.processorNode.port.onmessage = (event) => {
+        if (!this.isProcessing) return;
+        
+        const { type, audioData } = event.data;
+        
+        if (type === 'audiodata' && audioData) {
+          // Converter Array para Float32Array
+          const float32Data = new Float32Array(audioData);
+          
+          // Resample se necessário (usar sampleRate do AudioContext)
+          let processedData = float32Data;
+          if (this.audioContext && this.audioContext.sampleRate !== this.SAMPLE_RATE) {
+            processedData = this.resampleAudio(
+              float32Data,
+              this.audioContext.sampleRate,
+              this.SAMPLE_RATE
+            );
+          }
 
-      // Pegar dados de áudio do buffer de entrada
-      const inputData = audioEvent.inputBuffer.getChannelData(0);
-      
-      // Resample se necessário (do sample rate do AudioContext para 24kHz)
-      let audioData: any = inputData;
-      if (this.audioContext && this.audioContext.sampleRate !== this.SAMPLE_RATE) {
-        audioData = this.resampleAudio(
-          inputData, 
-          this.audioContext.sampleRate, 
-          this.SAMPLE_RATE
-        );
-      }
+          // Converter para base64
+          const base64Audio = this.audioToBase64(processedData);
 
-      // Converter para base64
-      const base64Audio = this.audioToBase64(audioData);
+          // Callback com os dados
+          if (onAudioData && typeof onAudioData === 'function') {
+            onAudioData(base64Audio);
+          }
+        }
+      };
+    } else {
+      // ✅ FALLBACK: ScriptProcessorNode usa onaudioprocess
+      (this.processorNode as ScriptProcessorNode).onaudioprocess = (audioEvent) => {
+        if (!this.isProcessing) return;
 
-      // Callback com os dados
-      if (onAudioData && typeof onAudioData === 'function') {
-        onAudioData(base64Audio);
-      }
-    };
+        // Pegar dados de áudio do buffer de entrada
+        const inputData = audioEvent.inputBuffer.getChannelData(0);
+        
+        // Resample se necessário (do sample rate do AudioContext para 24kHz)
+        let audioData: any = inputData;
+        if (this.audioContext && this.audioContext.sampleRate !== this.SAMPLE_RATE) {
+          audioData = this.resampleAudio(
+            inputData, 
+            this.audioContext.sampleRate, 
+            this.SAMPLE_RATE
+          );
+        }
+
+        // Converter para base64
+        const base64Audio = this.audioToBase64(audioData);
+
+        // Callback com os dados
+        if (onAudioData && typeof onAudioData === 'function') {
+          onAudioData(base64Audio);
+        }
+      };
+    }
 
     console.log('✅ Processamento ativo');
     return true;
@@ -107,7 +178,13 @@ export class AudioProcessor {
     this.isProcessing = false;
     
     if (this.processorNode) {
-      this.processorNode.onaudioprocess = null;
+      if (this.useAudioWorklet && this.processorNode instanceof AudioWorkletNode) {
+        // AudioWorklet: limpar MessagePort
+        this.processorNode.port.onmessage = null;
+      } else {
+        // ScriptProcessorNode: limpar onaudioprocess
+        (this.processorNode as ScriptProcessorNode).onaudioprocess = null;
+      }
     }
   }
 

@@ -8,6 +8,8 @@ export async function GET(
   try {
     const { consultaId } = params;
 
+    console.log('🔍 [ALIMENTAÇÃO] Iniciando busca para consulta_id:', consultaId);
+
     if (!consultaId) {
       return NextResponse.json(
         { error: 'ID da consulta é obrigatório' },
@@ -23,7 +25,7 @@ export async function GET(
       .single();
 
     if (consultaError) {
-      console.error('Erro ao buscar consulta:', consultaError);
+      console.error('❌ [ALIMENTAÇÃO] Erro ao buscar consulta:', consultaError);
       return NextResponse.json(
         { error: 'Erro ao buscar dados da consulta' },
         { status: 500 }
@@ -31,11 +33,14 @@ export async function GET(
     }
 
     if (!consulta) {
+      console.log('⚠️ [ALIMENTAÇÃO] Consulta não encontrada');
       return NextResponse.json(
         { error: 'Consulta não encontrada' },
         { status: 404 }
       );
     }
+
+    console.log('✅ [ALIMENTAÇÃO] patient_id encontrado:', consulta.patient_id);
 
     // 2. Buscar na tabela s_gramaturas_alimentares usando o patient_id
     const { data: gramaturasData, error: gramaturasError } = await supabase
@@ -44,8 +49,10 @@ export async function GET(
       .eq('paciente_id', consulta.patient_id)
       .order('created_at', { ascending: true });
 
+    console.log('📊 [ALIMENTAÇÃO] Registros encontrados:', gramaturasData?.length || 0);
+
     if (gramaturasError) {
-      console.error('Erro ao buscar gramaturas alimentares:', gramaturasError);
+      console.error('❌ [ALIMENTAÇÃO] Erro ao buscar gramaturas:', gramaturasError);
       return NextResponse.json(
         { error: 'Erro ao buscar dados de alimentação' },
         { status: 500 }
@@ -62,7 +69,11 @@ export async function GET(
 
     // Processar os dados da tabela
     if (gramaturasData && gramaturasData.length > 0) {
+      console.log('📦 [ALIMENTAÇÃO] Processando dados...');
+      
       gramaturasData.forEach((item: any) => {
+        console.log(`  → Alimento: ${item.alimento} | ref1_g: ${item.ref1_g} | ref2_g: ${item.ref2_g} | ref3_g: ${item.ref3_g} | ref4_g: ${item.ref4_g}`);
+        
         // Mapear os dados para as refeições baseado na estrutura da tabela
         if (item.ref1_g || item.ref1_kcal) {
           alimentacaoData.cafe_da_manha.push({
@@ -104,6 +115,15 @@ export async function GET(
           });
         }
       });
+      
+      console.log('✅ [ALIMENTAÇÃO] Dados processados:', {
+        cafe_da_manha: alimentacaoData.cafe_da_manha.length,
+        almoco: alimentacaoData.almoco.length,
+        cafe_da_tarde: alimentacaoData.cafe_da_tarde.length,
+        jantar: alimentacaoData.jantar.length
+      });
+    } else {
+      console.log('⚠️ [ALIMENTAÇÃO] Nenhum dado encontrado para processar');
     }
 
     return NextResponse.json({

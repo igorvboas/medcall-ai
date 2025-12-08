@@ -72,6 +72,9 @@ function OnlineConsultationContent() {
       serverUrl={livekitUrl || undefined}
       token={token || undefined}
       patientName={decodeURIComponent(patientName)}
+      consultationId={consultationId || undefined}
+      patientToken={patientToken || undefined}
+      livekitUrl={livekitUrl || undefined}
       onEndCall={handleEndCall}
       onError={handleError}
     />

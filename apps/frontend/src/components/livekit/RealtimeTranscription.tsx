@@ -63,9 +63,13 @@ function AudioProcessor({
           onAudioData(new Float32Array(audioData));
         };
 
-        // Connect nodes
+        // ✅ CORREÇÃO: Usar AnalyserNode como destino (não reproduz áudio)
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        
+        // Connect nodes (sem conectar ao destination para evitar interferência)
         source.connect(processor);
-        processor.connect(audioContext.destination);
+        processor.connect(analyser);
 
         console.log('✅ Audio processing setup complete');
       } catch (error) {

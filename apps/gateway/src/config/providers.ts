@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { AccessToken } from 'livekit-server-sdk';
 import { config } from './index';
+import { aiPricingService, LLMType, AIStage } from '../services/aiPricingService';
 
 // Configuração do OpenAI
 export const openaiClient = new OpenAI({
@@ -187,7 +188,11 @@ export const aiModels = {
 // Helper para criar chat completion
 export async function makeChatCompletion(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
-  options: Partial<OpenAI.Chat.ChatCompletionCreateParams> = {}
+  options: Partial<OpenAI.Chat.ChatCompletionCreateParams> = {},
+  trackingOptions?: {
+    etapa?: AIStage;
+    consultaId?: string;
+  }
 ) {
   const params: OpenAI.Chat.ChatCompletionCreateParams = {
     ...aiModels.completion,
@@ -197,16 +202,50 @@ export async function makeChatCompletion(
     stream: false,
   };
 
-  return await openaiClient.chat.completions.create(params);
+  const response = await openaiClient.chat.completions.create(params);
+
+  // 📊 Registrar uso para monitoramento de custos
+  if (response.usage) {
+    const model = (params.model || aiModels.completion.model) as LLMType;
+    const etapa = trackingOptions?.etapa || 'chat_completion';
+    
+    await aiPricingService.logChatCompletionUsage(
+      model,
+      response.usage.prompt_tokens,
+      response.usage.completion_tokens,
+      etapa,
+      trackingOptions?.consultaId
+    );
+  }
+
+  return response;
 }
 
 // Helper para criar embeddings
-export async function makeEmbedding(text: string) {
-  return await openaiClient.embeddings.create({
+export async function makeEmbedding(
+  text: string,
+  trackingOptions?: {
+    consultaId?: string;
+  }
+) {
+  const response = await openaiClient.embeddings.create({
     model: aiModels.embedding.model,
     input: text,
     dimensions: aiModels.embedding.dimensions,
   });
+
+  // 📊 Registrar uso para monitoramento de custos
+  if (response.usage) {
+    const model = aiModels.embedding.model as 'text-embedding-3-small' | 'text-embedding-3-large';
+    
+    await aiPricingService.logEmbeddingUsage(
+      model,
+      response.usage.total_tokens,
+      trackingOptions?.consultaId
+    );
+  }
+
+  return response;
 }
 
 // Validação de todas as configurações

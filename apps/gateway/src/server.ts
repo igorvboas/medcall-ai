@@ -9,8 +9,9 @@ import cors from 'cors';
 import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
-import roomsRoutes from './routes/rooms';
+import roomsRoutes, { setSocketIO } from './routes/rooms';
 import twilioRoutes from './routes/index';
+import aiPricingRoutes from './routes/aiPricing';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 import { setupRoomsWebSocket } from './websocket/rooms';
 
@@ -43,6 +44,9 @@ const pcmHandler = new PCMTranscriptionHandler();
 // Configurar handlers de salas WebRTC
 setupRoomsWebSocket(io);
 
+// Passar referência do Socket.IO para as rotas REST de rooms (para notificações admin)
+setSocketIO(io);
+
 // Middlewares
 app.use(cors({
   origin: allowedOrigins,
@@ -59,6 +63,7 @@ app.use('/api/transcription', transcriptionRoutes);
 app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/rooms', roomsRoutes);
+app.use('/api/ai-pricing', aiPricingRoutes);
 app.use('/api', twilioRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM

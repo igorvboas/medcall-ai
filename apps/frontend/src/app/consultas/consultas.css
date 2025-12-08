@@ -3971,6 +3971,35 @@
   transform: translateY(-1px) scale(1.02);
 }
 
+/* Botão de Entrar na Consulta - Verde */
+.enter-action {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.enter-action::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.enter-action:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+}
+
+.enter-action:hover::before {
+  opacity: 1;
+}
+
+.enter-action:hover svg {
+  color: white;
+}
+
+.enter-action:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
 /* ===== MODAL DE CONFIRMAÇÃO ===== */
 .modal-overlay {
   position: fixed;
@@ -4190,6 +4219,11 @@
   border-color: rgba(239, 68, 68, 0.4);
 }
 
+.dark .enter-action {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
 /* Responsive para botões de ação */
 @media (max-width: 768px) {
   .table-header,
@@ -4232,5 +4266,108 @@
   
   .modal-button {
     width: 100%;
+  }
+}
+
+/* ==================== TELA DE SELEÇÃO DE SOLUÇÃO ==================== */
+.solucao-selection-container {
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.solucao-selection-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.solucao-selection-header h2 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.solucao-selection-header p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.solucao-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.solucao-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.solucao-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.solucao-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 16px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  margin: 0 auto 16px auto;
+  transition: all 0.3s ease;
+}
+
+.solucao-card:hover .solucao-icon {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.solucao-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.solucao-card p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Responsividade para tela de seleção */
+@media (max-width: 768px) {
+  .solucao-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .solucao-card {
+    padding: 24px 20px;
+  }
+  
+  .solucao-icon {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .solucao-card h3 {
+    font-size: 18px;
   }
 }

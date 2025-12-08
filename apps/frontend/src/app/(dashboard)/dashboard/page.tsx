@@ -23,6 +23,7 @@ import { Calendar } from '../../../components/Calendar';
 import { StatusBadge, mapBackendStatus } from '../../../components/StatusBadge';
 import { ConsultationStatusChart } from '../../../components/ConsultationStatusChart';
 import { LoadingScreen } from '../../../components/shared/LoadingScreen';
+import { ActiveConsultationBanner } from '../../../components/dashboard/ActiveConsultationBanner';
 import '../../../components/Calendar.css';
 
 interface DashboardData {
@@ -285,6 +286,9 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-exact">
+      {/* Banner de consulta em andamento */}
+      <ActiveConsultationBanner />
+      
       {/* Layout principal: conteúdo + painel direito */}
       <div className="dashboard-layout">
         {/* Conteúdo principal */}

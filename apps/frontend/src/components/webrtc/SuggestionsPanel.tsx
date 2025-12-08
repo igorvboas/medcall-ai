@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Copy, Check, X, AlertTriangle, Lightbulb, MessageSquare } from 'lucide-react';
+import { Brain, Copy, Check, X, AlertTriangle, Lightbulb, MessageSquare, Power, PowerOff } from 'lucide-react';
 
 interface Suggestion {
   id: string;
@@ -18,12 +18,18 @@ interface SuggestionsPanelProps {
   suggestions: Suggestion[];
   onUseSuggestion?: (suggestionId: string) => void;
   onDismissSuggestion?: (suggestionId: string) => void;
+  enabled?: boolean;
+  onToggleEnabled?: (enabled: boolean) => void;
+  onClose?: () => void;
 }
 
 export function SuggestionsPanel({ 
   suggestions, 
   onUseSuggestion, 
-  onDismissSuggestion 
+  onDismissSuggestion,
+  enabled = true,
+  onToggleEnabled,
+  onClose
 }: SuggestionsPanelProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -80,28 +86,43 @@ export function SuggestionsPanel({
 
   const visibleSuggestions = suggestions.filter(s => !dismissedIds.has(s.id) && !s.used);
 
-  if (visibleSuggestions.length === 0) {
-    return (
-      <div className="suggestions-panel">
-        <div className="suggestions-header">
-          <Brain className="w-5 h-5" />
-          <h3>Sugestões de IA</h3>
-        </div>
-        <div className="suggestions-empty">
-          <Brain className="w-8 h-8 opacity-30" />
-          <p>Aguardando contexto da consulta...</p>
-          <span>As sugestões aparecerão conforme a conversa avança</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="suggestions-panel">
       <div className="suggestions-header">
         <Brain className="w-5 h-5" />
         <h3>Sugestões de IA</h3>
-        <span className="suggestions-count">{visibleSuggestions.length}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+          <span className="suggestions-count">{visibleSuggestions.length}</span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="suggestions-close-btn"
+              title="Fechar painel de sugestões"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#6b7280',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(107, 114, 128, 0.1)';
+                e.currentTarget.style.color = '#dc2626';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="suggestions-list">

@@ -890,6 +890,49 @@
   object-fit: cover;
 }
 
+.remote-playback-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #ffffff;
+  z-index: 30;
+  text-align: center;
+  padding: 24px;
+}
+
+.remote-playback-overlay p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.remote-playback-overlay button {
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35);
+}
+
+.remote-playback-overlay button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.45);
+}
+
+.remote-playback-overlay button:active {
+  transform: translateY(0);
+}
+
 .video-label {
   position: absolute;
   top: 12px;
@@ -1229,6 +1272,47 @@
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.suggestions-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestions-toggle-btn:hover {
+  background: rgba(212, 165, 116, 0.1);
+  border-color: rgba(212, 165, 116, 0.5);
+  color: #2d3748;
+}
+
+.suggestions-toggle-btn-active {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.suggestions-toggle-btn-active:hover {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.suggestions-panel-disabled {
+  opacity: 0.7;
+}
+
+.suggestions-panel-disabled .suggestions-header {
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.15) 0%, rgba(107, 114, 128, 0.05) 100%);
+  border-bottom-color: rgba(107, 114, 128, 0.2);
 }
 
 .suggestions-list {
@@ -1723,4 +1807,66 @@
 
 .dark .connection-status span {
   color: #E6C3A7;
+}
+
+/* ========================================
+   Estilos para campos de agendamento
+   ======================================== */
+
+.schedule-inputs {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.schedule-date,
+.schedule-time {
+  flex: 1;
+  padding: 14px 16px;
+  border: 1px solid #d4a574;
+  border-radius: 12px;
+  font-size: 15px;
+  color: #1f2937;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.schedule-date:focus,
+.schedule-time:focus {
+  outline: none;
+  border-color: #b8956a;
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+}
+
+.schedule-date::-webkit-calendar-picker-indicator,
+.schedule-time::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5);
+}
+
+/* Dark mode para schedule inputs */
+.dark .schedule-date,
+.dark .schedule-time {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(230, 195, 167, 0.3);
+  color: #f3f4f6;
+}
+
+.dark .schedule-date:focus,
+.dark .schedule-time:focus {
+  border-color: #E6C3A7;
+  box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.15);
+}
+
+.dark .schedule-date::-webkit-calendar-picker-indicator,
+.dark .schedule-time::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .schedule-inputs {
+    flex-direction: column;
+    gap: 12px;
+  }
 }

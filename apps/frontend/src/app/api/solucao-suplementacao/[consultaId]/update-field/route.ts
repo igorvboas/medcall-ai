@@ -33,85 +33,131 @@ export async function POST(
 
     const userId = medico.id;
 
-    // Pegar dados do body
-    const { fieldPath, value } = await request.json();
+    // Pegar dados do body: category, index, field, value
+    const { category, index, field, value } = await request.json();
     
-    console.log('📝 Atualizando campo Suplementação:', { fieldPath, value });
+    console.log('📝 Atualizando campo Suplementação:', { category, index, field, value });
 
-    // O fieldPath será "suplementacao_data.campo_nome"
-    const [tableName, fieldName] = fieldPath.split('.');
-    
-    if (tableName !== 'suplementacao_data' || !fieldName) {
+    if (!category || index === undefined || !field || value === undefined) {
       return NextResponse.json(
-        { error: 'Campo inválido' },
+        { error: 'Parâmetros inválidos. São necessários: category, index, field, value' },
         { status: 400 }
       );
     }
 
-    const actualTableName = 's_suplementacao';
-
-    // Verificar se o registro existe
-    const { data: existing } = await supabase
-      .from(actualTableName)
-      .select('user_id')
-      .eq('user_id', userId)
-      .eq('consulta_id', consultaId)
-      .single();
-
-    if (!existing) {
-      // Se não existir, buscar o paciente_id da consulta
-      const { data: consultation } = await supabase
-        .from('consultations')
-        .select('patient_id')
-        .eq('id', consultaId)
-        .single();
-
-      if (!consultation) {
-        return NextResponse.json(
-          { error: 'Consulta não encontrada' },
-          { status: 404 }
-        );
-      }
-
-      // Criar registro inicial
-      const { error: insertError } = await supabase
-        .from(actualTableName)
-        .insert({
-          user_id: userId,
-          paciente_id: consultation.patient_id,
-          consulta_id: consultaId,
-          [fieldName]: value
-        });
-
-      if (insertError) {
-        console.error('❌ Erro ao criar registro:', insertError);
-        return NextResponse.json(
-          { error: 'Erro ao criar registro' },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Atualizar registro existente
-      const { error: updateError } = await supabase
-        .from(actualTableName)
-        .update({ [fieldName]: value })
-        .eq('user_id', userId)
-        .eq('consulta_id', consultaId);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar campo:', updateError);
-        return NextResponse.json(
-          { error: 'Erro ao atualizar campo' },
-          { status: 500 }
-        );
-      }
+    // Validar categoria
+    const validCategories = ['suplementos', 'fitoterapicos', 'homeopatia', 'florais_bach'];
+    if (!validCategories.includes(category)) {
+      return NextResponse.json(
+        { error: 'Categoria inválida' },
+        { status: 400 }
+      );
     }
 
+    const actualTableName = 's_suplementacao2';
+
+    // Buscar o paciente_id da consulta primeiro
+    const { data: consultation } = await supabase
+      .from('consultations')
+      .select('patient_id')
+      .eq('id', consultaId)
+      .single();
+
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Buscar registro existente
+    console.log('🔍 Buscando registro para consulta_id:', consultaId);
+    
+    // Filtrar APENAS por consulta_id (não por user_id)
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from(actualTableName)
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    console.log('📊 Registro encontrado:', existingRecord ? 'Sim' : 'Não');
+
+    // Helper para parse de array de JSON strings
+    const parseJsonArray = (arr: string[] | null): any[] => {
+      if (!arr || !Array.isArray(arr)) return [];
+      try {
+        return arr.map(item => JSON.parse(item));
+      } catch (error) {
+        console.error('Erro ao fazer parse de array:', error);
+        return [];
+      }
+    };
+
+    // Helper para stringify de array de objetos
+    const stringifyJsonArray = (arr: any[]): string[] => {
+      if (!arr || !Array.isArray(arr)) return [];
+      try {
+        return arr.map(item => JSON.stringify(item));
+      } catch (error) {
+        console.error('Erro ao fazer stringify de array:', error);
+        return [];
+      }
+    };
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: 'Registro de suplementação não encontrado. Por favor, carregue os dados primeiro.' },
+        { status: 404 }
+      );
+    }
+
+    // Parse dos dados existentes
+    const currentData = {
+      suplementos: parseJsonArray(existingRecord.suplementos),
+      fitoterapicos: parseJsonArray(existingRecord.fitoterapicos),
+      homeopatia: parseJsonArray(existingRecord.homeopatia),
+      florais_bach: parseJsonArray(existingRecord.florais_bach)
+    };
+
+    // Verificar se o índice existe
+    if (!currentData[category][index]) {
+      return NextResponse.json(
+        { error: `Item no índice ${index} não encontrado na categoria ${category}` },
+        { status: 404 }
+      );
+    }
+
+    // Atualizar o campo específico
+    currentData[category][index][field] = value;
+
+    console.log('✅ Atualizando registro existente ID:', existingRecord.id);
+
+    // Converter de volta para o formato da tabela (arrays de JSON strings)
+    const updateData: any = {
+      [category]: stringifyJsonArray(currentData[category])
+    };
+    
+    const { error: updateError } = await supabase
+      .from(actualTableName)
+      .update(updateData)
+      .eq('id', existingRecord.id);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar campo:', updateError);
+      return NextResponse.json(
+        { error: 'Erro ao atualizar campo' },
+        { status: 500 }
+      );
+    }
+    
     console.log('✅ Campo Suplementação atualizado com sucesso');
 
     return NextResponse.json({
       success: true,
-      message: 'Campo atualizado com sucesso'
+      message: 'Campo atualizado com sucesso',
+      updated_data: currentData[category][index]
     });
 
   } catch (error) {

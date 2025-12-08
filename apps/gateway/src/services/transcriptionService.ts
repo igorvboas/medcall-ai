@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { RoomServiceClient, AccessToken, DataPacket_Kind } from 'livekit-server-sdk';
 import { randomUUID } from 'crypto';
 import { TextEncoder } from 'util';
+import { logError, logWarning } from '../config/database';
 
 interface TranscriptionSegment {
   id: string;
@@ -77,6 +78,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao iniciar transcrição:', error);
+      logError(
+        `Erro ao iniciar transcrição`,
+        'error',
+        consultationId || null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
       throw error;
     }
   }
@@ -110,6 +117,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao parar transcrição:', error);
+      logError(
+        `Erro ao parar transcrição`,
+        'error',
+        null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
       throw error;
     }
   }
@@ -128,6 +141,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao processar chunk de áudio:', error);
+      logError(
+        `Erro ao processar chunk de áudio`,
+        'error',
+        null,
+        { roomName, participantId: audioChunk.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -179,6 +198,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao processar áudio bufferizado:', error);
+      logError(
+        `Erro ao processar áudio bufferizado`,
+        'error',
+        null,
+        { roomName, participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -210,6 +235,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro na transcrição:', error);
+      logError(
+        `Erro na transcrição de áudio via OpenAI Whisper`,
+        'error',
+        null,
+        { language: options.language, model: options.model, error: error instanceof Error ? error.message : String(error) }
+      );
       return null;
     }
   }
@@ -239,7 +270,8 @@ export class TranscriptionService extends EventEmitter {
 
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      await this.saveTranscriptionToDatabase(segment);
+      // ✅ Salvar no banco ANTES de enviar (para não perder dados)
+      await this.saveTranscriptionToDatabase(roomName, segment);
       
       // Enviar via LiveKit Data Channel nativo
       await this.sendDataViaRoomService(roomName, {
@@ -253,6 +285,12 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('❌ Erro ao enviar transcrição:', error);
+      logError(
+        `Erro ao enviar transcrição para sala`,
+        'error',
+        null,
+        { roomName, participantId: segment.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
@@ -269,30 +307,95 @@ export class TranscriptionService extends EventEmitter {
       
     } catch (error) {
       console.error('Erro ao enviar dados via RoomServiceClient:', error);
+      logError(
+        `Erro ao enviar dados via RoomServiceClient LiveKit`,
+        'error',
+        null,
+        { roomName, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 
-  private async saveTranscriptionToDatabase(segment: TranscriptionSegment): Promise<void> {
+  private async saveTranscriptionToDatabase(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      const { error } = await this.supabase
-        .from('utterances')
-        .insert({
-          id: segment.id,
-          text: segment.text,
-          participant_id: segment.participantId,
-          participant_name: segment.participantName,
-          timestamp: segment.timestamp.toISOString(),
-          confidence: segment.confidence,
-          language: segment.language,
-          final: segment.final
-        });
+      // ✅ NOVO: Buscar session_id a partir do roomName
+      let sessionId: string | null = null;
       
-      if (error) {
-        console.error('Erro ao salvar transcrição:', error);
+      // Tentar buscar session_id da call_sessions usando roomName
+      const { data: callSession, error: sessionError } = await this.supabase
+        .from('call_sessions')
+        .select('id')
+        .or(`room_id.eq.${roomName},room_name.eq.${roomName}`)
+        .maybeSingle();
+      
+      if (callSession?.id) {
+        sessionId = callSession.id;
+      } else {
+        // Se não encontrou, tentar usar roomName como sessionId (fallback)
+        sessionId = roomName;
+        console.warn(`⚠️ Session ID não encontrado para roomName ${roomName}, usando roomName como sessionId`);
+      }
+      
+      // Mapear speaker baseado no participantId ou participantName
+      let speaker: 'doctor' | 'patient' | 'system' = 'system';
+      const participantLower = (segment.participantId + segment.participantName).toLowerCase();
+      if (participantLower.includes('doctor') || participantLower.includes('médico') || participantLower.includes('Medico')) {
+        speaker = 'doctor';
+      } else if (participantLower.includes('patient') || participantLower.includes('Paciente')) {
+        speaker = 'patient';
+      }
+      
+      // ✅ Usar addTranscriptionToSession em vez de insert direto
+      // Isso garante que todas as transcrições sejam salvas em um único registro (array)
+      const { db } = await import('../config/database');
+      
+      // ✅ Validar que sessionId é um UUID válido
+      if (!sessionId || (sessionId.length !== 36 && !sessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
+        console.error('❌ [TRANSCRIPTION-SERVICE] sessionId inválido:', sessionId);
+        console.error('❌ [TRANSCRIPTION-SERVICE] roomName:', roomName);
+        return;
+      }
+      
+      // ✅ Determinar speaker_id (nome real do participante)
+      const speakerId = segment.participantName || segment.participantId || speaker;
+      
+      const success = await db.addTranscriptionToSession(sessionId, {
+        speaker: speaker,
+        speaker_id: speakerId,
+        text: segment.text,
+        confidence: segment.confidence || 0.9,
+        start_ms: segment.timestamp.getTime(),
+        end_ms: segment.timestamp.getTime() + 1000, // Assumir 1 segundo de duração
+        doctor_name: speaker === 'doctor' ? speakerId : undefined
+      });
+      
+      if (!success) {
+        console.error('❌ [TRANSCRIPTION-SERVICE] Erro ao salvar transcrição no banco');
+        console.error('❌ [TRANSCRIPTION-SERVICE] Dados tentados:', {
+          session_id: sessionId,
+          speaker,
+          speaker_id: speakerId,
+          text: segment.text.substring(0, 50) + '...',
+          roomName
+        });
+        logError(
+          `Erro ao salvar transcrição no banco via TranscriptionService`,
+          'error',
+          null,
+          { sessionId, speaker, speakerId, roomName, textLength: segment.text.length }
+        );
+      } else {
+        console.log(`✅ [TRANSCRIPTION-SERVICE] Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
       }
       
     } catch (error) {
-      console.error('Erro no banco de dados:', error);
+      console.error('❌ Erro no banco de dados ao salvar transcrição:', error);
+      logError(
+        `Erro no banco de dados ao salvar transcrição via TranscriptionService`,
+        'error',
+        null,
+        { roomName, participantId: segment.participantId, error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 

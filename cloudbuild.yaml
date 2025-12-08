@@ -22,7 +22,17 @@ options:
   machineType: E2_HIGHCPU_8
 
 steps:
-  # Configure gcloud to use Artifact Registry Docker auth
+  # Create Artifact Registry repository if it doesn't exist
+  - id: "create artifact registry repo"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud artifacts repositories describe ${_REPO} --location=${_REGION} || \
+        gcloud artifacts repositories create ${_REPO} --repository-format=docker --location=${_REGION} --description="MedCall HomologDocker images"
+
+  # Configure gcloud to use Artifact Registry Docker auth  f
   - id: "auth to artifact registry"
     name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "bash"
@@ -31,7 +41,7 @@ steps:
       - |
         gcloud --quiet auth configure-docker ${_REGION}-docker.pkg.dev
 
-  # Build Docker image using the monorepo Dockerfile
+  # Build Docker image using the monorepo Dockerfileee
   - id: "docker build"
     name: "gcr.io/cloud-builders/docker"
     args:
@@ -48,6 +58,7 @@ steps:
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA"
 
   # Deploy to Cloud Run
+  # IMPORTANTE: Configure as variáveis sensíveis diretamente no Console do Cloud Run
   - id: "deploy cloud run"
     name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "gcloud"
@@ -65,7 +76,4 @@ steps:
       - "--max-instances=10"
       - "--concurrency=80"
       - "--timeout=300"
-
-# Example build command (from repo root):
-# gcloud builds submit --region=${_REGION} --config=cloudbuild.yaml \
-#   --substitutions=_SERVICE=medcall-gateway,_REGION=us-central1,_REPO=medcall
+      - "--clear-secrets"

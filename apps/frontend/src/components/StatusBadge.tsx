@@ -17,7 +17,7 @@ export type StatusType =
   | 'confirmed' | 'pending' | 'cancelled' | 'completed' 
   | 'in-progress' | 'scheduled' | 'waiting' | 'recording' 
   | 'processing' | 'error' | 'created' | 'rescheduled'
-  | 'validation';
+  | 'validation' | 'validation-anamnese' | 'validation-diagnostico' | 'validation-solucao';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -56,7 +56,7 @@ const statusConfig = {
   },
   completed: {
     icon: CheckCircle,
-    label: 'Concluída',
+    label: 'Finalizado',
     color: 'success',
     bgColor: '#d1fae5',
     textColor: '#065f46',
@@ -133,6 +133,30 @@ const statusConfig = {
     bgColor: '#fef3c7',
     textColor: '#92400e',
     borderColor: '#f59e0b'
+  },
+  'validation-anamnese': {
+    icon: FileText,
+    label: 'Validação Anamnese',
+    color: 'info',
+    bgColor: '#dbeafe',
+    textColor: '#1e40af',
+    borderColor: '#3b82f6'
+  },
+  'validation-diagnostico': {
+    icon: FileText,
+    label: 'Validação Diagnóstico',
+    color: 'warning',
+    bgColor: '#fef3c7',
+    textColor: '#92400e',
+    borderColor: '#f59e0b'
+  },
+  'validation-solucao': {
+    icon: FileText,
+    label: 'Validação Solução',
+    color: 'success',
+    bgColor: '#d1fae5',
+    textColor: '#065f46',
+    borderColor: '#10b981'
   }
 };
 
@@ -198,6 +222,9 @@ export function mapBackendStatus(backendStatus: string): StatusType {
     'RECORDING': 'recording',
     'PROCESSING': 'processing',
     'VALIDATION': 'validation',
+    'VALID_ANAMNESE': 'validation-anamnese',
+    'VALID_DIAGNOSTICO': 'validation-diagnostico',
+    'VALID_SOLUCAO': 'validation-solucao',
     'ERROR': 'error',
     'CANCELLED': 'cancelled',
     'COMPLETED': 'completed',
@@ -206,6 +233,7 @@ export function mapBackendStatus(backendStatus: string): StatusType {
     'PENDING': 'pending',
     'IN_PROGRESS': 'in-progress',
     'SCHEDULED': 'scheduled',
+    'AGENDAMENTO': 'scheduled', // ✅ NOVO: Mapear AGENDAMENTO para scheduled
     'WAITING': 'waiting',
     'RESCHEDULED': 'rescheduled',
     'Confirmed': 'confirmed',

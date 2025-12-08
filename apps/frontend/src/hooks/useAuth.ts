@@ -11,6 +11,7 @@ export interface AuthState {
 export interface AuthActions {
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 }
@@ -21,16 +22,37 @@ export function useAuth(): AuthState & AuthActions {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Obter sessão inicial
+    // Obter sessão inicial com timeout para evitar loading infinito
     const getInitialSession = async () => {
-      // eslint-disable-next-line no-console
-      //console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
-      const { data: { session } } = await supabase.auth.getSession();
-      // eslint-disable-next-line no-console
-      //console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        // eslint-disable-next-line no-console
+        //console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
+        
+        // Timeout de 5 segundos para evitar loading infinito
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 5000)
+        );
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data: { session } } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as { data: { session: Session | null } };
+        
+        // eslint-disable-next-line no-console
+        //console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        //onsole.error('[DEBUG] useAuth.getInitialSession error:', error);
+        // Em caso de erro ou timeout, continuar sem sessão
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getInitialSession();
@@ -99,12 +121,31 @@ export function useAuth(): AuthState & AuthActions {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] useAuth.signInWithGoogle');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      return { error };
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DEBUG] useAuth.signInWithGoogle catch', error);
+      return { error: error as AuthError };
+    }
+  };
+
   return {
     user,
     session,
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     resetPassword,
   };

@@ -151,7 +151,7 @@ export class TranscriptionController {
       );
 
       const { data, error } = await supabase
-        .from('utterances')
+        .from('transcriptions_med')
         .select('*')
         .eq('consultation_id', consultationId)
         .order('timestamp', { ascending: true })

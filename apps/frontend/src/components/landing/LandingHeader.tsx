@@ -11,7 +11,7 @@ export function LandingHeader() {
       <div className="landing-header-container">
         {/* Logo */}
         <Link href="/" className="landing-logo">
-          <img src="/logo-eva.png" alt="Eva Logo" className="landing-logo-image" />
+          <img src="/logo-eva.png" alt="Auton Health Logo" className="landing-logo-image" />
         </Link>
 
         {/* Desktop Navigation */}

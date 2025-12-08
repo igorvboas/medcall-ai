@@ -13,6 +13,13 @@ export class TranscriptionManager {
   private lastSpeaker: string | null = null;
   private currentSpeechText: string = '';
   
+  // ✅ NOVO: Reconexão automática
+  private reconnectionAttempts: number = 0;
+  private maxReconnectionAttempts: number = 10;
+  private reconnectionTimer: any = null;
+  private healthCheckInterval: any = null;
+  private lastAudioTime: number = 0;
+  
   // Configurações
   private readonly OPENAI_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
   private readonly AUDIO_FORMAT = 'pcm16';
@@ -51,12 +58,20 @@ export class TranscriptionManager {
     this.socket.on('transcription:error', (data: any) => {
       console.error('[TRANSCRIPTION ERROR] Erro:', data.error);
       this.isConnected = false;
+      
+      // ✅ Tentar reconectar automaticamente em caso de erro
+      console.log('[TRANSCRIPTION] Erro detectado, agendando reconexão...');
+      this.scheduleReconnection();
     });
 
     // Desconexão
     this.socket.on('transcription:disconnected', () => {
       console.log('[TRANSCRIPTION] Desconectado da OpenAI');
       this.isConnected = false;
+      
+      // ✅ Tentar reconectar automaticamente
+      console.log('[TRANSCRIPTION] Desconexão detectada, agendando reconexão...');
+      this.scheduleReconnection();
     });
 
     // ✅ CORREÇÃO: Removido listener duplicado - agora é gerenciado pelo ConsultationRoom
@@ -76,9 +91,24 @@ export class TranscriptionManager {
 
     try {
       await this.connect();
+      
+      // ✅ CRÍTICO: Iniciar transcrição (processar áudio) após conectar
+      console.log('[TRANSCRIPTION] Iniciando processamento de áudio...');
+      this.start(); // Método correto é start(), não startTranscription()
+      
+      // ✅ Iniciar monitoramento de saúde
+      this.startHealthCheck();
+      
+      // ✅ Resetar contador de tentativas após sucesso
+      this.reconnectionAttempts = 0;
+      
       return true;
     } catch (error) {
       console.error('[TRANSCRIPTION ERROR] Erro ao inicializar:', error);
+      
+      // ✅ Tentar reconectar automaticamente
+      this.scheduleReconnection();
+      
       return false;
     }
   }
@@ -90,16 +120,34 @@ export class TranscriptionManager {
     return new Promise((resolve, reject) => {
       console.log('[TRANSCRIPTION] Conectando via proxy backend...');
       
+      // ✅ Verificar se socket está conectado antes de tentar
+      if (!this.socket) {
+        const error = 'Socket não está definido. Chame setSocket() primeiro.';
+        console.error('[TRANSCRIPTION ERROR]', error);
+        reject(new Error(error));
+        return;
+      }
+      
+      if (!this.socket.connected) {
+        const error = 'Socket não está conectado. Aguarde a conexão do socket primeiro.';
+        console.error('[TRANSCRIPTION ERROR]', error);
+        console.error('[TRANSCRIPTION ERROR] Socket state:', this.socket.connected ? 'connected' : 'disconnected');
+        reject(new Error(error));
+        return;
+      }
+      
+      console.log('[TRANSCRIPTION] Socket está conectado, solicitando conexão OpenAI...');
+      
       // Timeout de conexão
       const connectionTimeout = setTimeout(() => {
-        reject(new Error('Timeout na conexão'));
+        reject(new Error('Timeout na conexão com OpenAI (10s)'));
       }, 10000);
 
       // Solicitar conexão ao backend
-      this.socket!.emit('transcription:connect', {}, (response: any) => {
+      this.socket.emit('transcription:connect', {}, (response: any) => {
         clearTimeout(connectionTimeout);
         
-        if (response.success) {
+        if (response && response.success) {
           console.log('[TRANSCRIPTION] ✅ Conectado via proxy!');
           this.isConnected = true;
           
@@ -107,8 +155,10 @@ export class TranscriptionManager {
           setTimeout(() => this.configureSession(), 500);
           resolve();
         } else {
-          console.error('[TRANSCRIPTION ERROR] Falha na conexão:', response.error);
-          reject(new Error(response.error));
+          const errorMsg = response?.error || 'Erro desconhecido ao conectar à OpenAI';
+          console.error('[TRANSCRIPTION ERROR] Falha na conexão:', errorMsg);
+          console.error('[TRANSCRIPTION ERROR] Resposta completa:', response);
+          reject(new Error(errorMsg));
         }
       });
     });
@@ -134,7 +184,8 @@ export class TranscriptionManager {
         
         // Transcrição de input: Usar Whisper para transcrever áudio do usuário
         input_audio_transcription: {
-          model: 'whisper-1'
+          model: 'whisper-1',
+          language: 'pt' // Forçar idioma Português
         },
         
         // Detecção de voz: VAD (Voice Activity Detection) automático
@@ -175,65 +226,56 @@ export class TranscriptionManager {
   private handleMessage(data: any): void {
     try {
       const message = JSON.parse(data);
-      console.log('[TRANSCRIPTION] 📨 Mensagem recebida:', message.type);
+      // Logs removidos para reduzir poluição no console
 
       switch (message.type) {
         case 'session.created':
-          console.log('[TRANSCRIPTION] ✅ Sessão criada:', message.session);
+          // Log removido
           break;
 
         case 'session.updated':
-          console.log('[TRANSCRIPTION] ✅ Sessão atualizada');
+          // Log removido
           break;
 
         case 'input_audio_buffer.committed':
-          console.log('[TRANSCRIPTION] ✅ Buffer de áudio confirmado');
+          // Log removido
           break;
 
         case 'input_audio_buffer.speech_started':
-          console.log('[TRANSCRIPTION] 🎤 Fala detectada!');
           this.isTranscribing = true;
           break;
 
         case 'input_audio_buffer.speech_stopped':
-          console.log('[TRANSCRIPTION] 🤐 Fala pausada');
           this.finalizeSpeech();
           break;
 
         case 'conversation.item.created':
-          console.log('[TRANSCRIPTION] 💬 Item de conversa criado:', message.item);
-          // ✅ CORREÇÃO: Removido handleTranscription para evitar duplicação
-          // this.handleTranscription(message.item); - REMOVIDO
+          // Log removido
           break;
 
         case 'conversation.item.input_audio_transcription.completed':
-          console.log('[TRANSCRIPTION] 📝 Transcrição de input completa:', message.transcript);
           // Único evento correto: transcrição do áudio do USUÁRIO
           this.processUserTranscription(message.transcript);
           break;
 
         case 'response.created':
-          console.log('[TRANSCRIPTION] 🤖 Resposta criada');
           // Ignorado: não queremos respostas do assistente
           break;
 
         case 'response.output_item.added':
-          console.log('[TRANSCRIPTION] 📤 Item de output adicionado:', message.item);
           // Ignorado: outputs são respostas do assistente
           break;
 
         case 'response.content_part.added':
-          console.log('[TRANSCRIPTION] 📝 Parte de conteúdo adicionada');
           // Ignorado: conteúdo gerado pelo assistente
           break;
 
         case 'response.audio_transcript.delta':
-          console.log('[TRANSCRIPTION] 📝 Delta de transcrição de áudio:', message.delta);
           // Ignorado: transcrição do áudio gerado pelo assistente
           break;
 
         case 'response.done':
-          console.log('[TRANSCRIPTION] ✅ Resposta completa');
+          // Log removido
           break;
 
         case 'error':
@@ -241,7 +283,7 @@ export class TranscriptionManager {
           break;
 
         default:
-          console.log('[TRANSCRIPTION] 📦 Tipo de mensagem:', message.type, message);
+          // Log removido - apenas erros são logados
       }
     } catch (error) {
       console.error('[TRANSCRIPTION ERROR] Erro ao processar mensagem:', error);
@@ -284,6 +326,7 @@ export class TranscriptionManager {
    */
   addTranscriptToUI(text: string, speaker: string): void {
     console.log(`[TRANSCRIPTION] 📝 Adicionando à UI: [${speaker}]: ${text}`);
+    console.log(`[TRANSCRIPTION] 📊 Estado atual: ${this.currentTranscript.length} caracteres já existentes`);
     
     // ✅ CORREÇÃO: Adicionar como linha completa, não incremental
     // Finalizar fala anterior se houver
@@ -292,11 +335,20 @@ export class TranscriptionManager {
       this.currentSpeechText = '';
     }
     
+    // ✅ PROTEÇÃO: Verificar se o texto não está vazio antes de adicionar
+    if (!text || text.trim().length === 0) {
+      console.warn('[TRANSCRIPTION] ⚠️ Tentativa de adicionar texto vazio, ignorando');
+      return;
+    }
+    
     // Adicionar nova linha completa
-    this.currentTranscript += `[${speaker}]: ${text}\n`;
+    const newLine = `[${speaker}]: ${text}\n`;
+    this.currentTranscript += newLine;
     this.lastSpeaker = speaker;
     
-    // Atualizar UI
+    console.log(`[TRANSCRIPTION] ✅ Adicionado. Novo tamanho: ${this.currentTranscript.length} caracteres`);
+    
+    // Atualizar UI com o texto completo
     this.onUIUpdate?.(this.currentTranscript);
   }
 
@@ -352,17 +404,39 @@ export class TranscriptionManager {
       audio: audioBase64
     };
 
+    // ✅ Registrar timestamp do último áudio enviado (para health check)
+    this.lastAudioTime = Date.now();
+
     // console.log('[TRANSCRIPTION] 🎵 Enviando chunk de áudio...', audioBase64.length, 'bytes');
     return this.send(audioMessage);
   }
 
   /**
    * Inicia transcrição
+   * @param preserveHistory - Se true, não limpa o histórico existente (útil para reconexões)
    */
-  start(): void {
-    console.log('[TRANSCRIPTION] ▶️ Iniciando transcrição...');
+  start(preserveHistory: boolean = false): void {
+    // ✅ CORREÇÃO: Se já está transcrevendo, não fazer nada (evitar múltiplas chamadas)
+    if (this.isTranscribing) {
+      console.log('[TRANSCRIPTION] ⚠️ Já está transcrevendo, ignorando start() duplicado');
+      return;
+    }
+    
+    console.log('[TRANSCRIPTION] ▶️ Iniciando transcrição...', preserveHistory ? '(preservando histórico)' : '');
     this.isTranscribing = true;
-    this.currentTranscript = '';
+    
+    // ✅ CORREÇÃO CRÍTICA: NUNCA limpar se já houver transcrições, independente do parâmetro
+    // Isso previne perda de dados quando start() é chamado múltiplas vezes
+    if (this.currentTranscript.length > 0) {
+      console.log('[TRANSCRIPTION] 💾 Preservando', this.currentTranscript.length, 'caracteres de transcrição existente (proteção automática)');
+      // NÃO limpar - preservar sempre
+    } else if (!preserveHistory) {
+      // Só limpar se não houver transcrições E não for para preservar
+      this.currentTranscript = '';
+      console.log('[TRANSCRIPTION] 🧹 Limpando transcrição (primeira vez, sem histórico)');
+    } else {
+      console.log('[TRANSCRIPTION] 💾 Preservando histórico (parâmetro preserveHistory=true)');
+    }
 
     // Iniciar processamento de áudio
     if (this.audioProcessor) {
@@ -404,12 +478,65 @@ export class TranscriptionManager {
   disconnect(): void {
     console.log('[TRANSCRIPTION] Desconectando...');
     
+    // ✅ Parar monitoramento
+    this.stopHealthCheck();
+    this.clearReconnectionTimer();
+    
     if (this.socket) {
       this.socket.emit('transcription:disconnect');
     }
     
     this.isConnected = false;
     this.isTranscribing = false;
+  }
+
+  /**
+   * ✅ NOVO: Reconecta à transcrição após desconexão
+   */
+  async reconnect(): Promise<boolean> {
+    console.log('[TRANSCRIPTION] Reconectando...');
+    
+    // ✅ CORREÇÃO: Salvar transcrições existentes antes de reconectar
+    const savedTranscript = this.currentTranscript;
+    console.log(`[TRANSCRIPTION] 💾 Salvando ${savedTranscript.length} caracteres de transcrição existente`);
+    
+    // Parar health check temporariamente
+    this.stopHealthCheck();
+    
+    // Primeiro desconectar conexão antiga (se existir)
+    if (this.socket) {
+      this.socket.emit('transcription:disconnect');
+    }
+    this.isConnected = false;
+    this.isTranscribing = false;
+    
+    // Aguardar um pouco antes de reconectar
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Tentar reconectar
+    try {
+      await this.connect();
+      
+      // ✅ CORREÇÃO: Restaurar transcrições salvas ANTES de iniciar
+      this.currentTranscript = savedTranscript;
+      console.log(`[TRANSCRIPTION] ✅ Restauradas ${savedTranscript.length} caracteres de transcrição`);
+      
+      // Iniciar transcrição preservando histórico
+      console.log('[TRANSCRIPTION] Reiniciando transcrição...');
+      this.start(true); // ✅ Preservar histórico ao reconectar
+      
+      // ✅ Reiniciar health check
+      this.startHealthCheck();
+      
+      // ✅ Resetar contador de tentativas
+      this.reconnectionAttempts = 0;
+      
+      console.log('[TRANSCRIPTION] ✅ Reconexão bem-sucedida!');
+      return true;
+    } catch (error) {
+      console.error('[TRANSCRIPTION ERROR] Falha ao reconectar:', error);
+      return false;
+    }
   }
 
   /**
@@ -434,6 +561,102 @@ export class TranscriptionManager {
       minute: '2-digit', 
       second: '2-digit' 
     });
+  }
+
+  /**
+   * ✅ NOVO: Inicia monitoramento de saúde da transcrição
+   */
+  private startHealthCheck(): void {
+    // Limpar health check anterior se existir
+    this.stopHealthCheck();
+    
+    console.log('[TRANSCRIPTION] 💓 Iniciando monitoramento de saúde...');
+    
+    // Verificar a cada 30 segundos (reduzido de 10s para evitar spam)
+    this.healthCheckInterval = setInterval(() => {
+      // Verificar se está conectado
+      if (!this.isConnected) {
+        console.warn('[TRANSCRIPTION] ⚠️ Health check: Desconectado! Tentando reconectar...');
+        this.scheduleReconnection();
+        return;
+      }
+      
+      // Verificar se audioProcessor está ativo
+      if (this.isTranscribing && this.audioProcessor) {
+        const now = Date.now();
+        // Se passou mais de 30 segundos sem processar áudio, pode estar com problema
+        if (this.lastAudioTime > 0 && (now - this.lastAudioTime) > 30000) {
+          console.warn('[TRANSCRIPTION] ⚠️ Health check: Sem áudio há 30s, pode estar travado');
+          // Não reconectar automaticamente por falta de áudio, pode ser silêncio natural
+        }
+      }
+      
+      // ✅ Só logar se estiver desconectado ou com problema (reduzir spam de logs)
+      if (!this.isConnected || !this.isTranscribing) {
+        console.log('[TRANSCRIPTION] 💓 Health check: (connected:', this.isConnected, 'transcribing:', this.isTranscribing, ')');
+      }
+    }, 30000); // 30 segundos (reduzido de 10s)
+  }
+
+  /**
+   * ✅ NOVO: Para monitoramento de saúde
+   */
+  private stopHealthCheck(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+      console.log('[TRANSCRIPTION] Health check parado');
+    }
+  }
+
+  /**
+   * ✅ NOVO: Agenda reconexão com backoff exponencial
+   */
+  private scheduleReconnection(): void {
+    // Limpar timer anterior
+    this.clearReconnectionTimer();
+    
+    // Verificar limite de tentativas
+    if (this.reconnectionAttempts >= this.maxReconnectionAttempts) {
+      console.error('[TRANSCRIPTION] ❌ Limite de tentativas de reconexão atingido');
+      return;
+    }
+    
+    this.reconnectionAttempts++;
+    
+    // Backoff exponencial: 2s, 4s, 8s, 16s... (máx 30s)
+    const delay = Math.min(2000 * Math.pow(2, this.reconnectionAttempts - 1), 30000);
+    
+    console.log(`[TRANSCRIPTION] 🔄 Agendando reconexão #${this.reconnectionAttempts} em ${delay/1000}s...`);
+    
+    this.reconnectionTimer = setTimeout(async () => {
+      console.log(`[TRANSCRIPTION] 🔄 Tentativa de reconexão #${this.reconnectionAttempts}...`);
+      
+      try {
+        const success = await this.reconnect();
+        
+        if (success) {
+          console.log('[TRANSCRIPTION] ✅ Reconexão bem-sucedida!');
+          this.reconnectionAttempts = 0;
+        } else {
+          console.warn('[TRANSCRIPTION] ⚠️ Reconexão falhou, tentando novamente...');
+          this.scheduleReconnection();
+        }
+      } catch (error) {
+        console.error('[TRANSCRIPTION] ❌ Erro na reconexão:', error);
+        this.scheduleReconnection();
+      }
+    }, delay);
+  }
+
+  /**
+   * ✅ NOVO: Limpa timer de reconexão
+   */
+  private clearReconnectionTimer(): void {
+    if (this.reconnectionTimer) {
+      clearTimeout(this.reconnectionTimer);
+      this.reconnectionTimer = null;
+    }
   }
 
   // ✅ CORREÇÃO: Callback quando recebe nova transcrição (transcript puro)

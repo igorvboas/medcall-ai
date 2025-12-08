@@ -39,10 +39,9 @@ export function LandingFooter() {
           <div className="footer-main-refined">
             <motion.div className="footer-brand-refined" variants={itemVariants}>
               <div className="footer-logo-refined">
-                <img src="/logo-eva.png" alt="Eva Logo" className="footer-logo-image-refined" />
+                <img src="/logo-eva.png" alt="Auton Health Logo" className="footer-logo-image-refined" />
                 <div className="footer-logo-text-refined">
-                  <span className="footer-logo-title-refined">EVA</span>
-                  <span className="footer-logo-beta-refined">AI</span>
+                  <span className="footer-logo-title-refined">Auton Health</span>
                 </div>
               </div>
               <p className="footer-description-refined">
@@ -115,7 +114,7 @@ export function LandingFooter() {
             <div className="footer-cta-content-refined">
               <h3 className="footer-cta-title-refined">Pronto para transformar sua prática médica?</h3>
               <p className="footer-cta-subtitle-refined">
-                Junte-se a mais de 500 médicos que já economizam tempo e melhoram o atendimento com a EVA
+                Junte-se a mais de 500 médicos que já economizam tempo e melhoram o atendimento com o Auton Health
               </p>
               <div className="footer-cta-buttons-refined">
                 <Link href="/auth/signup" className="btn-primary-modern footer-btn">
@@ -138,7 +137,7 @@ export function LandingFooter() {
         >
           <div className="footer-bottom-content-refined">
             <p className="footer-copyright-refined">
-              © 2024 EVA AI. Todos os direitos reservados.
+              © 2024 Auton Health. Todos os direitos reservados.
             </p>
             <div className="footer-bottom-links-refined">
               <Link href="/privacy" className="footer-bottom-link-refined">Privacidade</Link>

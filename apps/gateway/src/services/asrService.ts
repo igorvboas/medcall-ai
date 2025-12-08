@@ -1,9 +1,10 @@
 import { ProcessedAudioChunk } from './audioProcessor';
-import { db } from '../config/database';
+import { db, logError, logWarning } from '../config/database';
 import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { suggestionService } from './suggestionService';
 import FormData from 'form-data';
+import { aiPricingService } from './aiPricingService';
 
 export interface TranscriptionResult {
   id: string;
@@ -37,12 +38,12 @@ class ASRService {
     temperature: 0.0, // Máxima determinação (era 0.2)
     language: 'pt', // Português brasileiro
     response_format: 'verbose_json' as const,
-    // Prompt para contexto médico brasileiro
-    prompt: 'Esta é uma consulta médica em português brasileiro entre médico e paciente. Use terminologia médica adequada e pontuação correta. Palavras comuns: doutor, dor, sintoma, medicamento, tratamento, exame, diagnóstico, consulta.'
+    // ✅ Prompt melhorado para contexto médico brasileiro e evitar transcrições estranhas
+    prompt: 'Esta é uma consulta médica profissional em português brasileiro entre médico e paciente. Transcreva APENAS o que foi realmente dito na consulta. Use terminologia médica adequada. NÃO invente palavras ou frases. NÃO adicione conteúdo que não foi falado. NÃO transcreva ruído ou silêncio como palavras. Palavras comuns: doutor, dor, sintoma, medicamento, tratamento, exame, diagnóstico, consulta, paciente, médico.'
   };
 
   private isEnabled = false;
-  private enableSimulation = false; // Flag para controlar simulação - DESABILITADA
+  private enableSimulation = false; // Flag para controlar simulação - PERMANENTEMENTE DESABILITADA
   private openai: OpenAI | null = null;
 
   constructor() {
@@ -65,6 +66,12 @@ class ASRService {
         console.log('✅ OpenAI Whisper ASR Service habilitado');
       } catch (error) {
         console.error('❌ Erro ao inicializar OpenAI:', error);
+        logError(
+          `Erro ao inicializar OpenAI Whisper ASR`,
+          'error',
+          null,
+          { error: error instanceof Error ? error.message : String(error) }
+        );
         this.isEnabled = false;
       }
     } else {
@@ -91,13 +98,10 @@ class ASRService {
     });
 
     if (!this.isEnabled || !this.openai) {
-      console.log(`🔍 DEBUG [ASR] USANDO FALLBACK - ${asrId}`);
-      // Se ASR não está habilitado, usar transcrição baseada em análise real
-      if (this.enableSimulation) {
-        return this.simulateTranscription(audioChunk);
-      } else {
-        return this.generateRealBasedTranscription(audioChunk);
-      }
+      console.warn(`⚠️ [ASR] ASR não está habilitado ou OpenAI não configurado - ${asrId}`);
+      console.warn(`⚠️ [ASR] Não é possível transcrever áudio sem OpenAI Whisper configurado`);
+      // ✅ NÃO usar simulação ou fallback - retornar null se não houver Whisper
+      return null;
     }
 
     try {
@@ -114,11 +118,17 @@ class ASRService {
       return result;
       
     } catch (error) {
-      console.error(`🔍 DEBUG [ASR] ERRO WHISPER - ${asrId}:`, error);
-      
-      // Fallback para análise baseada em características
-      console.log('🔄 Usando fallback para análise baseada em características...');
-      return await this.generateRealBasedTranscription(audioChunk);
+      console.error(`❌ [ASR] ERRO WHISPER - ${asrId}:`, error);
+      console.error(`❌ [ASR] Não é possível transcrever áudio devido a erro no Whisper`);
+      logError(
+        `Erro no processamento de áudio via Whisper ASR`,
+        'error',
+        audioChunk.sessionId,
+        { asrId, channel: audioChunk.channel, duration: audioChunk.duration, error: error instanceof Error ? error.message : String(error) }
+      );
+      // ✅ NÃO usar fallback - retornar null em caso de erro
+      // Isso evita transcrições incorretas ou simuladas
+      return null;
     }
   }
 
@@ -290,23 +300,60 @@ class ASRService {
     return transcriptionResult;
   }
 
-  // Salvar transcrição no banco de dados
+  // Salvar transcrição no banco de dados (usando array único)
   private async saveTranscription(transcription: TranscriptionResult): Promise<void> {
     try {
-      await db.createUtterance({
-        id: transcription.id,
-        session_id: transcription.sessionId,
-        speaker: transcription.speaker,
+      // ✅ Validar sessionId antes de salvar
+      if (!transcription.sessionId) {
+        console.error('❌ [SAVE] sessionId não fornecido, não é possível salvar transcrição');
+        console.error('❌ [SAVE] TranscriptionResult completo:', JSON.stringify(transcription, null, 2));
+        logWarning(
+          `sessionId não fornecido ao salvar transcrição - transcrição perdida`,
+          null,
+          { speaker: transcription.speaker, textLength: transcription.text?.length || 0 }
+        );
+        return;
+      }
+
+      // ✅ Garantir que speaker está no formato correto
+      let speaker: 'doctor' | 'patient' | 'system' = 'system';
+      const speakerLower = (transcription.speaker || '').toLowerCase();
+      if (speakerLower.includes('doctor') || speakerLower.includes('médico') || speakerLower.includes('medico') || speakerLower.includes('host')) {
+        speaker = 'doctor';
+      } else if (speakerLower.includes('patient') || speakerLower.includes('paciente') || speakerLower.includes('participant')) {
+        speaker = 'patient';
+      }
+
+      // ✅ Usar addTranscriptionToSession para salvar em array único
+      // Para consultas presenciais, usar o speaker como speaker_id (já que não temos nome real aqui)
+      const speakerId = speaker; // Em consultas presenciais, pode não ter o nome real disponível
+      
+      const success = await db.addTranscriptionToSession(transcription.sessionId, {
+        speaker: speaker,
+        speaker_id: speakerId,
         text: transcription.text,
         confidence: transcription.confidence,
         start_ms: transcription.startTime,
-        end_ms: transcription.endTime,
-        is_final: transcription.is_final,
-        created_at: transcription.timestamp
+        end_ms: transcription.endTime
       });
+
+      if (!success) {
+        console.warn('⚠️ [SAVE] Falha ao adicionar transcrição ao array');
+      } else {
+        console.log(`✅ [SAVE] Transcrição adicionada ao array: [${speaker}] "${transcription.text.substring(0, 30)}..."`);
+      }
     } catch (error) {
-      console.error('Erro ao salvar utterance no banco:', error);
-      throw error;
+      console.error('❌ [SAVE] Erro ao salvar transcrição no banco:', error);
+      if (error instanceof Error) {
+        console.error('❌ [SAVE] Stack trace:', error.stack);
+      }
+      logError(
+        `Erro ao salvar transcrição no banco de dados`,
+        'error',
+        transcription.sessionId,
+        { speaker: transcription.speaker, textLength: transcription.text?.length || 0, error: error instanceof Error ? error.message : String(error) }
+      );
+      // Não lançar erro para não bloquear o fluxo de transcrição
     }
   }
 
@@ -319,19 +366,42 @@ class ASRService {
     }
 
     // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
-    const cleanedText = this.postProcessTranscription(result.text.trim());
+    const rawText = result.text.trim();
+    
+    // ✅ Filtrar textos inválidos ANTES de processar
+    if (!this.filterInvalidTranscriptions(rawText)) {
+      console.log(`🔇 [ASR] Texto inválido descartado: "${rawText}"`);
+      return null;
+    }
+    
+    const cleanedText = this.postProcessTranscription(rawText);
     
     // Verificar se texto limpo não ficou vazio
     if (!cleanedText || cleanedText.length < 2) {
       console.log(`🔇 Texto muito curto após limpeza: "${cleanedText}"`);
       return null;
     }
+    
+    // ✅ Validação adicional: verificar se o texto faz sentido para consulta médica
+    if (!this.filterInvalidTranscriptions(cleanedText)) {
+      console.log(`🔇 [ASR] Texto limpo ainda inválido, descartando: "${cleanedText}"`);
+      return null;
+    }
+
+    // ✅ Mapear speaker para valores aceitos pelo schema ('doctor', 'patient')
+    let speaker: 'doctor' | 'patient' = 'patient'; // Default para patient
+    const channelLower = audioChunk.channel?.toLowerCase() || '';
+    if (channelLower.includes('doctor') || channelLower.includes('médico') || channelLower.includes('medico') || channelLower.includes('host')) {
+      speaker = 'doctor';
+    } else if (channelLower.includes('patient') || channelLower.includes('paciente') || channelLower.includes('participant')) {
+      speaker = 'patient';
+    }
 
     // Criar resultado de transcrição
     const transcriptionResult: TranscriptionResult = {
       id: randomUUID(),
       sessionId: audioChunk.sessionId,
-      speaker: audioChunk.channel,
+      speaker: speaker, // ✅ Usar valor mapeado (sempre 'doctor' ou 'patient')
       text: cleanedText,
       confidence: this.calculateWhisperConfidence(result),
       timestamp: new Date().toISOString(),
@@ -340,8 +410,30 @@ class ASRService {
       is_final: true
     };
 
-    // Salvar no banco de dados
+    // ✅ Salvar no banco de dados automaticamente
+    console.log(`💾 [AUTO-SAVE] Tentando salvar transcrição:`, {
+      sessionId: transcriptionResult.sessionId,
+      speaker: speaker,
+      textLength: cleanedText.length,
+      textPreview: cleanedText.substring(0, 50) + '...'
+    });
+    
+    try {
     await this.saveTranscription(transcriptionResult);
+      console.log(`✅ [AUTO-SAVE] Transcrição salva automaticamente no banco: ${speaker} - "${cleanedText.substring(0, 30)}..."`);
+    } catch (saveError) {
+      console.error('❌ [AUTO-SAVE] Erro ao salvar transcrição automaticamente:', saveError);
+      if (saveError instanceof Error) {
+        console.error('❌ [AUTO-SAVE] Stack:', saveError.stack);
+      }
+      logError(
+        `Erro no auto-save de transcrição Whisper`,
+        'error',
+        transcriptionResult.sessionId,
+        { speaker, textLength: cleanedText?.length || 0, error: saveError instanceof Error ? saveError.message : String(saveError) }
+      );
+      // Não bloquear o fluxo se o salvamento falhar
+    }
     
     // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
     console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
@@ -383,6 +475,11 @@ class ASRService {
       const wavValidation = this.validateWavBuffer(audioChunk.audioBuffer);
       if (!wavValidation.isValid) {
         console.error(`❌ Buffer WAV inválido para ${audioChunk.channel}:`, wavValidation.errors);
+        logWarning(
+          `Buffer WAV inválido detectado - áudio não processado`,
+          audioChunk.sessionId,
+          { channel: audioChunk.channel, errors: wavValidation.errors, bufferSize: audioChunk.audioBuffer.length }
+        );
         return null;
       }
       console.log(`✅ Buffer WAV válido para ${audioChunk.channel}:`, wavValidation.info);
@@ -464,6 +561,12 @@ class ASRService {
         console.log(`✅ WHISPER API RESPONDEU!`);
         console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
         
+        // 📊 Registrar uso do Whisper para monitoramento de custos
+        await aiPricingService.logWhisperUsage(
+          audioChunk.duration,
+          audioChunk.sessionId
+        );
+        
         return this.processWhisperResponse(result, audioChunk);
         
       } catch (fetchError: any) {
@@ -487,6 +590,20 @@ class ASRService {
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error status: ${error.status || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error message: ${error.message || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error type: ${error.type || 'N/A'}`);
+      
+      logError(
+        `Erro na API Whisper - transcrição não realizada`,
+        'error',
+        audioChunk.sessionId,
+        { 
+          channel: audioChunk.channel, 
+          bufferSize: audioChunk.audioBuffer.length, 
+          duration: audioChunk.duration,
+          errorCode: error.code || 'N/A',
+          errorStatus: error.status || 'N/A',
+          errorMessage: error.message || 'Erro desconhecido'
+        }
+      );
       
       // Se for erro de rede ou API, lançar para usar fallback
       if (error.code === 'ENOTFOUND' || error.status >= 500) {
@@ -531,6 +648,34 @@ class ASRService {
 
     console.log(`🔧 Texto processado: "${text}" → "${processed}"`);
     return processed;
+  }
+
+  // ✅ Filtrar textos estranhos que não fazem sentido em consultas médicas
+  private filterInvalidTranscriptions(text: string): boolean {
+    const invalidPatterns = [
+      /se inscreva/i,
+      /inscreva-se/i,
+      /se inscrevam/i,
+      /no nosso canal/i,
+      /no canal/i,
+      /curtam o vídeo/i,
+      /deixe seu like/i,
+      /compartilhe/i,
+      /subscribe/i,
+      /youtube/i,
+      /canal do youtube/i,
+      /tchau.*tchau/i,
+      /oi.*tudo bem.*tchau/i
+    ];
+    
+    for (const pattern of invalidPatterns) {
+      if (pattern.test(text)) {
+        console.warn(`⚠️ [ASR] Texto inválido filtrado: "${text}" (padrão: ${pattern})`);
+        return false; // Texto inválido
+      }
+    }
+    
+    return true; // Texto válido
   }
 
   // Calcular confiança baseada na resposta do Whisper
@@ -625,9 +770,14 @@ class ASRService {
   }
 
   // Habilitar/desabilitar simulação (para desenvolvimento)
+  // ✅ DESABILITADO PERMANENTEMENTE - não usar simulação em produção
   public setSimulationEnabled(enabled: boolean): void {
-    this.enableSimulation = enabled;
-    console.log(`🎭 ASR Simulação ${enabled ? 'habilitada' : 'desabilitada'}`);
+    // ✅ FORÇAR sempre desabilitado
+    this.enableSimulation = false;
+    if (enabled) {
+      console.warn(`⚠️ [ASR] Tentativa de habilitar simulação foi bloqueada - simulação está permanentemente desabilitada`);
+    }
+    console.log(`🔇 [ASR] Simulação está permanentemente desabilitada`);
   }
 
   // Verificar se simulação está habilitada
@@ -678,11 +828,23 @@ class ASRService {
           }
         } catch (error) {
           console.error('❌ Erro ao gerar sugestões:', error);
+          logError(
+            `Erro ao gerar sugestões via ASR Service`,
+            'error',
+            transcription.sessionId,
+            { error: error instanceof Error ? error.message : String(error) }
+          );
         }
       });
 
     } catch (error) {
       console.error('❌ Erro no trigger de sugestões:', error);
+      logError(
+        `Erro no trigger de sugestões ASR`,
+        'error',
+        transcription.sessionId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
     }
   }
 

@@ -104,7 +104,7 @@ export function ProblemSolutionSection() {
             <div className="section-header">
               <span className="section-label solution-label">Solução</span>
               <h2 className="section-title-refined">
-                Como a EVA
+                Como o Auton Health
                 <span className="title-accent"> transforma</span> sua prática
               </h2>
               <p className="section-description">

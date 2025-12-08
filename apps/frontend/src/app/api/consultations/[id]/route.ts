@@ -86,12 +86,50 @@ export async function GET(
       .select('*')
       .eq('consultation_id', consultationId);
 
+    // Buscar call_session para obter roomId (se consulta estiver em RECORDING)
+    let roomId = null;
+    if (consultation.status === 'RECORDING') {
+      // Primeiro tentar buscar por consultation_id
+      let { data: callSession } = await supabase
+        .from('call_sessions')
+        .select('room_id')
+        .eq('consultation_id', consultationId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      // Se não encontrar, buscar pela data de criação próxima (pode ter sido criado antes da consulta)
+      if (!callSession || !callSession.room_id) {
+        const consultationCreatedAt = new Date(consultation.created_at);
+        const fiveMinutesAgo = new Date(consultationCreatedAt.getTime() - 5 * 60 * 1000);
+        const fiveMinutesLater = new Date(consultationCreatedAt.getTime() + 5 * 60 * 1000);
+        
+        const { data: callSessions } = await supabase
+          .from('call_sessions')
+          .select('room_id, created_at')
+          .gte('created_at', fiveMinutesAgo.toISOString())
+          .lte('created_at', fiveMinutesLater.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        // Pegar a mais recente que tenha room_id
+        if (callSessions && callSessions.length > 0) {
+          callSession = callSessions.find(cs => cs.room_id) || null;
+        }
+      }
+      
+      if (callSession && callSession.room_id) {
+        roomId = callSession.room_id;
+      }
+    }
+
     return NextResponse.json({
       consultation: {
         ...consultation,
         transcription,
         audioFiles: audioFiles || [],
-        documents: documents || []
+        documents: documents || [],
+        roomId // Adicionar roomId se disponível
       }
     });
 

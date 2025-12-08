@@ -193,10 +193,25 @@ export async function POST(request: NextRequest, { params }: { params: { consult
 
     if (linksUpdateResult.error) {
       console.error('❌ Erro ao atualizar links de exames:', linksUpdateResult.error);
-      // Reverter status da consulta
+      // Reverter status da consulta baseado na etapa
+      const { data: consulta } = await supabase
+        .from('consultations')
+        .select('etapa')
+        .eq('id', consultaId)
+        .single();
+      
+      let statusToRevert = 'VALIDATION';
+      if (consulta?.etapa === 'ANAMNESE') {
+        statusToRevert = 'VALID_ANAMNESE';
+      } else if (consulta?.etapa === 'DIAGNOSTICO') {
+        statusToRevert = 'VALID_DIAGNOSTICO';
+      } else if (consulta?.etapa === 'SOLUCAO') {
+        statusToRevert = 'VALID_SOLUCAO';
+      }
+      
       await supabase
         .from('consultations')
-        .update({ status: 'VALIDATION' })
+        .update({ status: statusToRevert })
         .eq('id', consultaId);
       
       return NextResponse.json(

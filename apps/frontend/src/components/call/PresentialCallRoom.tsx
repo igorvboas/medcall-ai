@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, MicOff, Square, Play, Volume2, FileText, Brain, AlertCircle, ClipboardList, User, Calendar } from 'lucide-react';
+import { Mic, MicOff, Square, Play, Volume2, FileText, Brain, AlertCircle, ClipboardList, User, Calendar, Power, PowerOff, X } from 'lucide-react';
 import { useAudioForker } from '@/hooks/useAudioForker';
 import { CompletionModal } from './CompletionModal';
 import io, { Socket } from 'socket.io-client';
@@ -61,6 +61,8 @@ export function PresentialCallRoom({
   const router = useRouter();
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState<boolean>(true);
+  const [suggestionsPanelVisible, setSuggestionsPanelVisible] = useState<boolean>(true);
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     isConnected: false,
     isConnecting: false,
@@ -173,6 +175,33 @@ export function PresentialCallRoom({
       // Handler para confirmação de entrada na sessão
       socketInstance.on('session:joined', (data) => {
         console.log('✅ Entrou na sessão:', data);
+      });
+
+      // ✅ NOVO: Handler para receber histórico de transcrições ao reconectar
+      socketInstance.on('transcription:history', (data) => {
+        console.log('📜 Histórico de transcrições recebido:', data);
+        if (data.utterances && Array.isArray(data.utterances)) {
+          // Converter formato do banco para formato do frontend
+          const formattedUtterances = data.utterances.map((u: any) => ({
+            id: u.id,
+            speaker: u.speaker,
+            text: u.text,
+            timestamp: new Date(u.created_at || u.timestamp),
+            confidence: u.confidence || 0,
+            isFinal: u.is_final !== false
+          }));
+
+          // Adicionar IDs ao Set de processados para evitar duplicação
+          formattedUtterances.forEach((u: any) => {
+            processedUtteranceIds.current.add(u.id);
+          });
+
+          // Popular estado com histórico
+          setUtterances(formattedUtterances);
+          console.log(`✅ ${formattedUtterances.length} transcrições históricas carregadas`);
+        } else {
+          console.warn('⚠️ Dados de histórico sem utterances:', data);
+        }
       });
 
       // Handlers para transcrição
@@ -483,7 +512,7 @@ export function PresentialCallRoom({
             </div>
           </div>
 
-          <div className="recording-control">
+          <div className="recording-control" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             {!audioForker.isRecording ? (
               <button
                 onClick={handleStartSession}
@@ -503,6 +532,45 @@ export function PresentialCallRoom({
                 {isFinalizing ? 'Finalizando…' : 'Parar Gravação'}
               </button>
             )}
+            
+            {/* Botão para ativar/desativar sugestões de IA */}
+            <button 
+              onClick={() => {
+                setSuggestionsEnabled(!suggestionsEnabled);
+                if (!suggestionsEnabled) {
+                  setSuggestions([]);
+                  setSuggestionsPanelVisible(true);
+                } else {
+                  setSuggestionsPanelVisible(false);
+                }
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: suggestionsEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                color: suggestionsEnabled ? '#16a34a' : '#6b7280',
+                border: suggestionsEnabled ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(107, 114, 128, 0.3)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+              title={suggestionsEnabled ? 'Desativar Sugestões de IA' : 'Ativar Sugestões de IA'}
+            >
+              {suggestionsEnabled ? (
+                <>
+                  <Brain size={16} style={{ color: '#16a34a' }} />
+                  <span>Sugestões IA</span>
+                </>
+              ) : (
+                <>
+                  <Brain size={16} style={{ color: '#6b7280', opacity: 0.5 }} />
+                  <span>Sugestões IA</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -643,24 +711,46 @@ export function PresentialCallRoom({
           </div>
         </div>
 
-        {/* Painel de Sugestões de IA */}
-        <div className="suggestions-panel">
-          <div className="suggestions-header">
-            <h2>
-              <Brain className="w-5 h-5" />
-              Sugestões de IA
-            </h2>
-          </div>
-
-          <div className="suggestions-content">
-            {suggestions.length === 0 ? (
-              <div className="no-suggestions">
-                <p>Nenhuma sugestão disponível</p>
-                <p className="suggestion-hint">
-                  Inicie a gravação para gerar sugestões baseadas na conversa
-                </p>
+        {/* Painel de Sugestões de IA - Só aparece se estiver habilitado e visível */}
+        {suggestionsEnabled && suggestionsPanelVisible && suggestions.length > 0 && (
+          <div className="suggestions-panel">
+            <div className="suggestions-header">
+              <h2>
+                <Brain className="w-5 h-5" />
+                Sugestões de IA
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                <span className="suggestions-count">{suggestions.length}</span>
+                <button
+                  onClick={() => setSuggestionsPanelVisible(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Fechar painel de sugestões"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(107, 114, 128, 0.1)';
+                    e.currentTarget.style.color = '#dc2626';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#6b7280';
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            ) : (
+            </div>
+
+            <div className="suggestions-content">
               <div className="suggestions-list">
                 {suggestions.map((suggestion) => (
                   <div 
@@ -717,9 +807,9 @@ export function PresentialCallRoom({
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal de Finalização */}

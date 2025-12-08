@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { db } from '../config/database';
+import { db, logError } from '../config/database';
 import { makeChatCompletion, makeEmbedding } from '../config/providers';
 import { PromptTemplate, PROMPT_CONFIG } from '../prompts/medical-prompts';
 import { randomUUID } from 'crypto';
@@ -156,6 +156,12 @@ class SuggestionService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Erro ao gerar sugestões:', error);
+      logError(
+        `Erro ao gerar sugestões de IA`,
+        'error',
+        context.sessionId,
+        { error: error instanceof Error ? error.message : String(error), patientName: context.patientName }
+      );
       return null;
     }
   }
@@ -183,7 +189,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'analise_contexto',
+        consultaId: context.sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';
@@ -230,6 +239,12 @@ class SuggestionService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Erro na análise de contexto:', error);
+      logError(
+        `Erro na análise de contexto da conversa`,
+        'error',
+        context.sessionId,
+        { error: error instanceof Error ? error.message : String(error), patientName: context.patientName }
+      );
       // Retornar análise padrão em caso de erro
       return {
         phase: 'anamnese',
@@ -597,6 +612,12 @@ class SuggestionService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Erro na busca de protocolos:', error);
+      logError(
+        `Erro na busca de protocolos médicos`,
+        'error',
+        null,
+        { error: error instanceof Error ? error.message : String(error), symptoms: contextAnalysis.symptoms }
+      );
       return [];
     }
   }
@@ -612,7 +633,7 @@ class SuggestionService extends EventEmitter {
     try {
       // Determinar se é situação de emergência
       if (contextAnalysis.urgency_level === 'critica') {
-        return await this.generateEmergencySuggestions(contextAnalysis);
+        return await this.generateEmergencySuggestions(contextAnalysis, context.sessionId);
       }
 
       // Gerar sugestões normais
@@ -634,7 +655,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'sugestoes_contextuais',
+        consultaId: context.sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';
@@ -698,6 +722,12 @@ class SuggestionService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Erro ao gerar sugestões contextualizadas:', error);
+      logError(
+        `Erro ao gerar sugestões contextualizadas`,
+        'error',
+        context.sessionId,
+        { error: error instanceof Error ? error.message : String(error), phase: contextAnalysis.phase }
+      );
       return [];
     }
   }
@@ -705,7 +735,7 @@ class SuggestionService extends EventEmitter {
   /**
    * Gera sugestões para situações de emergência
    */
-  private async generateEmergencySuggestions(contextAnalysis: ContextAnalysis): Promise<AISuggestion[]> {
+  private async generateEmergencySuggestions(contextAnalysis: ContextAnalysis, sessionId?: string): Promise<AISuggestion[]> {
     const prompt = PromptTemplate.generateEmergencyPrompt({
       criticalSymptoms: contextAnalysis.symptoms
     });
@@ -720,7 +750,10 @@ class SuggestionService extends EventEmitter {
           role: 'user',
           content: prompt
         }
-      ]);
+      ], {}, {
+        etapa: 'sugestoes_emergencia',
+        consultaId: sessionId
+      });
 
       const firstChoice = 'choices' in response ? response.choices[0] : undefined;
       let content = firstChoice?.message?.content || '{}';
@@ -768,6 +801,12 @@ class SuggestionService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Erro ao gerar sugestões de emergência:', error);
+      logError(
+        `Erro ao gerar sugestões de emergência`,
+        'error',
+        sessionId || null,
+        { error: error instanceof Error ? error.message : String(error), criticalSymptoms: contextAnalysis.symptoms }
+      );
       return [];
     }
   }
@@ -833,6 +872,12 @@ class SuggestionService extends EventEmitter {
         }
       } catch (error) {
         console.error('❌ Erro ao salvar sugestão:', error);
+        logError(
+          `Erro ao salvar sugestão no banco`,
+          'error',
+          sessionId,
+          { error: error instanceof Error ? error.message : String(error), suggestionType: suggestion.type }
+        );
       }
     }
 
@@ -961,6 +1006,12 @@ class SuggestionService extends EventEmitter {
       return success;
     } catch (error) {
       console.error('❌ Erro ao marcar sugestão como usada:', error);
+      logError(
+        `Erro ao marcar sugestão como usada`,
+        'error',
+        null,
+        { error: error instanceof Error ? error.message : String(error), suggestionId, userId }
+      );
       return false;
     }
   }
@@ -989,6 +1040,12 @@ class SuggestionService extends EventEmitter {
       }));
     } catch (error) {
       console.error('❌ Erro ao obter sugestões da sessão:', error);
+      logError(
+        `Erro ao obter sugestões da sessão`,
+        'error',
+        sessionId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
       return [];
     }
   }

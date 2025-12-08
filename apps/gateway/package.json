@@ -5,7 +5,8 @@
   "description": "Audio processing and AI gateway service for MedCall",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--inspect' & tsx watch src/index.ts",
+    "dev": "cross-env NODE_OPTIONS=--inspect tsx watch src/index.ts",
+    "dev:simple": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "jest",
@@ -66,6 +67,7 @@
     "@types/ws": "^8.5.8",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
     "@typescript-eslint/parser": "^6.10.0",
+    "cross-env": "^7.0.3",
     "eslint": "^8.53.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",

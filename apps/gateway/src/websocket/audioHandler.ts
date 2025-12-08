@@ -294,6 +294,7 @@ function setupAudioProcessorListeners(sessionId: string, notifier: SessionNotifi
     if (processedChunk.sessionId === sessionId) {
       // 🔍 DEBUG [AUDIO_PROCESSING]: Começou processar áudio
       console.log(`🔍 DEBUG [AUDIO_PROCESSING] ${processedChunk.channel} - ${Math.round(processedChunk.duration)}ms`);
+      console.log(`🔍 DEBUG [AUDIO_PROCESSING] sessionId: ${processedChunk.sessionId}`);
       
       // 🔍 DEBUG [TRANSCRIPTION_SEND]: Enviado para transcrição
       console.log(`🔍 DEBUG [TRANSCRIPTION_SEND] ${processedChunk.channel} → Whisper`);

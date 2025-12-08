@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
-  Save, X, Sparkles, Edit, Plus, Trash2, Pencil
+  Save, X, Sparkles, Edit, Plus, Trash2, Pencil,
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
+import SolutionsViewer from '../../components/solutions/SolutionsViewer';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import './consultas.css';
+import '../../components/solutions/solutions.css';
 
 // Tipos para exercícios físicos
 interface ExercicioFisico {
@@ -42,7 +45,7 @@ interface Consultation {
   patient_name: string;
   patient_context?: string;
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'ERROR' | 'CANCELLED' | 'COMPLETED';
+  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
   solucao_etapa?: 'LTB' | 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | 'HABITOS_DE_VIDA';
   duration?: number;
@@ -61,6 +64,7 @@ interface Consultation {
   next_appointment?: string;
   created_at: string;
   updated_at: string;
+  consulta_inicio?: string;
   transcription?: {
     id: string;
     raw_text: string;
@@ -332,7 +336,8 @@ function AnamneseSection({
   onChatInputChange,
   readOnly = false,
   consultaStatus,
-  consultaEtapa
+  consultaEtapa,
+  renderViewSolutionsButton
 }: { 
   consultaId: string;
   selectedField: { fieldPath: string; label: string } | null;
@@ -345,6 +350,7 @@ function AnamneseSection({
   readOnly?: boolean;
   consultaStatus?: string;
   consultaEtapa?: string;
+  renderViewSolutionsButton?: () => JSX.Element;
 }) {
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -1694,404 +1700,49 @@ function DiagnosticoSection({
   );
 }
 
-// Componente da seção de Solução LTB (Limpeza do Terreno Biológico)
-function LTBSection({ 
-  consultaId,
-  selectedField,
-  chatMessages,
-  isTyping,
-  chatInput,
-  onFieldSelect,
-  onSendMessage,
-  onChatInputChange
-}: {
-  consultaId: string;
-  selectedField: { fieldPath: string; label: string } | null;
-  chatMessages: ChatMessage[];
-  isTyping: boolean;
-  chatInput: string;
-  onFieldSelect: (fieldPath: string, label: string) => void;
-  onSendMessage: () => void;
-  onChatInputChange: (value: string) => void;
-}) {
-  const [ltbData, setLtbData] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadLTBData();
-  }, [consultaId]);
-
-  // Listener para recarregar dados quando a IA processar
-  useEffect(() => {
-    const handleRefresh = () => {
-      loadLTBData();
-    };
-
-    window.addEventListener('ltb-data-refresh', handleRefresh);
-    
-    return () => {
-      window.removeEventListener('ltb-data-refresh', handleRefresh);
-    };
-  }, []);
-
-  const loadLTBData = async () => {
-    try {
-      setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-ltb/${consultaId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setLtbData(data.ltb_data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados de LTB:', error);
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
-
-  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
-    try {
-      // Primeiro, atualizar diretamente no Supabase
-      const response = await fetch(`/api/solucao-ltb/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fieldPath, 
-          value: newValue
-        }),
-      });
-
-      if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-      
-      // Depois, notificar o webhook (opcional, para processamento adicional)
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
-          method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath, 
-            texto: newValue,
-            consultaId,
-            solucao_etapa: 'LTB'
-          }),
-        });
-      } catch (webhookError) {
-        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
-      }
-      
-      // Recarregar dados após salvar
-      await loadLTBData();
-    } catch (error) {
-      console.error('Erro ao salvar campo:', error);
-      throw error;
-    }
-  };
-
-  const handleAIEdit = (fieldPath: string, label: string) => {
-    onFieldSelect(fieldPath, label);
-  };
-
-  if (loading) {
-    return (
-      <div className="anamnese-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando dados de LTB...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="anamnese-sections">
-      {/* ==================== INFORMAÇÕES GERAIS ==================== */}
-      <CollapsibleSection title="1. Informações Gerais do Protocolo" defaultOpen={true}>
-        <div className="anamnese-subsection">
-          <h4>Objetivo e Urgência</h4>
-          <DataField label="Objetivo Principal" value={ltbData?.objetivo_principal} fieldPath="s_agente_limpeza_do_terreno_biologico.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Urgência" value={ltbData?.urgencia} fieldPath="s_agente_limpeza_do_terreno_biologico.urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 1 - LIMPEZA PROFUNDA ==================== */}
-      <CollapsibleSection title="2. Fase 1 - Limpeza Profunda (Hidrocolonterapia + Ozonioterapia)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 1</h4>
-          <DataField label="Duração da Fase 1" value={ltbData?.fase1_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.fase1_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 1" value={ltbData?.fase1_objetivo} fieldPath="s_agente_limpeza_do_terreno_biologico.fase1_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Hidrocolonterapia</h4>
-          <DataField label="Indicação" value={ltbData?.hidrocolonterapia_indicacao} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_indicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Número de Sessões" value={ltbData?.hidrocolonterapia_sessoes} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={ltbData?.hidrocolonterapia_frequencia} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Protocolo" value={ltbData?.hidrocolonterapia_protocolo} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_protocolo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Temperatura da Água" value={ltbData?.hidrocolonterapia_temperatura_agua} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_temperatura_agua" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Profissional" value={ltbData?.hidrocolonterapia_profissional} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Preparo no Dia" value={ltbData?.hidrocolonterapia_preparo_dia} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_preparo_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Pós-Sessão" value={ltbData?.hidrocolonterapia_pos_sessao} fieldPath="s_agente_limpeza_do_terreno_biologico.hidrocolonterapia_pos_sessao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ozonioterapia Intestinal</h4>
-          <DataField label="Indicação" value={ltbData?.ozonioterapia_intestinal_indicacao} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_indicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Número de Sessões" value={ltbData?.ozonioterapia_intestinal_sessoes} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={ltbData?.ozonioterapia_intestinal_frequencia} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Via de Administração" value={ltbData?.ozonioterapia_intestinal_via} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_via" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Concentração" value={ltbData?.ozonioterapia_intestinal_concentracao} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_concentracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração da Sessão" value={ltbData?.ozonioterapia_intestinal_duracao_sessao} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_duracao_sessao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefícios para o Caso" value={ltbData?.ozonioterapia_intestinal_beneficios_caso} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_beneficios_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combinar Com" value={ltbData?.ozonioterapia_intestinal_combinar} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_intestinal_combinar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ozonioterapia Sistêmica</h4>
-          <DataField label="Indicação" value={ltbData?.ozonioterapia_sistemica_indicacao} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_indicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={ltbData?.ozonioterapia_sistemica_tipo} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Número de Sessões" value={ltbData?.ozonioterapia_sistemica_sessoes} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={ltbData?.ozonioterapia_sistemica_frequencia} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Protocolo" value={ltbData?.ozonioterapia_sistemica_protocolo} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_protocolo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefícios para o Caso" value={ltbData?.ozonioterapia_sistemica_beneficios_caso} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_beneficios_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Observação" value={ltbData?.ozonioterapia_sistemica_observacao} fieldPath="s_agente_limpeza_do_terreno_biologico.ozonioterapia_sistemica_observacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 2 - ANTIPARASITÁRIO ==================== */}
-      <CollapsibleSection title="3. Fase 2 - Protocolo Antiparasitário" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 2</h4>
-          <DataField label="Duração da Fase 2" value={ltbData?.fase2_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.fase2_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 2" value={ltbData?.fase2_objetivo} fieldPath="s_agente_limpeza_do_terreno_biologico.fase2_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Protocolo Escolhido" value={ltbData?.antiparasitario_protocolo_escolhido} fieldPath="s_agente_limpeza_do_terreno_biologico.antiparasitario_protocolo_escolhido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Trio Hulda Clark</h4>
-          <DataField label="Composição" value={ltbData?.trio_hulda_clark_composicao} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_composicao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia - Semana 1" value={ltbData?.trio_hulda_clark_posologia_semana_1} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_posologia_semana_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia - Semana 2" value={ltbData?.trio_hulda_clark_posologia_semana_2} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_posologia_semana_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia - Semanas 3-6" value={ltbData?.trio_hulda_clark_posologia_semana_3_6} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_posologia_semana_3_6" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia - Semanas 7-8" value={ltbData?.trio_hulda_clark_posologia_semana_7_8} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_posologia_semana_7_8" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Onde Comprar" value={ltbData?.trio_hulda_clark_onde_comprar} fieldPath="s_agente_limpeza_do_terreno_biologico.trio_hulda_clark_onde_comprar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Óleo de Orégano</h4>
-          <DataField label="Tipo" value={ltbData?.oleo_oregano_tipo} fieldPath="s_agente_limpeza_do_terreno_biologico.oleo_oregano_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia" value={ltbData?.oleo_oregano_posologia} fieldPath="s_agente_limpeza_do_terreno_biologico.oleo_oregano_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={ltbData?.oleo_oregano_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.oleo_oregano_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Marca Sugerida" value={ltbData?.oleo_oregano_marca_sugerida} fieldPath="s_agente_limpeza_do_terreno_biologico.oleo_oregano_marca_sugerida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Suporte Hepático (Obrigatório)</h4>
-          <DataField label="Justificativa" value={ltbData?.suporte_hepatico_obrigatorio_justificativa} fieldPath="s_agente_limpeza_do_terreno_biologico.suporte_hepatico_obrigatorio_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Protocolo" value={ltbData?.suporte_hepatico_obrigatorio_protocolo} fieldPath="s_agente_limpeza_do_terreno_biologico.suporte_hepatico_obrigatorio_protocolo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Antifúngico e Dieta Anticândida</h4>
-          <DataField label="Indicação Antifúngico" value={ltbData?.antifungico_candida_indicacao} fieldPath="s_agente_limpeza_do_terreno_biologico.antifungico_candida_indicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={ltbData?.antifungico_candida_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.antifungico_candida_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dieta - Eliminar Totalmente" value={ltbData?.dieta_anticandida_eliminar_totalmente} fieldPath="s_agente_limpeza_do_terreno_biologico.dieta_anticandida_eliminar_totalmente" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dieta - Focar Em" value={ltbData?.dieta_anticandida_focar} fieldPath="s_agente_limpeza_do_terreno_biologico.dieta_anticandida_focar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração do Rigor na Dieta" value={ltbData?.dieta_anticandida_duracao_rigor} fieldPath="s_agente_limpeza_do_terreno_biologico.dieta_anticandida_duracao_rigor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Antifúngicos Naturais" value={ltbData?.antifungicos_naturais_lista} fieldPath="s_agente_limpeza_do_terreno_biologico.antifungicos_naturais_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Probiótico Especial na Fase 2</h4>
-          <DataField label="Substância" value={ltbData?.probiotico_especial_substancia} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_especial_substancia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={ltbData?.probiotico_especial_dose} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_especial_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Justificativa" value={ltbData?.probiotico_especial_justificativa} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_especial_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={ltbData?.probiotico_especial_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_especial_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Reação de Herxheimer</h4>
-          <DataField label="O que é" value={ltbData?.herxheimer_o_que_e} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_o_que_e" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sintomas Possíveis" value={ltbData?.herxheimer_sintomas_possiveis} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_sintomas_possiveis" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando Ocorre" value={ltbData?.herxheimer_quando_ocorre} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_quando_ocorre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={ltbData?.herxheimer_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="É Bom ou Ruim?" value={ltbData?.herxheimer_e_bom_ou_ruim} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_e_bom_ou_ruim" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Minimizar" value={ltbData?.herxheimer_como_minimizar} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_como_minimizar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando Parar" value={ltbData?.herxheimer_quando_parar} fieldPath="s_agente_limpeza_do_terreno_biologico.herxheimer_quando_parar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 3 - REPOPULAÇÃO INTESTINAL ==================== */}
-      <CollapsibleSection title="4. Fase 3 - Repopulação Intestinal (Rotação de Probióticos)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 3</h4>
-          <DataField label="Início da Fase 3" value={ltbData?.fase3_inicio} fieldPath="s_agente_limpeza_do_terreno_biologico.fase3_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração da Fase 3" value={ltbData?.fase3_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.fase3_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 3" value={ltbData?.fase3_objetivo} fieldPath="s_agente_limpeza_do_terreno_biologico.fase3_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégia de Rotação - Princípio" value={ltbData?.estrategia_rotacao_principio} fieldPath="s_agente_limpeza_do_terreno_biologico.estrategia_rotacao_principio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Probióticos - Meses 1-2</h4>
-          <DataField label="Tipo" value={ltbData?.probiotico_mes1_2_tipo} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes1_2_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Potência" value={ltbData?.probiotico_mes1_2_potencia} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes1_2_potencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cepas Prioritárias" value={ltbData?.probiotico_mes1_2_cepas_prioritarias} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes1_2_cepas_prioritarias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia" value={ltbData?.probiotico_mes1_2_posologia} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes1_2_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Probióticos - Meses 3-4</h4>
-          <DataField label="Foco" value={ltbData?.probiotico_mes3_4_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes3_4_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cepas Específicas" value={ltbData?.probiotico_mes3_4_cepas_especificas} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes3_4_cepas_especificas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício para o Caso" value={ltbData?.probiotico_mes3_4_beneficio_caso} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes3_4_beneficio_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Produto Exemplo" value={ltbData?.probiotico_mes3_4_produto_exemplo} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes3_4_produto_exemplo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Probióticos - Meses 5-6</h4>
-          <DataField label="Foco" value={ltbData?.probiotico_mes5_6_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes5_6_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cepas Específicas" value={ltbData?.probiotico_mes5_6_cepas_especificas} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes5_6_cepas_especificas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício para o Caso" value={ltbData?.probiotico_mes5_6_beneficio_caso} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes5_6_beneficio_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Probióticos - Mês 7+ (Manutenção)</h4>
-          <DataField label="Tipo" value={ltbData?.probiotico_mes7_manutencao_tipo} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes7_manutencao_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dosagem" value={ltbData?.probiotico_mes7_manutencao_dosagem} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes7_manutencao_dosagem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={ltbData?.probiotico_mes7_manutencao_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.probiotico_mes7_manutencao_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Prebióticos</h4>
-          <DataField label="Suplementos" value={ltbData?.prebioticos_suplementos} fieldPath="s_agente_limpeza_do_terreno_biologico.prebioticos_suplementos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alimentos" value={ltbData?.prebioticos_alimentos} fieldPath="s_agente_limpeza_do_terreno_biologico.prebioticos_alimentos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Posbióticos (Butirato)</h4>
-          <DataField label="O que é" value={ltbData?.posbioticos_butirato_o_que_e} fieldPath="s_agente_limpeza_do_terreno_biologico.posbioticos_butirato_o_que_e" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Suplemento" value={ltbData?.posbioticos_butirato_suplemento} fieldPath="s_agente_limpeza_do_terreno_biologico.posbioticos_butirato_suplemento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={ltbData?.posbioticos_butirato_dose} fieldPath="s_agente_limpeza_do_terreno_biologico.posbioticos_butirato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefícios" value={ltbData?.posbioticos_butirato_beneficios} fieldPath="s_agente_limpeza_do_terreno_biologico.posbioticos_butirato_beneficios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando Adicionar" value={ltbData?.posbioticos_butirato_quando_adicionar} fieldPath="s_agente_limpeza_do_terreno_biologico.posbioticos_butirato_quando_adicionar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 4 - REPARAÇÃO DA MUCOSA ==================== */}
-      <CollapsibleSection title="5. Fase 4 - Reparação da Mucosa Intestinal" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 4</h4>
-          <DataField label="Duração da Fase 4" value={ltbData?.fase4_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.fase4_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 4" value={ltbData?.fase4_objetivo} fieldPath="s_agente_limpeza_do_terreno_biologico.fase4_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Suplementos Essenciais para Reparação" value={ltbData?.reparacao_suplementos_essenciais} fieldPath="s_agente_limpeza_do_terreno_biologico.reparacao_suplementos_essenciais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 5 - DETOX HEPÁTICA ==================== */}
-      <CollapsibleSection title="6. Fase 5 - Detox Hepática (Se Necessário)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 5</h4>
-          <DataField label="Urgência da Fase 5" value={ltbData?.fase5_urgencia} fieldPath="s_agente_limpeza_do_terreno_biologico.fase5_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração da Fase 5" value={ltbData?.fase5_duracao} fieldPath="s_agente_limpeza_do_terreno_biologico.fase5_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Suporte Hepático Agressivo" value={ltbData?.suporte_hepatico_agressivo} fieldPath="s_agente_limpeza_do_terreno_biologico.suporte_hepatico_agressivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fitoterápicos Detox" value={ltbData?.fitoterapicos_detox} fieldPath="s_agente_limpeza_do_terreno_biologico.fitoterapicos_detox" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Monitoramento Hepático</h4>
-          <DataField label="Exames de Controle" value={ltbData?.monitoramento_hepatico_exames_controle} fieldPath="s_agente_limpeza_do_terreno_biologico.monitoramento_hepatico_exames_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meta" value={ltbData?.monitoramento_hepatico_meta} fieldPath="s_agente_limpeza_do_terreno_biologico.monitoramento_hepatico_meta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 6 - QUELAÇÃO DE METAIS PESADOS ==================== */}
-      <CollapsibleSection title="7. Fase 6 - Quelação de Metais Pesados (Se Detectado)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Condições e Protocolo</h4>
-          <DataField label="Quando Aplicar" value={ltbData?.fase6_quando} fieldPath="s_agente_limpeza_do_terreno_biologico.fase6_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Positivo" value={ltbData?.fase6_se_positivo} fieldPath="s_agente_limpeza_do_terreno_biologico.fase6_se_positivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quelantes Naturais" value={ltbData?.quelantes_naturais} fieldPath="s_agente_limpeza_do_terreno_biologico.quelantes_naturais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Suporte Hídrico" value={ltbData?.suporte_hidrico} fieldPath="s_agente_limpeza_do_terreno_biologico.suporte_hidrico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Quelação Agressiva</h4>
-          <DataField label="Quando Considerar" value={ltbData?.quelacao_agressiva_quando_considerar} fieldPath="s_agente_limpeza_do_terreno_biologico.quelacao_agressiva_quando_considerar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipos" value={ltbData?.quelacao_agressiva_tipos} fieldPath="s_agente_limpeza_do_terreno_biologico.quelacao_agressiva_tipos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Fazer" value={ltbData?.quelacao_agressiva_como} fieldPath="s_agente_limpeza_do_terreno_biologico.quelacao_agressiva_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Fazer Sozinha" value={ltbData?.quelacao_agressiva_nao_fazer_sozinha} fieldPath="s_agente_limpeza_do_terreno_biologico.quelacao_agressiva_nao_fazer_sozinha" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== CRONOGRAMA COMPLETO ==================== */}
-      <CollapsibleSection title="8. Cronograma Completo (Resumo por Período)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Mês 1</h4>
-          <DataField label="Foco" value={ltbData?.cronograma_mes1_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes1_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações" value={ltbData?.cronograma_mes1_acoes} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes1_acoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Mês 2</h4>
-          <DataField label="Foco" value={ltbData?.cronograma_mes2_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes2_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações" value={ltbData?.cronograma_mes2_acoes} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes2_acoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Meses 3-4</h4>
-          <DataField label="Foco" value={ltbData?.cronograma_mes3_4_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes3_4_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações" value={ltbData?.cronograma_mes3_4_acoes} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes3_4_acoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Meses 5-6</h4>
-          <DataField label="Foco" value={ltbData?.cronograma_mes5_6_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes5_6_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações" value={ltbData?.cronograma_mes5_6_acoes} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes5_6_acoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Meses 7-12</h4>
-          <DataField label="Foco" value={ltbData?.cronograma_mes7_12_foco} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes7_12_foco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações" value={ltbData?.cronograma_mes7_12_acoes} fieldPath="s_agente_limpeza_do_terreno_biologico.cronograma_mes7_12_acoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== OPÇÃO ECONÔMICA ==================== */}
-      <CollapsibleSection title="9. Opção Econômica (Básica)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Alternativa Econômica</h4>
-          <DataField label="Sem Terapias Específicas" value={ltbData?.opcao_basica_economica_sem_terapias} fieldPath="s_agente_limpeza_do_terreno_biologico.opcao_basica_economica_sem_terapias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Focar Em" value={ltbData?.opcao_basica_economica_focar} fieldPath="s_agente_limpeza_do_terreno_biologico.opcao_basica_economica_focar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Observação" value={ltbData?.opcao_basica_economica_observacao} fieldPath="s_agente_limpeza_do_terreno_biologico.opcao_basica_economica_observacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SINAIS DE SUCESSO ==================== */}
-      <CollapsibleSection title="10. Sinais de Sucesso (Por Período)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Acompanhamento de Resultados</h4>
-          <DataField label="Mês 1" value={ltbData?.sinais_sucesso_mes1} fieldPath="s_agente_limpeza_do_terreno_biologico.sinais_sucesso_mes1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 2" value={ltbData?.sinais_sucesso_mes2} fieldPath="s_agente_limpeza_do_terreno_biologico.sinais_sucesso_mes2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meses 3-4" value={ltbData?.sinais_sucesso_mes3_4} fieldPath="s_agente_limpeza_do_terreno_biologico.sinais_sucesso_mes3_4" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 6" value={ltbData?.sinais_sucesso_mes6} fieldPath="s_agente_limpeza_do_terreno_biologico.sinais_sucesso_mes6" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 12" value={ltbData?.sinais_sucesso_mes12} fieldPath="s_agente_limpeza_do_terreno_biologico.sinais_sucesso_mes12" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ALERTAS CRÍTICOS ==================== */}
-      <CollapsibleSection title="11. Alertas Críticos de Segurança" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Avisos Importantes</h4>
-          <DataField label="Alertas Críticos" value={ltbData?.alertas_criticos_seguranca} fieldPath="s_agente_limpeza_do_terreno_biologico.alertas_criticos_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-    </div>
-  );
+// Interface para Higiene e Sono
+interface HigieneSono {
+  horario_dormir_recomendado: string;
+  horario_acordar_recomendado: string;
+  duracao_alvo: string;
+  janela_sono_semana: string;
+  janela_sono_fds: string;
+  consistencia_horario: string;
+  rotina_pre_sono: string[];
+  gatilhos_evitar: string[];
+  progressao_ajuste: string;
+  observacoes_clinicas: string;
 }
 
-// Componente da seção de Solução Mentalidade
+// Interface para Padrão Mental/Emocional
+interface OrientacaoTransformacao {
+  nome: string;
+  passo: number;
+  como_fazer: string;
+  o_que_fazer: string;
+  porque_funciona: string;
+}
+
+interface PadraoItem {
+  padrao: string;
+  categorias: string[];
+  prioridade: number;
+  areas_impacto: string[];
+  origem_estimada: {
+    periodo: string;
+    contexto_provavel: string;
+  };
+  conexoes_padroes: {
+    raiz_de: string[];
+    explicacao: string;
+    alimentado_por: string[];
+    relacionado_com: string[];
+  };
+  manifestacoes_atuais: string[];
+  orientacoes_transformacao: OrientacaoTransformacao[];
+}
+
+// Componente da seção de Solução Livro da Vida
 function MentalidadeSection({ 
   consultaId,
   selectedField,
@@ -2111,10 +1762,12 @@ function MentalidadeSection({
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
 }) {
-  const [mentalidadeData, setMentalidadeData] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+  // Estados para carregamento dinâmico
   const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Carregar dados ao montar o componente
   useEffect(() => {
     loadMentalidadeData();
   }, [consultaId]);
@@ -2135,349 +1788,718 @@ function MentalidadeSection({
   const loadMentalidadeData = async () => {
     try {
       setLoadingDetails(true);
+      setError(null);
+      
+      console.log('🔍 [FRONTEND-LTV] Carregando dados de mentalidade para consulta:', consultaId);
+      
       const response = await fetch(`/api/solucao-mentalidade/${consultaId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setMentalidadeData(data.mentalidade_data);
+      
+      console.log('📡 [FRONTEND-LTV] Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(errorData.error || 'Erro ao carregar dados de mentalidade');
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados de Mentalidade:', error);
+      
+      const data = await response.json();
+      console.log('✅ [FRONTEND-LTV] Dados recebidos:', data);
+      
+      if (data.mentalidade_data) {
+        setLivroVidaData({
+          resumo_executivo: data.mentalidade_data.resumo_executivo || '',
+          higiene_sono: data.mentalidade_data.higiene_sono || mockData.higiene_sono,
+          padrao_01: data.mentalidade_data.padrao_01 || null,
+          padrao_02: data.mentalidade_data.padrao_02 || null,
+          padrao_03: data.mentalidade_data.padrao_03 || null,
+          padrao_04: data.mentalidade_data.padrao_04 || null,
+          padrao_05: data.mentalidade_data.padrao_05 || null,
+          padrao_06: data.mentalidade_data.padrao_06 || null,
+          padrao_07: data.mentalidade_data.padrao_07 || null,
+          padrao_08: data.mentalidade_data.padrao_08 || null,
+          padrao_09: data.mentalidade_data.padrao_09 || null,
+          padrao_10: data.mentalidade_data.padrao_10 || null
+        });
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('❌ [FRONTEND-LTV] Erro ao carregar mentalidade:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar mentalidade');
+      setLoading(false);
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
-    try {
-      // Primeiro, atualizar diretamente no Supabase
-      const response = await fetch(`/api/solucao-mentalidade/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fieldPath, 
-          value: newValue
-        }),
-      });
+  // Dados mockados como fallback (mantido para compatibilidade)
+  const mockData: any = {
+    resumo_executivo: "Lucas, após análise profunda de sua trajetória, foram identificados 8 padrões mentais, emocionais e relacionais centrais que mantêm seu quadro de fadiga crônica, autocrítica severa e dificuldade de avançar para uma vida plena. Os padrões raiz principais são: 'Crença de Inadequação Pessoal (Não sou suficiente)', 'Padrão de Hiperalerta/Vigília Crônica', 'Autocrítica Severa e Perfeccionismo', e 'Procrastinação Autoprotetora'. Estes padrões, originados em experiências gestacionais e familiares marcadas por insegurança e conflito, desencadeiam sentimentos de fracasso, insegurança existencial e bloqueios ao prazer e à autocompaixão.\n\nA boa notícia é que, com empenho genuíno e aplicação consistente das orientações integradas aqui propostas, é plenamente possível reverter este ciclo e construir uma Nova Vida Extraordinária. Transformar padrões tão antigos exige coragem, método e perseverança, mas cada passo dado na direção certa gera efeito dominó positivo em múltiplas áreas da sua vida. O caminho é profundo, mas absolutamente viável: você não está preso ao seu passado, e sim pronto para ressignificá-lo. Com a sequência estratégica sugerida, a restauração da energia vital, do prazer e do sentido de viver será não apenas possível, mas provável.",
+    higiene_sono: {
+      horario_dormir_recomendado: "23:00",
+      horario_acordar_recomendado: "07:00",
+      duracao_alvo: "8h",
+      janela_sono_semana: "23:00-07:00",
+      janela_sono_fds: "23:00-07:00",
+      consistencia_horario: "Variação máxima ±30min entre semana e fins de semana",
+      rotina_pre_sono: [
+        "22:00 - Desligar telas e luz branca",
+        "22:20 - Banho morno ou técnica respiratória/mindfulness",
+        "22:40 - Leitura leve com luz tênue",
+        "23:00 - Deitar no horário combinado"
+      ],
+      gatilhos_evitar: [
+        "Cafeína após 16h",
+        "Exercício intenso noturno (após 20h)",
+        "Telas ou reuniões após 21h",
+        "Refeições pesadas após 20h"
+      ],
+      progressao_ajuste: "Reduzir horário de dormir 15 minutos a cada 3 dias até atingir 23:00 sem perda do despertar fixo às 07:00.",
+      observacoes_clinicas: "Sono cronicamente curto e superficial, mente ativa e jet-lag social moderado (>1h2min). Prioridade máxima para saúde neurocognitiva e metabólica. Impacto de olheiras, fadiga e desempenho oscilante exige ajuste imediato na rotina."
+    },
+    padrao_01: {
+      padrao: "Crença de Inadequação Pessoal ('Não sou suficiente')",
+      categorias: ["crença_limitante"],
+      prioridade: 1,
+      areas_impacto: ["autoestima", "identidade", "bem_estar_emocional", "relacionamentos", "carreira", "propósito", "qualidade_vida"],
+      origem_estimada: {
+        periodo: "Gestação e Primeira Infância (0-7 anos)",
+        contexto_provavel: "Possivelmente desenvolvida durante a gestação e primeiros anos de vida, em ambiente marcado por insegurança materna, amargura e conflitos conjugais. A internalização do estado de alerta e a ausência de validação emocional materna podem ter gerado uma autoimagem de insuficiência e desvalor. Originalmente, esse padrão serviu como tentativa de garantir amor e aceitação pela performance e vigilância. Tornou-se limitante ao bloquear a autoconfiança e alimentar ciclos de autossabotagem e perfeccionismo."
+      },
+      conexoes_padroes: {
+        raiz_de: ["Autocrítica Severa e Perfeccionismo", "Procrastinação Autoprotetora", "Medo de Fracasso e Desesperança", "Bloqueio à Autocompaixão", "Desconexão de Propósito e Prazer"],
+        explicacao: "A crença de inadequação pessoal é alimentada pelo estado crônico de hiperalerta, que reforça a sensação de nunca ser suficiente. Ela é raiz de padrões como autocrítica, perfeccionismo, procrastinação, medo de fracasso e bloqueio ao prazer, pois a percepção central de insuficiência gera necessidade constante de provar valor e evita o risco de exposição ao erro. Relaciona-se com a crença de que só é seguro ser aceito mediante desempenho (segurança condicional).",
+        alimentado_por: ["Padrão de Hiperalerta/Vigília Crônica"],
+        relacionado_com: ["Padrão de Segurança Condicional"]
+      },
+      manifestacoes_atuais: [
+        "Pensamento recorrente: 'Não sou suficiente, não estou me esforçando o bastante'",
+        "Dificuldade de aceitar elogios, desqualificando conquistas",
+        "Sensação crônica de fracasso ao não cumprir metas diárias",
+        "Medo intenso de depender dos pais, visto como fracasso existencial",
+        "Evita iniciar projetos por antecipar que não será capaz",
+        "Vincula valor pessoal a desempenho e produtividade"
+      ],
+      orientacoes_transformacao: [
+        {
+          nome: "Consciência e Mapeamento dos Pensamentos de Inadequação",
+          passo: 1,
+          como_fazer: "Mantenha um caderno ao lado da cama e anote, ao acordar e ao longo do dia, situações que despertam o pensamento 'não sou suficiente'. Escreva a situação, o pensamento exato e a emoção sentida (escala 0-10). Não tente mudar nada ainda, apenas observe e documente. Repita diariamente para mapear padrões de gatilho.",
+          o_que_fazer: "Registrar, durante 7 dias, cada vez que pensamentos de insuficiência ou autodepreciação surgirem.",
+          porque_funciona: "Tornar consciente o padrão automático ativa o córtex pré-frontal, interrompendo o ciclo inconsciente de autossabotagem. Segundo a TCC e neuroplasticidade, o primeiro passo para mudar uma crença é identificá-la em tempo real, criando distanciamento e possibilidade de escolha."
+        },
+        {
+          nome: "Questionamento Socrático e Desafio com Evidências",
+          passo: 2,
+          como_fazer: "Para cada pensamento de insuficiência registrado, responda: (1) Qual a evidência real de que sou insuficiente? (2) Que exemplos concretos tenho de competência/superação? (3) Como eu falaria com um amigo nessa situação? (4) O que mudou desde a infância? Escreva as respostas e releia diariamente.",
+          o_que_fazer: "Desafiar ativamente a crença de insuficiência usando perguntas estruturadas.",
+          porque_funciona: "O questionamento socrático, base da TCC, ajuda a enfraquecer crenças disfuncionais ao confrontar distorções cognitivas, promovendo reestruturação neural e maior autoconfiança."
+        }
+      ]
+    },
+    padrao_02: {
+      padrao: "Padrão de Hiperalerta/Vigília Crônica",
+      categorias: ["padrão_mental_negativo", "trauma_não_processado"],
+      prioridade: 2,
+      areas_impacto: ["saúde_física", "saúde_mental", "bem_estar_emocional", "autoestima", "relacionamentos", "qualidade_vida"],
+      origem_estimada: {
+        periodo: "Gestação e Primeira Infância (0-7 anos)",
+        contexto_provavel: "Provavelmente instalado intrauterinamente, devido ao estado de alerta, amargura e insegurança materna gerados pela infidelidade paterna. O padrão foi reforçado por um lar tenso, onde emoções negativas eram projetadas nos filhos. Inicialmente, serviu para proteger Lucas de sentir-se vulnerável ou exposto a traições e ameaças. Tornou-se limitante ao impedir relaxamento, prazer e recuperação energética, cristalizando-se em insônia, fadiga e sensação de ameaça constante."
+      },
+      conexoes_padroes: {
+        raiz_de: ["Crença de Inadequação Pessoal ('Não sou suficiente')", "Autocrítica Severa e Perfeccionismo", "Procrastinação Autoprotetora", "Medo de Fracasso e Desesperança"],
+        explicacao: "O hiperalerta é a base fisiológica e emocional que alimenta a crença de insuficiência, pois mantém o sistema nervoso em estado de ameaça, dificultando o descanso e a autopercepção positiva. Ele gera fadiga, insônia e impede a restauração do prazer, alimentando autocrítica e procrastinação. Relaciona-se com o bloqueio à autocompaixão, pois dificulta o relaxamento necessário para o autocuidado.",
+        alimentado_por: [],
+        relacionado_com: ["Bloqueio à Autocompaixão"]
+      },
+      manifestacoes_atuais: [
+        "Sono superficial e não restaurador, sensação de fadiga ao acordar",
+        "Dificuldade de relaxar mesmo fora de situações de risco",
+        "Tensão corporal persistente (ombros, mandíbula, peito)",
+        "Pensamentos de vigilância: 'Preciso estar sempre alerta para não ser pego de surpresa'",
+        "Sensação de perigo iminente ao tentar relaxar ou se permitir prazer",
+        "Dificuldade de confiar em processos de descanso e recuperação"
+      ],
+      orientacoes_transformacao: [
+        {
+          nome: "Reconhecimento do Estado de Alerta",
+          passo: 1,
+          como_fazer: "Ao acordar e em momentos de tensão, pause e observe: onde está a tensão no corpo? Que pensamentos surgem? Nomeie: 'Estou em estado de alerta'. Anote no caderno e observe padrões de ativação. Repita 3-4 vezes ao dia.",
+          o_que_fazer: "Identificar e nomear o estado de hiperalerta no corpo e na mente ao longo do dia.",
+          porque_funciona: "A autoconsciência corporal e emocional é o primeiro passo para regular o sistema nervoso. A nomeação ativa o córtex pré-frontal, reduzindo a dominância do sistema límbico e preparando para intervenções de regulação."
+        }
+      ]
+    },
+    padrao_03: null,
+    padrao_04: null,
+    padrao_05: null,
+    padrao_06: null,
+    padrao_07: null,
+    padrao_08: null,
+    padrao_09: null,
+    padrao_10: null
+  };
 
-      if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-      
-      // Depois, notificar o webhook (opcional, para processamento adicional)
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
-          method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath, 
-            texto: newValue,
-            consultaId,
-            solucao_etapa: 'MENTALIDADE'
-          }),
-        });
-      } catch (webhookError) {
-        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
-      }
-      
-      // Recarregar dados após salvar
-      await loadMentalidadeData();
-    } catch (error) {
-      console.error('Erro ao salvar campo:', error);
-      throw error;
+  // Parsear os dados mockados - os padrões 03-08 vêm do JSON fornecido
+  const parsePadrao = (jsonString: string | null): PadraoItem | null => {
+    if (!jsonString) return null;
+    try {
+      return typeof jsonString === 'string' ? JSON.parse(jsonString) as PadraoItem : jsonString;
+    } catch {
+      return null;
     }
   };
 
-  const handleAIEdit = (fieldPath: string, label: string) => {
-    onFieldSelect(fieldPath, label);
+  // Dados parseados dos padrões 03-08 do exemplo fornecido
+  const padrao03Data = parsePadrao("{\"padrao\": \"Autocrítica Severa e Perfeccionismo\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 3, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"carreira\", \"relacionamentos\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente reforçado pela convivência com uma mãe crítica, insatisfeita e controladora, e por um ambiente familiar onde o amor parecia condicional ao desempenho. Originalmente, a autocrítica e o perfeccionismo serviram para evitar críticas externas e conquistar aceitação. Tornaram-se limitantes ao gerar paralisia, procrastinação e sofrimento emocional intenso.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Procrastinação Autoprotetora\", \"Bloqueio à Autocompaixão\"], \"explicacao\": \"A autocrítica e o perfeccionismo são consequências diretas da crença de insuficiência e do hiperalerta, pois buscam garantir segurança por meio do controle absoluto. Eles alimentam a procrastinação (medo de errar paralisa) e bloqueiam a autocompaixão (autoexigência impede acolhimento). Relacionam-se com o medo de fracasso, pois o erro é visto como ameaça existencial.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Medo de Fracasso e Desesperança\"]}, \"manifestacoes_atuais\": [\"Diálogo interno brutal: 'Você é um fracasso', 'Nunca faz o suficiente'\", \"Revisão obsessiva de tarefas, nunca satisfeito com o resultado\", \"Dificuldade de iniciar projetos por medo de não atingir o ideal\", \"Desqualificação de conquistas ('Foi só sorte, qualquer um faria melhor')\", \"Sentimento de culpa e vergonha ao descansar ou se permitir prazer\", \"Comparação constante com outros, sempre se sentindo abaixo\"], \"orientacoes_transformacao\": [{\"nome\": \"Identificação e Registro da Voz Crítica\", \"passo\": 1, \"como_fazer\": \"Durante 7 dias, sempre que notar autocrítica, escreva a frase exata e o contexto. Exemplo: 'Após errar em tarefa X, pensei: sou incompetente'. Mapeie padrões e horários mais frequentes.\", \"o_que_fazer\": \"Observar e anotar frases autocríticas recorrentes ao longo do dia.\", \"porque_funciona\": \"O registro consciente da voz crítica cria distanciamento e reduz a fusão com o crítico interno, base do trabalho de IFS e CFT.\"}, {\"nome\": \"Diálogo com o Crítico Interno (Cadeira Vazia/IFS)\", \"passo\": 2, \"como_fazer\": \"Sente-se em frente a uma cadeira vazia e imagine que nela está seu crítico interno. Pergunte: 'O que você está tentando proteger em mim?'. Depois, troque de lugar e responda como o crítico. Em seguida, acolha essa parte e proponha uma nova forma de proteção baseada em encorajamento, não ataque.\", \"o_que_fazer\": \"Dialogar ativamente com a parte autocrítica, buscando entender sua intenção e oferecer uma alternativa compassiva.\", \"porque_funciona\": \"O diálogo interno, validado por IFS e Gestalt, permite integrar partes internas e transformar o crítico em aliado, promovendo autocompaixão e redução do perfeccionismo.\"}, {\"nome\": \"Experimentos Comportamentais de 'Bom o Suficiente'\", \"passo\": 3, \"como_fazer\": \"Escolha uma tarefa simples (ex: responder e-mails, arrumar a cama) e faça-a com o objetivo de terminar, não de perfeição. Observe o desconforto e registre o que aconteceu: houve consequências negativas reais? Repita com tarefas progressivamente mais desafiadoras.\", \"o_que_fazer\": \"Executar tarefas intencionalmente sem buscar perfeição, aceitando erros como parte do processo.\", \"porque_funciona\": \"A exposição comportamental, central na TCC, prova ao cérebro que o erro não é fatal, reduzindo o medo de fracasso e flexibilizando padrões rígidos.\"}]}");
+  
+  const padrao04Data = parsePadrao("{\"padrao\": \"Procrastinação Autoprotetora\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 4, \"areas_impacto\": [\"carreira\", \"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"propósito\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Adolescência e Vida Adulta Jovem (14-26 anos)\", \"contexto_provavel\": \"Provavelmente reforçada pela pressão excessiva para desempenho e pelo medo de fracassar ou decepcionar figuras parentais. A procrastinação surgiu como defesa para evitar a dor do fracasso e a autocrítica. Tornou-se limitante ao bloquear a iniciativa e reforçar a sensação de incapacidade e estagnação.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Medo de Fracasso e Desesperança\"], \"explicacao\": \"A procrastinação é alimentada pela crença de insuficiência e pelo perfeccionismo, pois o medo de errar paralisa a ação. Ela se torna raiz do medo de fracasso, pois quanto mais se posterga, maior a sensação de impotência e desesperança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Autocrítica Severa e Perfeccionismo\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Dificuldade extrema de iniciar tarefas, especialmente pela manhã\", \"Sensação de paralisia ao pensar em metas grandes\", \"Uso de distrações para evitar enfrentar desafios (celular, redes sociais)\", \"Culpa intensa após adiar tarefas importantes\", \"Sensação de tempo perdido e angústia com o 'contador regressivo'\"], \"orientacoes_transformacao\": [{\"nome\": \"Quebra de Tarefas e Microcompromissos\", \"passo\": 1, \"como_fazer\": \"Pegue uma meta (ex: exercício matinal) e divida em passos micro (ex: apenas levantar, vestir roupa de treino, sair do quarto). Estabeleça o compromisso de realizar apenas o primeiro passo por dia. Após cumprir, decida se continua. Registre cada microvitória.\", \"o_que_fazer\": \"Dividir grandes metas em pequenas ações concretas e assumir compromissos mínimos diários.\", \"porque_funciona\": \"A ação mínima reduz a sobrecarga do perfeccionismo e ativa o circuito de recompensa do cérebro, tornando mais provável a continuidade. O método é validado por TCC, ACT e neurociência motivacional.\"}, {\"nome\": \"Ação Comprometida Mesmo com Desconforto (ACT)\", \"passo\": 2, \"como_fazer\": \"Antes de uma tarefa, pergunte: 'Isso está alinhado com quem desejo ser?'. Se sim, dê o primeiro passo, mesmo que pequeno, e observe o desconforto sem tentar eliminá-lo. Anote após: 'O que aprendi ao agir mesmo inseguro?'.\", \"o_que_fazer\": \"Agir apesar da dúvida ou desconforto, focando nos valores pessoais e não no resultado imediato.\", \"porque_funciona\": \"A ACT ensina que a ação orientada por valores, mesmo com medo ou desconforto, amplia a autoconfiança e reduz o domínio da procrastinação sobre a vida.\"}]}");
+  
+  const padrao05Data = parsePadrao("{\"padrao\": \"Medo de Fracasso e Desesperança\", \"categorias\": [\"crença_limitante\", \"padrão_mental_negativo\"], \"prioridade\": 5, \"areas_impacto\": [\"autoestima\", \"carreira\", \"propósito\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância, Adolescência e Vida Adulta Jovem (5-26 anos)\", \"contexto_provavel\": \"Pode ter se consolidado após experiências repetidas de crítica, frustração de expectativas e internalização da narrativa familiar de que falhar é inaceitável. Inicialmente, serviu como proteção para evitar novas decepções. Tornou-se limitante ao bloquear a iniciativa e gerar sensação de impotência crônica.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O medo de fracasso é alimentado pela crença de insuficiência e reforçado pela procrastinação. Relaciona-se com a autocrítica e o perfeccionismo, pois cada erro é visto como confirmação da inadequação. Não é raiz de outros padrões, mas perpetua o ciclo de estagnação.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Procrastinação Autoprotetora\"], \"relacionado_com\": [\"Autocrítica Severa e Perfeccionismo\"]}, \"manifestacoes_atuais\": [\"Ansiedade intensa diante de metas e avaliações\", \"Evitação de desafios por antecipar decepção\", \"Desesperança sobre a possibilidade de mudança\", \"Sensação de que qualquer insucesso é fracasso total\", \"Dificuldade de celebrar avanços, foco no que falta\"], \"orientacoes_transformacao\": [{\"nome\": \"Ressignificação do Fracasso e Exposição Gradual\", \"passo\": 1, \"como_fazer\": \"Escolha tarefas onde o risco de erro é baixo e execute-as sem buscar perfeição. Ao errar, registre o que realmente aconteceu versus o que temia. Dialogue internamente: 'O que posso aprender com isso?'. Repita o processo, aumentando gradualmente a complexidade das tarefas.\", \"o_que_fazer\": \"Redefinir fracasso como parte do processo de crescimento e se expor gradualmente a pequenas falhas seguras.\", \"porque_funciona\": \"A exposição gradual e a ressignificação do erro (TCC, PNL) reduzem o medo paralisante e ensinam o cérebro que falhar não é catastrófico, ampliando a zona de conforto e a resiliência.\"}]}");
+  
+  const padrao06Data = parsePadrao("{\"padrao\": \"Bloqueio à Autocompaixão\", \"categorias\": [\"padrão_emocional\"], \"prioridade\": 6, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"relacionamentos\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente desenvolvido em ambiente onde a autocrítica era modelo e o autocuidado visto como fraqueza ou preguiça. Originalmente, serviu para tentar evitar críticas externas e buscar aprovação. Tornou-se limitante ao bloquear o acesso ao acolhimento interno e dificultar o enfrentamento de desafios.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O bloqueio à autocompaixão é alimentado pela autocrítica e pelo estado de alerta, pois o autocuidado é visto como ameaça à sobrevivência. Relaciona-se com a crença de insuficiência, pois dificulta a aceitação de imperfeições e vulnerabilidades.\", \"alimentado_por\": [\"Autocrítica Severa e Perfeccionismo\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"]}, \"manifestacoes_atuais\": [\"Dificuldade de se perdoar por erros e falhas\", \"Incapacidade de acolher emoções difíceis sem julgamento\", \"Sensação de que autocuidado é 'fraqueza'\", \"Autoexigência rígida mesmo em momentos de sofrimento\", \"Resistência a receber apoio ou carinho de outros\"], \"orientacoes_transformacao\": [{\"nome\": \"Prática Estruturada de Autocompaixão\", \"passo\": 1, \"como_fazer\": \"Use áudios de práticas de autocompaixão (Kristin Neff) ou escreva cartas para si mesmo em momentos de sofrimento, usando frases como: 'Está tudo bem não ser perfeito', 'Todos erram, inclusive eu'. Repita diariamente, especialmente após situações de autocrítica.\", \"o_que_fazer\": \"Dedicar diariamente 10 minutos para exercícios guiados de autocompaixão.\", \"porque_funciona\": \"A prática regular de autocompaixão ativa redes cerebrais de autocuidado e reduz a ativação do sistema de ameaça, promovendo maior resiliência emocional e flexibilidade diante de desafios.\"}]}");
+  
+  const padrao07Data = parsePadrao("{\"padrao\": \"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"categorias\": [\"crença_limitante\"], \"prioridade\": 7, \"areas_impacto\": [\"autoestima\", \"identidade\", \"carreira\", \"propósito\", \"bem_estar_emocional\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente internalizado a partir do modelo familiar onde o valor era condicionado ao desempenho, especialmente na figura paterna como provedor. Serviu para criar uma ilusão de controle e evitar rejeição. Tornou-se limitante ao gerar ansiedade crônica, medo de relaxar e dependência do reconhecimento externo.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Desconexão de Propósito e Prazer\"], \"explicacao\": \"A crença de segurança condicional reforça a necessidade de desempenho para sentir-se seguro, alimentando a desconexão de propósito e prazer, pois bloqueia a motivação intrínseca. É alimentada pela crença de insuficiência, pois só ao 'provar' valor sente-se digno de segurança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Sensação de que só merece descanso após atingir metas altas\", \"Ansiedade intensa quando não está produzindo ou performando\", \"Vincula autoestima a resultados externos\", \"Dificuldade de relaxar ou se permitir lazer sem culpa\"], \"orientacoes_transformacao\": [{\"nome\": \"Redefinição de Valor Pessoal e Segurança\", \"passo\": 1, \"como_fazer\": \"Liste 5 momentos em que recebeu carinho, respeito ou apoio apenas por ser quem é, não por resultados. Releia essas situações diariamente e escreva como se sentiu. Reforce a ideia: 'Meu valor não depende do que faço, mas de quem sou'.\", \"o_que_fazer\": \"Refletir e escrever sobre situações em que se sentiu seguro ou valorizado sem depender de desempenho.\", \"porque_funciona\": \"A repetição de experiências de valor incondicional reforça novas redes neurais de autoestima e reduz a dependência do reconhecimento externo, promovendo motivação autêntica.\"}]}");
+  
+  const padrao08Data = parsePadrao("{\"padrao\": \"Desconexão de Propósito e Prazer\", \"categorias\": [\"bloqueio_desenvolvimento_espiritual\", \"padrão_emocional\"], \"prioridade\": 8, \"areas_impacto\": [\"propósito\", \"desenvolvimento_espiritual\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Vida Adulta Jovem (21-26 anos)\", \"contexto_provavel\": \"Possivelmente emergiu como consequência do ciclo de autocrítica, hiperalerta e segurança condicional, bloqueando o acesso ao prazer e ao sentido existencial autêntico. Inicialmente, serviu como defesa contra frustrações profundas. Tornou-se limitante ao gerar vazio existencial, desânimo e dificuldade de se engajar com a vida de forma plena.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"A desconexão de propósito e prazer é alimentada pela crença de valor condicional e insuficiência, que esvaziam a motivação intrínseca e bloqueiam o acesso ao prazer. Relaciona-se com a procrastinação, pois o vazio existencial dificulta o engajamento em ações significativas.\", \"alimentado_por\": [\"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": [\"Procrastinação Autoprotetora\"]}, \"manifestacoes_atuais\": [\"Sensação de vazio e falta de sentido mesmo com metas claras\", \"Dificuldade de sentir prazer mesmo em atividades antes prazerosas\", \"Desânimo persistente e falta de motivação autêntica\", \"Busca por sentido apenas no desempenho e conquistas externas\"], \"orientacoes_transformacao\": [{\"nome\": \"Exploração de Propósito Autêntico (Ikigai/Logoterapia)\", \"passo\": 1, \"como_fazer\": \"Responda por escrito: (1) O que me dá alegria genuína, mesmo sem reconhecimento? (2) O que eu faria se não precisasse provar nada a ninguém? (3) Como posso contribuir para o mundo com meus dons únicos? Faça um mapa Ikigai (o que amo, sei fazer, o mundo precisa, posso ser pago) e reflita sobre ações possíveis.\", \"o_que_fazer\": \"Dedicar tempo semanal para investigar valores, paixões e contribuições além do desempenho.\", \"porque_funciona\": \"A investigação ativa do propósito (Logoterapia, Ikigai) reconecta a motivação intrínseca, amplia o sentido existencial e reduz o vazio gerado por padrões de desempenho condicional.\"}, {\"nome\": \"Práticas de Gratidão e Mindfulness Prazeroso\", \"passo\": 2, \"como_fazer\": \"Todos os dias, registre 3 experiências prazerosas ou motivos de gratidão, por menores que sejam. Pratique mindfulness durante essas experiências, focando nas sensações corporais prazerosas sem julgamento ou cobrança de resultado.\", \"o_que_fazer\": \"Cultivar diariamente a atenção ao prazer e à gratidão para reabilitar o sistema de recompensa natural.\", \"porque_funciona\": \"A prática de gratidão e mindfulness prazeroso ativa as redes cerebrais de recompensa e prazer, recondicionando o cérebro a buscar e valorizar pequenas alegrias, base para reconstrução do sentido de vida.\"}]}");
+  
+  // @ts-ignore - mockData will be replaced by dynamic data from API
+  const [livroVidaData, setLivroVidaData] = useState<{
+    resumo_executivo: string;
+    higiene_sono: HigieneSono;
+    padrao_01: PadraoItem | null;
+    padrao_02: PadraoItem | null;
+    padrao_03: PadraoItem | null;
+    padrao_04: PadraoItem | null;
+    padrao_05: PadraoItem | null;
+    padrao_06: PadraoItem | null;
+    padrao_07: PadraoItem | null;
+    padrao_08: PadraoItem | null;
+    padrao_09: PadraoItem | null;
+    padrao_10: PadraoItem | null;
+  }>({
+    resumo_executivo: mockData.resumo_executivo,
+    higiene_sono: mockData.higiene_sono,
+    padrao_01: mockData.padrao_01,
+    padrao_02: mockData.padrao_02,
+    padrao_03: padrao03Data,
+    padrao_04: padrao04Data,
+    padrao_05: padrao05Data,
+    padrao_06: padrao06Data,
+    padrao_07: padrao07Data,
+    padrao_08: padrao08Data,
+    padrao_09: null,
+    padrao_10: null
+  });
+
+  const [editingField, setEditingField] = useState<{
+    type: 'resumo' | 'higiene_sono' | 'padrao';
+    padraoNum?: number;
+    fieldPath?: string;
+  } | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  // Função para obter valor de campo aninhado
+  const getNestedValue = (obj: any, path: string): any => {
+    if (path.includes('.')) {
+      const parts = path.split('.');
+      let current = obj;
+      for (const part of parts) {
+        if (current === null || current === undefined) {
+          return null;
+        }
+        // Verificar se é um índice de array
+        const arrayIndex = parseInt(part);
+        if (!isNaN(arrayIndex) && Array.isArray(current)) {
+          current = current[arrayIndex];
+        } else if (typeof current === 'object') {
+          current = current[part];
+        } else {
+          return null;
+        }
+      }
+      return current;
+    }
+    return obj ? obj[path] : null;
   };
 
-  if (loading) {
+  // Função para iniciar edição
+  const handleStartEdit = (type: 'resumo' | 'higiene_sono' | 'padrao', padraoNum?: number, fieldPath?: string) => {
+    setEditingField({ type, padraoNum, fieldPath });
+    if (type === 'resumo') {
+      setEditValue(livroVidaData.resumo_executivo);
+    } else if (type === 'higiene_sono' && fieldPath) {
+      const value = getNestedValue(livroVidaData.higiene_sono, fieldPath);
+      setEditValue(value === null || value === undefined ? '' : 
+                  typeof value === 'string' ? value : 
+                  Array.isArray(value) ? value.join('\n') : 
+                  JSON.stringify(value, null, 2));
+    } else if (padraoNum && fieldPath) {
+      const padrao = livroVidaData[`padrao_${String(padraoNum).padStart(2, '0')}` as keyof typeof livroVidaData] as PadraoItem | null;
+      if (padrao) {
+        const value = getNestedValue(padrao, fieldPath);
+        setEditValue(value === null || value === undefined ? '' : 
+                    typeof value === 'string' ? value : 
+                    typeof value === 'number' ? value.toString() :
+                    Array.isArray(value) ? value.join('\n') : 
+                    JSON.stringify(value, null, 2));
+      }
+    }
+  };
+
+  // Função para definir valor em campo aninhado
+  const setNestedValue = (obj: any, path: string, value: any): void => {
+    if (path.includes('.')) {
+      // @ts-ignore
+      const parts = path.split('.');
+      const lastPart = parts.pop()!;
+      let current = obj;
+      for (const part of parts) {
+        // Verificar se é um índice de array
+        const arrayIndex = parseInt(part);
+        if (!isNaN(arrayIndex)) {
+          if (!Array.isArray(current)) {
+            current = [];
+          }
+          if (!current[arrayIndex]) {
+            current[arrayIndex] = {};
+          }
+          current = current[arrayIndex];
+        } else {
+          if (!current[part] || (typeof current[part] !== 'object' && !Array.isArray(current[part]))) {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+      }
+      // Verificar se o último parte é um número (índice de array)
+      const lastArrayIndex = parseInt(lastPart);
+      if (!isNaN(lastArrayIndex) && Array.isArray(current)) {
+        current[lastArrayIndex] = value;
+      } else {
+        current[lastPart] = value;
+      }
+    } else {
+      obj[path] = value;
+    }
+  };
+
+  // Função para salvar edição
+  const handleSaveEdit = async () => {
+    if (!editingField) return;
+
+    try {
+      setLoadingDetails(true);
+
+      const newData = { ...livroVidaData };
+      let fieldName = '';
+      let valueToSave: any = editValue;
+      
+      if (editingField.type === 'resumo') {
+        fieldName = 'resumo_executivo';
+        valueToSave = editValue;
+        newData.resumo_executivo = editValue;
+      } else if (editingField.type === 'higiene_sono' && editingField.fieldPath) {
+        fieldName = 'higiene_sono';
+        const fieldPath = editingField.fieldPath;
+        let finalValue: any = editValue;
+        
+        // Verificar se o campo original era array
+        const originalValue = getNestedValue(newData.higiene_sono, fieldPath);
+        if (Array.isArray(originalValue)) {
+          finalValue = editValue.split('\n').filter(line => line.trim());
+        }
+        
+        setNestedValue(newData.higiene_sono, fieldPath, finalValue);
+        valueToSave = newData.higiene_sono;
+      } else if (editingField.padraoNum && editingField.fieldPath) {
+        const padraoNum = editingField.padraoNum;
+        fieldName = `padrao_${String(padraoNum).padStart(2, '0')}`;
+        const padraoKey = fieldName as keyof typeof newData;
+        const padrao = { ...(newData[padraoKey] as PadraoItem) };
+        
+        if (padrao) {
+          const fieldPath = editingField.fieldPath;
+          let finalValue: any = editValue;
+          
+          // Verificar se o campo original era array
+          const originalValue = getNestedValue(padrao, fieldPath);
+          if (Array.isArray(originalValue)) {
+            finalValue = editValue.split('\n').filter(line => line.trim());
+          } else if (typeof originalValue === 'number') {
+            finalValue = parseFloat(editValue) || 0;
+          }
+          
+        setNestedValue(padrao, fieldPath, finalValue);
+        (newData as any)[padraoKey] = padrao;
+        valueToSave = padrao;
+        }
+      }
+      
+      // Atualizar estado local primeiro (UX responsivo)
+      setLivroVidaData(newData);
+      setEditingField(null);
+      setEditValue('');
+      
+      // Salvar no banco de dados
+      console.log('💾 [FRONTEND-LTV] Salvando campo:', { fieldName, valueToSave });
+      
+      const response = await fetch(`/api/solucao-mentalidade/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fieldPath: `mentalidade_data.${fieldName}`,
+          value: valueToSave
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao salvar' }));
+        throw new Error(errorData.error || 'Erro ao salvar alteração');
+      }
+
+      console.log('✅ [FRONTEND-LTV] Campo salvo com sucesso no banco');
+      
+    } catch (error) {
+      console.error('❌ [FRONTEND-LTV] Erro ao salvar campo:', error);
+      alert('Erro ao salvar alteração. Tente novamente.');
+      
+      // Recarregar dados para sincronizar com o banco
+      await loadMentalidadeData();
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // Função para cancelar edição
+  const handleCancelEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  // Função para renderizar campo editável
+  const renderEditableField = (
+    label: string,
+    value: string | string[] | object | null,
+    type: 'resumo' | 'higiene_sono' | 'padrao',
+    padraoNum?: number,
+    fieldPath?: string
+  ) => {
+    const isEditing = editingField?.type === type && 
+                     editingField?.padraoNum === padraoNum && 
+                     editingField?.fieldPath === fieldPath;
+
+    const displayValue = value === null ? '-' : 
+                        Array.isArray(value) ? value.join(', ') : 
+                        typeof value === 'object' ? JSON.stringify(value, null, 2) : 
+                        value;
+
+    if (isEditing) {
+      return (
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>{label}</label>
+          <textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            disabled={loadingDetails}
+            style={{ 
+              width: '100%', 
+              minHeight: '100px', 
+              padding: '10px',
+              fontSize: '14px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              opacity: loadingDetails ? 0.6 : 1
+            }}
+          />
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <button
+              onClick={handleSaveEdit}
+              disabled={loadingDetails}
+              style={{
+                padding: '8px 16px',
+                background: loadingDetails ? '#9ca3af' : '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: loadingDetails ? 'not-allowed' : 'pointer',
+                opacity: loadingDetails ? 0.7 : 1
+              }}
+            >
+              {loadingDetails ? (
+                <>
+                  <div className="loading-spinner-small" style={{ display: 'inline-block', marginRight: '5px' }}></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 inline mr-1" />
+                  Salvar
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              disabled={loadingDetails}
+              style={{
+                padding: '8px 16px',
+                background: loadingDetails ? '#9ca3af' : '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: loadingDetails ? 'not-allowed' : 'pointer',
+                opacity: loadingDetails ? 0.7 : 1
+              }}
+            >
+              <X className="w-4 h-4 inline mr-1" />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Construir o fieldPath completo para o webhook
+    let fullFieldPath = '';
+    if (type === 'resumo') {
+      fullFieldPath = 'mentalidade_data.resumo_executivo';
+    } else if (type === 'higiene_sono' && fieldPath) {
+      fullFieldPath = `mentalidade_data.higiene_sono.${fieldPath}`;
+    } else if (type === 'padrao' && padraoNum && fieldPath) {
+      fullFieldPath = `mentalidade_data.padrao_${String(padraoNum).padStart(2, '0')}.${fieldPath}`;
+    }
+
+    return (
+      <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>{label}</label>
+          <div style={{ 
+            padding: '10px', 
+            background: '#f9f9f9', 
+            borderRadius: '4px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          }}>
+            {displayValue}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '5px', marginTop: '25px' }}>
+          {onFieldSelect && fullFieldPath && (
+            <button
+              onClick={() => onFieldSelect(fullFieldPath, label)}
+              style={{
+                padding: '5px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+              title="Editar com IA"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => handleStartEdit(type, padraoNum, fieldPath)}
+            style={{
+              padding: '5px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#666'
+            }}
+            title="Editar manualmente"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Função para renderizar seção de Higiene e Sono
+  const renderHigieneSono = () => {
+    const higieneSono = livroVidaData.higiene_sono;
+    
+    return (
+      <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
+        <div style={{ padding: '15px' }}>
+          <h4 style={{ marginTop: '0', marginBottom: '15px' }}>Horários Recomendados</h4>
+          {renderEditableField("Horário de Dormir Recomendado", higieneSono.horario_dormir_recomendado, 'higiene_sono', undefined, 'horario_dormir_recomendado')}
+          {renderEditableField("Horário de Acordar Recomendado", higieneSono.horario_acordar_recomendado, 'higiene_sono', undefined, 'horario_acordar_recomendado')}
+          {renderEditableField("Duração Alvo", higieneSono.duracao_alvo, 'higiene_sono', undefined, 'duracao_alvo')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Janelas de Sono</h4>
+          {renderEditableField("Janela de Sono - Semana", higieneSono.janela_sono_semana, 'higiene_sono', undefined, 'janela_sono_semana')}
+          {renderEditableField("Janela de Sono - Fins de Semana", higieneSono.janela_sono_fds, 'higiene_sono', undefined, 'janela_sono_fds')}
+          {renderEditableField("Consistência de Horário", higieneSono.consistencia_horario, 'higiene_sono', undefined, 'consistencia_horario')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Rotina Pré-Sono</h4>
+          {renderEditableField("Rotina Pré-Sono", higieneSono.rotina_pre_sono, 'higiene_sono', undefined, 'rotina_pre_sono')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Gatilhos a Evitar</h4>
+          {renderEditableField("Gatilhos a Evitar", higieneSono.gatilhos_evitar, 'higiene_sono', undefined, 'gatilhos_evitar')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Progressão e Ajustes</h4>
+          {renderEditableField("Progressão de Ajuste", higieneSono.progressao_ajuste, 'higiene_sono', undefined, 'progressao_ajuste')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Observações Clínicas</h4>
+          {renderEditableField("Observações Clínicas", higieneSono.observacoes_clinicas, 'higiene_sono', undefined, 'observacoes_clinicas')}
+        </div>
+      </CollapsibleSection>
+    );
+  };
+
+  // Função para renderizar um padrão
+  const renderPadrao = (padrao: PadraoItem | null, numero: number) => {
+    if (!padrao) {
+      return (
+        <CollapsibleSection title={`Padrão ${numero}`} defaultOpen={false}>
+          <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhum padrão cadastrado</p>
+        </CollapsibleSection>
+      );
+    }
+
+    return (
+      <CollapsibleSection title={`Padrão ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
+        <div style={{ padding: '15px' }}>
+          {renderEditableField("Padrão", padrao.padrao, 'padrao', numero, 'padrao')}
+          {renderEditableField("Categorias", padrao.categorias, 'padrao', numero, 'categorias')}
+          {renderEditableField("Prioridade", padrao.prioridade.toString(), 'padrao', numero, 'prioridade')}
+          {renderEditableField("Áreas de Impacto", padrao.areas_impacto, 'padrao', numero, 'areas_impacto')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Origem Estimada</h4>
+          {renderEditableField("Período", padrao.origem_estimada.periodo, 'padrao', numero, 'origem_estimada.periodo')}
+          {renderEditableField("Contexto Provável", padrao.origem_estimada.contexto_provavel, 'padrao', numero, 'origem_estimada.contexto_provavel')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Conexões com Outros Padrões</h4>
+          {renderEditableField("Raiz de", padrao.conexoes_padroes.raiz_de, 'padrao', numero, 'conexoes_padroes.raiz_de')}
+          {renderEditableField("Explicação", padrao.conexoes_padroes.explicacao, 'padrao', numero, 'conexoes_padroes.explicacao')}
+          {renderEditableField("Alimentado por", padrao.conexoes_padroes.alimentado_por, 'padrao', numero, 'conexoes_padroes.alimentado_por')}
+          {renderEditableField("Relacionado com", padrao.conexoes_padroes.relacionado_com, 'padrao', numero, 'conexoes_padroes.relacionado_com')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Manifestações Atuais</h4>
+          {renderEditableField("Manifestações", padrao.manifestacoes_atuais, 'padrao', numero, 'manifestacoes_atuais')}
+          
+          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Orientações de Transformação</h4>
+          {padrao.orientacoes_transformacao.map((orientacao, idx) => (
+            <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
+              <h5 style={{ marginBottom: '10px' }}>{orientacao.nome} (Passo {orientacao.passo})</h5>
+              {renderEditableField("Nome", orientacao.nome, 'padrao', numero, `orientacoes_transformacao.${idx}.nome`)}
+              {renderEditableField("Passo", orientacao.passo.toString(), 'padrao', numero, `orientacoes_transformacao.${idx}.passo`)}
+              {renderEditableField("Como Fazer", orientacao.como_fazer, 'padrao', numero, `orientacoes_transformacao.${idx}.como_fazer`)}
+              {renderEditableField("O Que Fazer", orientacao.o_que_fazer, 'padrao', numero, `orientacoes_transformacao.${idx}.o_que_fazer`)}
+              {renderEditableField("Por Que Funciona", orientacao.porque_funciona, 'padrao', numero, `orientacoes_transformacao.${idx}.porque_funciona`)}
+            </div>
+          ))}
+        </div>
+      </CollapsibleSection>
+    );
+  };
+
+  // Mostrar loading no primeiro carregamento
+  if (loading && !error) {
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
-        <p>Carregando dados de Mentalidade...</p>
+        <p>Carregando dados do Livro da Vida...</p>
+      </div>
+    );
+  }
+
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <div className="anamnese-error">
+        <p style={{ color: '#f44336' }}>❌ {error}</p>
+        <button 
+          onClick={loadMentalidadeData}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            background: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }
 
   return (
     <div className="anamnese-sections">
-      {/* ==================== INFORMAÇÕES GERAIS ==================== */}
-      <CollapsibleSection title="1. Informações Gerais e Contexto" defaultOpen={true}>
-        <div className="anamnese-subsection">
-          <h4>Objetivo e Urgência</h4>
-          <DataField label="Objetivo Principal" value={mentalidadeData?.objetivo_principal} fieldPath="mentalidade_data.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade do Caso" value={mentalidadeData?.realidade_caso} fieldPath="mentalidade_data.realidade_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Urgência" value={mentalidadeData?.urgencia} fieldPath="mentalidade_data.urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+      {/* Resumo Executivo */}
+      <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
+        <div style={{ padding: '15px' }}>
+          {renderEditableField("Resumo Executivo", livroVidaData.resumo_executivo, 'resumo')}
         </div>
       </CollapsibleSection>
 
-      {/* ==================== FASE 1 - ESTABILIZAÇÃO ==================== */}
-      <CollapsibleSection title="2. Fase 1 - Estabilização da Crise (0-3 meses)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 1</h4>
-          <DataField label="Duração da Fase 1" value={mentalidadeData?.fase1_duracao} fieldPath="mentalidade_data.fase1_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 1" value={mentalidadeData?.fase1_objetivo} fieldPath="mentalidade_data.fase1_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
+      {/* Higiene e Sono */}
+      {renderHigieneSono()}
 
-        <div className="anamnese-subsection">
-          <h4>Psicoterapia</h4>
-          <DataField label="Modalidade" value={mentalidadeData?.psicoterapia_modalidade} fieldPath="mentalidade_data.psicoterapia_modalidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.psicoterapia_frequencia} fieldPath="mentalidade_data.psicoterapia_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração da Sessão" value={mentalidadeData?.psicoterapia_duracao_sessao} fieldPath="mentalidade_data.psicoterapia_duracao_sessao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo de Profissional" value={mentalidadeData?.psicoterapia_profissional} fieldPath="mentalidade_data.psicoterapia_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Foco nas Primeiras Sessões" value={mentalidadeData?.psicoterapia_foco_primeiras_sessoes} fieldPath="mentalidade_data.psicoterapia_foco_primeiras_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Risco Suicida</h4>
-          <DataField label="Ação Imediata" value={mentalidadeData?.risco_suicida_acao_imediata} fieldPath="mentalidade_data.risco_suicida_acao_imediata" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Encaminhamento para Psiquiatria" value={mentalidadeData?.risco_suicida_encaminhamento_psiquiatria} fieldPath="mentalidade_data.risco_suicida_encaminhamento_psiquiatria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Avaliação Psiquiátrica</h4>
-          <DataField label="Quando Solicitar" value={mentalidadeData?.avaliacao_psiquiatrica_quando} fieldPath="mentalidade_data.avaliacao_psiquiatrica_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo" value={mentalidadeData?.avaliacao_psiquiatrica_objetivo} fieldPath="mentalidade_data.avaliacao_psiquiatrica_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Medicação Atual - Observações" value={mentalidadeData?.medicacao_atual_observacoes} fieldPath="mentalidade_data.medicacao_atual_observacoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajustes de Medicação - Opções" value={mentalidadeData?.medicacao_ajustes_opcoes} fieldPath="mentalidade_data.medicacao_ajustes_opcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência de Seguimento com Psiquiatria" value={mentalidadeData?.psiquiatria_frequencia_seguimento} fieldPath="mentalidade_data.psiquiatria_frequencia_seguimento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Tireoide (Puran)</h4>
-          <DataField label="Dose Atual" value={mentalidadeData?.tireoide_puran_dose_atual} fieldPath="mentalidade_data.tireoide_puran_dose_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajuste Necessário" value={mentalidadeData?.tireoide_puran_ajuste} fieldPath="mentalidade_data.tireoide_puran_ajuste" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Florais de Bach</h4>
-          <DataField label="Justificativa" value={mentalidadeData?.florais_justificativa} fieldPath="mentalidade_data.florais_justificativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fórmula para Crise - Composição" value={mentalidadeData?.florais_formula_crise_composicao} fieldPath="mentalidade_data.florais_formula_crise_composicao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Preparação" value={mentalidadeData?.florais_preparacao} fieldPath="mentalidade_data.florais_preparacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia" value={mentalidadeData?.florais_posologia} fieldPath="mentalidade_data.florais_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={mentalidadeData?.florais_duracao} fieldPath="mentalidade_data.florais_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Onde Comprar/Preparar" value={mentalidadeData?.florais_onde} fieldPath="mentalidade_data.florais_onde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Homeopatia</h4>
-          <DataField label="Medicamento Principal" value={mentalidadeData?.homeopatia_medicamento_principal} fieldPath="mentalidade_data.homeopatia_medicamento_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Justificativa para o Caso" value={mentalidadeData?.homeopatia_justificativa_caso} fieldPath="mentalidade_data.homeopatia_justificativa_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Potência Inicial" value={mentalidadeData?.homeopatia_potencia_inicial} fieldPath="mentalidade_data.homeopatia_potencia_inicial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Posologia" value={mentalidadeData?.homeopatia_posologia} fieldPath="mentalidade_data.homeopatia_posologia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={mentalidadeData?.homeopatia_duracao} fieldPath="mentalidade_data.homeopatia_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Medicamentos Complementares" value={mentalidadeData?.homeopatia_medicamentos_complementares} fieldPath="mentalidade_data.homeopatia_medicamentos_complementares" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Técnicas de Autorregulação (Emergência)</h4>
-          <DataField label="Respiração 4-7-8" value={mentalidadeData?.tecnicas_autorregulacao_respiracao_4_7_8} fieldPath="mentalidade_data.tecnicas_autorregulacao_respiracao_4_7_8" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Grounding 5-4-3-2-1" value={mentalidadeData?.tecnicas_autorregulacao_grounding_5_4_3_2_1} fieldPath="mentalidade_data.tecnicas_autorregulacao_grounding_5_4_3_2_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Âncora de Segurança" value={mentalidadeData?.tecnicas_autorregulacao_ancora_seguranca} fieldPath="mentalidade_data.tecnicas_autorregulacao_ancora_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 2 - PROCESSAMENTO PROFUNDO ==================== */}
-      <CollapsibleSection title="3. Fase 2 - Processamento Profundo dos Traumas (3-9 meses)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 2</h4>
-          <DataField label="Duração da Fase 2" value={mentalidadeData?.fase2_duracao} fieldPath="mentalidade_data.fase2_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 2" value={mentalidadeData?.fase2_objetivo} fieldPath="mentalidade_data.fase2_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>EMDR (Eye Movement Desensitization and Reprocessing)</h4>
-          <DataField label="Descrição" value={mentalidadeData?.emdr_descricao} fieldPath="mentalidade_data.emdr_descricao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Funciona" value={mentalidadeData?.emdr_como_funciona} fieldPath="mentalidade_data.emdr_como_funciona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Eficácia" value={mentalidadeData?.emdr_eficacia} fieldPath="mentalidade_data.emdr_eficacia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Traumas Prioritários para EMDR" value={mentalidadeData?.emdr_traumas_prioritarios} fieldPath="mentalidade_data.emdr_traumas_prioritarios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Total de Sessões" value={mentalidadeData?.emdr_total_sessoes} fieldPath="mentalidade_data.emdr_total_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.emdr_frequencia} fieldPath="mentalidade_data.emdr_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo de Profissional" value={mentalidadeData?.emdr_profissional} fieldPath="mentalidade_data.emdr_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Observação Importante" value={mentalidadeData?.emdr_observacao_importante} fieldPath="mentalidade_data.emdr_observacao_importante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Constelação Familiar</h4>
-          <DataField label="Descrição" value={mentalidadeData?.constelacao_descricao} fieldPath="mentalidade_data.constelacao_descricao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Indicação para o Caso" value={mentalidadeData?.constelacao_indicacao_caso} fieldPath="mentalidade_data.constelacao_indicacao_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Formatos" value={mentalidadeData?.constelacao_formatos} fieldPath="mentalidade_data.constelacao_formatos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.constelacao_frequencia} fieldPath="mentalidade_data.constelacao_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Total de Sessões" value={mentalidadeData?.constelacao_total_sessoes} fieldPath="mentalidade_data.constelacao_total_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Terapia Somática</h4>
-          <DataField label="Descrição" value={mentalidadeData?.terapia_somatica_descricao} fieldPath="mentalidade_data.terapia_somatica_descricao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Indicação para o Caso" value={mentalidadeData?.terapia_somatica_indicacao_caso} fieldPath="mentalidade_data.terapia_somatica_indicacao_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Modalidades" value={mentalidadeData?.terapia_somatica_modalidades} fieldPath="mentalidade_data.terapia_somatica_modalidades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Funciona" value={mentalidadeData?.terapia_somatica_como_funciona} fieldPath="mentalidade_data.terapia_somatica_como_funciona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.terapia_somatica_frequencia} fieldPath="mentalidade_data.terapia_somatica_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sessões" value={mentalidadeData?.terapia_somatica_sessoes} fieldPath="mentalidade_data.terapia_somatica_sessoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Trabalho de Perdão</h4>
-          <DataField label="Realidade" value={mentalidadeData?.perdao_realidade} fieldPath="mentalidade_data.perdao_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Oração dos Pais" value={mentalidadeData?.perdao_oracao_pais} fieldPath="mentalidade_data.perdao_oracao_pais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Autoperdão no Espelho" value={mentalidadeData?.perdao_autoperdao_espelho} fieldPath="mentalidade_data.perdao_autoperdao_espelho" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Carta Nunca Enviada" value={mentalidadeData?.perdao_carta_nunca_enviada} fieldPath="mentalidade_data.perdao_carta_nunca_enviada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== FASE 3 - RECONSTRUÇÃO ==================== */}
-      <CollapsibleSection title="4. Fase 3 - Reconstrução da Identidade (9-12 meses)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Informações da Fase 3</h4>
-          <DataField label="Duração da Fase 3" value={mentalidadeData?.fase3_duracao} fieldPath="mentalidade_data.fase3_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo da Fase 3" value={mentalidadeData?.fase3_objetivo} fieldPath="mentalidade_data.fase3_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Trabalho de Autoestima</h4>
-          <DataField label="Espelho Diário" value={mentalidadeData?.autoestima_espelho_diario} fieldPath="mentalidade_data.autoestima_espelho_diario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Lista de Conquistas Semanal" value={mentalidadeData?.autoestima_lista_conquistas_semanal} fieldPath="mentalidade_data.autoestima_lista_conquistas_semanal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fotos de Progressão" value={mentalidadeData?.autoestima_fotos_progressao} fieldPath="mentalidade_data.autoestima_fotos_progressao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Resgate de Sonhos e Essência</h4>
-          <DataField label="Realidade" value={mentalidadeData?.resgate_sonhos_essencia_realidade} fieldPath="mentalidade_data.resgate_sonhos_essencia_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Resgate da Dança</h4>
-          <DataField label="Por Onde Começar" value={mentalidadeData?.resgate_danca_comecar} fieldPath="mentalidade_data.resgate_danca_comecar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Opções" value={mentalidadeData?.resgate_danca_opcoes} fieldPath="mentalidade_data.resgate_danca_opcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência Mínima" value={mentalidadeData?.resgate_danca_frequencia_minima} fieldPath="mentalidade_data.resgate_danca_frequencia_minima" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo" value={mentalidadeData?.resgate_danca_objetivo} fieldPath="mentalidade_data.resgate_danca_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Resistência Esperada" value={mentalidadeData?.resgate_danca_resistencia_esperada} fieldPath="mentalidade_data.resgate_danca_resistencia_esperada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Resgate da Expressão Criativa</h4>
-          <DataField label="Opções" value={mentalidadeData?.resgate_expressao_criativa_opcoes} fieldPath="mentalidade_data.resgate_expressao_criativa_opcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Escolher" value={mentalidadeData?.resgate_expressao_criativa_escolher} fieldPath="mentalidade_data.resgate_expressao_criativa_escolher" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.resgate_expressao_criativa_frequencia} fieldPath="mentalidade_data.resgate_expressao_criativa_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Treino de Assertividade</h4>
-          <DataField label="Realidade" value={mentalidadeData?.assertividade_realidade} fieldPath="mentalidade_data.assertividade_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Treino Gradual" value={mentalidadeData?.assertividade_treino_gradual} fieldPath="mentalidade_data.assertividade_treino_gradual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frases Prontas" value={mentalidadeData?.assertividade_frases_prontas} fieldPath="mentalidade_data.assertividade_frases_prontas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Apoio da Terapia" value={mentalidadeData?.assertividade_apoio_terapia} fieldPath="mentalidade_data.assertividade_apoio_terapia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Reconexão com o Feminino</h4>
-          <DataField label="Práticas" value={mentalidadeData?.reconexao_feminino_praticas} fieldPath="mentalidade_data.reconexao_feminino_praticas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== PRÁTICAS DIÁRIAS ==================== */}
-      <CollapsibleSection title="5. Práticas Diárias de Manutenção" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Meditação</h4>
-          <DataField label="Duração" value={mentalidadeData?.meditacao_duracao} fieldPath="mentalidade_data.meditacao_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={mentalidadeData?.meditacao_horario} fieldPath="mentalidade_data.meditacao_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Apps Recomendados" value={mentalidadeData?.meditacao_apps_recomendados} fieldPath="mentalidade_data.meditacao_apps_recomendados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Iniciar" value={mentalidadeData?.meditacao_inicio} fieldPath="mentalidade_data.meditacao_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo de Meditação" value={mentalidadeData?.meditacao_tipo} fieldPath="mentalidade_data.meditacao_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefícios" value={mentalidadeData?.meditacao_beneficios} fieldPath="mentalidade_data.meditacao_beneficios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Diário de Gratidão</h4>
-          <DataField label="Quando Fazer" value={mentalidadeData?.diario_gratidao_quando} fieldPath="mentalidade_data.diario_gratidao_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Praticar" value={mentalidadeData?.diario_gratidao_pratica} fieldPath="mentalidade_data.diario_gratidao_pratica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exemplos" value={mentalidadeData?.diario_gratidao_exemplos} fieldPath="mentalidade_data.diario_gratidao_exemplos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito no Cérebro" value={mentalidadeData?.diario_gratidao_efeito_cerebro} fieldPath="mentalidade_data.diario_gratidao_efeito_cerebro" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Afirmações Positivas</h4>
-          <DataField label="Quando Fazer" value={mentalidadeData?.afirmacoes_quando} fieldPath="mentalidade_data.afirmacoes_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exemplos Específicos" value={mentalidadeData?.afirmacoes_exemplos} fieldPath="mentalidade_data.afirmacoes_exemplos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Fazer" value={mentalidadeData?.afirmacoes_como} fieldPath="mentalidade_data.afirmacoes_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Resistência Interna" value={mentalidadeData?.afirmacoes_resistencia} fieldPath="mentalidade_data.afirmacoes_resistencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Movimento Consciente</h4>
-          <DataField label="Opções" value={mentalidadeData?.movimento_consciente_opcoes} fieldPath="mentalidade_data.movimento_consciente_opcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando Fazer" value={mentalidadeData?.movimento_consciente_quando} fieldPath="mentalidade_data.movimento_consciente_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Objetivo" value={mentalidadeData?.movimento_consciente_objetivo} fieldPath="mentalidade_data.movimento_consciente_objetivo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência" value={mentalidadeData?.movimento_consciente_frequencia} fieldPath="mentalidade_data.movimento_consciente_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== REDE DE APOIO ==================== */}
-      <CollapsibleSection title="6. Rede de Apoio" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Grupo de Apoio</h4>
-          <DataField label="Importância" value={mentalidadeData?.grupo_apoio_importancia} fieldPath="mentalidade_data.grupo_apoio_importancia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Frequência Ideal" value={mentalidadeData?.grupo_apoio_frequencia_ideal} fieldPath="mentalidade_data.grupo_apoio_frequencia_ideal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Substitui Terapia" value={mentalidadeData?.grupo_apoio_nao_substitui_terapia} fieldPath="mentalidade_data.grupo_apoio_nao_substitui_terapia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== CRONOGRAMA E MONITORAMENTO ==================== */}
-      <CollapsibleSection title="7. Cronograma e Monitoramento" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Cronograma Mental (12 Meses)</h4>
-          <DataField label="Cronograma Completo" value={mentalidadeData?.cronograma_mental_12_meses} fieldPath="mentalidade_data.cronograma_mental_12_meses" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Sinais de Progresso</h4>
-          <DataField label="Sinais de Progresso Mental" value={mentalidadeData?.sinais_progresso_mental} fieldPath="mentalidade_data.sinais_progresso_mental" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Alertas Críticos</h4>
-          <DataField label="Alertas Críticos de Saúde Mental" value={mentalidadeData?.alertas_criticos_saude_mental} fieldPath="mentalidade_data.alertas_criticos_saude_mental" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
+      {/* Padrões */}
+      {renderPadrao(livroVidaData.padrao_01, 1)}
+      {renderPadrao(livroVidaData.padrao_02, 2)}
+      {renderPadrao(livroVidaData.padrao_03, 3)}
+      {renderPadrao(livroVidaData.padrao_04, 4)}
+      {renderPadrao(livroVidaData.padrao_05, 5)}
+      {renderPadrao(livroVidaData.padrao_06, 6)}
+      {renderPadrao(livroVidaData.padrao_07, 7)}
+      {renderPadrao(livroVidaData.padrao_08, 8)}
+      {renderPadrao(livroVidaData.padrao_09, 9)}
+      {renderPadrao(livroVidaData.padrao_10, 10)}
     </div>
   );
 }
 
 // Componente da seção de Solução Suplementação
+// Interface para itens de suplementação
+interface SuplementacaoItem {
+  nome: string;
+  objetivo: string;
+  dosagem: string;
+  horario: string;
+  inicio: string;
+  termino: string;
+}
+
 function SuplemementacaoSection({ 
-  consultaId,
-  selectedField,
-  chatMessages,
-  isTyping,
-  chatInput,
-  onFieldSelect,
-  onSendMessage,
-  onChatInputChange
+  consultaId
 }: {
   consultaId: string;
-  selectedField: { fieldPath: string; label: string } | null;
-  chatMessages: ChatMessage[];
-  isTyping: boolean;
-  chatInput: string;
-  onFieldSelect: (fieldPath: string, label: string) => void;
-  onSendMessage: () => void;
-  onChatInputChange: (value: string) => void;
 }) {
-  const [suplementacaoData, setSuplementacaoData] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [suplementacaoData, setSuplementacaoData] = useState<{
+    suplementos: SuplementacaoItem[];
+    fitoterapicos: SuplementacaoItem[];
+    homeopatia: SuplementacaoItem[];
+    florais_bach: SuplementacaoItem[];
+  } | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [editingItem, setEditingItem] = useState<{
+    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach';
+    index: number;
+    field: keyof SuplementacaoItem;
+  } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Carregar dados ao montar o componente
   useEffect(() => {
-    loadSuplemementacaoData();
+    loadSuplementacaoData();
   }, [consultaId]);
 
   // Listener para recarregar dados quando a IA processar
   useEffect(() => {
     const handleRefresh = () => {
-      loadSuplemementacaoData();
+      loadSuplementacaoData();
     };
 
     window.addEventListener('suplementacao-data-refresh', handleRefresh);
@@ -2487,627 +2509,305 @@ function SuplemementacaoSection({
     };
   }, []);
 
-  const loadSuplemementacaoData = async () => {
+  const loadSuplementacaoData = async () => {
     try {
       setLoadingDetails(true);
+      setError(null);
+      
+      console.log('🔍 Carregando dados de suplementação para consulta:', consultaId);
+      
       const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setSuplementacaoData(data.suplementacao_data);
+      
+      console.log('📡 Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Erro na resposta:', errorData);
+        throw new Error(errorData.error || 'Erro ao carregar dados de suplementação');
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados de Suplementação:', error);
+      
+      const data = await response.json();
+      console.log('✅ Dados de suplementação recebidos:', data);
+      console.log('📊 Estrutura suplementacao_data:', {
+        hasData: !!data.suplementacao_data,
+        suplementos: data.suplementacao_data?.suplementos?.length || 0,
+        fitoterapicos: data.suplementacao_data?.fitoterapicos?.length || 0,
+        homeopatia: data.suplementacao_data?.homeopatia?.length || 0,
+        florais_bach: data.suplementacao_data?.florais_bach?.length || 0
+      });
+      
+      setSuplementacaoData(data.suplementacao_data);
+      setLoading(false);
+    } catch (err) {
+      console.error('❌ Erro ao carregar suplementação:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar suplementação');
+      setLoading(false);
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
+  // Função para iniciar edição
+  const handleStartEdit = (
+    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
+    index: number,
+    field: keyof SuplementacaoItem
+  ) => {
+    if (!suplementacaoData) return;
+    setEditingItem({ category, index, field });
+    setEditValue(suplementacaoData[category][index][field]);
+  };
+
+  // Função para salvar edição
+  const handleSaveEdit = async () => {
+    if (!editingItem || !suplementacaoData) return;
+
     try {
-      // Primeiro, atualizar diretamente no Supabase
+      setIsSaving(true);
+      
+      // Atualizar localmente primeiro
+      const newData = { ...suplementacaoData };
+      newData[editingItem.category][editingItem.index][editingItem.field] = editValue;
+      setSuplementacaoData(newData);
+      
+      // Salvar no banco de dados
+      console.log('💾 Salvando campo:', {
+        category: editingItem.category,
+        index: editingItem.index,
+        field: editingItem.field,
+        value: editValue
+      });
+
       const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fieldPath, 
-          value: newValue
+        body: JSON.stringify({
+          category: editingItem.category,
+          index: editingItem.index,
+          field: editingItem.field,
+          value: editValue
         }),
       });
 
-      if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-      
-      // Depois, notificar o webhook (opcional, para processamento adicional)
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
-          method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath, 
-            texto: newValue,
-            consultaId,
-            solucao_etapa: 'SUPLEMENTACAO'
-          }),
-        });
-      } catch (webhookError) {
-        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao salvar' }));
+        throw new Error(errorData.error || 'Erro ao salvar alteração');
       }
+
+      console.log('✅ Campo salvo com sucesso');
       
-      // Recarregar dados após salvar
-      await loadSuplemementacaoData();
+      // Limpar estado de edição
+      setEditingItem(null);
+      setEditValue('');
+      
     } catch (error) {
-      console.error('Erro ao salvar campo:', error);
-      throw error;
+      console.error('❌ Erro ao salvar campo:', error);
+      alert('Erro ao salvar alteração. Tente novamente.');
+      
+      // Recarregar dados para sincronizar com o banco
+      await loadSuplementacaoData();
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleAIEdit = (fieldPath: string, label: string) => {
-    onFieldSelect(fieldPath, label);
+  // Função para cancelar edição
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setEditValue('');
   };
 
-  if (loading) {
+  // Mostrar loading no primeiro carregamento
+  if (loading && !error) {
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
-        <p>Carregando dados de Suplementação...</p>
+        <p>Carregando dados de suplementação...</p>
       </div>
     );
   }
 
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <div className="anamnese-error">
+        <p style={{ color: '#f44336' }}>❌ {error}</p>
+        <button 
+          onClick={loadSuplementacaoData}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            background: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
+
+  // Se não houver dados, mostrar mensagem
+  if (!suplementacaoData) {
+    return (
+      <div className="anamnese-sections">
+        <p style={{ color: '#666', fontStyle: 'italic' }}>
+          Nenhum dado de suplementação encontrado para esta consulta.
+        </p>
+      </div>
+    );
+  }
+
+  // Função para renderizar célula editável
+  const renderEditableCell = (
+    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
+    index: number,
+    field: keyof SuplementacaoItem,
+    value: string
+  ) => {
+    const isEditing = editingItem?.category === category && 
+                     editingItem?.index === index && 
+                     editingItem?.field === field;
+
+    if (isEditing) {
+      return (
+        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          <textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            disabled={isSaving}
+            style={{ 
+              flex: 1, 
+              minHeight: '60px', 
+              padding: '5px',
+              fontSize: '14px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              opacity: isSaving ? 0.6 : 1
+            }}
+          />
+          <button
+            onClick={handleSaveEdit}
+            disabled={isSaving}
+            style={{
+              padding: '5px 10px',
+              background: isSaving ? '#ccc' : '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isSaving ? 'not-allowed' : 'pointer'
+            }}
+            title={isSaving ? 'Salvando...' : 'Salvar'}
+          >
+            {isSaving ? '...' : <Save className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            disabled={isSaving}
+            style={{
+              padding: '5px 10px',
+              background: isSaving ? '#ccc' : '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isSaving ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <span style={{ flex: 1 }}>{value || '-'}</span>
+        <button
+          onClick={() => handleStartEdit(category, index, field)}
+          disabled={loadingDetails || isSaving}
+          style={{
+            padding: '5px',
+            background: 'transparent',
+            border: 'none',
+            cursor: (loadingDetails || isSaving) ? 'not-allowed' : 'pointer',
+            color: '#666',
+            opacity: (loadingDetails || isSaving) ? 0.5 : 1
+          }}
+          title="Editar"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  };
+
+  // Função para renderizar tabela de categoria
+  const renderCategoryTable = (
+    title: string,
+    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
+    items: SuplementacaoItem[]
+  ) => {
+    if (items.length === 0) {
+      return (
+        <CollapsibleSection title={title} defaultOpen={true}>
+          <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhum item cadastrado</p>
+        </CollapsibleSection>
+      );
+    }
+
+    return (
+      <CollapsibleSection title={title} defaultOpen={true}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+            <thead>
+              <tr style={{ background: '#f5f5f5' }}>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Nome</th>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Objetivo</th>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Dosagem</th>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Horário</th>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Início</th>
+                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Término</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => (
+                <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
+                    {renderEditableCell(category, index, 'nome', item.nome)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top', maxWidth: '300px' }}>
+                    {renderEditableCell(category, index, 'objetivo', item.objetivo)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
+                    {renderEditableCell(category, index, 'dosagem', item.dosagem)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
+                    {renderEditableCell(category, index, 'horario', item.horario)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
+                    {renderEditableCell(category, index, 'inicio', item.inicio)}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
+                    {renderEditableCell(category, index, 'termino', item.termino)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleSection>
+    );
+  };
+
   return (
     <div className="anamnese-sections">
-      {/* ==================== INFORMAÇÕES GERAIS ==================== */}
-      <CollapsibleSection title="1. Objetivo e Filosofia da Suplementação" defaultOpen={true}>
-        <div className="anamnese-subsection">
-          <h4>Objetivo e Realidade</h4>
-          <DataField label="Objetivo Principal" value={suplementacaoData?.objetivo_principal} fieldPath="suplementacao_data.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade" value={suplementacaoData?.realidade} fieldPath="suplementacao_data.realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Filosofia da Suplementação</h4>
-          <DataField label="Realidade da Filosofia" value={suplementacaoData?.filosofia_suplementacao_realidade} fieldPath="suplementacao_data.filosofia_suplementacao_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Princípio" value={suplementacaoData?.filosofia_suplementacao_principio} fieldPath="suplementacao_data.filosofia_suplementacao_principio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ordem de Prioridade" value={suplementacaoData?.filosofia_suplementacao_ordem_prioridade} fieldPath="suplementacao_data.filosofia_suplementacao_ordem_prioridade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.filosofia_suplementacao_duracao} fieldPath="suplementacao_data.filosofia_suplementacao_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajustes" value={suplementacaoData?.filosofia_suplementacao_ajustes} fieldPath="suplementacao_data.filosofia_suplementacao_ajustes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== BASE ESSENCIAL - PARTE 1 ==================== */}
-      <CollapsibleSection title="2. Base Essencial - Vitamina D3" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Vitamina D3 (Colecalciferol)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.vitamina_d3_colecalciferol_urgencia} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.vitamina_d3_colecalciferol_funcoes} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Inicial Agressiva" value={suplementacaoData?.vitamina_d3_colecalciferol_dose_inicial_agressiva} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_dose_inicial_agressiva" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose de Manutenção" value={suplementacaoData?.vitamina_d3_colecalciferol_dose_manutencao} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_dose_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alvo Sanguíneo" value={suplementacaoData?.vitamina_d3_colecalciferol_alvo_sanguineo} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_alvo_sanguineo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.vitamina_d3_colecalciferol_forma} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.vitamina_d3_colecalciferol_tomar_com} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cofator Obrigatório" value={suplementacaoData?.vitamina_d3_colecalciferol_cofator_obrigatorio} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_cofator_obrigatorio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame de Controle" value={suplementacaoData?.vitamina_d3_colecalciferol_exame_controle} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_exame_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Toxicidade" value={suplementacaoData?.vitamina_d3_colecalciferol_toxicidade} fieldPath="suplementacao_data.vitamina_d3_colecalciferol_toxicidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Continuo organizando os campos em seções lógicas... */}
-      
-      <CollapsibleSection title="3. Base Essencial - Ômega 3" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Ômega 3 (EPA/DHA Alta Potência)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_urgencia} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_funcoes} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_dose_terapeutica} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Proporção Ideal" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_proporcao_ideal} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_proporcao_ideal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_fonte} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_fonte" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Qualidade Essencial" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_qualidade_essencial} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_qualidade_essencial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_horario} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conservação" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_conservacao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_conservacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Testar Qualidade" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_testar_qualidade} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_testar_qualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_contraindicacao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.omega_3_epa_dha_alta_potencia_duracao} fieldPath="suplementacao_data.omega_3_epa_dha_alta_potencia_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="4. Base Essencial - Magnésio" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Magnésio (Bisglicinato)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.magnesio_bisglicinato_urgencia} fieldPath="suplementacao_data.magnesio_bisglicinato_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.magnesio_bisglicinato_funcoes} fieldPath="suplementacao_data.magnesio_bisglicinato_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinais de Deficiência no Caso" value={suplementacaoData?.magnesio_bisglicinato_deficiencia_sinais_caso} fieldPath="suplementacao_data.magnesio_bisglicinato_deficiencia_sinais_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.magnesio_bisglicinato_dose} fieldPath="suplementacao_data.magnesio_bisglicinato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Formas (Melhores e Piores)" value={suplementacaoData?.magnesio_bisglicinato_formas_melhores_piores} fieldPath="suplementacao_data.magnesio_bisglicinato_formas_melhores_piores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma Escolhida para o Caso" value={suplementacaoData?.magnesio_bisglicinato_forma_escolhida_caso} fieldPath="suplementacao_data.magnesio_bisglicinato_forma_escolhida_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.magnesio_bisglicinato_horario} fieldPath="suplementacao_data.magnesio_bisglicinato_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Tomar Com" value={suplementacaoData?.magnesio_bisglicinato_nao_tomar_com} fieldPath="suplementacao_data.magnesio_bisglicinato_nao_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame" value={suplementacaoData?.magnesio_bisglicinato_exame} fieldPath="suplementacao_data.magnesio_bisglicinato_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.magnesio_bisglicinato_duracao} fieldPath="suplementacao_data.magnesio_bisglicinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Adicional para Sono (Magnésio + Glicina)" value={suplementacaoData?.magnesio_glicina_dose_sono} fieldPath="suplementacao_data.magnesio_glicina_dose_sono" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="5. Base Essencial - Complexo B, Vitamina C e Zinco" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Complexo B (Formas Ativas)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.complexo_b_formas_ativas_urgencia} fieldPath="suplementacao_data.complexo_b_formas_ativas_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.complexo_b_formas_ativas_funcoes} fieldPath="suplementacao_data.complexo_b_formas_ativas_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Priorizar Formas Ativas" value={suplementacaoData?.complexo_b_formas_ativas_priorizar_formas_ativas} fieldPath="suplementacao_data.complexo_b_formas_ativas_priorizar_formas_ativas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Por Que Formas Ativas" value={suplementacaoData?.complexo_b_formas_ativas_porque_ativas} fieldPath="suplementacao_data.complexo_b_formas_ativas_porque_ativas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.complexo_b_formas_ativas_dose} fieldPath="suplementacao_data.complexo_b_formas_ativas_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B12 Adicional" value={suplementacaoData?.complexo_b_formas_ativas_b12_adicional} fieldPath="suplementacao_data.complexo_b_formas_ativas_b12_adicional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.complexo_b_formas_ativas_horario} fieldPath="suplementacao_data.complexo_b_formas_ativas_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Urina Amarela (Normal)" value={suplementacaoData?.complexo_b_formas_ativas_urina_amarela} fieldPath="suplementacao_data.complexo_b_formas_ativas_urina_amarela" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.complexo_b_formas_ativas_duracao} fieldPath="suplementacao_data.complexo_b_formas_ativas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B5 (Ácido Pantotênico) Extra - Função" value={suplementacaoData?.b5_acido_pantotenico_extra_funcao} fieldPath="suplementacao_data.b5_acido_pantotenico_extra_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="B5 - Se Não Estiver no Complexo B" value={suplementacaoData?.b5_acido_pantotenico_extra_se_nao_no_complexo_b} fieldPath="suplementacao_data.b5_acido_pantotenico_extra_se_nao_no_complexo_b" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Vitamina C (Ácido Ascórbico)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.vitamina_c_acido_ascorbico_urgencia} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.vitamina_c_acido_ascorbico_funcoes} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.vitamina_c_acido_ascorbico_dose_terapeutica} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.vitamina_c_acido_ascorbico_forma} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.vitamina_c_acido_ascorbico_horario} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tolerância Intestinal" value={suplementacaoData?.vitamina_c_acido_ascorbico_tolerancia_intestinal} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_tolerancia_intestinal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.vitamina_c_acido_ascorbico_duracao} fieldPath="suplementacao_data.vitamina_c_acido_ascorbico_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Extra para Adrenal (Adicional)" value={suplementacaoData?.vitamina_c_dose_extra_adrenal_adicional} fieldPath="suplementacao_data.vitamina_c_dose_extra_adrenal_adicional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Total por Dia (Adrenal)" value={suplementacaoData?.vitamina_c_dose_extra_adrenal_total_dia} fieldPath="suplementacao_data.vitamina_c_dose_extra_adrenal_total_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Zinco (Bisglicinato)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.zinco_bisglicinato_urgencia} fieldPath="suplementacao_data.zinco_bisglicinato_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Funções" value={suplementacaoData?.zinco_bisglicinato_funcoes} fieldPath="suplementacao_data.zinco_bisglicinato_funcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinais de Deficiência no Caso" value={suplementacaoData?.zinco_bisglicinato_deficiencia_sinais_caso} fieldPath="suplementacao_data.zinco_bisglicinato_deficiencia_sinais_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Inicial" value={suplementacaoData?.zinco_bisglicinato_dose_inicial} fieldPath="suplementacao_data.zinco_bisglicinato_dose_inicial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose de Manutenção" value={suplementacaoData?.zinco_bisglicinato_dose_manutencao} fieldPath="suplementacao_data.zinco_bisglicinato_dose_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.zinco_bisglicinato_forma} fieldPath="suplementacao_data.zinco_bisglicinato_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.zinco_bisglicinato_tomar_com} fieldPath="suplementacao_data.zinco_bisglicinato_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Proporção Zinco:Cobre" value={suplementacaoData?.zinco_bisglicinato_proporcao_cobre} fieldPath="suplementacao_data.zinco_bisglicinato_proporcao_cobre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Tomar Com" value={suplementacaoData?.zinco_bisglicinato_nao_tomar_com} fieldPath="suplementacao_data.zinco_bisglicinato_nao_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame" value={suplementacaoData?.zinco_bisglicinato_exame} fieldPath="suplementacao_data.zinco_bisglicinato_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.zinco_bisglicinato_duracao} fieldPath="suplementacao_data.zinco_bisglicinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Continua com mais seções devido ao grande número de campos... */}
-      {/* Por brevidade, vou criar uma nota dizendo que há mais campos */}
-      
-      <CollapsibleSection title="6. Saúde Intestinal" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Probióticos (Rotação de Cepas)</h4>
-          <DataField label="Ver Agente 1 (LTB)" value={suplementacaoData?.probioticos_rotacao_cepas_ver_agente_1} fieldPath="suplementacao_data.probioticos_rotacao_cepas_ver_agente_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégia" value={suplementacaoData?.probioticos_rotacao_cepas_estrategia} fieldPath="suplementacao_data.probioticos_rotacao_cepas_estrategia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Potência" value={suplementacaoData?.probioticos_rotacao_cepas_potencia} fieldPath="suplementacao_data.probioticos_rotacao_cepas_potencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cepas a Priorizar" value={suplementacaoData?.probioticos_rotacao_cepas_cepas_priorizar} fieldPath="suplementacao_data.probioticos_rotacao_cepas_cepas_priorizar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.probioticos_rotacao_cepas_horario} fieldPath="suplementacao_data.probioticos_rotacao_cepas_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conservação" value={suplementacaoData?.probioticos_rotacao_cepas_conservacao} fieldPath="suplementacao_data.probioticos_rotacao_cepas_conservacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.probioticos_rotacao_cepas_duracao} fieldPath="suplementacao_data.probioticos_rotacao_cepas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Glutamina (Pó)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.l_glutamina_po_urgencia} fieldPath="suplementacao_data.l_glutamina_po_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.l_glutamina_po_funcao} fieldPath="suplementacao_data.l_glutamina_po_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Alta para o Caso" value={suplementacaoData?.l_glutamina_po_dose_alta_caso} fieldPath="suplementacao_data.l_glutamina_po_dose_alta_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.l_glutamina_po_forma} fieldPath="suplementacao_data.l_glutamina_po_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dissolver Em" value={suplementacaoData?.l_glutamina_po_dissolver} fieldPath="suplementacao_data.l_glutamina_po_dissolver" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_glutamina_po_horario} fieldPath="suplementacao_data.l_glutamina_po_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sabor" value={suplementacaoData?.l_glutamina_po_sabor} fieldPath="suplementacao_data.l_glutamina_po_sabor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_glutamina_po_duracao} fieldPath="suplementacao_data.l_glutamina_po_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.l_glutamina_po_contraindicacao} fieldPath="suplementacao_data.l_glutamina_po_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Colágeno Hidrolisado (Peptídeos)</h4>
-          <DataField label="Função" value={suplementacaoData?.colageno_hidrolisado_peptideos_funcao} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.colageno_hidrolisado_peptideos_tipo} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.colageno_hidrolisado_peptideos_dose} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.colageno_hidrolisado_peptideos_horario} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sabor" value={suplementacaoData?.colageno_hidrolisado_peptideos_sabor} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_sabor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.colageno_hidrolisado_peptideos_duracao} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.colageno_hidrolisado_peptideos_beneficio_extra} fieldPath="suplementacao_data.colageno_hidrolisado_peptideos_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Outros Suplementos Intestinais</h4>
-          <DataField label="Curcumina + Piperina - Função" value={suplementacaoData?.curcumina_piperina_funcao} fieldPath="suplementacao_data.curcumina_piperina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Dose" value={suplementacaoData?.curcumina_piperina_dose} fieldPath="suplementacao_data.curcumina_piperina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Tomar Com" value={suplementacaoData?.curcumina_piperina_tomar_com} fieldPath="suplementacao_data.curcumina_piperina_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Curcumina + Piperina - Duração" value={suplementacaoData?.curcumina_piperina_duracao} fieldPath="suplementacao_data.curcumina_piperina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          
-          <DataField label="Zinco-Carnosina (PepZinGI) - Função" value={suplementacaoData?.zinco_carnosina_pepzingi_funcao} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Dose" value={suplementacaoData?.zinco_carnosina_pepzingi_dose} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Forma" value={suplementacaoData?.zinco_carnosina_pepzingi_forma} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Duração" value={suplementacaoData?.zinco_carnosina_pepzingi_duracao} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Zinco-Carnosina - Benefício Extra" value={suplementacaoData?.zinco_carnosina_pepzingi_beneficio_extra} fieldPath="suplementacao_data.zinco_carnosina_pepzingi_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          
-          <DataField label="Prebióticos/Fibras - Tipos" value={suplementacaoData?.prebioticos_fibras_tipos} fieldPath="suplementacao_data.prebioticos_fibras_tipos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prebióticos - Horário" value={suplementacaoData?.prebioticos_fibras_horario} fieldPath="suplementacao_data.prebioticos_fibras_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prebióticos - Início Gradual" value={suplementacaoData?.prebioticos_fibras_inicio_gradual} fieldPath="suplementacao_data.prebioticos_fibras_inicio_gradual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          
-          <DataField label="Enzimas Digestivas - Quando" value={suplementacaoData?.enzimas_digestivas_quando} fieldPath="suplementacao_data.enzimas_digestivas_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Composição" value={suplementacaoData?.enzimas_digestivas_composicao} fieldPath="suplementacao_data.enzimas_digestivas_composicao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Dose" value={suplementacaoData?.enzimas_digestivas_dose} fieldPath="suplementacao_data.enzimas_digestivas_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Enzimas - Duração" value={suplementacaoData?.enzimas_digestivas_duracao} fieldPath="suplementacao_data.enzimas_digestivas_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SAÚDE DA TIREOIDE ==================== */}
-      <CollapsibleSection title="7. Suporte para Saúde da Tireoide" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Selênio (Selenometionina)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.selenio_selenometionina_urgencia} fieldPath="suplementacao_data.selenio_selenometionina_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.selenio_selenometionina_funcao} fieldPath="suplementacao_data.selenio_selenometionina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.selenio_selenometionina_estudos} fieldPath="suplementacao_data.selenio_selenometionina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.selenio_selenometionina_dose} fieldPath="suplementacao_data.selenio_selenometionina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.selenio_selenometionina_forma} fieldPath="suplementacao_data.selenio_selenometionina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Prefiro" value={suplementacaoData?.selenio_selenometionina_prefiro} fieldPath="suplementacao_data.selenio_selenometionina_prefiro" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Exceder" value={suplementacaoData?.selenio_selenometionina_nao_exceder} fieldPath="suplementacao_data.selenio_selenometionina_nao_exceder" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.selenio_selenometionina_duracao} fieldPath="suplementacao_data.selenio_selenometionina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Exame de Controle" value={suplementacaoData?.selenio_selenometionina_exame_controle} fieldPath="suplementacao_data.selenio_selenometionina_exame_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Iodo (Cauteloso)</h4>
-          <DataField label="Controvérsia" value={suplementacaoData?.iodo_cauteloso_controversia} fieldPath="suplementacao_data.iodo_cauteloso_controversia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade" value={suplementacaoData?.iodo_cauteloso_realidade} fieldPath="suplementacao_data.iodo_cauteloso_realidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Conduta para o Caso" value={suplementacaoData?.iodo_cauteloso_conduta_caso} fieldPath="suplementacao_data.iodo_cauteloso_conduta_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte Preferencial" value={suplementacaoData?.iodo_cauteloso_fonte_preferencial} fieldPath="suplementacao_data.iodo_cauteloso_fonte_preferencial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Monitorar" value={suplementacaoData?.iodo_cauteloso_monitorar} fieldPath="suplementacao_data.iodo_cauteloso_monitorar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.iodo_cauteloso_inicio} fieldPath="suplementacao_data.iodo_cauteloso_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Tirosina</h4>
-          <DataField label="Função" value={suplementacaoData?.l_tirosina_funcao} fieldPath="suplementacao_data.l_tirosina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_tirosina_dose} fieldPath="suplementacao_data.l_tirosina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_tirosina_horario} fieldPath="suplementacao_data.l_tirosina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.l_tirosina_beneficio_extra} fieldPath="suplementacao_data.l_tirosina_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.l_tirosina_contraindicacao} fieldPath="suplementacao_data.l_tirosina_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_tirosina_duracao} fieldPath="suplementacao_data.l_tirosina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Vitamina A (Retinol)</h4>
-          <DataField label="Função" value={suplementacaoData?.vitamina_a_retinol_funcao} fieldPath="suplementacao_data.vitamina_a_retinol_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.vitamina_a_retinol_dose} fieldPath="suplementacao_data.vitamina_a_retinol_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Fonte" value={suplementacaoData?.vitamina_a_retinol_fonte} fieldPath="suplementacao_data.vitamina_a_retinol_fonte" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Confundir" value={suplementacaoData?.vitamina_a_retinol_nao_confundir} fieldPath="suplementacao_data.vitamina_a_retinol_nao_confundir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Toxicidade" value={suplementacaoData?.vitamina_a_retinol_toxicidade} fieldPath="suplementacao_data.vitamina_a_retinol_toxicidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.vitamina_a_retinol_duracao} fieldPath="suplementacao_data.vitamina_a_retinol_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ferro (Se Baixo)</h4>
-          <DataField label="Função" value={suplementacaoData?.ferro_se_baixo_funcao} fieldPath="suplementacao_data.ferro_se_baixo_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Primeiro: Exame" value={suplementacaoData?.ferro_se_baixo_primeiro_exame} fieldPath="suplementacao_data.ferro_se_baixo_primeiro_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Baixo: Dose" value={suplementacaoData?.ferro_se_baixo_se_baixo_dose} fieldPath="suplementacao_data.ferro_se_baixo_se_baixo_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.ferro_se_baixo_tomar_com} fieldPath="suplementacao_data.ferro_se_baixo_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.ferro_se_baixo_horario} fieldPath="suplementacao_data.ferro_se_baixo_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Colateral" value={suplementacaoData?.ferro_se_baixo_efeito_colateral} fieldPath="suplementacao_data.ferro_se_baixo_efeito_colateral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle" value={suplementacaoData?.ferro_se_baixo_controle} fieldPath="suplementacao_data.ferro_se_baixo_controle" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.ferro_se_baixo_duracao} fieldPath="suplementacao_data.ferro_se_baixo_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SUPORTE ADRENAL ==================== */}
-      <CollapsibleSection title="8. Suporte para Adrenais (Fadiga Adrenal)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Ashwagandha (KSM-66)</h4>
-          <DataField label="Função" value={suplementacaoData?.ashwagandha_ksm66_funcao} fieldPath="suplementacao_data.ashwagandha_ksm66_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.ashwagandha_ksm66_tipo} fieldPath="suplementacao_data.ashwagandha_ksm66_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.ashwagandha_ksm66_dose} fieldPath="suplementacao_data.ashwagandha_ksm66_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.ashwagandha_ksm66_horario} fieldPath="suplementacao_data.ashwagandha_ksm66_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício (Estudos)" value={suplementacaoData?.ashwagandha_ksm66_beneficio_estudos} fieldPath="suplementacao_data.ashwagandha_ksm66_beneficio_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.ashwagandha_ksm66_contraindicacao} fieldPath="suplementacao_data.ashwagandha_ksm66_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.ashwagandha_ksm66_duracao} fieldPath="suplementacao_data.ashwagandha_ksm66_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Rhodiola Rosea</h4>
-          <DataField label="Função" value={suplementacaoData?.rhodiola_rosea_funcao} fieldPath="suplementacao_data.rhodiola_rosea_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.rhodiola_rosea_tipo} fieldPath="suplementacao_data.rhodiola_rosea_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.rhodiola_rosea_dose} fieldPath="suplementacao_data.rhodiola_rosea_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.rhodiola_rosea_horario} fieldPath="suplementacao_data.rhodiola_rosea_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.rhodiola_rosea_beneficio} fieldPath="suplementacao_data.rhodiola_rosea_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.rhodiola_rosea_duracao} fieldPath="suplementacao_data.rhodiola_rosea_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Fosfatidilserina</h4>
-          <DataField label="Função" value={suplementacaoData?.fosfatidilserina_funcao} fieldPath="suplementacao_data.fosfatidilserina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.fosfatidilserina_dose} fieldPath="suplementacao_data.fosfatidilserina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.fosfatidilserina_horario} fieldPath="suplementacao_data.fosfatidilserina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.fosfatidilserina_estudos} fieldPath="suplementacao_data.fosfatidilserina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.fosfatidilserina_duracao} fieldPath="suplementacao_data.fosfatidilserina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>DHEA (Se Muito Baixo)</h4>
-          <DataField label="Primeiro: Exame" value={suplementacaoData?.dhea_se_muito_baixo_primeiro_exame} fieldPath="suplementacao_data.dhea_se_muito_baixo_primeiro_exame" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Muito Baixo" value={suplementacaoData?.dhea_se_muito_baixo_se_muito_baixo} fieldPath="suplementacao_data.dhea_se_muito_baixo_se_muito_baixo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cuidado" value={suplementacaoData?.dhea_se_muito_baixo_cuidado} fieldPath="suplementacao_data.dhea_se_muito_baixo_cuidado" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== CONTROLE GLICÊMICO ==================== */}
-      <CollapsibleSection title="9. Controle Glicêmico e Resistência Insulínica" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Berberina HCL</h4>
-          <DataField label="Urgência" value={suplementacaoData?.berberina_hcl_urgencia} fieldPath="suplementacao_data.berberina_hcl_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.berberina_hcl_funcao} fieldPath="suplementacao_data.berberina_hcl_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Eficaz" value={suplementacaoData?.berberina_hcl_dose_eficaz} fieldPath="suplementacao_data.berberina_hcl_dose_eficaz" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.berberina_hcl_inicio} fieldPath="suplementacao_data.berberina_hcl_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício (Estudos)" value={suplementacaoData?.berberina_hcl_beneficio_estudos} fieldPath="suplementacao_data.berberina_hcl_beneficio_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Colateral" value={suplementacaoData?.berberina_hcl_efeito_colateral} fieldPath="suplementacao_data.berberina_hcl_efeito_colateral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação" value={suplementacaoData?.berberina_hcl_contraindicacao} fieldPath="suplementacao_data.berberina_hcl_contraindicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.berberina_hcl_duracao} fieldPath="suplementacao_data.berberina_hcl_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ácido Alfa-Lipóico (ALA)</h4>
-          <DataField label="Função" value={suplementacaoData?.acido_alfa_lipoico_ala_funcao} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.acido_alfa_lipoico_ala_dose} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.acido_alfa_lipoico_ala_forma} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.acido_alfa_lipoico_ala_horario} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.acido_alfa_lipoico_ala_beneficio} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.acido_alfa_lipoico_ala_duracao} fieldPath="suplementacao_data.acido_alfa_lipoico_ala_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Cromo Picolinato</h4>
-          <DataField label="Função" value={suplementacaoData?.cromo_picolinato_funcao} fieldPath="suplementacao_data.cromo_picolinato_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cromo_picolinato_dose} fieldPath="suplementacao_data.cromo_picolinato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.cromo_picolinato_horario} fieldPath="suplementacao_data.cromo_picolinato_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.cromo_picolinato_beneficio} fieldPath="suplementacao_data.cromo_picolinato_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cromo_picolinato_duracao} fieldPath="suplementacao_data.cromo_picolinato_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Canela Ceylon</h4>
-          <DataField label="Função" value={suplementacaoData?.canela_ceylon_funcao} fieldPath="suplementacao_data.canela_ceylon_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tipo" value={suplementacaoData?.canela_ceylon_tipo} fieldPath="suplementacao_data.canela_ceylon_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.canela_ceylon_dose} fieldPath="suplementacao_data.canela_ceylon_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Usar" value={suplementacaoData?.canela_ceylon_usar} fieldPath="suplementacao_data.canela_ceylon_usar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.canela_ceylon_duracao} fieldPath="suplementacao_data.canela_ceylon_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Inositol (Mio ou D-Chiro)</h4>
-          <DataField label="Função" value={suplementacaoData?.inositol_mio_ou_dci_funcao} fieldPath="suplementacao_data.inositol_mio_ou_dci_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.inositol_mio_ou_dci_dose} fieldPath="suplementacao_data.inositol_mio_ou_dci_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.inositol_mio_ou_dci_horario} fieldPath="suplementacao_data.inositol_mio_ou_dci_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.inositol_mio_ou_dci_beneficio_extra} fieldPath="suplementacao_data.inositol_mio_ou_dci_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.inositol_mio_ou_dci_duracao} fieldPath="suplementacao_data.inositol_mio_ou_dci_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Gymnema Sylvestre</h4>
-          <DataField label="Função" value={suplementacaoData?.gymnema_sylvestre_funcao} fieldPath="suplementacao_data.gymnema_sylvestre_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.gymnema_sylvestre_dose} fieldPath="suplementacao_data.gymnema_sylvestre_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar" value={suplementacaoData?.gymnema_sylvestre_tomar} fieldPath="suplementacao_data.gymnema_sylvestre_tomar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Efeito Curioso" value={suplementacaoData?.gymnema_sylvestre_efeito_curioso} fieldPath="suplementacao_data.gymnema_sylvestre_efeito_curioso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.gymnema_sylvestre_duracao} fieldPath="suplementacao_data.gymnema_sylvestre_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SAÚDE HEPÁTICA ==================== */}
-      <CollapsibleSection title="10. Saúde Hepática (Detox e Proteção)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Silimarina (Cardo Mariano)</h4>
-          <DataField label="Urgência" value={suplementacaoData?.silimarina_cardo_mariano_urgencia} fieldPath="suplementacao_data.silimarina_cardo_mariano_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Função" value={suplementacaoData?.silimarina_cardo_mariano_funcao} fieldPath="suplementacao_data.silimarina_cardo_mariano_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose Terapêutica" value={suplementacaoData?.silimarina_cardo_mariano_dose_terapeutica} fieldPath="suplementacao_data.silimarina_cardo_mariano_dose_terapeutica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.silimarina_cardo_mariano_duracao} fieldPath="suplementacao_data.silimarina_cardo_mariano_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.silimarina_cardo_mariano_estudos} fieldPath="suplementacao_data.silimarina_cardo_mariano_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Custo/Mês" value={suplementacaoData?.silimarina_cardo_mariano_custo_mes} fieldPath="suplementacao_data.silimarina_cardo_mariano_custo_mes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Colina (Bitartrato ou CDP-Colina)</h4>
-          <DataField label="Função" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_funcao} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_dose} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combinar Com" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_combinar_com} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_combinar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_beneficio} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.colina_bitartrato_ou_cdp_colina_duracao} fieldPath="suplementacao_data.colina_bitartrato_ou_cdp_colina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>NAC (N-Acetilcisteína)</h4>
-          <DataField label="Função" value={suplementacaoData?.nac_n_acetilcisteina_funcao} fieldPath="suplementacao_data.nac_n_acetilcisteina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.nac_n_acetilcisteina_dose} fieldPath="suplementacao_data.nac_n_acetilcisteina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.nac_n_acetilcisteina_horario} fieldPath="suplementacao_data.nac_n_acetilcisteina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.nac_n_acetilcisteina_beneficio_extra} fieldPath="suplementacao_data.nac_n_acetilcisteina_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.nac_n_acetilcisteina_duracao} fieldPath="suplementacao_data.nac_n_acetilcisteina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Alcachofra (Cynara)</h4>
-          <DataField label="Função" value={suplementacaoData?.alcachofra_cynara_funcao} fieldPath="suplementacao_data.alcachofra_cynara_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.alcachofra_cynara_dose} fieldPath="suplementacao_data.alcachofra_cynara_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.alcachofra_cynara_duracao} fieldPath="suplementacao_data.alcachofra_cynara_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Taurina</h4>
-          <DataField label="Função" value={suplementacaoData?.taurina_funcao} fieldPath="suplementacao_data.taurina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.taurina_dose} fieldPath="suplementacao_data.taurina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.taurina_duracao} fieldPath="suplementacao_data.taurina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SONO E RELAXAMENTO ==================== */}
-      <CollapsibleSection title="11. Sono e Relaxamento" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>L-Triptofano ou 5-HTP</h4>
-          <DataField label="Função" value={suplementacaoData?.l_triptofano_ou_5_htp_funcao} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Opção 1" value={suplementacaoData?.l_triptofano_ou_5_htp_opcao_1} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_opcao_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Opção 2" value={suplementacaoData?.l_triptofano_ou_5_htp_opcao_2} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_opcao_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Escolher" value={suplementacaoData?.l_triptofano_ou_5_htp_escolher} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_escolher" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_triptofano_ou_5_htp_horario} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.l_triptofano_ou_5_htp_tomar_com} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contraindicação Crítica" value={suplementacaoData?.l_triptofano_ou_5_htp_contraindicacao_critica} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_contraindicacao_critica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Solução para o Caso" value={suplementacaoData?.l_triptofano_ou_5_htp_solucao_caso} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_solucao_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alternativa Segura" value={suplementacaoData?.l_triptofano_ou_5_htp_alternativa_segura} fieldPath="suplementacao_data.l_triptofano_ou_5_htp_alternativa_segura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Melatonina</h4>
-          <DataField label="Função" value={suplementacaoData?.melatonina_funcao} fieldPath="suplementacao_data.melatonina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.melatonina_dose} fieldPath="suplementacao_data.melatonina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Início" value={suplementacaoData?.melatonina_inicio} fieldPath="suplementacao_data.melatonina_inicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.melatonina_forma} fieldPath="suplementacao_data.melatonina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Segurança" value={suplementacaoData?.melatonina_seguranca} fieldPath="suplementacao_data.melatonina_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Despertar/Piora" value={suplementacaoData?.melatonina_despertar_piora} fieldPath="suplementacao_data.melatonina_despertar_piora" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.melatonina_duracao} fieldPath="suplementacao_data.melatonina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Teanina</h4>
-          <DataField label="Função" value={suplementacaoData?.l_teanina_funcao} fieldPath="suplementacao_data.l_teanina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_teanina_dose} fieldPath="suplementacao_data.l_teanina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.l_teanina_horario} fieldPath="suplementacao_data.l_teanina_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combo" value={suplementacaoData?.l_teanina_combo} fieldPath="suplementacao_data.l_teanina_combo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.l_teanina_duracao} fieldPath="suplementacao_data.l_teanina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Glicina</h4>
-          <DataField label="Função" value={suplementacaoData?.glicina_funcao} fieldPath="suplementacao_data.glicina_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.glicina_dose} fieldPath="suplementacao_data.glicina_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.glicina_forma} fieldPath="suplementacao_data.glicina_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.glicina_estudos} fieldPath="suplementacao_data.glicina_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.glicina_duracao} fieldPath="suplementacao_data.glicina_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Fitoterápicos para Sono</h4>
-          <DataField label="Valeriana" value={suplementacaoData?.fitoterapicos_valeriana} fieldPath="suplementacao_data.fitoterapicos_valeriana" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Passiflora" value={suplementacaoData?.fitoterapicos_passiflora} fieldPath="suplementacao_data.fitoterapicos_passiflora" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Melissa" value={suplementacaoData?.fitoterapicos_melissa} fieldPath="suplementacao_data.fitoterapicos_melissa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Combinar" value={suplementacaoData?.fitoterapicos_combinar} fieldPath="suplementacao_data.fitoterapicos_combinar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.fitoterapicos_duracao} fieldPath="suplementacao_data.fitoterapicos_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ENERGIA MITOCONDRIAL ==================== */}
-      <CollapsibleSection title="12. Energia Mitocondrial" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Coenzima Q10 (Ubiquinol)</h4>
-          <DataField label="Função" value={suplementacaoData?.coenzima_q10_ubiquinol_funcao} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.coenzima_q10_ubiquinol_forma} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.coenzima_q10_ubiquinol_dose} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tomar Com" value={suplementacaoData?.coenzima_q10_ubiquinol_tomar_com} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_tomar_com" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício Extra" value={suplementacaoData?.coenzima_q10_ubiquinol_beneficio_extra} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_beneficio_extra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estatinas Depletem" value={suplementacaoData?.coenzima_q10_ubiquinol_estatinas_depletem} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_estatinas_depletem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.coenzima_q10_ubiquinol_duracao} fieldPath="suplementacao_data.coenzima_q10_ubiquinol_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>PQQ (Pirroloquinolina Quinona)</h4>
-          <DataField label="Função" value={suplementacaoData?.pqq_pirroloquinolina_quinona_funcao} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.pqq_pirroloquinolina_quinona_dose} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.pqq_pirroloquinolina_quinona_horario} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Sinergia" value={suplementacaoData?.pqq_pirroloquinolina_quinona_sinergia} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_sinergia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.pqq_pirroloquinolina_quinona_duracao} fieldPath="suplementacao_data.pqq_pirroloquinolina_quinona_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Acetil-L-Carnitina (ALCAR)</h4>
-          <DataField label="Função" value={suplementacaoData?.acetil_l_carnitina_alcar_funcao} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.acetil_l_carnitina_alcar_dose} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.acetil_l_carnitina_alcar_horario} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.acetil_l_carnitina_alcar_beneficio} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.acetil_l_carnitina_alcar_duracao} fieldPath="suplementacao_data.acetil_l_carnitina_alcar_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>D-Ribose</h4>
-          <DataField label="Função" value={suplementacaoData?.d_ribose_funcao} fieldPath="suplementacao_data.d_ribose_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.d_ribose_dose} fieldPath="suplementacao_data.d_ribose_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Forma" value={suplementacaoData?.d_ribose_forma} fieldPath="suplementacao_data.d_ribose_forma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quando" value={suplementacaoData?.d_ribose_quando} fieldPath="suplementacao_data.d_ribose_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== EMAGRECIMENTO ==================== */}
-      <CollapsibleSection title="13. Suporte para Emagrecimento (Opcional)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>CLA (Ácido Linoleico Conjugado)</h4>
-          <DataField label="Função" value={suplementacaoData?.cla_acido_linoleico_conjugado_funcao} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cla_acido_linoleico_conjugado_dose} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estudos" value={suplementacaoData?.cla_acido_linoleico_conjugado_estudos} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_estudos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cla_acido_linoleico_conjugado_duracao} fieldPath="suplementacao_data.cla_acido_linoleico_conjugado_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Chá Verde (EGCG)</h4>
-          <DataField label="Função" value={suplementacaoData?.cha_verde_egcg_funcao} fieldPath="suplementacao_data.cha_verde_egcg_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cha_verde_egcg_dose} fieldPath="suplementacao_data.cha_verde_egcg_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário" value={suplementacaoData?.cha_verde_egcg_horario} fieldPath="suplementacao_data.cha_verde_egcg_horario" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={suplementacaoData?.cha_verde_egcg_beneficio} fieldPath="suplementacao_data.cha_verde_egcg_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Café Verde</h4>
-          <DataField label="Função" value={suplementacaoData?.cafe_verde_funcao} fieldPath="suplementacao_data.cafe_verde_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.cafe_verde_dose} fieldPath="suplementacao_data.cafe_verde_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={suplementacaoData?.cafe_verde_duracao} fieldPath="suplementacao_data.cafe_verde_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>L-Carnitina Tartrato</h4>
-          <DataField label="Função" value={suplementacaoData?.l_carnitina_tartrato_funcao} fieldPath="suplementacao_data.l_carnitina_tartrato_funcao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Dose" value={suplementacaoData?.l_carnitina_tartrato_dose} fieldPath="suplementacao_data.l_carnitina_tartrato_dose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Eficácia" value={suplementacaoData?.l_carnitina_tartrato_eficacia} fieldPath="suplementacao_data.l_carnitina_tartrato_eficacia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== CRONOGRAMA E EXAMES ==================== */}
-      <CollapsibleSection title="Cronograma por Período e Horários" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Cronograma por Mês</h4>
-          <DataField label="Mês 1-2: Base Essencial Obrigatório - Lista" value={suplementacaoData?.mes_1_2_base_essencial_obrigatorio_lista} fieldPath="suplementacao_data.mes_1_2_base_essencial_obrigatorio_lista" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 1-2: Não Negociável" value={suplementacaoData?.mes_1_2_base_essencial_obrigatorio_nao_negociavel} fieldPath="suplementacao_data.mes_1_2_base_essencial_obrigatorio_nao_negociavel" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 3-6: Expandido Importante - Adicionar" value={suplementacaoData?.mes_3_6_expandido_importante_adicionar} fieldPath="suplementacao_data.mes_3_6_expandido_importante_adicionar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mês 7-12: Otimização Opcional - Adicionar se Orçamento" value={suplementacaoData?.mes_7_12_otimizacao_opcional_adicionar_se_orcamento} fieldPath="suplementacao_data.mes_7_12_otimizacao_opcional_adicionar_se_orcamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Horários Sugeridos</h4>
-          <DataField label="Jejum ao Acordar" value={suplementacaoData?.jejum_ao_acordar} fieldPath="suplementacao_data.jejum_ao_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Café da Manhã (com comida/gordura)" value={suplementacaoData?.cafe_manha_com_comida_gordura} fieldPath="suplementacao_data.cafe_manha_com_comida_gordura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Almoço (com comida)" value={suplementacaoData?.almoco_com_comida} fieldPath="suplementacao_data.almoco_com_comida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meio da Tarde" value={suplementacaoData?.meio_tarde} fieldPath="suplementacao_data.meio_tarde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Jantar (com comida)" value={suplementacaoData?.jantar_com_comida} fieldPath="suplementacao_data.jantar_com_comida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="1 Hora Antes de Dormir" value={suplementacaoData?.uma_hora_antes_dormir} fieldPath="suplementacao_data.uma_hora_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="30 Min Antes de Dormir" value={suplementacaoData?.trinta_min_antes_dormir} fieldPath="suplementacao_data.trinta_min_antes_dormir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Qualquer Hora (estômago vazio)" value={suplementacaoData?.qualquer_hora_estomago_vazio} fieldPath="suplementacao_data.qualquer_hora_estomago_vazio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Exames de Controle</h4>
-          <DataField label="Basal (Mês 1)" value={suplementacaoData?.basal_mes_1} fieldPath="suplementacao_data.basal_mes_1" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 3)" value={suplementacaoData?.controle_mes_3} fieldPath="suplementacao_data.controle_mes_3" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 6)" value={suplementacaoData?.controle_mes_6} fieldPath="suplementacao_data.controle_mes_6" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Controle (Mês 12)" value={suplementacaoData?.controle_mes_12} fieldPath="suplementacao_data.controle_mes_12" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ajustar Doses" value={suplementacaoData?.ajustar_doses} fieldPath="suplementacao_data.ajustar_doses" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ALERTAS CRÍTICOS ==================== */}
-      <CollapsibleSection title="Alertas Críticos de Segurança" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Avisos Importantes</h4>
-          <DataField label="Alertas Críticos de Segurança" value={suplementacaoData?.alertas_criticos_seguranca} fieldPath="suplementacao_data.alertas_criticos_seguranca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
+      {renderCategoryTable("1. Suplementos", "suplementos", suplementacaoData.suplementos)}
+      {renderCategoryTable("2. Fitoterápicos", "fitoterapicos", suplementacaoData.fitoterapicos)}
+      {renderCategoryTable("3. Homeopatia", "homeopatia", suplementacaoData.homeopatia)}
+      {renderCategoryTable("4. Florais de Bach", "florais_bach", suplementacaoData.florais_bach)}
     </div>
   );
 }
@@ -3149,15 +2849,31 @@ function AlimentacaoSection({
   const loadAlimentacaoData = async () => {
     try {
       setLoadingDetails(true);
+      console.log('🔍 [FRONTEND] Carregando dados de alimentação para consulta:', consultaId);
+      
       const response = await fetch(`/api/alimentacao/${consultaId}`);
+      
+      console.log('📡 [FRONTEND] Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [FRONTEND] Dados recebidos:', data);
+        console.log('📊 [FRONTEND] Estrutura alimentacao_data:', {
+          cafe_da_manha: data.alimentacao_data?.cafe_da_manha?.length || 0,
+          almoco: data.alimentacao_data?.almoco?.length || 0,
+          cafe_da_tarde: data.alimentacao_data?.cafe_da_tarde?.length || 0,
+          jantar: data.alimentacao_data?.jantar?.length || 0
+        });
+        
         setAlimentacaoData(data.alimentacao_data);
+      } else {
+        console.error('❌ [FRONTEND] Erro na resposta:', response.statusText);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados de Alimentação:', error);
+      console.error('❌ [FRONTEND] Erro ao carregar dados de Alimentação:', error);
     } finally {
       setLoadingDetails(false);
+      setLoading(false);
     }
   };
 
@@ -3252,11 +2968,27 @@ function AlimentacaoSection({
     setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
   };
 
+  console.log('🔍 [FRONTEND] AlimentacaoSection - Estado atual:', {
+    loading,
+    hasData: !!alimentacaoData,
+    dataStructure: alimentacaoData ? Object.keys(alimentacaoData) : []
+  });
+
   if (loading) {
     return (
       <div className="anamnese-loading">
         <div className="loading-spinner"></div>
         <p>Carregando dados de alimentação...</p>
+      </div>
+    );
+  }
+
+  if (!alimentacaoData) {
+    return (
+      <div className="anamnese-sections">
+        <p style={{ color: '#666', fontStyle: 'italic' }}>
+          Nenhum dado de alimentação encontrado para esta consulta.
+        </p>
       </div>
     );
   }
@@ -3269,10 +3001,17 @@ function AlimentacaoSection({
   ];
 
   const getRefeicaoData = (refeicaoKey: string) => {
-    if (!alimentacaoData) return [];
+    if (!alimentacaoData) {
+      console.log('⚠️ [FRONTEND] alimentacaoData não existe');
+      return [];
+    }
     
-    // Usar os dados organizados pela API
-    return alimentacaoData[refeicaoKey] || [];
+    // Retornar os dados diretamente da propriedade da refeição
+    const dados = alimentacaoData[refeicaoKey as keyof typeof alimentacaoData] || [];
+    
+    console.log(`📋 [FRONTEND] Dados para ${refeicaoKey}:`, dados.length, 'itens');
+    
+    return Array.isArray(dados) ? dados : [];
   };
 
   return (
@@ -3396,415 +3135,6 @@ function AlimentacaoSection({
   );
 }
 
-// Componente da seção de Solução Hábitos de Vida
-function HabitosDeVidaSection({ 
-  consultaId,
-  selectedField,
-  chatMessages,
-  isTyping,
-  chatInput,
-  onFieldSelect,
-  onSendMessage,
-  onChatInputChange
-}: {
-  consultaId: string;
-  selectedField: { fieldPath: string; label: string } | null;
-  chatMessages: ChatMessage[];
-  isTyping: boolean;
-  chatInput: string;
-  onFieldSelect: (fieldPath: string, label: string) => void;
-  onSendMessage: () => void;
-  onChatInputChange: (value: string) => void;
-}) {
-  const [habitosVidaData, setHabitosVidaData] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadHabitosVidaData();
-  }, [consultaId]);
-
-  // Listener para recarregar dados quando a IA processar
-  useEffect(() => {
-    const handleRefresh = () => {
-      loadHabitosVidaData();
-    };
-
-    window.addEventListener('habitos-vida-data-refresh', handleRefresh);
-    
-    return () => {
-      window.removeEventListener('habitos-vida-data-refresh', handleRefresh);
-    };
-  }, []);
-
-  const loadHabitosVidaData = async () => {
-    try {
-      setLoadingDetails(true);
-      const response = await fetch(`/api/solucao-habitos-vida/${consultaId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHabitosVidaData(data.habitos_vida_data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados de Hábitos de Vida:', error);
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
-
-  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
-    try {
-      // Primeiro, atualizar diretamente no Supabase
-      const response = await fetch(`/api/solucao-habitos-vida/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fieldPath, 
-          value: newValue
-        }),
-      });
-
-      if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-      
-      // Depois, notificar o webhook (opcional, para processamento adicional)
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
-          method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath, 
-            texto: newValue,
-            consultaId,
-            solucao_etapa: 'HABITOS_DE_VIDA'
-          }),
-        });
-      } catch (webhookError) {
-        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
-      }
-      
-      // Recarregar dados após salvar
-      await loadHabitosVidaData();
-    } catch (error) {
-      console.error('Erro ao salvar campo:', error);
-      throw error;
-    }
-  };
-
-  const handleAIEdit = (fieldPath: string, label: string) => {
-    onFieldSelect(fieldPath, label);
-  };
-
-  if (loading) {
-    return (
-      <div className="anamnese-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando dados de Hábitos de Vida...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="anamnese-sections">
-      {/* ==================== INFORMAÇÕES GERAIS ==================== */}
-      <CollapsibleSection title="1. Objetivo e Realidade Atual" defaultOpen={true}>
-        <div className="anamnese-subsection">
-          <h4>Contexto</h4>
-          <DataField label="Objetivo Principal" value={habitosVidaData?.objetivo_principal} fieldPath="habitos_vida_data.objetivo_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade Atual (Brutal)" value={habitosVidaData?.realidade_atual_brutal} fieldPath="habitos_vida_data.realidade_atual_brutal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== SONO ==================== */}
-      <CollapsibleSection title="2. Sono (Protocolo Detalhado)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Referências e Contexto</h4>
-          <DataField label="Ver Agente 2 (Mentalidade)" value={habitosVidaData?.sono_ver_agente_2} fieldPath="habitos_vida_data.sono_ver_agente_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Adicionar Aqui" value={habitosVidaData?.sono_adicionar_aqui} fieldPath="habitos_vida_data.sono_adicionar_aqui" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Realidade do Caso" value={habitosVidaData?.sono_realidade_caso} fieldPath="habitos_vida_data.sono_realidade_caso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meta Inquebrantável" value={habitosVidaData?.sono_meta_inquebrantavel} fieldPath="habitos_vida_data.sono_meta_inquebrantavel" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Higiene do Sono - Horário Fixo</h4>
-          <DataField label="Regra" value={habitosVidaData?.sono_higiene_horario_fixo_regra} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_regra" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Horário de Acordar" value={habitosVidaData?.sono_higiene_horario_fixo_acordar} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Consistência" value={habitosVidaData?.sono_higiene_horario_fixo_consistencia} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_consistencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Despertador" value={habitosVidaData?.sono_higiene_horario_fixo_despertador} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_despertador" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Finais de Semana" value={habitosVidaData?.sono_higiene_horario_fixo_finais_semana} fieldPath="habitos_vida_data.sono_higiene_horario_fixo_finais_semana" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ambiente do Sono</h4>
-          <DataField label="Escuridão Total" value={habitosVidaData?.sono_ambiente_escuridao_total} fieldPath="habitos_vida_data.sono_ambiente_escuridao_total" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Temperatura Fresca" value={habitosVidaData?.sono_ambiente_temperatura_fresca} fieldPath="habitos_vida_data.sono_ambiente_temperatura_fresca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Silêncio ou Ruído Branco" value={habitosVidaData?.sono_ambiente_silencio_ou_ruido_branco} fieldPath="habitos_vida_data.sono_ambiente_silencio_ou_ruido_branco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Colchão e Travesseiro Adequados" value={habitosVidaData?.sono_ambiente_colchao_travesseiro_adequados} fieldPath="habitos_vida_data.sono_ambiente_colchao_travesseiro_adequados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Quarto Exclusivo para Sono/Sexo" value={habitosVidaData?.sono_ambiente_quarto_exclusivo_sono_sexo} fieldPath="habitos_vida_data.sono_ambiente_quarto_exclusivo_sono_sexo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Rotina Pré-Sono</h4>
-          <DataField label="Timeline da Rotina" value={habitosVidaData?.sono_rotina_pre_sono_timeline} fieldPath="habitos_vida_data.sono_rotina_pre_sono_timeline" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ritual de Relaxamento - Atividades" value={habitosVidaData?.sono_ritual_relaxamento_atividades} fieldPath="habitos_vida_data.sono_ritual_relaxamento_atividades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Desligar Telas (2h Antes)</h4>
-          <DataField label="Horário Limite" value={habitosVidaData?.sono_desligar_telas_2h_horario_limite} fieldPath="habitos_vida_data.sono_desligar_telas_2h_horario_limite" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Por Quê" value={habitosVidaData?.sono_desligar_telas_2h_porque} fieldPath="habitos_vida_data.sono_desligar_telas_2h_porque" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégias" value={habitosVidaData?.sono_desligar_telas_2h_estrategias} fieldPath="habitos_vida_data.sono_desligar_telas_2h_estrategias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>O Que Evitar</h4>
-          <DataField label="Evitar Cafeína" value={habitosVidaData?.sono_evitar_cafeina} fieldPath="habitos_vida_data.sono_evitar_cafeina" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Álcool" value={habitosVidaData?.sono_evitar_alcool} fieldPath="habitos_vida_data.sono_evitar_alcool" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Refeição Pesada" value={habitosVidaData?.sono_evitar_refeicao_pesada} fieldPath="habitos_vida_data.sono_evitar_refeicao_pesada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Exercício Intenso" value={habitosVidaData?.sono_evitar_exercicio_intenso} fieldPath="habitos_vida_data.sono_evitar_exercicio_intenso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Evitar Líquidos em Excesso" value={habitosVidaData?.sono_evitar_liquidos_excesso} fieldPath="habitos_vida_data.sono_evitar_liquidos_excesso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Exposição à Luz</h4>
-          <DataField label="Manhã" value={habitosVidaData?.sono_exposicao_luz_manha} fieldPath="habitos_vida_data.sono_exposicao_luz_manha" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Durante o Dia" value={habitosVidaData?.sono_exposicao_luz_dia} fieldPath="habitos_vida_data.sono_exposicao_luz_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tarde" value={habitosVidaData?.sono_exposicao_luz_tarde} fieldPath="habitos_vida_data.sono_exposicao_luz_tarde" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Noite" value={habitosVidaData?.sono_exposicao_luz_noite} fieldPath="habitos_vida_data.sono_exposicao_luz_noite" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Investigações e Estratégias</h4>
-          <DataField label="Investigar Apneia" value={habitosVidaData?.sono_investigar_apneia} fieldPath="habitos_vida_data.sono_investigar_apneia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Investigar Pernas Inquietas" value={habitosVidaData?.sono_investigar_pernas_inquietas} fieldPath="habitos_vida_data.sono_investigar_pernas_inquietas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Se Não Dormir em 30 Min" value={habitosVidaData?.sono_se_nao_dorme_30min} fieldPath="habitos_vida_data.sono_se_nao_dorme_30min" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ALIMENTAÇÃO ==================== */}
-      <CollapsibleSection title="3. Alimentação (Aplicação Prática)" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Referências</h4>
-          <DataField label="Ver Agente 3 (Alimentação)" value={habitosVidaData?.alimentacao_ver_agente_3} fieldPath="habitos_vida_data.alimentacao_ver_agente_3" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Adicionar Aqui" value={habitosVidaData?.alimentacao_adicionar_aqui} fieldPath="habitos_vida_data.alimentacao_adicionar_aqui" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Refeições Conscientes - Meal Prep</h4>
-          <DataField label="Quando Fazer" value={habitosVidaData?.refeicoes_conscientes_meal_prep_quando} fieldPath="habitos_vida_data.refeicoes_conscientes_meal_prep_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="O Que Preparar" value={habitosVidaData?.refeicoes_conscientes_meal_prep_o_que_preparar} fieldPath="habitos_vida_data.refeicoes_conscientes_meal_prep_o_que_preparar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Recipientes" value={habitosVidaData?.refeicoes_conscientes_meal_prep_recipientes} fieldPath="habitos_vida_data.refeicoes_conscientes_meal_prep_recipientes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={habitosVidaData?.refeicoes_conscientes_meal_prep_beneficio} fieldPath="habitos_vida_data.refeicoes_conscientes_meal_prep_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Investimento" value={habitosVidaData?.refeicoes_conscientes_meal_prep_investimento} fieldPath="habitos_vida_data.refeicoes_conscientes_meal_prep_investimento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Refeição Como Momento Sagrado</h4>
-          <DataField label="Regras" value={habitosVidaData?.refeicao_momento_sagrado_regras} fieldPath="habitos_vida_data.refeicao_momento_sagrado_regras" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={habitosVidaData?.refeicao_momento_sagrado_beneficio} fieldPath="habitos_vida_data.refeicao_momento_sagrado_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Situações Sociais - Festas</h4>
-          <DataField label="Pré-Festa" value={habitosVidaData?.sociais_festas_pre} fieldPath="habitos_vida_data.sociais_festas_pre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Durante a Festa" value={habitosVidaData?.sociais_festas_durante} fieldPath="habitos_vida_data.sociais_festas_durante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Pós-Festa" value={habitosVidaData?.sociais_festas_pos} fieldPath="habitos_vida_data.sociais_festas_pos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Compensar" value={habitosVidaData?.sociais_festas_nao_compensar} fieldPath="habitos_vida_data.sociais_festas_nao_compensar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Situações Sociais - Restaurantes</h4>
-          <DataField label="Como Escolher" value={habitosVidaData?.sociais_restaurantes_escolher} fieldPath="habitos_vida_data.sociais_restaurantes_escolher" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Pedir" value={habitosVidaData?.sociais_restaurantes_pedir} fieldPath="habitos_vida_data.sociais_restaurantes_pedir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Molhos e Temperos" value={habitosVidaData?.sociais_restaurantes_molhos} fieldPath="habitos_vida_data.sociais_restaurantes_molhos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Compartilhar Pratos" value={habitosVidaData?.sociais_restaurantes_compartilhar} fieldPath="habitos_vida_data.sociais_restaurantes_compartilhar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Pressão Familiar</h4>
-          <DataField label="Respostas Prontas" value={habitosVidaData?.sociais_pressao_familia_respostas} fieldPath="habitos_vida_data.sociais_pressao_familia_respostas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Precisa Explicar Tudo" value={habitosVidaData?.sociais_pressao_familia_nao_explicar} fieldPath="habitos_vida_data.sociais_pressao_familia_nao_explicar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Mudar de Assunto" value={habitosVidaData?.sociais_pressao_familia_mudar_assunto} fieldPath="habitos_vida_data.sociais_pressao_familia_mudar_assunto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Assertividade" value={habitosVidaData?.sociais_pressao_familia_assertividade} fieldPath="habitos_vida_data.sociais_pressao_familia_assertividade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Contextos Específicos</h4>
-          <DataField label="Almoços de Trabalho" value={habitosVidaData?.sociais_almocos_trabalho} fieldPath="habitos_vida_data.sociais_almocos_trabalho" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Finais de Semana (Regra 80/20)" value={habitosVidaData?.sociais_finais_semana_regra_80_20} fieldPath="habitos_vida_data.sociais_finais_semana_regra_80_20" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== MOVIMENTO ==================== */}
-      <CollapsibleSection title="4. Movimento e Atividade Física" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Referências</h4>
-          <DataField label="Ver Agente 5 (Atividade Física)" value={habitosVidaData?.movimento_ver_agente_5} fieldPath="habitos_vida_data.movimento_ver_agente_5" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Adicionar Aqui" value={habitosVidaData?.movimento_adicionar_aqui} fieldPath="habitos_vida_data.movimento_adicionar_aqui" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>NEAT (Non-Exercise Activity Thermogenesis)</h4>
-          <DataField label="Conceito" value={habitosVidaData?.neat_conceito} fieldPath="habitos_vida_data.neat_conceito" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Estratégias para Aumentar" value={habitosVidaData?.neat_estrategias_aumentar} fieldPath="habitos_vida_data.neat_estrategias_aumentar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Meta de Passos por Dia" value={habitosVidaData?.neat_meta_passos_dia} fieldPath="habitos_vida_data.neat_meta_passos_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefício" value={habitosVidaData?.neat_beneficio} fieldPath="habitos_vida_data.neat_beneficio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Ergonomia</h4>
-          <DataField label="Problema Atual" value={habitosVidaData?.ergonomia_problema_atual} fieldPath="habitos_vida_data.ergonomia_problema_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Soluções" value={habitosVidaData?.ergonomia_solucoes} fieldPath="habitos_vida_data.ergonomia_solucoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ESPIRITUALIDADE E NATUREZA ==================== */}
-      <CollapsibleSection title="5. Espiritualidade e Conexão com a Natureza" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Espiritualidade</h4>
-          <DataField label="Ver Agente 2 (Mentalidade)" value={habitosVidaData?.espiritualidade_ver_agente_2} fieldPath="habitos_vida_data.espiritualidade_ver_agente_2" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Adicionar Aqui" value={habitosVidaData?.espiritualidade_adicionar_aqui} fieldPath="habitos_vida_data.espiritualidade_adicionar_aqui" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Práticas Espirituais - Opções" value={habitosVidaData?.praticas_espirituais_opcoes} fieldPath="habitos_vida_data.praticas_espirituais_opcoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Precisa Ser Religião" value={habitosVidaData?.praticas_espirituais_nao_precisa_religiao} fieldPath="habitos_vida_data.praticas_espirituais_nao_precisa_religiao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Conexão com a Natureza</h4>
-          <DataField label="Frequência Mínima" value={habitosVidaData?.natureza_frequencia_minima} fieldPath="habitos_vida_data.natureza_frequencia_minima" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Duração" value={habitosVidaData?.natureza_duracao} fieldPath="habitos_vida_data.natureza_duracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Atividades" value={habitosVidaData?.natureza_atividades} fieldPath="habitos_vida_data.natureza_atividades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Grounding - Prática" value={habitosVidaData?.natureza_grounding_pratica} fieldPath="habitos_vida_data.natureza_grounding_pratica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Grounding - Ciência" value={habitosVidaData?.natureza_grounding_ciencia} fieldPath="habitos_vida_data.natureza_grounding_ciencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Grounding - Quando Fazer" value={habitosVidaData?.natureza_grounding_quando} fieldPath="habitos_vida_data.natureza_grounding_quando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Benefícios da Natureza" value={habitosVidaData?.natureza_beneficios} fieldPath="habitos_vida_data.natureza_beneficios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== CONEXÕES SOCIAIS E RELAÇÕES ==================== */}
-      <CollapsibleSection title="6. Conexões Sociais e Relações" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Conexão Social</h4>
-          <DataField label="Problema Atual" value={habitosVidaData?.conexao_social_problema_atual} fieldPath="habitos_vida_data.conexao_social_problema_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Urgência" value={habitosVidaData?.conexao_social_urgencia} fieldPath="habitos_vida_data.conexao_social_urgencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Ações - Grupos de Apoio" value={habitosVidaData?.conexao_social_acoes_grupos_apoio} fieldPath="habitos_vida_data.conexao_social_acoes_grupos_apoio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Atividades Coletivas" value={habitosVidaData?.conexao_social_atividades_coletivas} fieldPath="habitos_vida_data.conexao_social_atividades_coletivas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Reativar Amizades" value={habitosVidaData?.conexao_social_reativar_amizades} fieldPath="habitos_vida_data.conexao_social_reativar_amizades" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Online - Cuidados" value={habitosVidaData?.conexao_social_online_cuidados} fieldPath="habitos_vida_data.conexao_social_online_cuidados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Qualidade vs Quantidade" value={habitosVidaData?.conexao_social_qualidade_vs_quantidade} fieldPath="habitos_vida_data.conexao_social_qualidade_vs_quantidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Relações Familiares</h4>
-          <DataField label="Filha" value={habitosVidaData?.relacoes_familia_filha} fieldPath="habitos_vida_data.relacoes_familia_filha" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Família de Origem" value={habitosVidaData?.relacoes_familia_origem} fieldPath="habitos_vida_data.relacoes_familia_origem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== PROPÓSITO E SENTIDO DE VIDA ==================== */}
-      <CollapsibleSection title="7. Propósito e Sentido de Vida" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Reflexão Profunda</h4>
-          <DataField label="Reflexão sobre Propósito" value={habitosVidaData?.proposito_reflexao_profunda} fieldPath="habitos_vida_data.proposito_reflexao_profunda" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Resgate da Dança</h4>
-          <DataField label="É Essencial" value={habitosVidaData?.proposito_resgate_danca_essencial} fieldPath="habitos_vida_data.proposito_resgate_danca_essencial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Como Integrar" value={habitosVidaData?.proposito_resgate_danca_como_integrar} fieldPath="habitos_vida_data.proposito_resgate_danca_como_integrar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Não Precisa Virar Profissão" value={habitosVidaData?.proposito_resgate_danca_nao_precisa_profissao} fieldPath="habitos_vida_data.proposito_resgate_danca_nao_precisa_profissao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Alternativas e Projetos</h4>
-          <DataField label="Teatro como Alternativa" value={habitosVidaData?.proposito_teatro_alternativa} fieldPath="habitos_vida_data.proposito_teatro_alternativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Projeto de Vida Profissional" value={habitosVidaData?.proposito_projeto_vida_profissional} fieldPath="habitos_vida_data.proposito_projeto_vida_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Passos Concretos" value={habitosVidaData?.proposito_passos_concretos} fieldPath="habitos_vida_data.proposito_passos_concretos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Micro Ações Mensais" value={habitosVidaData?.proposito_micro_acoes_mensais} fieldPath="habitos_vida_data.proposito_micro_acoes_mensais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Alternativas" value={habitosVidaData?.proposito_alternativas} fieldPath="habitos_vida_data.proposito_alternativas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Contribuição e Legado" value={habitosVidaData?.proposito_contribuicao_legado} fieldPath="habitos_vida_data.proposito_contribuicao_legado" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== GESTÃO DE TEMPO E PRODUTIVIDADE ==================== */}
-      <CollapsibleSection title="8. Gestão de Tempo e Produtividade" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Análise e Estratégias</h4>
-          <DataField label="Problema Atual" value={habitosVidaData?.gestao_tempo_problema_atual} fieldPath="habitos_vida_data.gestao_tempo_problema_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Análise - Exercício" value={habitosVidaData?.gestao_tempo_analise_exercicio} fieldPath="habitos_vida_data.gestao_tempo_analise_exercicio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Blocos de Tempo (Time Blocking)" value={habitosVidaData?.gestao_tempo_blocos_time_blocking} fieldPath="habitos_vida_data.gestao_tempo_blocos_time_blocking" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Regras dos Blocos" value={habitosVidaData?.gestao_tempo_regras_blocos} fieldPath="habitos_vida_data.gestao_tempo_regras_blocos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Delegação e Terceirização" value={habitosVidaData?.gestao_tempo_delegacao_terceirizar} fieldPath="habitos_vida_data.gestao_tempo_delegacao_terceirizar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Simplificar Tarefas" value={habitosVidaData?.gestao_tempo_simplificar_tarefas} fieldPath="habitos_vida_data.gestao_tempo_simplificar_tarefas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Eliminar Desperdícios</h4>
-          <DataField label="Redes Sociais" value={habitosVidaData?.gestao_tempo_eliminar_desperdicio_redes} fieldPath="habitos_vida_data.gestao_tempo_eliminar_desperdicio_redes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="WhatsApp" value={habitosVidaData?.gestao_tempo_eliminar_desperdicio_whatsapp} fieldPath="habitos_vida_data.gestao_tempo_eliminar_desperdicio_whatsapp" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="TV / Streaming" value={habitosVidaData?.gestao_tempo_eliminar_desperdicio_tv} fieldPath="habitos_vida_data.gestao_tempo_eliminar_desperdicio_tv" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Perfeccionismo" value={habitosVidaData?.gestao_tempo_eliminar_desperdicio_perfeccionismo} fieldPath="habitos_vida_data.gestao_tempo_eliminar_desperdicio_perfeccionismo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Tempo Sagrado para Si" value={habitosVidaData?.gestao_tempo_tempo_sagrado_para_si} fieldPath="habitos_vida_data.gestao_tempo_tempo_sagrado_para_si" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== GESTÃO DE ESTRESSE ==================== */}
-      <CollapsibleSection title="9. Gestão de Estresse" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Identificação e Técnicas</h4>
-          <DataField label="Identificar Estressores" value={habitosVidaData?.estresse_identificar_estressores} fieldPath="habitos_vida_data.estresse_identificar_estressores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Técnicas no Momento" value={habitosVidaData?.estresse_tecnicas_momento} fieldPath="habitos_vida_data.estresse_tecnicas_momento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Válvulas de Escape Saudáveis" value={habitosVidaData?.estresse_valvulas_escape_saudaveis} fieldPath="habitos_vida_data.estresse_valvulas_escape_saudaveis" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== ROTINAS E HÁBITOS ==================== */}
-      <CollapsibleSection title="10. Rotinas e Hábitos Estruturantes" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Rotinas Diárias</h4>
-          <DataField label="Rotina Matinal (Power Hour)" value={habitosVidaData?.habitos_matinal_power_hour} fieldPath="habitos_vida_data.habitos_matinal_power_hour" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Rotina Noturna (Wind Down)" value={habitosVidaData?.habitos_noturno_wind_down} fieldPath="habitos_vida_data.habitos_noturno_wind_down" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Pausas Conscientes" value={habitosVidaData?.habitos_pausas_conscientes} fieldPath="habitos_vida_data.habitos_pausas_conscientes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Revisões Regulares" value={habitosVidaData?.habitos_revisoes_regulares} fieldPath="habitos_vida_data.habitos_revisoes_regulares" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== TECNOLOGIA ==================== */}
-      <CollapsibleSection title="11. Uso Consciente de Tecnologia" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Regras de Uso</h4>
-          <DataField label="Celular - Regras" value={habitosVidaData?.tecnologia_celular_regras} fieldPath="habitos_vida_data.tecnologia_celular_regras" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Computador de Trabalho" value={habitosVidaData?.tecnologia_computador_trabalho} fieldPath="habitos_vida_data.tecnologia_computador_trabalho" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-
-      {/* ==================== MONITORAMENTO E MINDSET ==================== */}
-      <CollapsibleSection title="12. Monitoramento e Mindset" defaultOpen={false}>
-        <div className="anamnese-subsection">
-          <h4>Acompanhamento</h4>
-          <DataField label="Check-in Semanal" value={habitosVidaData?.monitoramento_checkin_semanal} fieldPath="habitos_vida_data.monitoramento_checkin_semanal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Celebração de Vitórias" value={habitosVidaData?.celebracao_vitorias} fieldPath="habitos_vida_data.celebracao_vitorias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Plano Integrado</h4>
-          <DataField label="Plano de 12 Meses Integrado" value={habitosVidaData?.plano_12_meses_integrado} fieldPath="habitos_vida_data.plano_12_meses_integrado" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Mindset Final</h4>
-          <DataField label="Aceitar" value={habitosVidaData?.mindset_aceitar} fieldPath="habitos_vida_data.mindset_aceitar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Rejeitar" value={habitosVidaData?.mindset_rejeitar} fieldPath="habitos_vida_data.mindset_rejeitar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Cultivar" value={habitosVidaData?.mindset_cultivar} fieldPath="habitos_vida_data.mindset_cultivar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-          <DataField label="Afirmações Diárias" value={habitosVidaData?.mindset_afirmacoes_diarias} fieldPath="habitos_vida_data.mindset_afirmacoes_diarias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
-        </div>
-      </CollapsibleSection>
-    </div>
-  );
-}
-
 function ConsultasPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -3822,6 +3152,19 @@ function ConsultasPageContent() {
   // Estados para visualização de detalhes
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showSolutionsViewer, setShowSolutionsViewer] = useState(false);
+
+  // Função helper para renderizar o botão "Ver Todas as Soluções"
+  const renderViewSolutionsButton = () => (
+    <button 
+      className="view-solutions-button"
+      onClick={() => setShowSolutionsViewer(true)}
+      style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+    >
+      <FileText className="w-4 h-4" />
+      Ver Todas as Soluções
+    </button>
+  );
 
   // Estados para chat com IA
   const [selectedField, setSelectedField] = useState<{ fieldPath: string; label: string } | null>(null);
@@ -3881,7 +3224,10 @@ function ConsultasPageContent() {
       const webhookEndpoints = getWebhookEndpoints();
       const webhookHeaders = getWebhookHeaders();
       
-      const webhookUrl = (isSolucaoLTB || isSolucaoMentalidade || isSolucaoSuplemementacao || isSolucaoHabitosVida)
+      // Usar webhook específico para Livro da Vida (Mentalidade)
+      const webhookUrl = isSolucaoMentalidade
+        ? webhookEndpoints.edicaoLivroDaVida
+        : (isSolucaoLTB || isSolucaoSuplemementacao || isSolucaoHabitosVida)
         ? webhookEndpoints.edicaoSolucao
         : isDiagnostico 
         ? webhookEndpoints.edicaoDiagnostico
@@ -4139,15 +3485,159 @@ function ConsultasPageContent() {
     };
   }, [dashboardLoaded]);
 
+  // Função para carregar lista de consultas
+  const loadConsultations = useCallback(async (silent = false) => {
+    try {
+      if (!silent) {
+        setError(null);
+      }
+      const response = await fetchConsultations(currentPage, 20);
+      
+      // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
+      setConsultations(prev => {
+        // Comparar IDs e status para detectar mudanças
+        const hasChanges = prev.length !== response.consultations.length ||
+          prev.some((oldConsultation, index) => {
+            const newConsultation = response.consultations[index];
+            if (!newConsultation) return true;
+            return oldConsultation.id !== newConsultation.id ||
+                   oldConsultation.status !== newConsultation.status ||
+                   oldConsultation.etapa !== newConsultation.etapa ||
+                   oldConsultation.updated_at !== newConsultation.updated_at;
+          });
+
+        if (hasChanges) {
+          return response.consultations;
+        }
+        return prev;
+      });
+      
+      setTotalPages(response.pagination.totalPages);
+      setTotalConsultations(response.pagination.total);
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
+      }
+    }
+  }, [currentPage]);
+
+  // Carregar lista de consultas inicialmente
+  useEffect(() => {
+    loadConsultations();
+  }, [loadConsultations]);
+
+  // Polling automático para atualizar lista de consultas (especialmente status)
+  useEffect(() => {
+    // Só fazer polling na lista se não houver consulta específica aberta
+    if (consultaId) return;
+
+    // Verificar se há consultas em processamento na lista atual
+    const hasProcessingConsultations = consultations.some(c => 
+      ['PROCESSING', 'RECORDING'].includes(c.status)
+    );
+
+    // Se há consultas processando, fazer polling mais frequente
+    const pollingInterval = hasProcessingConsultations ? 5000 : 15000; // 5s se processando, 15s caso contrário
+
+    const intervalId = setInterval(async () => {
+      try {
+        await loadConsultations(true); // Modo silencioso para não mostrar loading
+      } catch (error) {
+        // Erro silencioso - não mostrar ao usuário
+      }
+    }, pollingInterval);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [consultations, consultaId, loadConsultations]); // Re-executar quando consultas mudarem ou consultaId mudar
+
   // Carregar detalhes quando houver consulta_id na URL
   useEffect(() => {
     if (consultaId) {
-      console.log('🔍 useEffect - Carregando detalhes para consulta:', consultaId);
       fetchConsultaDetails(consultaId);
+      // Resetar o estado do visualizador de soluções quando mudar de consulta
+      setShowSolutionsViewer(false);
     } else {
       setConsultaDetails(null);
     }
   }, [consultaId]);
+
+  // Polling automático para atualizar status da consulta (SEMPRE ativo quando há consulta aberta)
+  useEffect(() => {
+    if (!consultaId) return;
+
+    // Determinar intervalo baseado no status atual
+    const getPollingInterval = (currentStatus: string | null) => {
+      if (!currentStatus) return 5000; // Default: 5 segundos
+      
+      // Status que mudam frequentemente: polling mais rápido
+      if (['PROCESSING', 'RECORDING'].includes(currentStatus)) {
+        return 3000; // 3 segundos
+      }
+      // Status estáveis: polling menos frequente
+      if (['COMPLETED', 'ERROR', 'CANCELLED'].includes(currentStatus)) {
+        return 30000; // 30 segundos (só para verificar mudanças raras)
+      }
+      // Status intermediários
+      return 5000; // 5 segundos
+    };
+
+    const currentStatus = consultaDetails?.status || null;
+    const pollingInterval = getPollingInterval(currentStatus);
+
+    const intervalId = setInterval(async () => {
+      try {
+        // Buscar dados diretamente da API (com cache busting para garantir dados frescos)
+        const response = await fetch(`/api/consultations/${consultaId}?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const newConsultation = data.consultation;
+          
+          if (!newConsultation) {
+            return;
+          }
+
+          const newStatus = newConsultation.status;
+          const newEtapa = newConsultation.etapa;
+          const newSolucaoEtapa = newConsultation.solucao_etapa;
+          const newUpdatedAt = newConsultation.updated_at;
+
+          // Comparar com os dados atuais (usar consultaDetails do estado, não a variável local)
+          // Isso garante que sempre comparamos com o estado mais recente
+          setConsultaDetails(prev => {
+            if (!prev) {
+              return newConsultation;
+            }
+
+            // Verificar mudanças em campos importantes
+            const statusChanged = prev.status !== newStatus;
+            const etapaChanged = prev.etapa !== newEtapa;
+            const solucaoEtapaChanged = prev.solucao_etapa !== newSolucaoEtapa;
+            const updatedAtChanged = prev.updated_at !== newUpdatedAt;
+
+            // Se QUALQUER campo importante mudou, atualizar
+            if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
+              return newConsultation;
+            }
+
+            // Nenhuma mudança detectada
+            return prev; // Retornar o mesmo objeto para evitar re-render desnecessário
+          });
+        }
+      } catch (error) {
+        // Erro silencioso - não mostrar ao usuário
+      }
+    }, pollingInterval);
+
+    // Cleanup: parar polling quando componente desmontar ou consulta mudar
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [consultaId, consultaDetails?.status]); // Re-executar quando consultaId ou status mudar
 
   // Carregar dados de atividade física quando a etapa for ATIVIDADE_FISICA
   useEffect(() => {
@@ -4280,22 +3770,11 @@ function ConsultasPageContent() {
     }
   };
 
-  const loadConsultations = async () => {
+  const fetchConsultaDetails = async (id: string, silent = false) => {
     try {
-      setError(null);
-      const response = await fetchConsultations(currentPage, 20);
-      
-      setConsultations(response.consultations);
-      setTotalPages(response.pagination.totalPages);
-      setTotalConsultations(response.pagination.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar consultas');
-    }
-  };
-
-  const fetchConsultaDetails = async (id: string) => {
-    try {
-      setLoadingDetails(true);
+      if (!silent) {
+        setLoadingDetails(true);
+      }
       setError(null);
       //console.log('🔍 Carregando detalhes da consulta:', id);
       const response = await fetch(`/api/consultations/${id}`);
@@ -4306,11 +3785,39 @@ function ConsultasPageContent() {
       }
       
       const data = await response.json();
-      setConsultaDetails(data.consultation);
+      const newConsultation = data.consultation;
+      
+      // Sempre atualizar para garantir que mudanças no banco sejam refletidas
+      // A comparação anterior estava impedindo atualizações quando o status mudava no banco
+      setConsultaDetails(prev => {
+        if (!prev) {
+          return newConsultation;
+        }
+        
+        // Comparar campos importantes para log
+        const statusChanged = prev.status !== newConsultation.status;
+        const etapaChanged = prev.etapa !== newConsultation.etapa;
+        const solucaoEtapaChanged = prev.solucao_etapa !== newConsultation.solucao_etapa;
+        const updatedAtChanged = prev.updated_at !== newConsultation.updated_at;
+        
+        if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
+          console.log(`📝 Dados da consulta atualizados:`, {
+            status: `${prev.status} → ${newConsultation.status}`,
+            etapa: `${prev.etapa} → ${newConsultation.etapa}`,
+            solucao_etapa: `${prev.solucao_etapa} → ${newConsultation.solucao_etapa}`,
+            updated_at: `${prev.updated_at} → ${newConsultation.updated_at}`
+          });
+        }
+        
+        // Sempre retornar novo objeto para garantir atualização
+        return newConsultation;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes da consulta');
     } finally {
-      setLoadingDetails(false);
+      if (!silent) {
+        setLoadingDetails(false);
+      }
     }
   };
 
@@ -4371,6 +3878,15 @@ function ConsultasPageContent() {
   const cancelDeleteConsultation = () => {
     setShowDeleteModal(false);
     setConsultationToDelete(null);
+  };
+
+  // Função para entrar em uma consulta agendada
+  const handleEnterConsultation = (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation(); // Previne a abertura da consulta
+    
+    // Redirecionar para a página de nova consulta com os dados do agendamento
+    // Isso permite que a consulta seja iniciada com Socket.IO e WebRTC
+    router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient_name)}&consultation_type=${consultation.consultation_type}`);
   };
 
   // Função para salvar alterações da ANAMNESE e mudar para próxima etapa (DIAGNOSTICO SENDO PROCESSADO)
@@ -4478,39 +3994,8 @@ function ConsultasPageContent() {
     }
   };
 
-  // Função para salvar alterações do LTB e mudar para MENTALIDADE
-  const handleSaveLTBAndContinue = async () => {
-    if (!consultaId) return;
 
-    try {
-      setIsSaving(true);
-      
-      // Atualiza a solucao_etapa para MENTALIDADE
-      const response = await fetch(`/api/consultations/${consultaId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          solucao_etapa: 'MENTALIDADE'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar consulta');
-      }
-
-      // Recarrega os dados da consulta
-      await fetchConsultaDetails(consultaId);
-    } catch (error) {
-      console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Função para salvar alterações do MENTALIDADE e mudar para ALIMENTACAO
+  // Função para salvar alterações do Livro da Vida e mudar para ALIMENTACAO
   const handleSaveMentalidadeAndContinue = async () => {
     if (!consultaId) return;
 
@@ -4598,64 +4083,6 @@ function ConsultasPageContent() {
 
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
-    } catch (error) {
-      console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Função para salvar alterações do HABITOS_DE_VIDA e FINALIZAR para PROCESSANDO ENTREGAVEIS
-  const handleSaveHabitosVidaAndComplete = async () => {
-    if (!consultaId || !consultaDetails) return;
-
-    try {
-      setIsSaving(true);
-      
-      // Atualiza o status para PROCESSING para começar a processar os entregaveis (finalizando todo o processo)
-      const response = await fetch(`/api/consultations/${consultaId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'PROCESSING',
-          etapa:'SOLUCAO'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar consulta');
-      }
-
-      // Disparar webhook para iniciar criação dos entregáveis
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.solucaoCriacaoEntregaveis, {
-          method: 'POST',
-        headers: webhookHeaders,
-        body: JSON.stringify({
-            consultaId: consultaDetails.id,
-            medicoId: consultaDetails.doctor_id,
-            pacienteId: consultaDetails.patient_id
-          }),
-        });
-        //console.log('✅ Webhook de criação de entregáveis disparado com sucesso');
-      } catch (webhookError) {
-        console.warn('⚠️ Webhook de entregáveis falhou, mas consulta foi atualizada:', webhookError);
-      }
-
-      // Recarrega os dados da consulta
-      await fetchConsultaDetails(consultaId);
-      
-      // Redireciona para o dashboard após finalizar a consulta
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000); // Delay de 1 segundo para mostrar feedback visual
-      
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       alert('Erro ao salvar alterações. Tente novamente.');
@@ -4883,9 +4310,48 @@ function ConsultasPageContent() {
     );
   }
 
+  // Função para selecionar uma solução
+  const handleSelectSolucao = async (solucaoEtapa: string) => {
+    if (!consultaId) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Atualiza a consulta com a solução selecionada
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: solucaoEtapa
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Recarrega os dados da consulta
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao selecionar solução:', error);
+      alert('Erro ao selecionar solução. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Função para renderizar o conteúdo baseado no status e etapa
   const renderConsultationContent = () => {
     if (!consultaDetails) return null;
+
+    // 🔍 DEBUG: Log do status e etapa da consulta
+    console.log('🔍 DEBUG renderConsultationContent:', {
+      status: consultaDetails.status,
+      etapa: consultaDetails.etapa,
+      solucao_etapa: consultaDetails.solucao_etapa
+    });
 
     // STATUS = PROCESSING
     if (consultaDetails.status === 'PROCESSING') {
@@ -4951,7 +4417,45 @@ function ConsultasPageContent() {
       );
     }
 
-    // STATUS = VALIDATION
+    // STATUS = VALID_ANAMNESE
+    if (consultaDetails.status === 'VALID_ANAMNESE') {
+      // Retorna a tela atual de anamnese (será renderizado depois)
+      return 'ANAMNESE';
+    }
+
+    // STATUS = VALID_DIAGNOSTICO
+    if (consultaDetails.status === 'VALID_DIAGNOSTICO') {
+      // Retorna a tela de diagnóstico (será renderizado depois)
+      return 'DIAGNOSTICO';
+    }
+
+    // STATUS = VALID_SOLUCAO
+    if (consultaDetails.status === 'VALID_SOLUCAO') {
+      // Se for MENTALIDADE, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
+        return 'SOLUCAO_MENTALIDADE';
+      }
+      
+      // Se for SUPLEMENTACAO, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'SUPLEMENTACAO') {
+        return 'SOLUCAO_SUPLEMENTACAO';
+      }
+      
+      // Se for ALIMENTACAO, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'ALIMENTACAO') {
+        return 'SOLUCAO_ALIMENTACAO';
+      }
+      
+      // Se for ATIVIDADE_FISICA, retornar a tela de edição completa
+      if (consultaDetails.solucao_etapa === 'ATIVIDADE_FISICA') {
+        return 'SOLUCAO_ATIVIDADE_FISICA';
+      }
+
+      // Se não tiver solucao_etapa definida, mostrar tela de seleção
+      return 'SOLUCAO_SELECTION';
+    }
+
+    // STATUS = VALIDATION (mantido para compatibilidade)
     if (consultaDetails.status === 'VALIDATION') {
       // ETAPA = ANAMNESE
       if (consultaDetails.etapa === 'ANAMNESE') {
@@ -4968,11 +4472,6 @@ function ConsultasPageContent() {
 
       // ETAPA = SOLUCAO
       if (consultaDetails.etapa === 'SOLUCAO') {
-        // Se for LTB, retornar a tela de edição completa
-        if (consultaDetails.solucao_etapa === 'LTB') {
-          return 'SOLUCAO_LTB';
-        }
-        
         // Se for MENTALIDADE, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
           return 'SOLUCAO_MENTALIDADE';
@@ -4993,11 +4492,6 @@ function ConsultasPageContent() {
           console.log('🔍 DEBUG [REFERENCIA] Solução etapa é ATIVIDADE_FISICA, retornando SOLUCAO_ATIVIDADE_FISICA');
           return 'SOLUCAO_ATIVIDADE_FISICA';
         }
-        
-        // Se for HABITOS_DE_VIDA, retornar a tela de edição completa
-        if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
-          return 'SOLUCAO_HABITOS_DE_VIDA';
-        }
 
       }
     }
@@ -5008,6 +4502,33 @@ function ConsultasPageContent() {
 
   // Renderizar detalhes da consulta
   if (consultaId && consultaDetails) {
+    // Se showSolutionsViewer for true, renderiza o visualizador de soluções
+    if (showSolutionsViewer) {
+      return (
+        <SolutionsViewer
+          consultaId={consultaId!}
+          onBack={() => setShowSolutionsViewer(false)}
+          onSolutionSelect={(solutionType) => {
+            // Mapear o tipo de solução para a etapa correspondente
+            const solutionMapping: Record<string, string> = {
+              'mentalidade': 'MENTALIDADE',
+              'alimentacao': 'ALIMENTACAO',
+              'suplementacao': 'SUPLEMENTACAO',
+              'exercicios': 'ATIVIDADE_FISICA'
+            };
+            
+            const etapa = solutionMapping[solutionType];
+            if (etapa) {
+              // Atualizar a consulta com a etapa selecionada
+              handleSelectSolucao(etapa);
+              // Voltar para a tela principal
+              setShowSolutionsViewer(false);
+            }
+          }}
+        />
+      );
+    }
+    
     const contentType = renderConsultationContent();
 
     // Se for DIAGNOSTICO, renderiza a tela de diagnóstico
@@ -5232,7 +4753,7 @@ function ConsultasPageContent() {
                   />
 
                   {/* Seção de Anamnese (Somente Leitura) */}
-                  <CollapsibleSection title="📋 Anamnese (Consulta)" defaultOpen={false}>
+                  <CollapsibleSection title="Anamnese (Consulta)" defaultOpen={false}>
                     <div className="anamnese-subsection" style={{ opacity: 0.85, userSelect: 'text', position: 'relative' }}>
                       <AnamneseSection 
                         consultaId={consultaId}
@@ -5244,6 +4765,7 @@ function ConsultasPageContent() {
                         onSendMessage={() => {}}
                         onChatInputChange={() => {}}
                         readOnly={true}
+                        renderViewSolutionsButton={renderViewSolutionsButton}
                       />
                     </div>
                   </CollapsibleSection>
@@ -5255,230 +4777,7 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for SOLUCAO_LTB, renderiza a tela de LTB
-    if (contentType === 'SOLUCAO_LTB') {
-      return (
-        <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
-            <button 
-              className="back-button"
-              onClick={handleBackToList}
-              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Voltar
-            </button>
-            <h1 className="consultas-title">Solução - Limpeza do Terreno Biológico (LTB)</h1>
-          </div>
-
-          {/* Informações da Consulta - Card no Topo */}
-          <div className="consultation-info-card">
-            <div className="consultation-info-grid">
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Paciente</span>
-                  <span className="info-value">{consultaDetails.patient_name}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                    <User className="w-5 h-5" />
-                  ) : (
-                    <Video className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Tipo</span>
-                  <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Duração</span>
-                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper status-icon">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Status</span>
-                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="details-two-column-layout">
-            {/* Coluna Esquerda - Chat com IA */}
-            <div className="chat-column">
-              <div className="chat-container">
-                <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Solução LTB</h3>
-                  {selectedField && (
-                    <p className="chat-field-indicator">
-                      <Sparkles className="w-4 h-4 inline mr-1" />
-                      Editando: <strong>{selectedField.label}</strong>
-                    </p>
-                  )}
-                </div>
-                
-                <div className="chat-messages">
-                  {!selectedField ? (
-                    <div className="chat-empty-state">
-                      <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo LTB clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
-                      </p>
-                    </div>
-                  ) : chatMessages.length === 0 ? (
-                    <div className="chat-empty-state">
-                      <p className="text-gray-500 text-center">
-                        Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {chatMessages.map((message, index) => (
-                        <div 
-                          key={index} 
-                          className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
-                        >
-                          <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
-                            {message.role === 'user' ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                          </div>
-                          <div className="message-content">
-                            <p>{message.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {isTyping && (
-                        <div className="message ai-message">
-                          <div className="message-avatar ai-avatar">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <div className="message-content">
-                            <div className="typing-indicator">
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="chat-input-area">
-                  <input 
-                    type="text"
-                    className="chat-input"
-                    placeholder="Digite sua mensagem..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
-                    disabled={!selectedField || isTyping}
-                  />
-                  <button 
-                    className="chat-send-button"
-                    onClick={handleSendAIMessage}
-                    disabled={!selectedField || !chatInput.trim() || isTyping}
-                  >
-                    <FileText className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna Direita - LTB */}
-            <div className="anamnese-column">
-              <div className="anamnese-container">
-                <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo LTB - Limpeza do Terreno Biológico</h2>
-                  <button
-                    onClick={handleSaveLTBAndContinue}
-                    disabled={isSaving}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: isSaving ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: isSaving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#059669';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#10b981';
-                      }
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Salvar e Avançar para Mentalidade
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="anamnese-content">
-                  <LTBSection 
-                    consultaId={consultaId}
-                    selectedField={selectedField}
-                    chatMessages={chatMessages}
-                    isTyping={isTyping}
-                    chatInput={chatInput}
-                    onFieldSelect={handleFieldSelect}
-                    onSendMessage={handleSendAIMessage}
-                    onChatInputChange={setChatInput}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Se for SOLUCAO_MENTALIDADE, renderiza a tela de Mentalidade
+    // Se for SOLUCAO_MENTALIDADE, renderiza a tela de Livro da Vida
     if (contentType === 'SOLUCAO_MENTALIDADE') {
       return (
         <div className="consultas-container consultas-details-container">
@@ -5491,7 +4790,8 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title">Solução - Mentalidade do Paciente</h1>
+            <h1 className="consultas-title">Solução - Livro da Vida</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -5558,7 +4858,7 @@ function ConsultasPageContent() {
             <div className="chat-column">
               <div className="chat-container">
                 <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Solução Mentalidade</h3>
+                  <h3>Chat com IA - Assistente de Solução Livro da Vida</h3>
                   {selectedField && (
                     <p className="chat-field-indicator">
                       <Sparkles className="w-4 h-4 inline mr-1" />
@@ -5572,7 +4872,7 @@ function ConsultasPageContent() {
                     <div className="chat-empty-state">
                       <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo de Mentalidade clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
+                        Selecione um campo do protocolo de Livro da Vida clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
                       </p>
                     </div>
                   ) : chatMessages.length === 0 ? (
@@ -5635,11 +4935,11 @@ function ConsultasPageContent() {
               </div>
             </div>
 
-            {/* Coluna Direita - Mentalidade */}
+            {/* Coluna Direita - Livro da Vida */}
             <div className="anamnese-column">
               <div className="anamnese-container">
                 <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo de Mentalidade</h2>
+                  <h2>Protocolo de Livro da Vida</h2>
                   <button
                     onClick={handleSaveMentalidadeAndContinue}
                     disabled={isSaving}
@@ -5715,6 +5015,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Suplementação</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -5776,148 +5077,55 @@ function ConsultasPageContent() {
             </div>
           </div>
 
-          <div className="details-two-column-layout">
-            {/* Coluna Esquerda - Chat com IA */}
-            <div className="chat-column">
-              <div className="chat-container">
-                <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Suplementação</h3>
-                  {selectedField && (
-                    <p className="chat-field-indicator">
-                      <Sparkles className="w-4 h-4 inline mr-1" />
-                      Editando: <strong>{selectedField.label}</strong>
-                    </p>
-                  )}
-                </div>
-                
-                <div className="chat-messages">
-                  {!selectedField ? (
-                    <div className="chat-empty-state">
-                      <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo de Suplementação clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
-                      </p>
-                    </div>
-                  ) : chatMessages.length === 0 ? (
-                    <div className="chat-empty-state">
-                      <p className="text-gray-500 text-center">
-                        Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {chatMessages.map((message, index) => (
-                        <div 
-                          key={index} 
-                          className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
-                        >
-                          <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
-                            {message.role === 'user' ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                          </div>
-                          <div className="message-content">
-                            <p>{message.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {isTyping && (
-                        <div className="message ai-message">
-                          <div className="message-avatar ai-avatar">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <div className="message-content">
-                            <div className="typing-indicator">
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="chat-input-area">
-                  <input 
-                    type="text"
-                    className="chat-input"
-                    placeholder="Digite sua mensagem..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
-                    disabled={!selectedField || isTyping}
-                  />
-                  <button 
-                    className="chat-send-button"
-                    onClick={handleSendAIMessage}
-                    disabled={!selectedField || !chatInput.trim() || isTyping}
-                  >
-                    <FileText className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+          <div className="anamnese-container">
+            <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>Protocolo de Suplementação</h2>
+              <button
+                onClick={handleSaveSuplemementacaoAndContinue}
+                disabled={isSaving}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  background: isSaving ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.background = '#059669';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.background = '#10b981';
+                  }
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar e Avançar para Hábitos de Vida
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* Coluna Direita - Suplementação */}
-            <div className="anamnese-column">
-              <div className="anamnese-container">
-                <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo de Suplementação</h2>
-                  <button
-                    onClick={handleSaveSuplemementacaoAndContinue}
-                    disabled={isSaving}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: isSaving ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: isSaving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#059669';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#10b981';
-                      }
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Salvar e Avançar para Hábitos de Vida
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="anamnese-content">
-                  <SuplemementacaoSection 
-                    consultaId={consultaId}
-                    selectedField={selectedField}
-                    chatMessages={chatMessages}
-                    isTyping={isTyping}
-                    chatInput={chatInput}
-                    onFieldSelect={handleFieldSelect}
-                    onSendMessage={handleSendAIMessage}
-                    onChatInputChange={setChatInput}
-                  />
-                </div>
-              </div>
+            <div className="anamnese-content">
+              <SuplemementacaoSection 
+                consultaId={consultaId}
+              />
             </div>
           </div>
         </div>
@@ -5942,6 +5150,7 @@ function ConsultasPageContent() {
             <div className="consultation-info">
               <h1>Atividades Físicas</h1>
             </div>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           <div className="consultation-content">
@@ -6155,229 +5364,6 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for SOLUCAO_HABITOS_DE_VIDA, renderiza a tela de Hábitos de Vida
-    if (contentType === 'SOLUCAO_HABITOS_DE_VIDA') {
-      return (
-        <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
-            <button 
-              className="back-button"
-              onClick={handleBackToList}
-              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Voltar
-            </button>
-            <h1 className="consultas-title">Solução - Hábitos de Vida</h1>
-          </div>
-
-          {/* Informações da Consulta - Card no Topo */}
-          <div className="consultation-info-card">
-            <div className="consultation-info-grid">
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Paciente</span>
-                  <span className="info-value">{consultaDetails.patient_name}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora</span>
-                  <span className="info-value">{formatFullDate(consultaDetails.created_at)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                    <User className="w-5 h-5" />
-                  ) : (
-                    <Video className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Tipo</span>
-                  <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Duração</span>
-                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-                </div>
-              </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper status-icon">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Status</span>
-                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="details-two-column-layout">
-            {/* Coluna Esquerda - Chat com IA */}
-            <div className="chat-column">
-              <div className="chat-container">
-                <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Hábitos de Vida</h3>
-                  {selectedField && (
-                    <p className="chat-field-indicator">
-                      <Sparkles className="w-4 h-4 inline mr-1" />
-                      Editando: <strong>{selectedField.label}</strong>
-                    </p>
-                  )}
-                </div>
-                
-                <div className="chat-messages">
-                  {!selectedField ? (
-                    <div className="chat-empty-state">
-                      <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo de Hábitos de Vida clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
-                      </p>
-                    </div>
-                  ) : chatMessages.length === 0 ? (
-                    <div className="chat-empty-state">
-                      <p className="text-gray-500 text-center">
-                        Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {chatMessages.map((message, index) => (
-                        <div 
-                          key={index} 
-                          className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
-                        >
-                          <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
-                            {message.role === 'user' ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                          </div>
-                          <div className="message-content">
-                            <p>{message.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {isTyping && (
-                        <div className="message ai-message">
-                          <div className="message-avatar ai-avatar">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <div className="message-content">
-                            <div className="typing-indicator">
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="chat-input-area">
-                  <input 
-                    type="text"
-                    className="chat-input"
-                    placeholder="Digite sua mensagem..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
-                    disabled={!selectedField || isTyping}
-                  />
-                  <button 
-                    className="chat-send-button"
-                    onClick={handleSendAIMessage}
-                    disabled={!selectedField || !chatInput.trim() || isTyping}
-                  >
-                    <FileText className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna Direita - Hábitos de Vida */}
-            <div className="anamnese-column">
-              <div className="anamnese-container">
-                <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo de Hábitos de Vida</h2>
-                  <button
-                    onClick={handleSaveHabitosVidaAndComplete}
-                    disabled={isSaving}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: isSaving ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: isSaving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#059669';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#10b981';
-                      }
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Finalizar Consulta
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="anamnese-content">
-                  <HabitosDeVidaSection 
-                    consultaId={consultaId}
-                    selectedField={selectedField}
-                    chatMessages={chatMessages}
-                    isTyping={isTyping}
-                    chatInput={chatInput}
-                    onFieldSelect={handleFieldSelect}
-                    onSendMessage={handleSendAIMessage}
-                    onChatInputChange={setChatInput}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     // Se for SOLUCAO_ALIMENTACAO, renderiza a tela de Alimentação
     if (contentType === 'SOLUCAO_ALIMENTACAO') {
       return (
@@ -6392,6 +5378,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultas-title">Solução - Alimentação</h1>
+            {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -6513,8 +5500,102 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_LTB, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SOLUCAO_HABITOS_DE_VIDA), renderiza só o modal
-    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_LTB' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_HABITOS_DE_VIDA')) {
+    // Se for SOLUCAO_SELECTION, renderiza a tela de seleção de solução
+    if (contentType === 'SOLUCAO_SELECTION') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Selecionar Solução</h1>
+          </div>
+          
+          <div className="solucao-selection-container">
+            <div className="solucao-selection-header">
+              <h2>Escolha uma das soluções para continuar:</h2>
+              <p>Selecione a solução que deseja implementar para este paciente.</p>
+            </div>
+            
+            <div className="solucao-grid">
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('LTB')}
+              >
+                <div className="solucao-icon">
+                  <Dna className="w-8 h-8" />
+                </div>
+                <h3>LTB</h3>
+                <p>Limpeza Total do Bioma</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('MENTALIDADE')}
+              >
+                <div className="solucao-icon">
+                  <Brain className="w-8 h-8" />
+                </div>
+                <h3>Livro da Vida</h3>
+                <p>Transformação Mental e Emocional</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ALIMENTACAO')}
+              >
+                <div className="solucao-icon">
+                  <Apple className="w-8 h-8" />
+                </div>
+                <h3>Alimentação</h3>
+                <p>Plano Nutricional Personalizado</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
+              >
+                <div className="solucao-icon">
+                  <Pill className="w-8 h-8" />
+                </div>
+                <h3>Suplementação</h3>
+                <p>Protocolo de Suplementos</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
+              >
+                <div className="solucao-icon">
+                  <Dumbbell className="w-8 h-8" />
+                </div>
+                <h3>Atividade Física</h3>
+                <p>Programa de Exercícios</p>
+              </div>
+
+              <div 
+                className="solucao-card"
+                onClick={() => handleSelectSolucao('HABITOS_DE_VIDA')}
+              >
+                <div className="solucao-icon">
+                  <Leaf className="w-8 h-8" />
+                </div>
+                <h3>Hábitos de Vida</h3>
+                <p>Transformação de Estilo de Vida</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SOLUCAO_SELECTION), renderiza só o modal
+    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_SELECTION')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
@@ -6528,6 +5609,7 @@ function ConsultasPageContent() {
             </button>
             <h1 className="consultas-title">Detalhes da Consulta</h1>
           </div>
+          
           {typeof contentType !== 'string' ? contentType : null}
         </div>
       );
@@ -6609,7 +5691,6 @@ function ConsultasPageContent() {
               </div>
             </div>
           </div>
-
 
         </div>
 
@@ -6760,6 +5841,7 @@ function ConsultasPageContent() {
                   onChatInputChange={setChatInput}
                   consultaStatus={consultaDetails?.status}
                   consultaEtapa={consultaDetails?.etapa}
+                  renderViewSolutionsButton={renderViewSolutionsButton}
                 />
               </div>
             </div>
@@ -6914,6 +5996,16 @@ function ConsultasPageContent() {
                   
                   <div className="table-cell actions-cell">
                     <div className="action-buttons">
+                      {/* Botão Entrar na Consulta (apenas para agendamentos) */}
+                      {consultation.status === 'AGENDAMENTO' && (
+                        <button
+                          className="action-button enter-action"
+                          onClick={(e) => handleEnterConsultation(e, consultation)}
+                          title="Entrar na Consulta"
+                        >
+                          <LogIn className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         className="action-button edit-action"
                         onClick={(e) => handleEditConsultation(e, consultation)}

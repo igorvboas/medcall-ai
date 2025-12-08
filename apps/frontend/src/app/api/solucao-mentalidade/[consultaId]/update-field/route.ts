@@ -38,74 +38,77 @@ export async function POST(
     
     console.log('📝 Atualizando campo Mentalidade:', { fieldPath, value });
 
-    // O fieldPath será "mentalidade_data.campo_nome"
+    // O fieldPath pode ser "mentalidade_data.campo_nome" ou "s_agente_mentalidade_do_paciente.campo_nome"
     const [tableName, fieldName] = fieldPath.split('.');
     
-    if (tableName !== 'mentalidade_data' || !fieldName) {
+    if ((tableName !== 'mentalidade_data' && tableName !== 's_agente_mentalidade_do_paciente') || !fieldName) {
       return NextResponse.json(
         { error: 'Campo inválido' },
         { status: 400 }
       );
     }
 
-    const actualTableName = 's_agente_mentalidade_do_paciente';
+    const actualTableName = 's_agente_mentalidade_2';
 
-    // Verificar se o registro existe
-    const { data: existing } = await supabase
-      .from(actualTableName)
-      .select('user_id')
-      .eq('user_id', userId)
-      .eq('consulta_id', consultaId)
+    // Buscar o paciente_id da consulta primeiro
+    const { data: consultation } = await supabase
+      .from('consultations')
+      .select('patient_id')
+      .eq('id', consultaId)
       .single();
 
-    if (!existing) {
-      // Se não existir, buscar o paciente_id da consulta
-      const { data: consultation } = await supabase
-        .from('consultations')
-        .select('patient_id')
-        .eq('id', consultaId)
-        .single();
-
-      if (!consultation) {
-        return NextResponse.json(
-          { error: 'Consulta não encontrada' },
-          { status: 404 }
-        );
-      }
-
-      // Criar registro inicial
-      const { error: insertError } = await supabase
-        .from(actualTableName)
-        .insert({
-          user_id: userId,
-          paciente_id: consultation.patient_id,
-          consulta_id: consultaId,
-          [fieldName]: value
-        });
-
-      if (insertError) {
-        console.error('❌ Erro ao criar registro:', insertError);
-        return NextResponse.json(
-          { error: 'Erro ao criar registro' },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Atualizar registro existente
-      const { error: updateError } = await supabase
-        .from(actualTableName)
-        .update({ [fieldName]: value })
-        .eq('user_id', userId)
-        .eq('consulta_id', consultaId);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar campo:', updateError);
-        return NextResponse.json(
-          { error: 'Erro ao atualizar campo' },
-          { status: 500 }
-        );
-      }
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada' },
+        { status: 404 }
+      );
     }
+
+    // Buscar registro existente (filtrar APENAS por consulta_id)
+    console.log('🔍 [MENTALIDADE] Buscando registro para consulta_id:', consultaId);
+    
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from(actualTableName)
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    console.log('📊 [MENTALIDADE] Registro encontrado:', existingRecord ? 'Sim' : 'Não');
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: 'Registro de mentalidade não encontrado. Por favor, carregue os dados primeiro.' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ [MENTALIDADE] Atualizando registro ID:', existingRecord.id);
+    
+    // Preparar valor para salvar (stringify se for objeto)
+    let valueToSave = value;
+    if (typeof value === 'object' && value !== null) {
+      valueToSave = JSON.stringify(value);
+    }
+    
+    // Atualizar registro existente
+    const updateData: any = { [fieldName]: valueToSave };
+    
+    const { error: updateError } = await supabase
+      .from(actualTableName)
+      .update(updateData)
+      .eq('id', existingRecord.id);
+
+    if (updateError) {
+      console.error('❌ [MENTALIDADE] Erro ao atualizar:', updateError);
+      return NextResponse.json(
+        { error: 'Erro ao atualizar campo' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('✅ [MENTALIDADE] Campo atualizado com sucesso');
 
     console.log('✅ Campo Mentalidade atualizado com sucesso');
 

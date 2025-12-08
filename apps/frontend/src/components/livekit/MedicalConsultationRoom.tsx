@@ -25,6 +25,11 @@ interface MedicalConsultationRoomProps {
   // Patient information
   patientName?: string;
   
+  // Additional params for patient link
+  consultationId?: string;
+  patientToken?: string;
+  livekitUrl?: string;
+  
   // Device preferences
   videoCaptureDefaults?: {
     deviceId?: string;
@@ -49,6 +54,9 @@ export function MedicalConsultationRoom({
   serverUrl,
   token,
   patientName,
+  consultationId,
+  patientToken,
+  livekitUrl,
   videoCaptureDefaults,
   audioCaptureDefaults,
   onConnected,
@@ -59,6 +67,7 @@ export function MedicalConsultationRoom({
 }: MedicalConsultationRoomProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isLiveKitConnected, setIsLiveKitConnected] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   
   // Hook para transmissão de áudio para transcrição
   const micTransmitter = useMicTransmitter();
@@ -184,7 +193,7 @@ export function MedicalConsultationRoom({
       const { data: callSession } = await supabase
         .from('call_sessions')
         .select('consultation_id')
-        .or(`room_name.eq.${roomName},livekit_room_id.eq.${roomName},id.eq.${sessionId}`)
+        .or(`room_name.eq.${roomName},room_id.eq.${roomName},id.eq.${sessionId}`)
         .single();
 
       let consultationId = callSession?.consultation_id;
@@ -253,6 +262,35 @@ export function MedicalConsultationRoom({
 
     // Chamar callback original
     onEndCall?.();
+  };
+
+  // ✅ NOVO: Função para copiar link do paciente
+  const handleCopyPatientLink = async () => {
+    try {
+      // Construir link do paciente com todos os parâmetros necessários
+      const baseUrl = window.location.origin;
+      const patientParams = new URLSearchParams({
+        sessionId: sessionId,
+        consultationId: consultationId || sessionId,
+        patientToken: patientToken || '',
+        livekitUrl: livekitUrl || serverUrl || '',
+        roomName: roomName,
+        patientName: patientName || 'Paciente',
+      });
+
+      const patientLink = `${baseUrl}/consulta/online?${patientParams.toString()}`;
+      
+      await navigator.clipboard.writeText(patientLink);
+      setLinkCopied(true);
+      
+      // Resetar mensagem após 3 segundos
+      setTimeout(() => {
+        setLinkCopied(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      alert('Erro ao copiar link. Tente novamente.');
+    }
   };
 
   // Cleanup mic transmitter on unmount
@@ -371,6 +409,29 @@ export function MedicalConsultationRoom({
               }}
             >
               Compartilhar Link
+            </button>
+          )}
+
+          {/* Botão para copiar link do paciente - apenas para médico */}
+          {userRole === 'doctor' && patientToken && (
+            <button 
+              onClick={handleCopyPatientLink}
+              style={{
+                padding: '0.5rem 1rem',
+                background: linkCopied ? '#4caf50' : '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'background 0.3s'
+              }}
+              title="Copiar link da consulta para o paciente"
+            >
+              {linkCopied ? '✓ Link Copiado!' : '📋 Copiar Link do Paciente'}
             </button>
           )}
           

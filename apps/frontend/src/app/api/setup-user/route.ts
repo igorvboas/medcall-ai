@@ -13,6 +13,11 @@ export async function POST(request: NextRequest) {
     }
     
     const { supabase, session, user } = authResult;
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 401 });
+    }
+    
     const userId = user.id;
     
     console.log('✅ Usuário autenticado:', {
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Erro geral:', error);
     return NextResponse.json({
       error: 'Erro interno do servidor',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
     }, { status: 500 });
   }
 }

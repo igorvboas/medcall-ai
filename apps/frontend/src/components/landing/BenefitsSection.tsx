@@ -38,7 +38,7 @@ export function BenefitsSection() {
           <span className="section-label benefits-label">Vantagens</span>
           <h2 className="section-title-refined">
             Por que escolher o
-            <span className="title-accent"> EVA?</span>
+            <span className="title-accent"> Auton Health?</span>
           </h2>
           <p className="section-description">
             Transforme sua prática médica com tecnologia de ponta e resultados comprovados

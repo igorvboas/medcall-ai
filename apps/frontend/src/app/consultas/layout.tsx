@@ -12,12 +12,7 @@ export default function ConsultasLayout({
         <link 
           rel="stylesheet" 
           href="/_next/static/css/consultas.css" 
-          as="style"
-          onLoad="this.onload=null;this.rel='stylesheet'"
         />
-        <noscript>
-          <link rel="stylesheet" href="/_next/static/css/consultas.css" />
-        </noscript>
       </Head>
       <Layout>
         {children}

@@ -1,5 +1,7 @@
 # MedCall AI
 
+-> 16° DEPLOY PARA HOMOLOG - AGORA VAI EM
+
 AI-powered real-time transcription and analysis for medical video calls......
 
 ## 🚀 Overview
