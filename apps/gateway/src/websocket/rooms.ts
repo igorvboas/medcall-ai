@@ -219,17 +219,45 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     // ==================== CRIAR SALA ====================
     
     socket.on('createRoom', async (data, callback) => {
-      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone, userAuth, consultationType } = data;
+      const { hostName, roomName, patientId, patientName, patientEmail, patientPhone, userAuth, consultationType, agendamentoId } = data;
       
-      // Verificar se usuário já está em outra sala
+      // Verificar se usuário já está em outra sala ATIVA
       if (userToRoom.has(hostName)) {
-        const existingRoom = userToRoom.get(hostName);
-        callback({ 
-          success: false, 
-          error: 'Você já está em outra sala ativa',
-          existingRoomId: existingRoom
-        });
-        return;
+        const existingRoomId = userToRoom.get(hostName);
+        const existingRoom = rooms.get(existingRoomId);
+        
+        // Verificar se a sala ainda existe e se o host está realmente conectado
+        if (existingRoom && existingRoom.hostSocketId && existingRoom.hostSocketId !== socket.id) {
+          // Sala existe e host está conectado com outro socket - bloquear
+          callback({ 
+            success: false, 
+            error: 'Você já está em outra sala ativa',
+            existingRoomId: existingRoomId
+          });
+          return;
+        }
+        
+        // Sala não existe mais ou host não está conectado - limpar e permitir criar nova
+        console.log(`🧹 Limpando sala antiga ${existingRoomId} para ${hostName} (sala inexistente ou host desconectado)`);
+        userToRoom.delete(hostName);
+        
+        // Se a sala ainda existe mas host desconectou, limpar a sala também
+        if (existingRoom && !existingRoom.hostSocketId) {
+          // Limpar timer se existir
+          if (roomTimers.has(existingRoomId)) {
+            clearTimeout(roomTimers.get(existingRoomId));
+            roomTimers.delete(existingRoomId);
+          }
+          stopCallTimer(existingRoomId);
+          
+          // Remover participante se existir
+          if (existingRoom.participantUserName) {
+            userToRoom.delete(existingRoom.participantUserName);
+          }
+          
+          rooms.delete(existingRoomId);
+          console.log(`🧹 Sala antiga ${existingRoomId} removida`);
+        }
       }
 
       const roomId = generateRoomId();
@@ -289,6 +317,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           console.log(`✅ [CALL_SESSION] Criada no banco: ${callSession.id} para sala ${roomId}`);
           room.callSessionId = callSession.id; // Salvar referência
           console.log(`✅ [CALL_SESSION] callSessionId salvo na room: ${room.callSessionId}`);
+          
+          // ✅ NOVO: Atualizar webrtc_active = true quando o médico criar a sala (já está entrando)
+          console.log(`🔗 [WebRTC] Médico criou sala ${roomId} - atualizando webrtc_active = true`);
+          db.setWebRTCActive(roomId, true);
         } else {
           console.error(`❌ [CALL_SESSION] Falha ao criar call_session no banco para sala ${roomId} (sala criada apenas em memória)`);
           console.error(`❌ [CALL_SESSION] Isso impedirá o salvamento de transcrições!`);
@@ -300,7 +332,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           );
         }
 
-        // ✅ CRIAR CONSULTA COM STATUS RECORDING QUANDO A SALA É CRIADA
+        // ✅ CRIAR OU ATUALIZAR CONSULTA COM STATUS RECORDING QUANDO A SALA É CRIADA
         // ✅ Também salvar nome do médico na room para uso posterior
         let doctorName = hostName; // Fallback para hostName
         if (userAuth && patientId) {
@@ -325,33 +357,69 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
               
               const consultationTypeValue = consultationType === 'presencial' ? 'PRESENCIAL' : 'TELEMEDICINA';
               
-              const consultation = await db.createConsultation({
-                doctor_id: doctor.id,
-                patient_id: patientId,
-                patient_name: patientName,
-                consultation_type: consultationTypeValue,
-                status: 'RECORDING',
-                patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`
-              });
-
-              if (consultation) {
-                consultationId = consultation.id;
-                room.consultationId = consultationId;
+              // ✅ NOVO: Verificar se é um agendamento existente
+              if (agendamentoId) {
+                // Atualizar o agendamento existente para status RECORDING
+                console.log(`📅 Atualizando agendamento ${agendamentoId} para status RECORDING`);
+                const { supabase } = await import('../config/database');
                 
-                if (callSession && callSession.id) {
-                  await db.updateCallSession(roomId, {
-                    consultation_id: consultationId
-                  });
+                const { error: updateError } = await supabase
+                  .from('consultations')
+                  .update({
+                    status: 'RECORDING',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', agendamentoId);
+                
+                if (updateError) {
+                  console.error('❌ Erro ao atualizar agendamento:', updateError);
+                  logError(
+                    `Erro ao atualizar agendamento para RECORDING`,
+                    'error',
+                    agendamentoId,
+                    { roomId, hostName, patientId, patientName, error: updateError.message }
+                  );
+                } else {
+                  consultationId = agendamentoId;
+                  room.consultationId = consultationId;
+                  console.log(`✅ Agendamento ${agendamentoId} atualizado para RECORDING`);
+                  
+                  if (callSession && callSession.id) {
+                    await db.updateCallSession(roomId, {
+                      consultation_id: consultationId
+                    });
+                  }
+                }
+              } else {
+                // Criar nova consulta (comportamento original)
+                const consultation = await db.createConsultation({
+                  doctor_id: doctor.id,
+                  patient_id: patientId,
+                  patient_name: patientName,
+                  consultation_type: consultationTypeValue,
+                  status: 'RECORDING',
+                  patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`
+                });
+
+                if (consultation) {
+                  consultationId = consultation.id;
+                  room.consultationId = consultationId;
+                  
+                  if (callSession && callSession.id) {
+                    await db.updateCallSession(roomId, {
+                      consultation_id: consultationId
+                    });
+                  }
                 }
               }
             }
           } catch (consultationError) {
-            console.error('❌ Erro ao criar consulta:', consultationError);
+            console.error('❌ Erro ao criar/atualizar consulta:', consultationError);
             logError(
-              `Erro ao criar consulta ao criar sala`,
+              `Erro ao criar/atualizar consulta ao criar sala`,
               'error',
               null,
-              { roomId, hostName, patientId, patientName, error: consultationError instanceof Error ? consultationError.message : String(consultationError) }
+              { roomId, hostName, patientId, patientName, agendamentoId, error: consultationError instanceof Error ? consultationError.message : String(consultationError) }
             );
           }
         }
@@ -403,6 +471,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         socketToRoom.set(socket.id, roomId);
         socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
         resetRoomExpiration(roomId);
+        
+        // ✅ NOVO: Atualizar webrtc_active = true quando o médico entrar na consulta
+        console.log(`🔗 [WebRTC] Médico entrou na sala ${roomId} - atualizando webrtc_active = true`);
+        db.setWebRTCActive(roomId, true);
         
       // ✅ NOVO: Buscar transcrições do banco de dados
       let transcriptionHistory: any[] = room.transcriptions || [];

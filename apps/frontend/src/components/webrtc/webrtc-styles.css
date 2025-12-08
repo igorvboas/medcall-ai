@@ -1808,3 +1808,65 @@
 .dark .connection-status span {
   color: #E6C3A7;
 }
+
+/* ========================================
+   Estilos para campos de agendamento
+   ======================================== */
+
+.schedule-inputs {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.schedule-date,
+.schedule-time {
+  flex: 1;
+  padding: 14px 16px;
+  border: 1px solid #d4a574;
+  border-radius: 12px;
+  font-size: 15px;
+  color: #1f2937;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.schedule-date:focus,
+.schedule-time:focus {
+  outline: none;
+  border-color: #b8956a;
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+}
+
+.schedule-date::-webkit-calendar-picker-indicator,
+.schedule-time::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5);
+}
+
+/* Dark mode para schedule inputs */
+.dark .schedule-date,
+.dark .schedule-time {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(230, 195, 167, 0.3);
+  color: #f3f4f6;
+}
+
+.dark .schedule-date:focus,
+.dark .schedule-time:focus {
+  border-color: #E6C3A7;
+  box-shadow: 0 0 0 3px rgba(230, 195, 167, 0.15);
+}
+
+.dark .schedule-date::-webkit-calendar-picker-indicator,
+.dark .schedule-time::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .schedule-inputs {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

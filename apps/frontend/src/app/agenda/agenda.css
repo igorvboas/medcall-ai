@@ -360,18 +360,77 @@
   cursor: pointer;
 }
 
-.day-event.status-scheduled {
+/* CREATED - Cinza */
+.day-event.status-created {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-left: 3px solid #9ca3af;
+}
+
+/* AGENDAMENTO - Azul */
+.day-event.status-agendamento {
   background-color: #dbeafe;
   color: #1e40af;
   border-left: 3px solid #3b82f6;
 }
 
+/* RECORDING - Vermelho pulsante */
+.day-event.status-recording {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-left: 3px solid #ef4444;
+}
+
+/* PROCESSING - Amarelo */
+.day-event.status-processing {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-left: 3px solid #f59e0b;
+}
+
+/* VALIDATION - Laranja */
+.day-event.status-validation {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border-left: 3px solid #f97316;
+}
+
+/* VALID_ANAMNESE - Teal */
+.day-event.status-valid-anamnese {
+  background-color: #ccfbf1;
+  color: #0f766e;
+  border-left: 3px solid #14b8a6;
+}
+
+/* VALID_DIAGNOSTICO - Cyan */
+.day-event.status-valid-diagnostico {
+  background-color: #cffafe;
+  color: #0e7490;
+  border-left: 3px solid #06b6d4;
+}
+
+/* VALID_SOLUCAO - Indigo */
+.day-event.status-valid-solucao {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border-left: 3px solid #6366f1;
+}
+
+/* COMPLETED - Verde */
 .day-event.status-completed {
   background-color: #d1fae5;
   color: #065f46;
   border-left: 3px solid #10b981;
 }
 
+/* ERROR - Vermelho escuro */
+.day-event.status-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-left: 3px solid #dc2626;
+}
+
+/* CANCELLED - Vermelho */
 .day-event.status-cancelled {
   background-color: #fee2e2;
   color: #991b1b;
@@ -509,16 +568,67 @@
   text-transform: uppercase;
 }
 
-.consultation-status.status-scheduled {
+/* CREATED - Cinza */
+.consultation-status.status-created {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+/* AGENDAMENTO - Azul */
+.consultation-status.status-agendamento {
   background-color: #dbeafe;
   color: #1e40af;
 }
 
+/* RECORDING - Vermelho */
+.consultation-status.status-recording {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+/* PROCESSING - Amarelo */
+.consultation-status.status-processing {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* VALIDATION - Laranja */
+.consultation-status.status-validation {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+/* VALID_ANAMNESE - Teal */
+.consultation-status.status-valid-anamnese {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+
+/* VALID_DIAGNOSTICO - Cyan */
+.consultation-status.status-valid-diagnostico {
+  background-color: #cffafe;
+  color: #0e7490;
+}
+
+/* VALID_SOLUCAO - Indigo */
+.consultation-status.status-valid-solucao {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+
+/* COMPLETED - Verde */
 .consultation-status.status-completed {
   background-color: #d1fae5;
   color: #065f46;
 }
 
+/* ERROR - Vermelho escuro */
+.consultation-status.status-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* CANCELLED - Vermelho */
 .consultation-status.status-cancelled {
   background-color: #fee2e2;
   color: #991b1b;
@@ -776,5 +886,52 @@
   padding: 8px 16px;
   font-size: 13px;
   align-self: flex-start;
+}
+
+/* ========================================
+   Botão Entrar na Consulta (Agenda)
+   ======================================== */
+
+.consultation-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dark .consultation-actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.btn-enter-consultation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-enter-consultation:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-enter-consultation:active {
+  transform: translateY(0);
+}
+
+.btn-enter-consultation .btn-icon {
+  width: 16px;
+  height: 16px;
 }
 

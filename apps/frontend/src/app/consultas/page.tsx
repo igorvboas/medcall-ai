@@ -6,7 +6,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn
 } from 'lucide-react';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
@@ -45,7 +45,7 @@ interface Consultation {
   patient_name: string;
   patient_context?: string;
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED';
+  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
   solucao_etapa?: 'LTB' | 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | 'HABITOS_DE_VIDA';
   duration?: number;
@@ -64,6 +64,7 @@ interface Consultation {
   next_appointment?: string;
   created_at: string;
   updated_at: string;
+  consulta_inicio?: string;
   transcription?: {
     id: string;
     raw_text: string;
@@ -3879,6 +3880,15 @@ function ConsultasPageContent() {
     setConsultationToDelete(null);
   };
 
+  // Função para entrar em uma consulta agendada
+  const handleEnterConsultation = (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation(); // Previne a abertura da consulta
+    
+    // Redirecionar para a página de nova consulta com os dados do agendamento
+    // Isso permite que a consulta seja iniciada com Socket.IO e WebRTC
+    router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient_name)}&consultation_type=${consultation.consultation_type}`);
+  };
+
   // Função para salvar alterações da ANAMNESE e mudar para próxima etapa (DIAGNOSTICO SENDO PROCESSADO)
   const handleSaveAndContinue = async () => {
     if (!consultaId || !consultaDetails) return;
@@ -5986,6 +5996,16 @@ function ConsultasPageContent() {
                   
                   <div className="table-cell actions-cell">
                     <div className="action-buttons">
+                      {/* Botão Entrar na Consulta (apenas para agendamentos) */}
+                      {consultation.status === 'AGENDAMENTO' && (
+                        <button
+                          className="action-button enter-action"
+                          onClick={(e) => handleEnterConsultation(e, consultation)}
+                          title="Entrar na Consulta"
+                        >
+                          <LogIn className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         className="action-button edit-action"
                         onClick={(e) => handleEditConsultation(e, consultation)}

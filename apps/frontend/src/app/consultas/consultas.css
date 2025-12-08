@@ -3971,6 +3971,35 @@
   transform: translateY(-1px) scale(1.02);
 }
 
+/* Botão de Entrar na Consulta - Verde */
+.enter-action {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.enter-action::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.enter-action:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+}
+
+.enter-action:hover::before {
+  opacity: 1;
+}
+
+.enter-action:hover svg {
+  color: white;
+}
+
+.enter-action:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
 /* ===== MODAL DE CONFIRMAÇÃO ===== */
 .modal-overlay {
   position: fixed;
@@ -4188,6 +4217,11 @@
 .dark .delete-action {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.2) 100%);
   border-color: rgba(239, 68, 68, 0.4);
+}
+
+.dark .enter-action {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%);
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 /* Responsive para botões de ação */

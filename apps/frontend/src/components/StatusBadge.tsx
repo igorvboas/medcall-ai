@@ -233,6 +233,7 @@ export function mapBackendStatus(backendStatus: string): StatusType {
     'PENDING': 'pending',
     'IN_PROGRESS': 'in-progress',
     'SCHEDULED': 'scheduled',
+    'AGENDAMENTO': 'scheduled', // ✅ NOVO: Mapear AGENDAMENTO para scheduled
     'WAITING': 'waiting',
     'RESCHEDULED': 'rescheduled',
     'Confirmed': 'confirmed',
