@@ -27,6 +27,32 @@ export default function SignInPage() {
     }
   }, [user, authLoading, router]);
 
+  // Função para traduzir mensagens de erro do Supabase para português
+  const translateError = (errorMessage: string): string => {
+    const errorLower = errorMessage.toLowerCase();
+    
+    if (errorLower.includes('invalid login credentials') || 
+        errorLower.includes('invalid credentials') ||
+        errorLower.includes('email not confirmed')) {
+      return 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.';
+    }
+    
+    if (errorLower.includes('email rate limit')) {
+      return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+    }
+    
+    if (errorLower.includes('user not found')) {
+      return 'Usuário não encontrado. Verifique seu email.';
+    }
+    
+    if (errorLower.includes('password')) {
+      return 'Senha incorreta. Tente novamente.';
+    }
+    
+    // Retornar mensagem original se não houver tradução específica
+    return errorMessage;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -36,7 +62,7 @@ export default function SignInPage() {
       const { error } = await signIn(email, password);
       
       if (error) {
-        setError(error.message);
+        setError(translateError(error.message));
       } else {
         router.push('/dashboard');
       }

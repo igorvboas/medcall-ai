@@ -164,6 +164,8 @@ export default function FileUpload({
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
+        onClick={() => !disabled && document.getElementById('file-input')?.click()}
+        style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
       >
         <Upload className="file-upload-icon" />
         <div>
@@ -177,14 +179,6 @@ export default function FileUpload({
             Máximo {maxFiles} arquivos, {maxSizePerFile}MB cada
           </p>
         </div>
-        <button
-          type="button"
-          className="file-upload-button"
-          disabled={disabled}
-          onClick={() => document.getElementById('file-input')?.click()}
-        >
-          Selecionar Arquivos
-        </button>
         <input
           id="file-input"
           type="file"
@@ -203,39 +197,139 @@ export default function FileUpload({
             Arquivos Selecionados ({files.length})
           </h4>
           {files.map((file) => (
-            <div key={file.id} className="file-item">
-              <div className="file-item-info">
-                <div className={`file-item-icon ${file.status}`}>
+            <div key={file.id} className="file-item" style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              marginBottom: '8px',
+              backgroundColor: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              transition: 'all 0.2s ease'
+            }}>
+              <div className="file-item-info" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flex: 1,
+                minWidth: 0
+              }}>
+                <div className={`file-item-icon ${file.status}`} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: file.status === 'completed' ? '#d1fae5' : file.status === 'error' ? '#fee2e2' : '#f3f4f6',
+                  flexShrink: 0
+                }}>
                   {getStatusIcon(file.status)}
                 </div>
-                <div className="file-item-details">
-                  <p className="file-item-name">
+                <div className="file-item-details" style={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden'
+                }}>
+                  <p className="file-item-name" style={{
+                    margin: 0,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#111827',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
                     {file.file.name}
                   </p>
-                  <p className="file-item-size">
-                    {formatFileSize(file.file.size)}
-                  </p>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+                    <p className="file-item-size" style={{
+                      margin: 0,
+                      fontSize: '12px',
+                      color: '#6b7280'
+                    }}>
+                      {formatFileSize(file.file.size)}
+                    </p>
+                    {file.status === 'uploading' && (
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#3b82f6',
+                        fontWeight: 500
+                      }}>
+                        {file.progress}%
+                      </span>
+                    )}
+                  </div>
                   {file.error && (
-                    <p className="file-item-error">{file.error}</p>
+                    <p className="file-item-error" style={{
+                      margin: '4px 0 0 0',
+                      fontSize: '12px',
+                      color: '#dc2626'
+                    }}>
+                      {file.error}
+                    </p>
                   )}
                 </div>
               </div>
-              <div className="file-item-actions">
+              <div className="file-item-actions" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexShrink: 0
+              }}>
                 {file.status === 'uploading' && (
-                  <div className="file-item-progress">
+                  <div className="file-item-progress" style={{
+                    width: '100px',
+                    height: '4px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '2px',
+                    overflow: 'hidden'
+                  }}>
                     <div 
                       className="file-item-progress-bar"
-                      style={{ width: `${file.progress}%` }}
+                      style={{ 
+                        width: `${file.progress}%`,
+                        height: '100%',
+                        backgroundColor: '#3b82f6',
+                        transition: 'width 0.3s ease'
+                      }}
                     />
                   </div>
                 )}
                 <button
                   type="button"
                   className="file-item-remove"
-                  onClick={() => removeFile(file.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFile(file.id);
+                  }}
                   disabled={file.status === 'uploading'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: file.status === 'uploading' ? '#f3f4f6' : '#fee2e2',
+                    color: file.status === 'uploading' ? '#9ca3af' : '#dc2626',
+                    cursor: file.status === 'uploading' ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (file.status !== 'uploading') {
+                      e.currentTarget.style.backgroundColor = '#fecaca';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (file.status !== 'uploading') {
+                      e.currentTarget.style.backgroundColor = '#fee2e2';
+                    }
+                  }}
                 >
-                  <X />
+                  <X size={16} />
                 </button>
               </div>
             </div>

@@ -122,6 +122,55 @@ export async function GET(request: NextRequest) {
     const periodParam = searchParams.get('period'); // '7d' | '15d' | '30d'
     const targetYear = yearParam ? Number(yearParam) : new Date().getFullYear();
 
+    // Parâmetros específicos para o gráfico de Presencial/Telemedicina
+    const chartPeriodParam = searchParams.get('chartPeriod'); // 'day' | 'week' | 'month' | 'year'
+    const chartDateParam = searchParams.get('chartDate'); // 'YYYY-MM-DD'
+    const chartMonthParam = searchParams.get('chartMonth'); // 'YYYY-MM'
+    const chartYearParam = searchParams.get('chartYear'); // 'YYYY'
+
+    // Calcular período para o gráfico de Presencial/Telemedicina
+    let chartStartDate: Date;
+    let chartEndDate: Date;
+
+    if (chartPeriodParam === 'day' && chartDateParam) {
+      // Dia específico
+      const selectedDate = new Date(chartDateParam + 'T00:00:00');
+      chartStartDate = new Date(selectedDate);
+      chartStartDate.setHours(0, 0, 0, 0);
+      chartEndDate = new Date(selectedDate);
+      chartEndDate.setHours(23, 59, 59, 999);
+    } else if (chartPeriodParam === 'week' && chartDateParam) {
+      // Semana (segunda a domingo) que contém a data selecionada
+      const selectedDate = new Date(chartDateParam + 'T00:00:00');
+      const dayOfWeek = selectedDate.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Ajustar para segunda-feira
+      chartStartDate = new Date(selectedDate);
+      chartStartDate.setDate(selectedDate.getDate() + diff);
+      chartStartDate.setHours(0, 0, 0, 0);
+      chartEndDate = new Date(chartStartDate);
+      chartEndDate.setDate(chartStartDate.getDate() + 6);
+      chartEndDate.setHours(23, 59, 59, 999);
+    } else if (chartPeriodParam === 'month' && chartMonthParam) {
+      // Mês específico
+      const [year, month] = chartMonthParam.split('-').map(Number);
+      chartStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+      const lastDay = new Date(year, month, 0).getDate();
+      chartEndDate = new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59));
+    } else if (chartPeriodParam === 'year' && chartYearParam) {
+      // Ano específico
+      const year = Number(chartYearParam);
+      chartStartDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+      chartEndDate = year === new Date().getFullYear()
+        ? new Date()
+        : new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+    } else {
+      // Fallback: usar o período padrão (ano atual)
+      chartStartDate = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
+      chartEndDate = targetYear === new Date().getFullYear()
+        ? new Date()
+        : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
+    }
+
     // Se ano informado, buscamos do início do ano até hoje (ou final do ano se for passado)
     let startDateRange: Date;
     let endDateRange: Date;
@@ -139,12 +188,13 @@ export async function GET(request: NextRequest) {
         : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
     }
 
+    // Buscar consultas para o gráfico de Presencial/Telemedicina usando o período específico
     const { data: consultasUltimos30Dias } = await supabase
       .from('consultations')
       .select('created_at, status, consultation_type')
       .eq('doctor_id', medico.id)
-      .gte('created_at', startDateRange.toISOString())
-      .lte('created_at', endDateRange.toISOString())
+      .gte('created_at', chartStartDate.toISOString())
+      .lte('created_at', chartEndDate.toISOString())
       .order('created_at', { ascending: true });
 
     // Agrupar por dia (considerando fuso horário de São Paulo para não "trocar" o dia)

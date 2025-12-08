@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    const status = searchParams.get('status') as 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'COMPLETED' | 'ERROR' | 'CANCELLED' | null;
+    const status = searchParams.get('status') as 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'COMPLETED' | 'ERROR' | 'CANCELLED' | 'AGENDAMENTO' | null;
     const consultationType = searchParams.get('type') as 'PRESENCIAL' | 'TELEMEDICINA' | null;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -128,12 +128,20 @@ export async function POST(request: NextRequest) {
 
     // Parse do body da requisição
     const body = await request.json();
-    const { patient_id, consultation_type, patient_name } = body;
+    const { patient_id, consultation_type, patient_name, status, consulta_inicio } = body;
 
     // Validação dos dados obrigatórios
     if (!patient_id || !consultation_type || !patient_name) {
       return NextResponse.json(
         { error: 'Dados obrigatórios: patient_id, consultation_type, patient_name' },
+        { status: 400 }
+      );
+    }
+
+    // Validação de agendamento
+    if (status === 'AGENDAMENTO' && !consulta_inicio) {
+      return NextResponse.json(
+        { error: 'Para agendamentos, o campo consulta_inicio é obrigatório' },
         { status: 400 }
       );
     }
@@ -154,18 +162,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Preparar dados da consulta
+    const consultationData: any = {
+      patient_id,
+      consultation_type,
+      patient_name,
+      doctor_id: medico.id,
+      status: status || 'CREATED',
+    };
+
+    // Adicionar consulta_inicio se for agendamento
+    if (consulta_inicio) {
+      consultationData.consulta_inicio = consulta_inicio;
+    }
+
     // Criar a consulta
     const { data: consultation, error: insertError } = await supabase
       .from('consultations')
-      .insert([
-        {
-          patient_id,
-          consultation_type,
-          patient_name,
-          doctor_id: medico.id,
-          status: 'CREATED',
-        },
-      ])
+      .insert([consultationData])
       .select()
       .single();
 
@@ -177,7 +191,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Consulta criada com sucesso:', consultation.id);
+    console.log('✅ Consulta criada com sucesso:', consultation.id, status === 'AGENDAMENTO' ? '(Agendamento)' : '');
     return NextResponse.json(consultation, { status: 201 });
 
   } catch (error) {

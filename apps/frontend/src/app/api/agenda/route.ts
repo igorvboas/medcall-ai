@@ -33,27 +33,53 @@ export async function GET(request: NextRequest) {
     const startUtc = new Date(Date.UTC(yearParam, monthParam - 1, 1, 0, 0, 0));
     const endUtc = new Date(Date.UTC(yearParam, monthParam, 0, 23, 59, 59));
 
-    // Buscar consultas do mês
-    const { data: rows, error } = await supabase
+    // Buscar consultas do mês (usando consulta_inicio se disponível, senão created_at)
+    // Primeiro, buscar por created_at no período
+    const { data: rowsByCreated, error: error1 } = await supabase
       .from('consultations')
-      .select('id, patient_name, consultation_type, status, duration, created_at')
+      .select('id, patient_id, patient_name, consultation_type, status, duration, created_at, consulta_inicio')
       .eq('doctor_id', medico.id)
       .gte('created_at', startUtc.toISOString())
-      .lte('created_at', endUtc.toISOString())
-      .order('created_at', { ascending: true });
+      .lte('created_at', endUtc.toISOString());
+
+    // Depois, buscar por consulta_inicio no período (para agendamentos)
+    const { data: rowsByAgendamento, error: error2 } = await supabase
+      .from('consultations')
+      .select('id, patient_id, patient_name, consultation_type, status, duration, created_at, consulta_inicio')
+      .eq('doctor_id', medico.id)
+      .not('consulta_inicio', 'is', null)
+      .gte('consulta_inicio', startUtc.toISOString())
+      .lte('consulta_inicio', endUtc.toISOString());
+
+    const error = error1 || error2;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Combinar resultados e remover duplicatas
+    const allRows = [...(rowsByCreated || []), ...(rowsByAgendamento || [])];
+    const uniqueRows = allRows.filter((row, index, self) => 
+      index === self.findIndex((r) => r.id === row.id)
+    );
+
+    // Ordenar por data (consulta_inicio se disponível, senão created_at)
+    uniqueRows.sort((a, b) => {
+      const dateA = new Date(a.consulta_inicio || a.created_at);
+      const dateB = new Date(b.consulta_inicio || b.created_at);
+      return dateA.getTime() - dateB.getTime();
+    });
+
     // Map para o front
-    const items = (rows || []).map((c) => ({
+    const items = uniqueRows.map((c) => ({
       id: c.id,
       patient: c.patient_name,
+      patient_id: c.patient_id,
       consultation_type: c.consultation_type,
-      status: c.status,
+      status: c.status, // Status real do banco
       duration: c.duration,
-      created_at: c.created_at
+      created_at: c.created_at,
+      consulta_inicio: c.consulta_inicio
     }));
 
     return NextResponse.json({ items });

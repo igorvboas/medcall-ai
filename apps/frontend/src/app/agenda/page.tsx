@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn } from 'lucide-react';
 import './agenda.css';
 
 interface ConsultationEvent {
   id: string;
   title: string;
   patient: string;
+  patient_id: string;
   date: Date;
   time: string;
   type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'AGENDADA' | 'CONCLUIDA' | 'CANCELADA';
+  status: 'CREATED' | 'AGENDAMENTO' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'COMPLETED' | 'ERROR' | 'CANCELLED';
   duration: number; // em minutos
 }
 
@@ -27,6 +29,7 @@ const monthNames = [
 const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function AgendaPage() {
+  const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [consultations, setConsultations] = useState<ConsultationEvent[]>(mockConsultations);
@@ -49,24 +52,27 @@ export default function AgendaPage() {
       const items = (json.items || []) as Array<{
         id: string;
         patient: string;
+        patient_id: string;
         consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
         status: string;
         duration: number | null;
         created_at: string;
+        consulta_inicio: string | null;
       }>;
 
       const mapped: ConsultationEvent[] = items.map((c) => {
-        // created_at → data + hora locais (TZ implícita)
-        const d = new Date(c.created_at);
+        // Usar consulta_inicio se disponível, senão created_at
+        const d = c.consulta_inicio ? new Date(c.consulta_inicio) : new Date(c.created_at);
         const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return {
           id: c.id,
           title: 'Consulta',
           patient: c.patient,
+          patient_id: c.patient_id,
           date: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
           time,
           type: c.consultation_type,
-          status: c.status === 'COMPLETED' ? 'CONCLUIDA' : c.status === 'CANCELLED' ? 'CANCELADA' : 'AGENDADA',
+          status: c.status as ConsultationEvent['status'], // Status real do banco
           duration: c.duration ? Math.round(c.duration / 60) : 30
         };
       });
@@ -197,19 +203,40 @@ export default function AgendaPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'AGENDADA':
-        return 'status-scheduled';
-      case 'CONCLUIDA':
+      case 'CREATED':
+        return 'status-created';
+      case 'AGENDAMENTO':
+        return 'status-agendamento';
+      case 'RECORDING':
+        return 'status-recording';
+      case 'PROCESSING':
+        return 'status-processing';
+      case 'VALIDATION':
+        return 'status-validation';
+      case 'VALID_ANAMNESE':
+        return 'status-valid-anamnese';
+      case 'VALID_DIAGNOSTICO':
+        return 'status-valid-diagnostico';
+      case 'VALID_SOLUCAO':
+        return 'status-valid-solucao';
+      case 'COMPLETED':
         return 'status-completed';
-      case 'CANCELADA':
+      case 'ERROR':
+        return 'status-error';
+      case 'CANCELLED':
         return 'status-cancelled';
       default:
-        return 'status-scheduled';
+        return 'status-created';
     }
   };
 
   const getTypeIcon = (type: string) => {
     return type === 'TELEMEDICINA' ? <Video className="event-type-icon" /> : <User className="event-type-icon" />;
+  };
+
+  // Função para entrar na consulta agendada
+  const handleEnterConsultation = (consultation: ConsultationEvent) => {
+    router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient)}&consultation_type=${consultation.type}`);
   };
 
   const days = viewMode === 'month' ? getDaysInMonth() : viewMode === 'week' ? getDaysInWeek() : getDayView();
@@ -436,6 +463,20 @@ export default function AgendaPage() {
                               Duração: {consultation.duration} min
                             </div>
                           </div>
+
+                          {/* Botão Entrar na Consulta (apenas para consultas com status AGENDAMENTO) */}
+                          {consultation.status === 'AGENDAMENTO' && (
+                            <div className="consultation-actions">
+                              <button
+                                className="btn-enter-consultation"
+                                onClick={() => handleEnterConsultation(consultation)}
+                                title="Entrar na Consulta"
+                              >
+                                <LogIn className="btn-icon" />
+                                Entrar na Consulta
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>
