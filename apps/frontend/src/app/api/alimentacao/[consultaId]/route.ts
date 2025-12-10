@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: NextRequest,
@@ -16,6 +16,9 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    // Criar cliente Supabase para server-side
+    const supabase = createSupabaseServerClient();
 
     // 1. Buscar na tabela consultations filtrando pelo id da consulta
     const { data: consulta, error: consultaError } = await supabase
