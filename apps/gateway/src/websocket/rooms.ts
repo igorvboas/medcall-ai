@@ -25,6 +25,12 @@ const openAIKeepaliveTimers = new Map();
 // 📊 Mapa para rastrear tempo de uso da Realtime API: userName -> { startTime, roomId }
 const openAIUsageTracker = new Map<string, { startTime: number; roomId: string }>();
 
+// ⏱️ Mapa para timeout máximo de conexões OpenAI: userName -> Timeout
+const openAIMaxTimeoutTimers = new Map();
+
+// 🔧 Constante: Timeout máximo para conexões OpenAI (2 horas)
+const OPENAI_MAX_CONNECTION_TIME = 2 * 60 * 60 * 1000; // 2 horas em ms
+
 // Mapa separado para timers (não serializar com room data)
 const roomTimers = new Map(); // roomId -> Timeout
 
@@ -122,8 +128,87 @@ function cleanExpiredRoom(roomId: string): void {
   // ✅ NOVO: Parar timer da chamada
   stopCallTimer(roomId);
   
+  // 🔧 CORREÇÃO: Fechar conexões OpenAI dos usuários da sala
+  if (room.hostUserName) {
+    closeOpenAIConnection(room.hostUserName, 'sala expirada');
+  }
+  if (room.participantUserName) {
+    closeOpenAIConnection(room.participantUserName, 'sala expirada');
+  }
+  
   // Remover sala
   rooms.delete(roomId);
+}
+
+/**
+ * 🔧 Fecha conexão OpenAI de forma segura e registra uso
+ */
+async function closeOpenAIConnection(userName: string, reason: string = 'desconexão'): Promise<void> {
+  const openAIWs = openAIConnections.get(userName);
+  
+  if (openAIWs) {
+    console.log(`🔌 [OpenAI] Fechando conexão de ${userName} (motivo: ${reason})`);
+    
+    // 📊 Registrar uso antes de fechar
+    const usageData = openAIUsageTracker.get(userName);
+    if (usageData) {
+      const durationMs = Date.now() - usageData.startTime;
+      const durationMinutes = durationMs / 60000;
+      
+      console.log(`📊 [AI_PRICING] Registrando uso Realtime API: ${userName} - ${durationMinutes.toFixed(2)} minutos`);
+      
+      try {
+        // Buscar consulta_id a partir do roomId
+        const room = rooms.get(usageData.roomId);
+        let consultaId = room?.consultationId || null;
+        
+        // Se não encontrou na room, buscar do banco de dados
+        if (!consultaId && usageData.roomId) {
+          console.log(`🔍 [AI_PRICING] Buscando consultaId do banco para room ${usageData.roomId}...`);
+          consultaId = await db.getConsultationIdByRoomId(usageData.roomId);
+          if (consultaId) {
+            console.log(`✅ [AI_PRICING] consultaId recuperado do banco: ${consultaId}`);
+          }
+        }
+        
+        if (!consultaId) {
+          console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
+        }
+        
+        await aiPricingService.logRealtimeUsage(durationMs, consultaId);
+        console.log(`✅ [AI_PRICING] Uso registrado com sucesso - ${durationMinutes.toFixed(2)} min - consultaId: ${consultaId}`);
+      } catch (error) {
+        console.error(`❌ [AI_PRICING] Erro ao registrar uso:`, error);
+      }
+      
+      openAIUsageTracker.delete(userName);
+    }
+    
+    // Fechar conexão WebSocket
+    try {
+      if (openAIWs.readyState === WebSocket.OPEN || openAIWs.readyState === WebSocket.CONNECTING) {
+        openAIWs.close(1000, reason);
+      }
+    } catch (error) {
+      console.error(`❌ [OpenAI] Erro ao fechar conexão de ${userName}:`, error);
+    }
+    
+    openAIConnections.delete(userName);
+  }
+  
+  // Limpar keepalive timer
+  const keepaliveInterval = openAIKeepaliveTimers.get(userName);
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval);
+    openAIKeepaliveTimers.delete(userName);
+  }
+  
+  // Limpar timeout máximo timer
+  const maxTimeoutTimer = openAIMaxTimeoutTimers.get(userName);
+  if (maxTimeoutTimer) {
+    clearTimeout(maxTimeoutTimer);
+    openAIMaxTimeoutTimers.delete(userName);
+  }
 }
 
 /**
@@ -1021,6 +1106,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         
         openAIKeepaliveTimers.set(userName, keepaliveInterval);
         
+        // ⏱️ NOVO: Timeout máximo de 2 horas para evitar cobranças excessivas
+        const maxTimeoutTimer = setTimeout(() => {
+          console.log(`⏱️ [OpenAI] Timeout máximo atingido para ${userName} (2 horas)`);
+          closeOpenAIConnection(userName, 'timeout máximo de 2 horas');
+          socket.emit('transcription:disconnected', { reason: 'Conexão encerrada após 2 horas (limite de segurança)' });
+        }, OPENAI_MAX_CONNECTION_TIME);
+        
+        openAIMaxTimeoutTimers.set(userName, maxTimeoutTimer);
+        console.log(`⏱️ [OpenAI] Timer de 2h iniciado para ${userName}`);
+        
         callback({ success: true, message: 'Conectado com sucesso' });
       });
 
@@ -1121,49 +1216,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
     });
 
     socket.on('transcription:disconnect', async () => {
-      const openAIWs = openAIConnections.get(userName);
-      if (openAIWs) {
-        // 📊 Registrar uso da Realtime API antes de fechar
-        const usageData = openAIUsageTracker.get(userName);
-        if (usageData) {
-          const durationMs = Date.now() - usageData.startTime;
-          const room = rooms.get(usageData.roomId);
-          
-          // Prioridade: consultationId da room > buscar do banco pelo roomId
-          let consultaId = room?.consultationId || null;
-          
-          // Se não encontrou na room, buscar do banco de dados
-          if (!consultaId && usageData.roomId) {
-            console.log(`🔍 [AI_PRICING] Buscando consultaId do banco para room ${usageData.roomId}...`);
-            consultaId = await db.getConsultationIdByRoomId(usageData.roomId);
-            
-            // Atualizar a room em memória se encontrou
-            if (consultaId && room) {
-              room.consultationId = consultaId;
-              console.log(`✅ [AI_PRICING] consultaId recuperado do banco: ${consultaId}`);
-            }
-          }
-          
-          if (!consultaId) {
-            console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
-          }
-          
-          await aiPricingService.logRealtimeUsage(durationMs, consultaId);
-          console.log(`📊 [AI_PRICING] Realtime API desconectada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos - consultaId: ${consultaId}`);
-          
-          openAIUsageTracker.delete(userName);
-        }
-        
-        openAIWs.close();
-        openAIConnections.delete(userName);
-      }
-      
-      // Limpar keepalive timer
-      const keepaliveInterval = openAIKeepaliveTimers.get(userName);
-      if (keepaliveInterval) {
-        clearInterval(keepaliveInterval);
-        openAIKeepaliveTimers.delete(userName);
-      }
+      // 🔧 CORREÇÃO: Usar função centralizada para fechar conexão
+      await closeOpenAIConnection(userName, 'transcription:disconnect solicitado');
     });
 
     socket.on('sendTranscriptionToPeer', async (data) => {
@@ -1706,19 +1760,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         }
       }
 
-      // Limpar conexão OpenAI
-      const openAIWs = openAIConnections.get(userName);
-      if (openAIWs) {
-        // openAIWs.close();
-        openAIConnections.delete(userName);
-      }
-      
-      // Limpar keepalive timer
-      const keepaliveInterval = openAIKeepaliveTimers.get(userName);
-      if (keepaliveInterval) {
-        clearInterval(keepaliveInterval);
-        openAIKeepaliveTimers.delete(userName);
-      }
+      // 🔧 CORREÇÃO: Fechar conexão OpenAI corretamente quando usuário desconecta
+      closeOpenAIConnection(userName, 'usuário desconectou');
 
       socketToRoom.delete(socket.id);
     });
