@@ -1064,7 +1064,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       console.log(`🔗 [TRANSCRIPTION] Tentando conectar à OpenAI para ${userName} na sala ${roomId}`);
 
       const openAIWs = new WebSocket(
-        'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+        'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview',
         {
           headers: {
             'Authorization': `Bearer ${OPENAI_API_KEY}`,
@@ -1657,7 +1657,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             consultation_id: consultationId,
             raw_text: rawText,
             language: 'pt-BR',
-            model_used: 'gpt-4o-realtime-preview-2024-12-17'
+            model_used: 'gpt-4o-mini-realtime-preview'
           });
 
           if (transcription) {

@@ -959,7 +959,7 @@ export const db = {
       .insert({
         ...data,
         language: data.language || 'pt-BR',
-        model_used: data.model_used || 'gpt-4o-realtime-preview-2024-12-17',
+        model_used: data.model_used || 'gpt-4o-mini-realtime-preview',
         created_at: new Date().toISOString()
       })
       .select()

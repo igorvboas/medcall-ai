@@ -10,14 +10,14 @@ import { supabase, logError } from '../config/database';
 
 // Tipos de LLM suportados
 export type LLMType = 
-  | 'whisper-1'                           // Transcrição Whisper
-  | 'gpt-4o-realtime-preview-2024-12-17'  // Realtime API
-  | 'gpt-4o'                              // Chat Completion
-  | 'gpt-4o-mini'                         // Chat Completion (mini)
-  | 'gpt-4-turbo'                         // Chat Completion
-  | 'gpt-3.5-turbo'                       // Chat Completion
-  | 'text-embedding-3-small'              // Embeddings
-  | 'text-embedding-3-large';             // Embeddings
+  | 'whisper-1'                                // Transcrição Whisper
+  | 'gpt-4o-mini-realtime-preview'  // Realtime API (mini - mais barato)
+  | 'gpt-4o'                                   // Chat Completion
+  | 'gpt-4o-mini'                              // Chat Completion (mini)
+  | 'gpt-4-turbo'                              // Chat Completion
+  | 'gpt-3.5-turbo'                            // Chat Completion
+  | 'text-embedding-3-small'                   // Embeddings
+  | 'text-embedding-3-large';                  // Embeddings
 
 // Cache para evitar múltiplas consultas ao banco para o mesmo médico
 const doctorTesterCache = new Map<string, { isTester: boolean; timestamp: number }>();
@@ -36,7 +36,7 @@ export type AIStage =
 // Preços por modelo (em USD por 1000 tokens ou por minuto para áudio)
 const AI_PRICING: Record<LLMType, { input: number; output: number; unit: 'tokens' | 'minutes' }> = {
   'whisper-1': { input: 0.006, output: 0, unit: 'minutes' },
-  'gpt-4o-realtime-preview-2024-12-17': { input: 0.06, output: 0.24, unit: 'minutes' }, // Audio input/output
+  'gpt-4o-mini-realtime-preview': { input: 0.01, output: 0.04, unit: 'minutes' }, // Audio input/output (6x mais barato!)
   'gpt-4o': { input: 0.0025, output: 0.01, unit: 'tokens' }, // per 1K tokens
   'gpt-4o-mini': { input: 0.00015, output: 0.0006, unit: 'tokens' },
   'gpt-4-turbo': { input: 0.01, output: 0.03, unit: 'tokens' },
@@ -265,11 +265,11 @@ class AIPricingService {
    */
   async logRealtimeUsage(durationMs: number, consultaId?: string): Promise<boolean> {
     const durationMinutes = durationMs / 60000; // Converter para minutos
-    const price = this.calculatePrice('gpt-4o-realtime-preview-2024-12-17', durationMinutes);
+    const price = this.calculatePrice('gpt-4o-mini-realtime-preview', durationMinutes);
 
     return this.logUsage({
       consulta_id: consultaId,
-      LLM: 'gpt-4o-realtime-preview-2024-12-17',
+      LLM: 'gpt-4o-mini-realtime-preview',
       token: durationMinutes, // Armazenar em minutos
       price,
       etapa: 'transcricao_realtime',
