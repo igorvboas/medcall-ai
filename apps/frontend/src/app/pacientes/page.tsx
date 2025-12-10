@@ -493,37 +493,40 @@ export default function PatientsPage() {
                     </div>
                     
                     <div className="patient-actions">
-                      <button 
-                        className="action-btn"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            const response = await fetch('/api/anamnese-inicial', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ patient_id: patient.id }),
-                            });
-                            if (response.ok) {
-                              const result = await response.json();
-                              showSuccess('Anamnese enviada para o paciente!', 'Sucesso');
-                              if (result.link) {
-                                await navigator.clipboard.writeText(result.link);
-                                showSuccess('Link copiado para área de transferência!', 'Link Copiado');
+                      {/* Mostrar botão apenas se anamnese não estiver preenchida */}
+                      {(patient.anamnese?.status !== 'preenchida') && (
+                        <button 
+                          className="action-btn"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const response = await fetch('/api/anamnese-inicial', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ patient_id: patient.id }),
+                              });
+                              if (response.ok) {
+                                const result = await response.json();
+                                showSuccess('Anamnese enviada para o paciente!', 'Sucesso');
+                                if (result.link) {
+                                  await navigator.clipboard.writeText(result.link);
+                                  showSuccess('Link copiado para área de transferência!', 'Link Copiado');
+                                }
+                                fetchPatients(pagination.page, searchTerm, statusFilter, false);
+                              } else {
+                                throw new Error('Erro ao enviar anamnese');
                               }
-                              fetchPatients(pagination.page, searchTerm, statusFilter, false);
-                            } else {
-                              throw new Error('Erro ao enviar anamnese');
+                            } catch (err) {
+                              showError('Erro ao enviar anamnese', 'Erro');
                             }
-                          } catch (err) {
-                            showError('Erro ao enviar anamnese', 'Erro');
-                          }
-                        }}
-                        title="Enviar anamnese inicial"
-                        style={{ background: '#3b82f6', color: 'white' }}
-                      >
-                        <FileText size={14} />
-                        <span className="action-label">Enviar Anamnese</span>
-                      </button>
+                          }}
+                          title="Enviar anamnese inicial"
+                          style={{ background: '#3b82f6', color: 'white' }}
+                        >
+                          <FileText size={14} />
+                          <span className="action-label">Enviar Anamnese</span>
+                        </button>
+                      )}
                       
                       <button 
                         className={`action-btn copy ${copySuccess === patient.id ? 'success' : ''}`}

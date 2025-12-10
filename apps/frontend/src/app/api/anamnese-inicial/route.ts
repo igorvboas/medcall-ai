@@ -5,6 +5,40 @@ import { sendAnamneseEmail } from '@/lib/email-service';
 // Rotas dinâmicas (usam cookies e service role)
 export const dynamic = 'force-dynamic';
 
+// Função helper para obter URL de produção (não preview)
+function getProductionUrl(): string {
+  // Prioridade 1: Variável explícita de produção
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  
+  // Prioridade 2: URL de produção customizado
+  if (process.env.NEXT_PUBLIC_PRODUCTION_URL) {
+    return process.env.NEXT_PUBLIC_PRODUCTION_URL;
+  }
+  
+  // Prioridade 3: Verificar VERCEL_URL (pode ser preview ou produção)
+  if (process.env.VERCEL_URL) {
+    const vercelUrl = process.env.VERCEL_URL;
+    // Preview URLs contêm padrões específicos que indicam preview
+    const isPreviewUrl = vercelUrl.includes('-j8ylavznu-') || 
+                         vercelUrl.includes('git-') || 
+                         vercelUrl.includes('-pr-') ||
+                         vercelUrl.includes('vercel-dev');
+    
+    if (isPreviewUrl) {
+      // Se for preview, tentar usar domínio de produção se configurado
+      return process.env.VERCEL_PROJECT_PRODUCTION_URL || `https://${vercelUrl}`;
+    } else {
+      // Parece ser URL de produção
+      return `https://${vercelUrl}`;
+    }
+  }
+  
+  // Fallback: localhost (desenvolvimento)
+  return 'http://localhost:3000';
+}
+
 // GET /api/anamnese-inicial?patient_id=xxx - Buscar anamnese inicial de um paciente
 // Permite acesso público para paciente preencher (sem autenticação)
 export async function GET(request: NextRequest) {
@@ -154,9 +188,7 @@ export async function POST(request: NextRequest) {
       }
 
     // Gerar link para paciente preencher anamnese
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NEXT_PUBLIC_VERCEL_URL 
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-      : 'http://localhost:3000');
+    const baseUrl = getProductionUrl();
     const anamneseLink = `${baseUrl}/anamnese-inicial?paciente_id=${patient_id}`;
 
     // Enviar email para o paciente (se tiver email)
@@ -207,9 +239,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Gerar link para paciente preencher anamnese
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NEXT_PUBLIC_VERCEL_URL 
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-      : 'http://localhost:3000');
+    const baseUrl = getProductionUrl();
     const anamneseLink = `${baseUrl}/anamnese-inicial?paciente_id=${patient_id}`;
 
     // Enviar email para o paciente (se tiver email)
