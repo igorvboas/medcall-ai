@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
-import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash, FileText, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash, FileText } from 'lucide-react';
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
@@ -13,6 +13,7 @@ interface Patient {
   name: string;
   email?: string;
   phone?: string;
+  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -34,16 +35,13 @@ interface Patient {
   avatar?: string;
   image_url?: string;
   photo?: string;
-  // Campo para status da anamnese
-  anamnese?: {
-    status?: string;
-  } | null;
 }
 
 interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
+  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -68,6 +66,7 @@ interface PatientsResponse {
 }
 
 export default function PatientsPage() {
+  const { showSuccess, showError } = useNotifications();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +83,6 @@ export default function PatientsPage() {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-  const [sendingAnamnese, setSendingAnamnese] = useState<string | null>(null);
   const isInitialMount = useRef(true);
 
   // Buscar pacientes
@@ -127,17 +125,6 @@ export default function PatientsPage() {
         image_url: data.patients[0]?.image_url,
         photo: data.patients[0]?.photo
       });
-      
-      // Log para debug do status de anamnese
-      console.log('📝 Status de anamnese dos pacientes:');
-      data.patients.forEach((patient, index) => {
-        console.log(`  ${index + 1}. ${patient.name}:`, {
-          id: patient.id,
-          anamnese: patient.anamnese,
-          status: patient.anamnese?.status
-        });
-      });
-      
       setPatients(data.patients);
       setPagination(data.pagination);
     } catch (err) {
@@ -154,26 +141,6 @@ export default function PatientsPage() {
   useEffect(() => {
     fetchPatients(1, '', 'all', true); // Mostra loading no carregamento inicial
   }, []);
-
-  // Atualizar lista quando a página recebe foco (útil quando volta da anamnese)
-  useEffect(() => {
-    const handleFocus = () => {
-      // Atualizar a lista quando a janela recebe foco
-      fetchPatients(pagination.page, searchTerm, statusFilter, false);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    
-    // Também verificar a cada 30 segundos se houver mudanças
-    const interval = setInterval(() => {
-      fetchPatients(pagination.page, searchTerm, statusFilter, false);
-    }, 30000);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
-    };
-  }, [pagination.page, searchTerm, statusFilter]);
 
   // Fechar modal com tecla ESC
   useEffect(() => {
@@ -331,43 +298,11 @@ export default function PatientsPage() {
     const link = `https://funnel.insiderhub.com.br/anamnese-personalizada?paciente_id=${patientId}`;
     try {
       await navigator.clipboard.writeText(link);
+      // TODO: Adicionar feedback visual de sucesso (toast/notification)
       showSuccess('Link da anamnese copiado para a área de transferência!', 'Link Copiado');
     } catch (err) {
       console.error('Erro ao copiar link:', err);
-      alert('Erro ao copiar link. Tente novamente.');
-    }
-  };
-
-  // Enviar anamnese inicial para paciente
-  const handleSendAnamneseInicial = async (patientId: string) => {
-    setSendingAnamnese(patientId);
-
-    try {
-      const response = await fetch('/api/anamnese-inicial', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          patient_id: patientId
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao enviar anamnese');
-      }
-
-      const result = await response.json();
-      showSuccess(result.message || 'Anamnese enviada para o paciente com sucesso!', 'Anamnese Enviada');
-      
-      // Atualizar lista de pacientes para refletir o novo status
-      await fetchPatients(pagination.page, searchTerm, statusFilter, false);
-    } catch (error) {
-      console.error('Erro ao enviar anamnese:', error);
-      showError(`Erro ao enviar anamnese: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Erro');
-    } finally {
-      setSendingAnamnese(null);
+      showError('Erro ao copiar link. Tente novamente.', 'Erro ao Copiar');
     }
   };
 
@@ -461,14 +396,6 @@ export default function PatientsPage() {
                   <option value="archived">Arquivados</option>
                 </select>
                 <button 
-                  onClick={() => fetchPatients(pagination.page, searchTerm, statusFilter, false)}
-                  className="btn btn-secondary"
-                  title="Atualizar lista"
-                >
-                  <RefreshCw size={16} className="btn-icon" />
-                  Atualizar
-                </button>
-                <button 
                   onClick={() => setShowForm(true)}
                   className="btn btn-primary"
                 >
@@ -512,8 +439,24 @@ export default function PatientsPage() {
                           <span className={`patient-status ${patient.status}`}>
                             {getStatusText(patient.status)}
                           </span>
-                          {patient.anamnese?.status && 
-                           (patient.anamnese.status.toLowerCase() === 'preenchida' || patient.anamnese.status === 'preenchida') && (
+                          {patient.anamnese?.status === 'pendente' && (
+                            <span 
+                              className="patient-status" 
+                              style={{
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                fontSize: '11px',
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                              }}
+                              title="Paciente precisa preencher anamnese inicial"
+                            >
+                              📝 Anamnese Pendente
+                            </span>
+                          )}
+                          {patient.anamnese?.status === 'preenchida' && (
                             <span 
                               className="patient-status" 
                               style={{
@@ -523,15 +466,11 @@ export default function PatientsPage() {
                                 padding: '4px 10px',
                                 borderRadius: '12px',
                                 fontWeight: '600',
-                                textTransform: 'uppercase',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
+                                textTransform: 'uppercase'
                               }}
                               title="Anamnese inicial preenchida"
                             >
-                              <CheckCircle size={14} />
-                              Anamnese Preenchida
+                              ✅ Anamnese Preenchida
                             </span>
                           )}
                         </div>
@@ -554,45 +493,45 @@ export default function PatientsPage() {
                     </div>
                     
                     <div className="patient-actions">
-                      {/* Botão de enviar anamnese inicial - só aparece se não foi preenchida */}
-                      {(!patient.anamnese || 
-                        !patient.anamnese.status || 
-                        (patient.anamnese.status && patient.anamnese.status.toLowerCase() !== 'preenchida')) && (
-                        <button 
-                          className="action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSendAnamneseInicial(patient.id);
-                          }}
-                          disabled={sendingAnamnese === patient.id}
-                          title="Enviar anamnese inicial para o paciente"
-                          style={{
-                            background: sendingAnamnese === patient.id ? '#9ca3af' : '#3b82f6',
-                            color: 'white',
-                            border: 'none'
-                          }}
-                        >
-                          {sendingAnamnese === patient.id ? (
-                            <>
-                              <div className="btn-spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></div>
-                              <span className="action-label">Enviando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <FileText size={14} />
-                              <span className="action-label">Anamnese</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
+                      <button 
+                        className="action-btn"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const response = await fetch('/api/anamnese-inicial', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ patient_id: patient.id }),
+                            });
+                            if (response.ok) {
+                              const result = await response.json();
+                              showSuccess('Anamnese enviada para o paciente!', 'Sucesso');
+                              if (result.link) {
+                                await navigator.clipboard.writeText(result.link);
+                                showSuccess('Link copiado para área de transferência!', 'Link Copiado');
+                              }
+                              fetchPatients(pagination.page, searchTerm, statusFilter, false);
+                            } else {
+                              throw new Error('Erro ao enviar anamnese');
+                            }
+                          } catch (err) {
+                            showError('Erro ao enviar anamnese', 'Erro');
+                          }
+                        }}
+                        title="Enviar anamnese inicial"
+                        style={{ background: '#3b82f6', color: 'white' }}
+                      >
+                        <FileText size={14} />
+                        <span className="action-label">Enviar Anamnese</span>
+                      </button>
+                      
                       <button 
                         className={`action-btn copy ${copySuccess === patient.id ? 'success' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyAnamneseLink(patient.id);
                         }}
-                        title="Copiar link da anamnese personalizada"
+                        title="Copiar link da anamnese"
                       >
                         <Copy size={14} />
                         {copySuccess === patient.id ? (

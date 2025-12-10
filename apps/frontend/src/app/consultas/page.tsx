@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
+import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
@@ -47,7 +48,7 @@ interface Consultation {
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
   status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
-  solucao_etapa?: 'LTB' | 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | 'HABITOS_DE_VIDA';
+  solucao_etapa?: 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA';
   duration?: number;
   recording_url?: string;
   notes?: string;
@@ -131,7 +132,13 @@ interface AnamneseData {
 }
 
 // Função para buscar consultas da API
-async function fetchConsultations(page: number = 1, limit: number = 20, search: string = '', status: string = 'all'): Promise<ConsultationsResponse> {
+async function fetchConsultations(
+  page: number = 1, 
+  limit: number = 20, 
+  search: string = '', 
+  status: string = 'all',
+  dateFilter?: { type: 'day' | 'week' | 'month', date: string }
+): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
@@ -139,6 +146,10 @@ async function fetchConsultations(page: number = 1, limit: number = 20, search: 
 
   if (search) params.append('search', search);
   if (status && status !== 'all') params.append('status', status);
+  if (dateFilter) {
+    params.append('dateFilter', dateFilter.type);
+    params.append('date', dateFilter.date);
+  }
 
   const response = await fetch(`/api/consultations?${params}`, {
     method: 'GET',
@@ -1208,8 +1219,17 @@ function AnamneseSection({
       <CollapsibleSection title="Reino e Miasma">
           <div className="anamnese-subsection">
             <h4>Reino Predominante</h4>
-            <DataField label="Reino" value={reino_miasma?.reino_predominante} fieldPath="a_reino_miasma.reino_predominante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Reino Predominante" value={reino_miasma?.reino_predominante} fieldPath="a_reino_miasma.reino_predominante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Justificativa do Reino" value={reino_miasma?.justificativa_reino} fieldPath="a_reino_miasma.justificativa_reino" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
             <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} fieldPath="a_reino_miasma.caracteristicas_identificadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+
+          <div className="anamnese-subsection">
+            <h4>Miasma</h4>
+            <DataField label="Miasma Principal" value={reino_miasma?.miasma_principal} fieldPath="a_reino_miasma.miasma_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Justificativa do Miasma" value={reino_miasma?.justificativa_miasma} fieldPath="a_reino_miasma.justificativa_miasma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Análise Miasma - Energia" value={reino_miasma?.analise_miasma_energia} fieldPath="a_reino_miasma.analise_miasma_energia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Análise Miasma - Luta" value={reino_miasma?.analise_miasma_luta} fieldPath="a_reino_miasma.analise_miasma_luta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
           </div>
 
           <div className="anamnese-subsection">
@@ -1227,8 +1247,6 @@ function AnamneseSection({
 
           <div className="anamnese-subsection">
             <h4>Observações Comportamentais</h4>
-            <DataField label="Maneira de Vestir" value={reino_miasma?.maneira_vestir} fieldPath="a_reino_miasma.maneira_vestir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-            <DataField label="Tipo de Profissão Escolhida" value={reino_miasma?.tipo_profissao_escolhida} fieldPath="a_reino_miasma.tipo_profissao_escolhida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
             <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} fieldPath="a_reino_miasma.padrao_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
           </div>
         </CollapsibleSection>
@@ -2323,7 +2341,7 @@ function MentalidadeSection({
       
     } catch (error) {
       console.error('❌ [FRONTEND-LTV] Erro ao salvar campo:', error);
-      alert('Erro ao salvar alteração. Tente novamente.');
+      showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
       
       // Recarregar dados para sincronizar com o banco
       await loadMentalidadeData();
@@ -2765,7 +2783,7 @@ function SuplemementacaoSection({
       
     } catch (error) {
       console.error('❌ Erro ao salvar campo:', error);
-      alert('Erro ao salvar alteração. Tente novamente.');
+      showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
       
       // Recarregar dados para sincronizar com o banco
       await loadSuplementacaoData();
@@ -2976,17 +2994,6 @@ function SuplemementacaoSection({
 }
 
 // Componente da seção de Solução Alimentação
-// Interface para alimento da tabela de alimentos
-interface TabelaAlimento {
-  numero_do_alimento: string;
-  alimento: string;
-  energia_kcal: string;
-  proteina: string;
-  lipideos: string;
-  hidrato: string;
-  fibra_alimentar: string;
-}
-
 function AlimentacaoSection({ 
   consultaId
 }: {
@@ -3002,14 +3009,6 @@ function AlimentacaoSection({
     gramatura: '',
     kcal: ''
   });
-  
-  // Estados para busca de alimentos
-  const [alimentoSearch, setAlimentoSearch] = useState('');
-  const [alimentosSuggestions, setAlimentosSuggestions] = useState<TabelaAlimento[]>([]);
-  const [selectedAlimento, setSelectedAlimento] = useState<TabelaAlimento | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchingAlimentos, setSearchingAlimentos] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadAlimentacaoData();
@@ -3027,89 +3026,6 @@ function AlimentacaoSection({
       window.removeEventListener('alimentacao-data-refresh', handleRefresh);
     };
   }, []);
-
-  // Função para buscar alimentos da tabela_alimentos
-  const searchAlimentos = async (searchTerm: string) => {
-    if (searchTerm.length < 2) {
-      setAlimentosSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    try {
-      setSearchingAlimentos(true);
-      const response = await fetch(`/api/tabela-alimentos?search=${encodeURIComponent(searchTerm)}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAlimentosSuggestions(data.alimentos || []);
-        setShowSuggestions(true);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar alimentos:', error);
-    } finally {
-      setSearchingAlimentos(false);
-    }
-  };
-
-  // Debounce para busca de alimentos
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(() => {
-      searchAlimentos(alimentoSearch);
-    }, 300);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [alimentoSearch]);
-
-  // Calcular Kcal automaticamente quando gramatura mudar
-  useEffect(() => {
-    if (selectedAlimento && editForm.gramatura) {
-      const gramatura = parseFloat(editForm.gramatura);
-      const energiaKcalPor100g = parseFloat(selectedAlimento.energia_kcal);
-      
-      if (!isNaN(gramatura) && !isNaN(energiaKcalPor100g)) {
-        // Cálculo: (gramatura * energia_kcal) / 100
-        const kcalCalculado = (gramatura * energiaKcalPor100g) / 100;
-        setEditForm(prev => ({
-          ...prev,
-          kcal: kcalCalculado.toFixed(2)
-        }));
-      }
-    }
-  }, [editForm.gramatura, selectedAlimento]);
-
-  // Função para selecionar um alimento da lista de sugestões
-  const handleSelectAlimento = (alimento: TabelaAlimento) => {
-    setSelectedAlimento(alimento);
-    setAlimentoSearch(alimento.alimento);
-    setEditForm(prev => ({
-      ...prev,
-      alimento: alimento.alimento
-    }));
-    setShowSuggestions(false);
-
-    // Recalcular kcal se já houver gramatura
-    if (editForm.gramatura) {
-      const gramatura = parseFloat(editForm.gramatura);
-      const energiaKcalPor100g = parseFloat(alimento.energia_kcal);
-      
-      if (!isNaN(gramatura) && !isNaN(energiaKcalPor100g)) {
-        const kcalCalculado = (gramatura * energiaKcalPor100g) / 100;
-        setEditForm(prev => ({
-          ...prev,
-          kcal: kcalCalculado.toFixed(2)
-        }));
-      }
-    }
-  };
 
   const loadAlimentacaoData = async () => {
     try {
@@ -3192,11 +3108,6 @@ function AlimentacaoSection({
       gramatura: item.gramatura || '',
       kcal: item.kcal || ''
     });
-    // Resetar estados de busca de alimentos
-    setAlimentoSearch(item.alimento || '');
-    setSelectedAlimento(null);
-    setAlimentosSuggestions([]);
-    setShowSuggestions(false);
   };
 
   const handleSaveEdit = async () => {
@@ -3229,18 +3140,13 @@ function AlimentacaoSection({
       await loadAlimentacaoData();
     } catch (error) {
       console.error('Erro ao salvar edição:', error);
-      alert('Erro ao salvar edição. Tente novamente.');
+      showError('Erro ao salvar edição. Tente novamente.', 'Erro');
     }
   };
 
   const handleCancelEdit = () => {
     setEditingItem(null);
     setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
-    // Limpar estados de busca de alimentos
-    setAlimentoSearch('');
-    setSelectedAlimento(null);
-    setAlimentosSuggestions([]);
-    setShowSuggestions(false);
   };
 
   console.log('🔍 [FRONTEND] AlimentacaoSection - Estado atual:', {
@@ -3354,60 +3260,13 @@ function AlimentacaoSection({
           <div className="modal-content">
             <h3>Editar Item - {refeicoes.find(r => r.key === editingItem.refeicao)?.label}</h3>
             <div className="edit-form">
-              <div className="form-group alimento-autocomplete">
+              <div className="form-group">
                 <label>Alimento:</label>
-                <div className="autocomplete-container">
-                  <input
-                    type="text"
-                    value={alimentoSearch}
-                    onChange={(e) => {
-                      setAlimentoSearch(e.target.value);
-                      setEditForm({...editForm, alimento: e.target.value});
-                      // Se limpar o campo, limpar também o alimento selecionado
-                      if (!e.target.value) {
-                        setSelectedAlimento(null);
-                      }
-                    }}
-                    onFocus={() => {
-                      if (alimentosSuggestions.length > 0) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                    placeholder="Digite para buscar alimentos..."
-                    autoComplete="off"
-                  />
-                  {searchingAlimentos && (
-                    <div className="autocomplete-loading">Buscando...</div>
-                  )}
-                  {showSuggestions && alimentosSuggestions.length > 0 && (
-                    <ul className="autocomplete-suggestions">
-                      {alimentosSuggestions.map((alimento, idx) => (
-                        <li
-                          key={alimento.numero_do_alimento || idx}
-                          onClick={() => handleSelectAlimento(alimento)}
-                          className="autocomplete-item"
-                        >
-                          <span className="alimento-nome">{alimento.alimento}</span>
-                          <span className="alimento-info">
-                            {alimento.energia_kcal} kcal/100g
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {showSuggestions && alimentosSuggestions.length === 0 && alimentoSearch.length >= 2 && !searchingAlimentos && (
-                    <div className="autocomplete-no-results">
-                      Nenhum alimento encontrado
-                    </div>
-                  )}
-                </div>
-                {selectedAlimento && (
-                  <div className="alimento-selecionado-info">
-                    <small>
-                      <strong>Selecionado:</strong> {selectedAlimento.alimento} ({selectedAlimento.energia_kcal} kcal/100g)
-                    </small>
-                  </div>
-                )}
+                <input
+                  type="text"
+                  value={editForm.alimento}
+                  onChange={(e) => setEditForm({...editForm, alimento: e.target.value})}
+                />
               </div>
               <div className="form-group">
                 <label>Tipo:</label>
@@ -3416,25 +3275,21 @@ function AlimentacaoSection({
                   onChange={(e) => setEditForm({...editForm, tipo: e.target.value})}
                 >
                   <option value="">Selecione o tipo</option>
-                  <option value="proteinas">Proteínas</option>
-                  <option value="carboidratos">Carboidratos</option>
-                  <option value="gorduras">Gorduras</option>
-                  <option value="legumes">Legumes</option>
-                  <option value="verduras">Verduras</option>
-                  <option value="frutas">Frutas</option>
-                  <option value="lacteos">Laticínios</option>
-                  <option value="graos">Grãos</option>
-                  <option value="bebidas">Bebidas</option>
-                  <option value="outros">Outros</option>
+                  <option value="Proteína">Proteína</option>
+                  <option value="Carboidrato">Carboidrato</option>
+                  <option value="Gordura">Gordura</option>
+                  <option value="Fibra">Fibra</option>
+                  <option value="Vitamina">Vitamina</option>
+                  <option value="Mineral">Mineral</option>
+                  <option value="Outro">Outro</option>
                 </select>
               </div>
               <div className="form-group">
-                <label>Gramatura (g):</label>
+                <label>Gramatura:</label>
                 <input
-                  type="number"
+                  type="text"
                   value={editForm.gramatura}
                   onChange={(e) => setEditForm({...editForm, gramatura: e.target.value})}
-                  placeholder="Ex: 100"
                 />
               </div>
               <div className="form-group">
@@ -3442,20 +3297,8 @@ function AlimentacaoSection({
                 <input
                   type="text"
                   value={editForm.kcal}
-                  readOnly={selectedAlimento !== null}
-                  onChange={(e) => {
-                    if (!selectedAlimento) {
-                      setEditForm({...editForm, kcal: e.target.value});
-                    }
-                  }}
-                  className={selectedAlimento ? 'readonly-field' : ''}
-                  title={selectedAlimento ? 'Calculado automaticamente com base na gramatura' : ''}
+                  onChange={(e) => setEditForm({...editForm, kcal: e.target.value})}
                 />
-                {selectedAlimento && (
-                  <small className="kcal-info">
-                    Calculado automaticamente: ({editForm.gramatura || 0}g × {selectedAlimento.energia_kcal} kcal) / 100
-                  </small>
-                )}
               </div>
             </div>
             <div className="modal-actions">
@@ -3477,6 +3320,7 @@ function ConsultasPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const consultaId = searchParams.get('consulta_id');
+  const { showError, showSuccess, showWarning } = useNotifications();
 
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -3488,6 +3332,8 @@ function ConsultasPageContent() {
   const [dashboardLoaded, setDashboardLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilterType, setDateFilterType] = useState<'day' | 'week' | 'month' | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const isInitialMount = useRef(true);
   
   // Estados para visualização de detalhes
@@ -3495,15 +3341,72 @@ function ConsultasPageContent() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showSolutionsViewer, setShowSolutionsViewer] = useState(false);
 
+  // Função para voltar para a tela de seleção de soluções
+  const handleBackToSolutionSelection = async () => {
+    if (!consultaId) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Limpa a solucao_etapa para mostrar a tela de seleção de soluções
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: null
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar consulta');
+      }
+
+      // Recarregar detalhes da consulta para atualizar a tela
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao voltar para seleção de soluções:', error);
+      showError('Erro ao voltar para seleção de soluções. Tente novamente.', 'Erro');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Função helper para renderizar o botão "Ver Todas as Soluções"
   const renderViewSolutionsButton = () => (
     <button 
       className="view-solutions-button"
-      onClick={() => setShowSolutionsViewer(true)}
-      style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+      onClick={handleBackToSolutionSelection}
+      disabled={isSaving}
+      style={{ 
+        marginLeft: 'auto', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        padding: '10px 16px', 
+        background: isSaving ? '#9ca3af' : '#3b82f6', 
+        color: 'white', 
+        border: 'none', 
+        borderRadius: '8px', 
+        cursor: isSaving ? 'not-allowed' : 'pointer', 
+        fontSize: '14px', 
+        fontWeight: '500',
+        transition: 'all 0.2s ease'
+      }}
+      onMouseEnter={(e) => {
+        if (!isSaving) {
+          e.currentTarget.style.background = '#2563eb';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isSaving) {
+          e.currentTarget.style.background = '#3b82f6';
+        }
+      }}
     >
       <FileText className="w-4 h-4" />
-      Ver Todas as Soluções
+      {isSaving ? 'Carregando...' : 'Ver Todas as Soluções'}
     </button>
   );
 
@@ -3572,10 +3475,8 @@ function ConsultasPageContent() {
                            selectedField.fieldPath.startsWith('integracao_diagnostica') ||
                            selectedField.fieldPath.startsWith('habitos_vida');
       
-      const isSolucaoLTB = selectedField.fieldPath.startsWith('ltb_data');
       const isSolucaoMentalidade = selectedField.fieldPath.startsWith('mentalidade_data');
       const isSolucaoSuplemementacao = selectedField.fieldPath.startsWith('suplementacao_data');
-      const isSolucaoHabitosVida = selectedField.fieldPath.startsWith('habitos_vida_data');
       
       const webhookEndpoints = getWebhookEndpoints();
       const webhookHeaders = getWebhookHeaders();
@@ -3583,7 +3484,7 @@ function ConsultasPageContent() {
       // Usar webhook específico para Livro da Vida (Mentalidade)
       const webhookUrl = isSolucaoMentalidade
         ? webhookEndpoints.edicaoLivroDaVida
-        : (isSolucaoLTB || isSolucaoSuplemementacao || isSolucaoHabitosVida)
+        : isSolucaoSuplemementacao
         ? webhookEndpoints.edicaoSolucao
         : isDiagnostico 
         ? webhookEndpoints.edicaoDiagnostico
@@ -3597,14 +3498,10 @@ function ConsultasPageContent() {
       };
       
       // Adicionar solucao_etapa se for etapa de solução
-      if (isSolucaoLTB) {
-        requestBody.solucao_etapa = 'LTB';
-      } else if (isSolucaoMentalidade) {
+      if (isSolucaoMentalidade) {
         requestBody.solucao_etapa = 'MENTALIDADE';
       } else if (isSolucaoSuplemementacao) {
         requestBody.solucao_etapa = 'SUPLEMENTACAO';
-      } else if (isSolucaoHabitosVida) {
-        requestBody.solucao_etapa = 'HABITOS_DE_VIDA';
       }
       
       console.log('🚀 Enviando para webhook:', requestBody);
@@ -3872,7 +3769,8 @@ function ConsultasPageContent() {
         setLoading(true);
       }
       setError(null);
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter);
+      const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
       
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -3902,7 +3800,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
 
   // Carregar lista de consultas inicialmente
   useEffect(() => {
@@ -4147,7 +4045,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao selecionar solução:', error);
-      alert('Erro ao selecionar solução. Tente novamente.');
+      showError('Erro ao selecionar solução. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4159,14 +4057,14 @@ function ConsultasPageContent() {
     try {
       setIsSaving(true);
       
-      // Atualiza a solucao_etapa para HABITOS_DE_VIDA
+      // Limpa a solucao_etapa para mostrar a tela de seleção
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          solucao_etapa: 'HABITOS_DE_VIDA'
+          solucao_etapa: null
         }),
       });
 
@@ -4329,11 +4227,11 @@ function ConsultasPageContent() {
         return c;
       }));
 
-      alert('Agendamento atualizado com sucesso!');
+      showSuccess('Agendamento atualizado com sucesso!', 'Sucesso');
       handleCloseEditAgendamentoModal();
     } catch (error: any) {
       console.error('Erro ao atualizar agendamento:', error);
-      alert(error.message || 'Erro ao atualizar agendamento');
+      showError(error.message || 'Erro ao atualizar agendamento', 'Erro');
     } finally {
       setIsSavingAgendamento(false);
     }
@@ -4372,7 +4270,7 @@ function ConsultasPageContent() {
       setConsultationToDelete(null);
     } catch (err) {
       console.error('Erro ao excluir consulta:', err);
-      alert('Erro ao excluir consulta. Por favor, tente novamente.');
+      showError('Erro ao excluir consulta. Por favor, tente novamente.', 'Erro');
     } finally {
       setIsDeleting(false);
     }
@@ -4439,7 +4337,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
+      showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4476,7 +4374,7 @@ function ConsultasPageContent() {
     try {
       setIsSaving(true);
       
-      // Atualiza a etapa da consulta para PROCESSANDO SOLUCAO e define solucao_etapa como LTB
+      // Atualiza a etapa da consulta para SOLUCAO sem definir solucao_etapa (mostra tela de seleção)
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
@@ -4484,8 +4382,8 @@ function ConsultasPageContent() {
         },
         body: JSON.stringify({
           etapa: 'SOLUCAO',
-          status: 'PROCESSING',
-          solucao_etapa: 'LTB'
+          status: 'VALID_SOLUCAO',
+          solucao_etapa: null
         }),
       });
 
@@ -4516,7 +4414,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
+      showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4549,7 +4447,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
+      showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4581,7 +4479,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
+      showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4613,7 +4511,7 @@ function ConsultasPageContent() {
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar alterações. Tente novamente.');
+      showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
     }
@@ -4895,10 +4793,6 @@ function ConsultasPageContent() {
       if (consultaDetails.etapa === 'SOLUCAO') {
         titulo = 'Processando Solução';
         descricao = 'As informações da solução estão sendo processadas';
-        if (consultaDetails.solucao_etapa === 'HABITOS_DE_VIDA') {
-          titulo = 'Processando Entregáveis';
-          descricao = 'Os entegráveis da consulta estão sendo processados';
-        }
       }
       
       return (
@@ -6338,48 +6232,8 @@ function ConsultasPageContent() {
           </div>
 
           <div className="anamnese-container">
-            <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="anamnese-header">
               <h2>Protocolo de Suplementação</h2>
-              <button
-                onClick={handleSaveSuplemementacaoAndContinue}
-                disabled={isSaving}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 20px',
-                  background: isSaving ? '#9ca3af' : '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.background = '#059669';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.background = '#10b981';
-                  }
-                }}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="loading-spinner-small"></div>
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Salvar e Avançar para Hábitos de Vida
-                  </>
-                )}
-              </button>
             </div>
 
             <div className="anamnese-content">
@@ -6598,23 +6452,6 @@ function ConsultasPageContent() {
                       </div>
                     ))}
 
-                    {/* Botão para continuar */}
-                    <div className="save-section">
-                      <button
-                        className="save-button"
-                        onClick={handleSaveAtividadeFisicaAndContinue}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="loading-spinner-small"></div>
-                            Salvando...
-                          </>
-                        ) : (
-                          'Salvar e Avançar para Hábitos de Vida'
-                        )}
-                      </button>
-                    </div>
                   </>
                 )}
               </div>
@@ -6809,17 +6646,6 @@ function ConsultasPageContent() {
             <div className="solucao-grid">
               <div 
                 className="solucao-card"
-                onClick={() => handleSelectSolucao('LTB')}
-              >
-                <div className="solucao-icon">
-                  <Dna className="w-8 h-8" />
-                </div>
-                <h3>LTB</h3>
-                <p>Limpeza Total do Bioma</p>
-              </div>
-
-              <div 
-                className="solucao-card"
                 onClick={() => handleSelectSolucao('MENTALIDADE')}
               >
                 <div className="solucao-icon">
@@ -6860,17 +6686,6 @@ function ConsultasPageContent() {
                 </div>
                 <h3>Atividade Física</h3>
                 <p>Programa de Exercícios</p>
-              </div>
-
-              <div 
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('HABITOS_DE_VIDA')}
-              >
-                <div className="solucao-icon">
-                  <Leaf className="w-8 h-8" />
-                </div>
-                <h3>Hábitos de Vida</h3>
-                <p>Transformação de Estilo de Vida</p>
               </div>
             </div>
           </div>
@@ -7245,7 +7060,8 @@ function ConsultasPageContent() {
         marginBottom: '24px',
         display: 'flex',
         gap: '16px',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: 'wrap'
       }}>
         <div className="search-container" style={{
           position: 'relative',
@@ -7325,6 +7141,111 @@ function ConsultasPageContent() {
           <option value="ERROR">Erro</option>
           <option value="CANCELLED">Cancelada</option>
         </select>
+
+        {/* Filtro de Data */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          minWidth: '280px'
+        }}>
+          <select
+            value={dateFilterType || ''}
+            onChange={(e) => {
+              const type = e.target.value as 'day' | 'week' | 'month' | '';
+              setDateFilterType(type || null);
+              if (!type) {
+                setSelectedDate('');
+              } else if (!selectedDate) {
+                // Se não há data selecionada, usar data atual
+                setSelectedDate(new Date().toISOString().split('T')[0]);
+              }
+            }}
+            style={{
+              padding: '12px 16px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: '#ffffff',
+              color: '#111827',
+              cursor: 'pointer',
+              minWidth: '120px',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#d4a574';
+              e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#e5e7eb';
+              e.target.style.boxShadow = 'none';
+            }}
+          >
+            <option value="">Sem filtro de data</option>
+            <option value="day">Dia</option>
+            <option value="week">Semana</option>
+            <option value="month">Mês</option>
+          </select>
+
+          {dateFilterType && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                padding: '12px 16px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#ffffff',
+                color: '#111827',
+                cursor: 'pointer',
+                flex: 1,
+                transition: 'all 0.2s ease'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#d4a574';
+                e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          )}
+
+          {dateFilterType && (
+            <button
+              onClick={() => {
+                setDateFilterType(null);
+                setSelectedDate('');
+              }}
+              style={{
+                padding: '12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#ffffff',
+                color: '#6b7280',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                e.currentTarget.style.borderColor = '#d1d5db';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.borderColor = '#e5e7eb';
+              }}
+              title="Limpar filtro de data"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="consultas-table-container">
@@ -7359,7 +7280,7 @@ function ConsultasPageContent() {
                     style={{
                       textAlign: 'left',
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       justifyContent: 'flex-start'
                     }}
                   >
@@ -7381,7 +7302,7 @@ function ConsultasPageContent() {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'flex-start',
-                          justifyContent: 'flex-start',
+                          justifyContent: 'center',
                           textAlign: 'left'
                         }}
                       >
@@ -7394,36 +7315,6 @@ function ConsultasPageContent() {
                           }}
                         >
                           {consultation.patient_name}
-                        </div>
-                        <div 
-                          className="patient-condition"
-                          style={{
-                            textAlign: 'left',
-                            alignSelf: 'flex-start',
-                            width: '100%'
-                          }}
-                        >
-                          {(() => {
-                            const typeText = consultation.consultation_type === 'TELEMEDICINA' ? 'Consulta online' : 'Consulta presencial';
-                            const context = consultation.patient_context || '';
-                            
-                            // Limpar contexto removendo informações duplicadas
-                            let cleanContext = context;
-                            if (cleanContext.toLowerCase().includes('consulta online')) {
-                              cleanContext = cleanContext.replace(/consulta online\s*[-–]\s*/gi, '').trim();
-                            }
-                            if (cleanContext.toLowerCase().includes('consulta presencial')) {
-                              cleanContext = cleanContext.replace(/consulta presencial\s*[-–]\s*/gi, '').trim();
-                            }
-                            
-                            // Se ainda há contexto após limpeza, mostrar tipo + contexto
-                            if (cleanContext && cleanContext !== consultation.patient_name) {
-                              return `${typeText} - ${cleanContext}`;
-                            }
-                            
-                            // Caso contrário, mostrar apenas o tipo
-                            return typeText;
-                          })()}
                         </div>
                       </div>
                     </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { ConsultationRoom } from '@/components/webrtc/ConsultationRoom';
@@ -8,6 +10,7 @@ import '@/components/webrtc/webrtc-styles.css';
 
 function PatientConsultationContent() {
   const searchParams = useSearchParams();
+  const { showWarning } = useNotifications();
   const [consentGiven, setConsentGiven] = useState(false);
   const [showConsent, setShowConsent] = useState(true);
   
@@ -53,7 +56,7 @@ function PatientConsultationContent() {
   };
 
   const handleRejectConsent = () => {
-    alert('Você precisa aceitar o termo de consentimento para participar da consulta.');
+    showWarning('Você precisa aceitar o termo de consentimento para participar da consulta.', 'Atenção');
     window.location.href = '/';
   };
 

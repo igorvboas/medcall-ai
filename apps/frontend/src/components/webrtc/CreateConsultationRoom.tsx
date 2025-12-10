@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPatients } from '@/lib/supabase';
@@ -39,6 +41,7 @@ export function CreateConsultationRoom({
   preselectedConsultationType
 }: CreateConsultationRoomProps) {
   const router = useRouter();
+  const { showError, showSuccess, showWarning } = useNotifications();
   const [hostName, setHostName] = useState('');
   const [selectedPatient, setSelectedPatient] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -249,26 +252,26 @@ export function CreateConsultationRoom({
   const handleCreateRoom = async () => {
     // Validações
     if (!selectedPatient) {
-      alert('Por favor, selecione um paciente');
+      showWarning('Por favor, selecione um paciente', 'Validação');
       return;
     }
 
     if (!consent) {
-      alert('Por favor, confirme o consentimento do paciente');
+      showWarning('Por favor, confirme o consentimento do paciente', 'Validação');
       return;
     }
 
     // Validação específica para agendamento
     if (creationType === 'agendamento') {
       if (!scheduledDate || !scheduledTime) {
-        alert('Por favor, selecione a data e horário do agendamento');
+        showWarning('Por favor, selecione a data e horário do agendamento', 'Validação');
         return;
       }
     }
 
     // Validação de microfone só para consulta instantânea online
     if (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) {
-      alert('Por favor, selecione um microfone');
+      showWarning('Por favor, selecione um microfone', 'Validação');
       return;
     }
 
@@ -313,7 +316,7 @@ export function CreateConsultationRoom({
           router.push('/consultas');
         } else {
           const errorData = await response.json();
-          alert('Erro ao criar agendamento: ' + (errorData.error || 'Erro desconhecido'));
+          showError('Erro ao criar agendamento: ' + (errorData.error || 'Erro desconhecido'), 'Erro ao Criar');
         }
         return;
       }
@@ -375,7 +378,7 @@ export function CreateConsultationRoom({
             // Callback para integração com sistema médico
             onRoomCreated?.(roomInfo);
           } else {
-            alert('Erro ao criar sala: ' + response.error);
+            showError('Erro ao criar sala: ' + response.error, 'Erro ao Criar');
           }
         });
       } else {
@@ -384,18 +387,32 @@ export function CreateConsultationRoom({
     } catch (error) {
       setIsCreatingRoom(false);
       console.error('Erro ao criar sala:', error);
-      alert('Erro ao criar sala. Tente novamente.');
+      showError('Erro ao criar sala. Tente novamente.', 'Erro');
     }
   };
 
   const handleCopyLink = async (link: string) => {
     try {
       await navigator.clipboard.writeText(link);
-      alert('Link copiado para a área de transferência!');
+      showSuccess('Link copiado para a área de transferência!', 'Link Copiado');
     } catch (err) {
       console.error('Erro ao copiar link:', err);
-      alert('Erro ao copiar link. Copie manualmente: ' + link);
+      showError('Erro ao copiar link. Copie manualmente: ' + link, 'Erro ao Copiar');
     }
+  };
+
+  const handleShareWhatsApp = (link: string, patientName?: string) => {
+    // Mensagem formatada para WhatsApp
+    const message = `Olá${patientName ? ` ${patientName}` : ''}! 👋\n\n🔗 Link para sua consulta online:\n${link}\n\nPor favor, clique no link acima para entrar na consulta.`;
+    
+    // Codificar a mensagem para URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // URL do WhatsApp Web
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    // Abrir WhatsApp em nova aba
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleEnterRoom = (url: string) => {
@@ -438,6 +455,23 @@ export function CreateConsultationRoom({
             onClick={() => handleCopyLink(roomData.participantRoomUrl)}
           >
             Copiar Link do Paciente
+          </button>
+
+          {/* Botão WhatsApp */}
+          <button 
+            className="btn btn-whatsapp"
+            onClick={() => handleShareWhatsApp(roomData.participantRoomUrl, roomData.patientName)}
+            style={{ marginTop: '12px' }}
+          >
+            <svg 
+              width="20" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+            >
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            Enviar Link via WhatsApp
           </button>
           
           {/* Link do Médico */}

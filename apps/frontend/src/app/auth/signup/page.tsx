@@ -10,6 +10,7 @@ import { LoadingScreen } from '@/components/shared/LoadingScreen';
 import './signup.css';
 
 export default function SignUpPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,6 +36,11 @@ export default function SignUpPage() {
     setError(null);
     setMessage(null);
 
+    if (!name.trim()) {
+      setError('Por favor, informe seu nome');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('As senhas não coincidem');
       return;
@@ -48,7 +54,7 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(email, password, name.trim());
       
       if (error) {
         setError(error.message);
@@ -114,6 +120,22 @@ export default function SignUpPage() {
 
           <div className="signup-form-wrapper">
             <form onSubmit={handleSubmit} className="signup-form">
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">
+                  Nome Completo
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  required
+                  disabled={loading}
+                  className="form-input"
+                />
+              </div>
+
               <div className="form-group">
                 <label htmlFor="email" className="form-label">
                   Email

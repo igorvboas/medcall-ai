@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import React, { useState } from 'react';
 import { VideoConference, PreJoin, LocalUserChoices, RoomContext } from '@livekit/components-react';
 import { Room, RoomOptions, VideoPresets } from 'livekit-client';
@@ -53,13 +55,13 @@ export function LiveKitTest() {
       console.log('✅ Connection details obtained:', connectionDetailsData);
     } catch (error) {
       console.error('❌ Error fetching connection details:', error);
-      alert(`Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showError(`Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Erro de Conexão');
     }
   }, []);
 
   const handlePreJoinError = React.useCallback((error: any) => {
     console.error('❌ PreJoin error:', error);
-    alert(`PreJoin error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    showError(`PreJoin error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Erro no PreJoin');
   }, []);
 
   React.useEffect(() => {
@@ -80,7 +82,7 @@ export function LiveKitTest() {
         })
         .catch((error) => {
           console.error('❌ Failed to connect to room:', error);
-          alert(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          showError(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Erro de Conexão');
         });
     }
   }, [connectionDetails, preJoinChoices, room]);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useRouter } from 'next/navigation';
 import { User, FileText, Shield, Calendar } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
@@ -10,7 +11,10 @@ interface PatientFormData {
   // Informações do Paciente
   name: string;
   phone: string;
+  cep: string;
   address: string;
+  city: string;
+  state: string;
   birth_date: string;
   email?: string;
   gender?: 'M' | 'F' | 'O';
@@ -40,10 +44,14 @@ interface PatientFormData {
 
 export default function CadastrarPaciente() {
   const router = useRouter();
+  const { showError, showWarning, showSuccess } = useNotifications();
   const [formData, setFormData] = useState<PatientFormData>({
     name: '',
     phone: '',
+    cep: '',
     address: '',
+    city: '',
+    state: '',
     birth_date: '',
     email: '',
     gender: undefined,
@@ -68,6 +76,8 @@ export default function CadastrarPaciente() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [patientId, setPatientId] = useState<string | null>(null);
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [sendingAnamnese, setSendingAnamnese] = useState(false);
 
   const handleChange = (field: keyof PatientFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -92,6 +102,89 @@ export default function CadastrarPaciente() {
     return numbers.replace(/(\d{2})(\d{2})(\d{4})/, '$1/$2/$3');
   };
 
+  const formatCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
+  };
+
+  const fetchAddressByCEP = async (cep: string) => {
+    // Remove formatação do CEP
+    const cleanCep = cep.replace(/\D/g, '');
+    
+    // Verifica se o CEP tem 8 dígitos
+    if (cleanCep.length !== 8) {
+      return;
+    }
+
+    setLoadingCep(true);
+    
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        // Preenche automaticamente os campos de endereço
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || '',
+          city: data.localidade || '',
+          state: data.uf || '',
+        }));
+      } else {
+        console.warn('CEP não encontrado');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCEPChange = (value: string) => {
+    const formattedCep = formatCEP(value);
+    handleChange('cep', formattedCep);
+    
+    // Busca endereço quando o CEP tiver 8 dígitos
+    const cleanCep = value.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      fetchAddressByCEP(cleanCep);
+    }
+  };
+
+  const handleSendAnamnese = async () => {
+    if (!patientId) {
+      showWarning('Por favor, salve o paciente primeiro', 'Atenção');
+      return;
+    }
+
+    setSendingAnamnese(true);
+
+    try {
+      const response = await fetch('/api/anamnese-inicial', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patient_id: patientId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao enviar anamnese');
+      }
+
+      const result = await response.json();
+      showSuccess(result.message || 'Anamnese enviada para o paciente com sucesso!', 'Anamnese Enviada');
+    } catch (error) {
+      console.error('Erro ao enviar anamnese:', error);
+      showError(`Erro ao enviar anamnese: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Erro');
+    } finally {
+      setSendingAnamnese(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -99,7 +192,7 @@ export default function CadastrarPaciente() {
     try {
       // Validação básica
       if (!formData.name.trim()) {
-        alert('Nome é obrigatório');
+        showWarning('Nome é obrigatório', 'Validação');
         return;
       }
 
@@ -108,7 +201,10 @@ export default function CadastrarPaciente() {
         name: formData.name.trim(),
         email: formData.email?.trim() || undefined,
         phone: formData.phone?.trim() || undefined,
+        cep: formData.cep?.replace(/\D/g, '') || undefined,
         address: formData.address?.trim() || undefined,
+        city: formData.city?.trim() || undefined,
+        state: formData.state?.trim() || undefined,
         birth_date: formData.birth_date ? convertDateToISO(formData.birth_date) : undefined,
         gender: formData.gender,
         cpf: formData.cpf?.trim() || undefined,
@@ -151,16 +247,17 @@ export default function CadastrarPaciente() {
       const result = await response.json();
       console.log('Paciente cadastrado com sucesso:', result);
       
-      // Salvar ID do paciente para upload de avatar
+      // Salvar ID do paciente para upload de avatar e permitir enviar anamnese
       if (result.patient && result.patient.id) {
         setPatientId(result.patient.id);
+        // Não redireciona imediatamente, permite que o médico envie anamnese se quiser
+        showSuccess('Paciente cadastrado com sucesso!', 'Sucesso');
+      } else {
+        router.push('/pacientes');
       }
-      
-      // Redirecionar diretamente para a lista de pacientes
-      router.push('/pacientes');
     } catch (error) {
       console.error('Erro ao cadastrar paciente:', error);
-      alert(`Erro ao cadastrar paciente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      showError(`Erro ao cadastrar paciente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Erro ao Cadastrar');
     } finally {
       setIsSubmitting(false);
     }
@@ -252,6 +349,25 @@ export default function CadastrarPaciente() {
             </div>
 
             <div className="form-field">
+              <label htmlFor="cep" className="field-label">CEP</label>
+              <input
+                id="cep"
+                type="text"
+                value={formData.cep}
+                onChange={(e) => handleCEPChange(e.target.value)}
+                className="form-input"
+                placeholder="00000-000"
+                maxLength={9}
+                disabled={loadingCep}
+              />
+              {loadingCep && (
+                <span style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Buscando endereço...
+                </span>
+              )}
+            </div>
+
+            <div className="form-field">
               <label htmlFor="address" className="field-label">Endereço</label>
               <input
                 id="address"
@@ -260,6 +376,31 @@ export default function CadastrarPaciente() {
                 onChange={(e) => handleChange('address', e.target.value)}
                 className="form-input"
                 placeholder="Av. Alameda Tocantins, 125"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="city" className="field-label">Cidade</label>
+              <input
+                id="city"
+                type="text"
+                value={formData.city}
+                onChange={(e) => handleChange('city', e.target.value)}
+                className="form-input"
+                placeholder="São Paulo"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="state" className="field-label">Estado</label>
+              <input
+                id="state"
+                type="text"
+                value={formData.state}
+                onChange={(e) => handleChange('state', e.target.value.toUpperCase())}
+                className="form-input"
+                placeholder="SP"
+                maxLength={2}
               />
             </div>
 
@@ -468,6 +609,33 @@ export default function CadastrarPaciente() {
               'Salvar Paciente'
             )}
           </button>
+
+          {patientId && (
+            <button
+              type="button"
+              onClick={handleSendAnamnese}
+              className="btn btn-secondary"
+              disabled={sendingAnamnese || isSubmitting}
+              style={{
+                marginLeft: '12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none'
+              }}
+            >
+              {sendingAnamnese ? (
+                <>
+                  <div className="btn-spinner"></div>
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <FileText size={16} style={{ marginRight: '8px' }} />
+                  Enviar Anamnese Inicial
+                </>
+              )}
+            </button>
+          )}
         </div>
       </form>
 

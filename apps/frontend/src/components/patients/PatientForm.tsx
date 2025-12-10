@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useNotifications } from '@/components/shared/NotificationSystem';
 import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle, Upload, Trash2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { supabase } from '@/lib/supabase';
@@ -13,6 +14,9 @@ interface Patient {
   name: string;
   email?: string;
   phone?: string;
+  cep?: string;
+  city?: string;
+  state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
   cpf?: string;
@@ -32,6 +36,9 @@ interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
+  cep?: string;
+  city?: string;
+  state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
   cpf?: string;
@@ -52,10 +59,14 @@ interface PatientFormProps {
 }
 
 export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormProps) {
+  const { showError, showWarning } = useNotifications();
   const [formData, setFormData] = useState<CreatePatientData>({
     name: '',
     email: '',
     phone: '',
+    cep: '',
+    city: '',
+    state: '',
     birth_date: '',
     gender: undefined,
     cpf: '',
@@ -72,6 +83,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [medicalFiles, setMedicalFiles] = useState<Array<{ id: string; name: string; url: string; file?: File }>>([]);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
+  const [loadingCep, setLoadingCep] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
@@ -81,6 +93,9 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         name: patient.name,
         email: patient.email || '',
         phone: patient.phone || '',
+        cep: patient.cep || '',
+        city: patient.city || '',
+        state: patient.state || '',
         birth_date: patient.birth_date || '',
         gender: patient.gender,
         cpf: patient.cpf || '',
@@ -181,6 +196,53 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     }
   };
 
+  // Formatar CEP
+  const formatCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
+  };
+
+  // Buscar endereço por CEP
+  const fetchAddressByCEP = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    
+    if (cleanCep.length !== 8) {
+      return;
+    }
+
+    setLoadingCep(true);
+    
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address || '',
+          city: data.localidade || prev.city || '',
+          state: data.uf || prev.state || '',
+        }));
+      } else {
+        console.warn('CEP não encontrado');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCEPChange = (value: string) => {
+    const formattedCep = formatCEP(value);
+    setFormData(prev => ({ ...prev, cep: formattedCep }));
+    
+    const cleanCep = value.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      fetchAddressByCEP(cleanCep);
+    }
+  };
+
   // Manipular seleção de arquivos
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -190,14 +252,14 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       // Validar tamanho (máximo 10MB)
       const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert(`O arquivo ${file.name} excede o tamanho máximo de 10MB`);
+        showError(`O arquivo ${file.name} excede o tamanho máximo de 10MB`, 'Arquivo Muito Grande');
         return;
       }
 
       // Validar tipo
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
-        alert(`O arquivo ${file.name} não é um tipo permitido. Use PDF, DOC, DOCX, JPG ou PNG`);
+        showError(`O arquivo ${file.name} não é um tipo permitido. Use PDF, DOC, DOCX, JPG ou PNG`, 'Tipo de Arquivo Inválido');
         return;
       }
 
@@ -233,7 +295,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         }
       } catch (error: any) {
         console.error('Erro ao fazer upload:', error);
-        alert(`Erro ao fazer upload do arquivo ${file.name}: ${error.message}`);
+        showError(`Erro ao fazer upload do arquivo ${file.name}: ${error.message}`, 'Erro ao Fazer Upload');
       } finally {
         setUploadingFiles(prev => prev.filter(id => id !== fileId));
       }
@@ -420,6 +482,27 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           </div>
           
           <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="cep" className="field-label">
+                CEP
+              </label>
+              <input
+                id="cep"
+                type="text"
+                value={formData.cep}
+                onChange={(e) => handleCEPChange(e.target.value)}
+                className="form-input"
+                placeholder="00000-000"
+                maxLength={9}
+                disabled={loadingCep}
+              />
+              {loadingCep && (
+                <span style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Buscando endereço...
+                </span>
+              )}
+            </div>
+
             <div className="form-field full-width">
               <label htmlFor="address" className="field-label">
                 Endereço Completo
@@ -434,6 +517,34 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
               />
             </div>
 
+            <div className="form-field">
+              <label htmlFor="city" className="field-label">
+                Cidade
+              </label>
+              <input
+                id="city"
+                type="text"
+                value={formData.city}
+                onChange={(e) => handleChange('city', e.target.value)}
+                className="form-input"
+                placeholder="São Paulo"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="state" className="field-label">
+                Estado
+              </label>
+              <input
+                id="state"
+                type="text"
+                value={formData.state}
+                onChange={(e) => handleChange('state', e.target.value.toUpperCase())}
+                className="form-input"
+                placeholder="SP"
+                maxLength={2}
+              />
+            </div>
           </div>
         </div>
 

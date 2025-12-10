@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const status = searchParams.get('status') as 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'COMPLETED' | 'ERROR' | 'CANCELLED' | 'AGENDAMENTO' | null;
     const consultationType = searchParams.get('type') as 'PRESENCIAL' | 'TELEMEDICINA' | null;
+    const dateFilter = searchParams.get('dateFilter') as 'day' | 'week' | 'month' | null;
+    const date = searchParams.get('date');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
@@ -62,6 +64,47 @@ export async function GET(request: NextRequest) {
     }
     if (consultationType) {
       query = query.eq('consultation_type', consultationType);
+    }
+
+    // Aplicar filtro de data
+    if (dateFilter && date) {
+      const selectedDate = new Date(date);
+      
+      if (dateFilter === 'day') {
+        // Filtrar por dia específico
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        query = query.gte('created_at', startOfDay.toISOString())
+                     .lte('created_at', endOfDay.toISOString());
+      } else if (dateFilter === 'week') {
+        // Filtrar por semana (segunda a domingo da semana selecionada)
+        const dayOfWeek = selectedDate.getDay();
+        // Calcular diferença para segunda-feira (0 = domingo, 1 = segunda, etc)
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const startOfWeek = new Date(selectedDate);
+        startOfWeek.setDate(selectedDate.getDate() + diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        
+        query = query.gte('created_at', startOfWeek.toISOString())
+                     .lte('created_at', endOfWeek.toISOString());
+      } else if (dateFilter === 'month') {
+        // Filtrar por mês
+        const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        
+        const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+        endOfMonth.setHours(23, 59, 59, 999);
+        
+        query = query.gte('created_at', startOfMonth.toISOString())
+                     .lte('created_at', endOfMonth.toISOString());
+      }
     }
 
     // Paginação

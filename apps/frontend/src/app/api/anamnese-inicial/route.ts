@@ -289,20 +289,13 @@ export async function PUT(request: NextRequest) {
     }
 
     // Preparar dados para atualização, removendo campos undefined/null vazios
-    // IMPORTANTE: status deve ser sempre 'preenchida' quando o paciente salva
     const updateData: any = {
-      status: 'preenchida', // SEMPRE definir como preenchida
+      status: 'preenchida',
       updated_at: new Date().toISOString()
     };
 
-    // Adicionar apenas campos que têm valores (mas não sobrescrever o status)
+    // Adicionar apenas campos que têm valores
     Object.keys(anamneseData).forEach(key => {
-      // Ignorar 'status' se vier no formData (não deve sobrescrever)
-      if (key === 'status') {
-        console.log('⚠️ Campo "status" ignorado do formData, usando "preenchida"');
-        return;
-      }
-      
       const value = (anamneseData as any)[key];
       if (value !== undefined && value !== null && value !== '') {
         // Converter arrays JSON para formato correto se necessário
@@ -313,62 +306,14 @@ export async function PUT(request: NextRequest) {
         }
       }
     });
-    
-    // Garantir que status está sempre como 'preenchida'
-    updateData.status = 'preenchida';
-    console.log('✅ Status garantido como "preenchida" no updateData');
 
-    console.log('💾 Atualizando anamnese para paciente_id:', paciente_id);
-    console.log('💾 Dados para atualização:', JSON.stringify(updateData, null, 2));
-    
-    // Como paciente_id é PRIMARY KEY, só pode haver um registro por paciente
-    // Primeiro verificar se existe, depois atualizar ou criar
-    const { data: existingAnamnese } = await supabaseClient
+    // Atualizar anamnese com status 'preenchida'
+    const { data: updatedAnamnese, error } = await supabaseClient
       .from('a_cadastro_anamnese')
-      .select('paciente_id, status')
+      .update(updateData)
       .eq('paciente_id', paciente_id)
-      .maybeSingle();
-    
-    console.log('🔍 Anamnese existente:', existingAnamnese);
-    
-    let updatedAnamnese;
-    let error;
-    
-    if (existingAnamnese) {
-      // Atualizar registro existente usando paciente_id (PRIMARY KEY)
-      console.log('📝 Atualizando registro existente...');
-      const { data, error: updateError } = await supabaseClient
-        .from('a_cadastro_anamnese')
-        .update(updateData)
-        .eq('paciente_id', paciente_id) // Usar PRIMARY KEY diretamente
-        .select('paciente_id, status, updated_at')
-        .single();
-      
-      updatedAnamnese = data;
-      error = updateError;
-      
-      if (data) {
-        console.log('✅ Registro atualizado. Status retornado:', data.status);
-      }
-    } else {
-      // Criar novo registro se não existir
-      console.log('➕ Criando novo registro...');
-      const { data, error: insertError } = await supabaseClient
-        .from('a_cadastro_anamnese')
-        .insert({
-          paciente_id: paciente_id,
-          ...updateData
-        })
-        .select('paciente_id, status, updated_at')
-        .single();
-      
-      updatedAnamnese = data;
-      error = insertError;
-      
-      if (data) {
-        console.log('✅ Novo registro criado. Status:', data.status);
-      }
-    }
+      .select()
+      .single();
 
     if (error) {
       console.error('❌ Erro ao atualizar anamnese:', error);
@@ -387,9 +332,6 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log('✅ Anamnese atualizada com sucesso:', updatedAnamnese);
-    console.log('✅ Status atualizado para:', updatedAnamnese?.status);
 
     return NextResponse.json({ 
       message: 'Anamnese salva com sucesso',

@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Video, X, CheckCircle } from 'lucide-react';
@@ -19,6 +21,7 @@ interface ActiveConsultation {
 }
 
 export function ActiveConsultationBanner() {
+  const { showError } = useNotifications();
   const [activeConsultation, setActiveConsultation] = useState<ActiveConsultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -162,7 +165,7 @@ export function ActiveConsultationBanner() {
       window.location.reload();
     } catch (error) {
       console.error('Erro ao finalizar consulta:', error);
-      alert('Erro ao finalizar consulta. Tente novamente.');
+      showError('Erro ao finalizar consulta. Tente novamente.', 'Erro');
     } finally {
       setIsFinishing(false);
     }

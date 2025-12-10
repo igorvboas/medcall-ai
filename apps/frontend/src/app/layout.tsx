@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { Layout } from '@/components/shared/Layout';
+import { NotificationProvider } from '@/components/shared/NotificationSystem';
 
 export const metadata: Metadata = {
   title: 'TRIA - Plataforma de Consultas Médicas com IA',
@@ -41,7 +42,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
         </ThemeProvider>
       </body>
     </html>

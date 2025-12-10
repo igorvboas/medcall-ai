@@ -6,6 +6,7 @@ interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
+  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -88,108 +89,34 @@ export async function GET(request: NextRequest) {
     let anamnesesMap: Record<string, any> = {};
     
     if (patientIds.length > 0) {
-      console.log('🔍 Buscando anamneses para pacientes:', patientIds);
-      
-      // Buscar anamneses - usar DISTINCT ON ou pegar o mais recente de cada paciente
-      // Primeiro, buscar todas as anamneses ordenadas por updated_at (mais recente primeiro)
-      const { data: anamneses, error: anamnesesError } = await supabase
+      const { data: anamneses } = await supabase
         .from('a_cadastro_anamnese')
-        .select('paciente_id, status, updated_at, created_at')
-        .in('paciente_id', patientIds)
-        .order('updated_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false });
+        .select('paciente_id, status')
+        .in('paciente_id', patientIds);
       
-      // Se houver múltiplos registros para o mesmo paciente, pegar apenas o mais recente
-      const anamnesesByPatient: Record<string, any> = {};
       if (anamneses) {
         anamneses.forEach(an => {
-          const patientId = String(an.paciente_id);
-          
-          // Se ainda não tem registro para este paciente, ou se este é mais recente
-          if (!anamnesesByPatient[patientId]) {
-            anamnesesByPatient[patientId] = an;
-          } else {
-            // Comparar datas para pegar o mais recente
-            const currentDate = an.updated_at ? new Date(an.updated_at) : (an.created_at ? new Date(an.created_at) : new Date(0));
-            const existingDate = anamnesesByPatient[patientId].updated_at 
-              ? new Date(anamnesesByPatient[patientId].updated_at) 
-              : (anamnesesByPatient[patientId].created_at ? new Date(anamnesesByPatient[patientId].created_at) : new Date(0));
-            
-            if (currentDate > existingDate) {
-              anamnesesByPatient[patientId] = an;
-            }
-          }
+          anamnesesMap[an.paciente_id] = { status: an.status };
         });
-      }
-      
-      const uniqueAnamneses = Object.values(anamnesesByPatient);
-      
-      console.log('🔍 Anamneses antes da deduplicação:', anamneses?.length || 0);
-      console.log('🔍 Anamneses após deduplicação:', uniqueAnamneses.length);
-      
-      if (anamnesesError) {
-        console.error('❌ Erro ao buscar anamneses:', anamnesesError);
-        console.error('  - Código:', anamnesesError.code);
-        console.error('  - Mensagem:', anamnesesError.message);
-        console.error('  - Detalhes:', anamnesesError.details);
-      }
-      
-      if (uniqueAnamneses && uniqueAnamneses.length > 0) {
-        console.log('📝 Anamneses encontradas (após deduplicação):', JSON.stringify(uniqueAnamneses, null, 2));
-        console.log('📝 Total de anamneses únicas:', uniqueAnamneses.length);
-        
-        uniqueAnamneses.forEach(an => {
-          console.log(`  - paciente_id: ${an.paciente_id}, status: ${an.status} (tipo: ${typeof an.status})`);
-          // Normalizar o status para lowercase para comparação consistente
-          const normalizedStatus = an.status ? String(an.status).toLowerCase() : null;
-          anamnesesMap[an.paciente_id] = { 
-            status: normalizedStatus,
-            updated_at: an.updated_at 
-          };
-        });
-        
-        console.log('📝 Mapa de anamneses criado:', JSON.stringify(anamnesesMap, null, 2));
-      } else {
-        console.log('⚠️ Nenhuma anamnese encontrada para os pacientes:', patientIds);
-        if (anamneses && anamneses.length > 0) {
-          console.log('⚠️ Mas foram encontradas anamneses antes da deduplicação:', anamneses.length);
-        }
       }
     }
     
     // Processar pacientes adicionando status da anamnese
-    const processedPatients = patients?.map(patient => {
-      // Tentar encontrar anamnese usando o ID do paciente (pode ser UUID ou string)
-      let anamnese = anamnesesMap[patient.id] || null;
-      
-      // Se não encontrou, tentar buscar por todas as chaves do mapa (pode haver diferença de tipo)
-      if (!anamnese) {
-        const patientIdStr = String(patient.id);
-        for (const [key, value] of Object.entries(anamnesesMap)) {
-          if (String(key) === patientIdStr) {
-            anamnese = value;
-            console.log(`  ✅ Encontrado por conversão de tipo: ${patient.name} (${patient.id} = ${key})`);
-            break;
-          }
-        }
-      }
-      
-      console.log(`  Paciente ${patient.name} (ID: ${patient.id}, tipo: ${typeof patient.id}): anamnese =`, anamnese);
-      
-      return {
-        ...patient,
-        anamnese: anamnese
-      };
-    }) || [];
-    
-    console.log('✅ Pacientes processados com anamnese:', processedPatients.map(p => ({
-      name: p.name,
-      id: p.id,
-      anamnese: p.anamnese
-    })));
+    const processedPatients = patients?.map(patient => ({
+      ...patient,
+      anamnese: anamnesesMap[patient.id] || null
+    })) || [];
+
+    if (error) {
+      console.error('Erro ao buscar pacientes:', error);
+      return NextResponse.json(
+        { error: 'Erro ao buscar pacientes' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      patients: processedPatients || [],
+      patients: processedPatients,
       pagination: {
         page,
         limit,

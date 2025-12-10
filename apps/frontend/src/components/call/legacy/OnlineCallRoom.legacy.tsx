@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, MicOff, Video, VideoOff, Phone, PhoneOff, FileText, Brain, AlertCircle, ClipboardList, User, Calendar, Share2 } from 'lucide-react';
 import { useLiveKitCall } from '@/hooks/useLiveKitCall';
@@ -386,7 +388,7 @@ export function OnlineCallRoom({
       
     } catch (error) {
       console.error('Erro ao finalizar sessão:', error);
-      alert('Erro ao finalizar sessão. Tente novamente.');
+      showError('Erro ao finalizar sessão. Tente novamente.', 'Erro');
     } finally {
       setIsFinalizing(false);
     }

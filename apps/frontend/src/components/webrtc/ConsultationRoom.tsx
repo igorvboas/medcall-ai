@@ -15,8 +15,9 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2 } from 'lucide-react';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
+import { useNotifications } from '@/components/shared/NotificationSystem';
 
 
 
@@ -55,6 +56,7 @@ export function ConsultationRoom({
 }: ConsultationRoomProps) {
 
   const router = useRouter();
+  const { showError, showSuccess, showWarning, showInfo } = useNotifications();
 
   const [userName, setUserName] = useState('');
 
@@ -121,6 +123,12 @@ export function ConsultationRoom({
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [suggestionsEnabled, setSuggestionsEnabled] = useState<boolean>(true);
   const [suggestionsPanelVisible, setSuggestionsPanelVisible] = useState<boolean>(true);
+
+  // Estado para minimizar transcrição
+  const [isTranscriptionMinimized, setIsTranscriptionMinimized] = useState(false);
+
+  // Estado para dropdown de ações
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
   
 
@@ -326,7 +334,7 @@ export function ConsultationRoom({
 
             console.error('Erro ao carregar Socket.IO');
 
-            alert('Erro ao carregar Socket.IO do servidor. Verifique se o backend está rodando.');
+            showError('Erro ao carregar Socket.IO do servidor. Verifique se o backend está rodando.', 'Erro de Conexão');
 
           };
 
@@ -338,7 +346,7 @@ export function ConsultationRoom({
 
         console.error('Erro ao carregar Socket.IO:', error);
 
-        alert('Erro ao carregar Socket.IO: ' + error);
+        showError('Erro ao carregar Socket.IO: ' + error, 'Erro de Conexão');
 
       }
 
@@ -651,7 +659,7 @@ export function ConsultationRoom({
 
         console.error('❌ Erro ao rejuntar à sala:', response.error);
 
-        alert('Erro ao rejuntar à sala: ' + response.error);
+        showError('Erro ao rejuntar à sala: ' + response.error, 'Erro ao Reconectar');
 
       }
 
@@ -681,7 +689,7 @@ export function ConsultationRoom({
       // 3. Verificar se Socket.IO está disponível
       if (!window || !(window as any).io) {
         console.error('❌ Socket.IO não está disponível');
-        alert('Erro: Socket.IO não está carregado. Recarregue a página.');
+        showError('Socket.IO não está carregado. Recarregue a página.', 'Erro de Conexão');
         return;
       }
       
@@ -730,7 +738,7 @@ export function ConsultationRoom({
       
     } catch (error) {
       console.error('❌ Erro ao forçar nova conexão:', error);
-      alert('Erro ao reconectar. Por favor, recarregue a página.');
+      showError('Erro ao reconectar. Por favor, recarregue a página.', 'Erro de Conexão');
     }
   };
 
@@ -844,7 +852,7 @@ export function ConsultationRoom({
 
             setIsReconnecting(false);
 
-            alert('Servidor desconectou a sessão. Recarregue a página.');
+            showWarning('Servidor desconectou a sessão. Recarregue a página.', 'Conexão Perdida');
 
           } else {
 
@@ -979,7 +987,7 @@ export function ConsultationRoom({
 
         console.error('Socket.IO não está disponível após carregamento');
 
-        alert('Erro: Socket.IO não carregado. Recarregue a página.');
+        showError('Socket.IO não carregado. Recarregue a página.', 'Erro de Conexão');
 
       }
 
@@ -1206,7 +1214,7 @@ export function ConsultationRoom({
 
       } else {
 
-        alert('Erro: Nome do médico não informado. Recarregue a página.');
+        showError('Nome do médico não informado. Recarregue a página.', 'Erro de Configuração');
 
       }
 
@@ -1475,7 +1483,7 @@ export function ConsultationRoom({
 
         } else {
 
-          alert('Erro ao entrar na sala: ' + response.error);
+          showError('Erro ao entrar na sala: ' + response.error, 'Erro ao Entrar');
 
         }
 
@@ -1587,7 +1595,7 @@ export function ConsultationRoom({
       // Fallback: mostrar controles nativos
       video.controls = true;
       video.muted = false;
-      alert('Use os controles do vídeo para iniciar a reprodução.');
+      showInfo('Use os controles do vídeo para iniciar a reprodução.', 'Controle de Vídeo');
     }
   };
 
@@ -2011,7 +2019,7 @@ export function ConsultationRoom({
 
         // Médico: redireciona para nova consulta
 
-        alert(data.message);
+        showSuccess(data.message || 'Operação realizada com sucesso');
 
         router.push('/consulta/nova');
 
@@ -2077,7 +2085,7 @@ export function ConsultationRoom({
       console.log('🛑 [ADMIN] Sala encerrada pelo administrador:', data);
       
       // Mostrar mensagem para o usuário
-      alert(`A consulta foi encerrada pelo administrador.\n\nMotivo: ${data.reason || 'Encerramento administrativo'}`);
+      showWarning(`A consulta foi encerrada pelo administrador.\n\nMotivo: ${data.reason || 'Encerramento administrativo'}`, 'Consulta Encerrada');
       
       // Parar transcrição
       if (transcriptionManagerRef.current) {
@@ -2373,7 +2381,7 @@ export function ConsultationRoom({
 
       } else {
 
-        alert('Erro ao entrar na sala: ' + response.error);
+        showError('Erro ao entrar na sala: ' + response.error, 'Erro ao Entrar');
 
         router.push('/consulta/nova');
 
@@ -2396,7 +2404,7 @@ export function ConsultationRoom({
 
     if (!socketRef.current || !socketRef.current.connected) {
 
-      alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
+      showWarning('Não conectado ao servidor. Aguarde a conexão...', 'Aguardando Conexão');
 
       return;
 
@@ -2465,7 +2473,7 @@ export function ConsultationRoom({
 
       console.error('👨‍⚕️ [MÉDICO] ❌ Erro:', err);
 
-      alert('Erro ao iniciar chamada: ' + err);
+      showError('Erro ao iniciar chamada: ' + err, 'Erro na Chamada');
 
     }
 
@@ -2482,7 +2490,7 @@ export function ConsultationRoom({
 
     if (!socketRef.current || !socketRef.current.connected) {
 
-      alert('Erro: Não conectado ao servidor. Aguarde a conexão...');
+      showWarning('Não conectado ao servidor. Aguarde a conexão...', 'Aguardando Conexão');
 
       return;
 
@@ -2523,7 +2531,7 @@ export function ConsultationRoom({
 
       console.error('❌ Erro ao responder chamada:', err);
 
-      alert('Erro ao responder chamada: ' + err);
+      showError('Erro ao responder chamada: ' + err, 'Erro na Chamada');
 
     }
 
@@ -2906,11 +2914,11 @@ export function ConsultationRoom({
           }
         } catch (retryErr) {
           console.error('❌ Falha no retry:', retryErr);
-          alert('Não foi possível acessar a câmera/microfone. Verifique as permissões do navegador.');
+          showError('Não foi possível acessar a câmera/microfone. Verifique as permissões do navegador.', 'Erro de Permissão');
         }
       } else {
         const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
-        alert('Erro ao acessar câmera/microfone: ' + errorMessage);
+        showError('Erro ao acessar câmera/microfone: ' + errorMessage, 'Erro de Acesso');
       }
     }
 
@@ -3511,7 +3519,7 @@ export function ConsultationRoom({
 
     if (!transcriptionManagerRef.current) {
 
-      alert('Transcrição não inicializada. Faça a chamada primeiro.');
+      showWarning('Transcrição não inicializada. Faça a chamada primeiro.', 'Transcrição');
 
       return;
 
@@ -3610,7 +3618,7 @@ export function ConsultationRoom({
           setAnamneseReady(true);
           
           // Mostrar notificação na página atual (sem abrir nova aba automaticamente)
-          alert('✅ Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar.');
+          showSuccess('Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar.', 'Anamnese Gerada');
         }
       } catch (error) {
         console.error('Erro ao verificar status da consulta:', error);
@@ -3668,7 +3676,7 @@ export function ConsultationRoom({
       }, 3000);
     } catch (err) {
       console.error('Erro ao copiar link:', err);
-      alert('Erro ao copiar link. Tente novamente.');
+      showError('Erro ao copiar link. Tente novamente.', 'Erro ao Copiar');
     }
   };
 
@@ -3755,7 +3763,7 @@ export function ConsultationRoom({
           console.log('🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso');
           setIsEndingRoom(false);
 
-          alert('✅ Sala finalizada!\n\n💾 Transcrições salvas no banco de dados\n📝 Total: ' + response.saveResult.transcriptionsCount + ' transcrições');
+          showSuccess(`Sala finalizada!\n\nTranscrições salvas no banco de dados\nTotal: ${response.saveResult.transcriptionsCount} transcrições`, 'Sala Finalizada');
 
           router.push('/consulta/nova');
 
@@ -3765,7 +3773,7 @@ export function ConsultationRoom({
           console.log('🔍 DEBUG [REFERENCIA] Erro ao finalizar sala:', response.error);
           setIsEndingRoom(false);
 
-          alert('Erro ao finalizar sala: ' + response.error);
+          showError('Erro ao finalizar sala: ' + response.error, 'Erro ao Finalizar');
 
         }
 
@@ -3830,12 +3838,17 @@ export function ConsultationRoom({
           <h1>Consulta Online - {userType === 'doctor' ? 'Médico' : 'Paciente'}</h1>
 
           <p>
-
-            Sala: {roomData?.roomName || roomId} | 
-
-            Paciente: {patientName || participantName} | 
-
-            Status: <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
+            <span style={{ fontWeight: '600' }}>{patientName || participantName}</span>
+            {roomData?.roomName && roomData.roomName !== patientName && (
+              <>
+                {' • '}
+                <span style={{ color: '#6b7280', fontSize: '0.95em' }}>
+                  {roomData.roomName.replace(/^Consulta\s*[-–]\s*/i, '').trim() || roomData.roomName}
+                </span>
+              </>
+            )}
+            {' • '}
+            <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
               <span className={isConnected ? 'status-indicator status-indicator-connected' : 'status-indicator status-indicator-disconnected'}></span>
               {isConnected ? 'Conectado' : 'Desconectado'}
             </span>
@@ -3904,13 +3917,15 @@ export function ConsultationRoom({
 
                 color: isTranscriptionActive ? '#4caf50' : '#999',
 
-                fontWeight: 'bold'
+                fontWeight: '500',
+
+                fontSize: '0.9em'
 
               }}>
 
-                | 🎙️ Transcrição: <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
+                • 🎙️ <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
 
-                  {isTranscriptionActive ? 'Ativa' : 'Aguardando...'}
+                  {isTranscriptionActive ? 'Transcrição ativa' : 'Aguardando transcrição'}
 
                 </span>
 
@@ -3994,238 +4009,308 @@ export function ConsultationRoom({
 
           
 
-          {/* ✅ NOVO: Botão para copiar link do paciente - apenas para médico */}
+          {/* ✅ Dropdown de Ações - apenas para médico */}
           {userType === 'doctor' && (
-            <>
-              <button 
-                className="btn-copy-link" 
-                onClick={handleCopyPatientLink}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: linkCopied ? '#4caf50' : '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'background 0.3s',
-                  marginRight: '10px'
-                }}
-                title="Copiar link da consulta para o paciente"
-              >
-                {linkCopied ? (
+            <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {/* Dropdown Menu */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Ações da consulta"
+                >
+                  <MoreVertical size={16} />
+                  <span>Ações</span>
+                  {showActionsDropdown ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+
+                {showActionsDropdown && (
                   <>
-                    <Check size={16} />
-                    <span>Link Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={16} />
-                    <span>Copiar Link do Paciente</span>
+                    <div
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 998,
+                      }}
+                      onClick={() => setShowActionsDropdown(false)}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        marginTop: '8px',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        minWidth: '220px',
+                        zIndex: 999,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {/* Copiar Link */}
+                      <button
+                        onClick={() => {
+                          handleCopyPatientLink();
+                          setShowActionsDropdown(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: linkCopied ? '#f0fdf4' : 'transparent',
+                          color: linkCopied ? '#16a34a' : '#374151',
+                          border: 'none',
+                          borderBottom: '1px solid #f3f4f6',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          transition: 'background 0.2s',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!linkCopied) e.currentTarget.style.background = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!linkCopied) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+                        <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
+                      </button>
+
+                      {/* Sugestões IA */}
+                      <button
+                        onClick={() => {
+                          setSuggestionsEnabled(!suggestionsEnabled);
+                          if (!suggestionsEnabled) {
+                            setAiSuggestions([]);
+                            setSuggestionsPanelVisible(true);
+                          } else {
+                            setSuggestionsPanelVisible(false);
+                          }
+                          setShowActionsDropdown(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: suggestionsEnabled ? '#f0fdf4' : 'transparent',
+                          color: suggestionsEnabled ? '#16a34a' : '#374151',
+                          border: 'none',
+                          borderBottom: '1px solid #f3f4f6',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          transition: 'background 0.2s',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!suggestionsEnabled) e.currentTarget.style.background = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!suggestionsEnabled) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <Brain size={16} style={{ color: suggestionsEnabled ? '#16a34a' : '#6b7280' }} />
+                        <span>{suggestionsEnabled ? 'Desativar' : 'Ativar'} Sugestões IA</span>
+                      </button>
+
+                      {/* Gerar/Acessar Anamnese */}
+                      <button
+                        onClick={async () => {
+                          setShowActionsDropdown(false);
+                          
+                          // ✅ Se anamnese já está pronta, abrir em nova aba
+                          if (anamneseReady && currentConsultationId) {
+                            const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
+                            window.open(anamneseUrl, '_blank');
+                            return;
+                          }
+                          
+                          if (isGeneratingAnamnese) return;
+                          
+                          try {
+                            setIsGeneratingAnamnese(true);
+                            
+                            // Obter consultationId e doctorId
+                            const { supabase } = await import('@/lib/supabase');
+                            const { data: { session } } = await supabase.auth.getSession();
+                            
+                            let doctorId: string | null = null;
+                            if (session?.user?.id) {
+                              const { data: medico } = await supabase
+                                .from('medicos')
+                                .select('id')
+                                .eq('user_auth', session.user.id)
+                                .single();
+                              doctorId = medico?.id || null;
+                            }
+                            
+                            let consultationId: string | null = null;
+                            const { data: callSession } = await supabase
+                              .from('call_sessions')
+                              .select('consultation_id')
+                              .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+                              .single();
+                            consultationId = callSession?.consultation_id || null;
+                            
+                            if (!consultationId && doctorId) {
+                              const { data: consultation } = await supabase
+                                .from('consultations')
+                                .select('id')
+                                .eq('doctor_id', doctorId)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .single();
+                              consultationId = consultation?.id || null;
+                            }
+                            
+                            if (!consultationId) {
+                              showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
+                              setIsGeneratingAnamnese(false);
+                              return;
+                            }
+                            
+                            // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
+                            const webhookEndpoints = getWebhookEndpoints();
+                            const webhookHeaders = getWebhookHeaders();
+                            
+                            const webhookData = {
+                              consultationId: consultationId,
+                              doctorId: doctorId || null,
+                              patientId: patientId || 'unknown',
+                              transcription: transcriptionText,
+                              consulta_finalizada: false  // ✅ Consulta continua ativa
+                            };
+                            
+                            console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
+                            
+                            const response = await fetch(webhookEndpoints.transcricao, {
+                              method: 'POST',
+                              headers: webhookHeaders,
+                              body: JSON.stringify(webhookData),
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Erro ao enviar transcrição para gerar anamnese');
+                            }
+
+                            // Atualizar status da consulta para PROCESSING
+                            await fetch(`/api/consultations/${consultationId}`, {
+                              method: 'PATCH',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                status: 'PROCESSING',
+                                etapa: 'ANAMNESE'
+                              }),
+                            });
+
+                            // Iniciar polling para verificar quando anamnese estiver pronta
+                            startAnamnesePolling(consultationId);
+                            
+                            // Mostrar mensagem informativa
+                            showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
+                            
+                          } catch (error) {
+                            console.error('Erro ao gerar anamnese:', error);
+                            showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
+                            setIsGeneratingAnamnese(false);
+                          }
+                        }}
+                        disabled={isGeneratingAnamnese}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: isGeneratingAnamnese ? '#f3f4f6' : 'transparent',
+                          color: isGeneratingAnamnese ? '#9ca3af' : (anamneseReady ? '#3b82f6' : '#10b981'),
+                          border: 'none',
+                          cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          transition: 'background 0.2s',
+                          textAlign: 'left',
+                          opacity: isGeneratingAnamnese ? 0.7 : 1,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isGeneratingAnamnese) e.currentTarget.style.background = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isGeneratingAnamnese) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        {isGeneratingAnamnese ? (
+                          <>
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid #9ca3af',
+                              borderTop: '2px solid transparent',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }}></div>
+                            <span>Gerando...</span>
+                          </>
+                        ) : anamneseReady ? (
+                          <>
+                            <CheckCircle size={16} />
+                            <span>Acessar Anamnese</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            <span>Gerar Anamnese</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </>
                 )}
-              </button>
-              
-              {/* Botão para ativar/desativar sugestões de IA */}
-              <button 
-                onClick={() => {
-                  setSuggestionsEnabled(!suggestionsEnabled);
-                  if (!suggestionsEnabled) {
-                    setAiSuggestions([]);
-                    setSuggestionsPanelVisible(true);
-                  } else {
-                    setSuggestionsPanelVisible(false);
-                  }
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: suggestionsEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                  color: suggestionsEnabled ? '#16a34a' : '#6b7280',
-                  border: suggestionsEnabled ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(107, 114, 128, 0.3)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease',
-                  marginRight: '10px'
-                }}
-                title={suggestionsEnabled ? 'Desativar Sugestões de IA' : 'Ativar Sugestões de IA'}
-              >
-                {suggestionsEnabled ? (
-                  <>
-                    <Brain size={16} style={{ color: '#16a34a' }} />
-                    <span>Sugestões IA</span>
-                  </>
-                ) : (
-                  <>
-                    <Brain size={16} style={{ color: '#6b7280', opacity: 0.5 }} />
-                    <span>Sugestões IA</span>
-                  </>
-                )}
-              </button>
-            </>
-          )}
+              </div>
 
-          {userType === 'doctor' && (
-            <>
-              {/* Botão Gerar Anamnese / Acessar Anamnese */}
-              <button 
-                onClick={async () => {
-                  // ✅ Se anamnese já está pronta, abrir em nova aba
-                  if (anamneseReady && currentConsultationId) {
-                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
-                    window.open(anamneseUrl, '_blank');
-                    return;
-                  }
-                  
-                  if (isGeneratingAnamnese) return;
-                  
-                  try {
-                    setIsGeneratingAnamnese(true);
-                    
-                    // Obter consultationId e doctorId
-                    const { supabase } = await import('@/lib/supabase');
-                    const { data: { session } } = await supabase.auth.getSession();
-                    
-                    let doctorId: string | null = null;
-                    if (session?.user?.id) {
-                      const { data: medico } = await supabase
-                        .from('medicos')
-                        .select('id')
-                        .eq('user_auth', session.user.id)
-                        .single();
-                      doctorId = medico?.id || null;
-                    }
-                    
-                    let consultationId: string | null = null;
-                    const { data: callSession } = await supabase
-                      .from('call_sessions')
-                      .select('consultation_id')
-                      .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
-                      .single();
-                    consultationId = callSession?.consultation_id || null;
-                    
-                    if (!consultationId && doctorId) {
-                      const { data: consultation } = await supabase
-                        .from('consultations')
-                        .select('id')
-                        .eq('doctor_id', doctorId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
-                      consultationId = consultation?.id || null;
-                    }
-                    
-                    if (!consultationId) {
-                      alert('Não foi possível identificar a consulta. Tente novamente.');
-                      setIsGeneratingAnamnese(false);
-                      return;
-                    }
-                    
-                    // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
-                    const webhookEndpoints = getWebhookEndpoints();
-                    const webhookHeaders = getWebhookHeaders();
-                    
-                    const webhookData = {
-                      consultationId: consultationId,
-                      doctorId: doctorId || null,
-                      patientId: patientId || 'unknown',
-                      transcription: transcriptionText,
-                      consulta_finalizada: false  // ✅ Consulta continua ativa
-                    };
-                    
-                    console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
-                    
-                    const response = await fetch(webhookEndpoints.transcricao, {
-                      method: 'POST',
-                      headers: webhookHeaders,
-                      body: JSON.stringify(webhookData),
-                    });
-
-                    if (!response.ok) {
-                      throw new Error('Erro ao enviar transcrição para gerar anamnese');
-                    }
-
-                    // Atualizar status da consulta para PROCESSING
-                    await fetch(`/api/consultations/${consultationId}`, {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        status: 'PROCESSING',
-                        etapa: 'ANAMNESE'
-                      }),
-                    });
-
-                    // Iniciar polling para verificar quando anamnese estiver pronta
-                    startAnamnesePolling(consultationId);
-                    
-                    // Mostrar mensagem informativa
-                    alert('✅ Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.');
-                    
-                  } catch (error) {
-                    console.error('Erro ao gerar anamnese:', error);
-                    alert('Erro ao gerar anamnese. Tente novamente.');
-                    setIsGeneratingAnamnese(false);
-                  }
-                }}
-                disabled={isGeneratingAnamnese}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: anamneseReady ? '#3b82f6' : (isGeneratingAnamnese ? '#9ca3af' : '#10b981'),
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease',
-                  marginRight: '10px',
-                  opacity: isGeneratingAnamnese ? 0.7 : 1
-                }}
-                title={anamneseReady ? "Abrir anamnese em nova aba" : "Gerar anamnese da consulta"}
-              >
-                {isGeneratingAnamnese ? (
-                  <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      borderTop: '2px solid white',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    <span>Gerando...</span>
-                  </>
-                ) : anamneseReady ? (
-                  <>
-                    <CheckCircle size={16} />
-                    <span>Acessar Anamnese</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} />
-                    <span>Gerar Anamnese</span>
-                  </>
-                )}
-              </button>
-
+              {/* Botão Finalizar Sala (separado por ser ação crítica) */}
               <button 
                 className="btn-end-room" 
                 onClick={endRoom}
                 disabled={isEndingRoom}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isEndingRoom ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  opacity: isEndingRoom ? 0.7 : 1,
+                }}
               >
                 {isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}
               </button>
-            </>
+            </div>
           )}
 
 
@@ -4351,7 +4436,7 @@ export function ConsultationRoom({
 
         {/* Sidebar - APENAS para médicos */}
 
-        {userType === 'doctor' && (
+        {userType === 'doctor' && !isTranscriptionMinimized && (
 
           <div className="video-sidebar">
 
@@ -4359,9 +4444,9 @@ export function ConsultationRoom({
 
             <div className="transcription-box">
 
-            <div className="transcription-header">
+            <div className="transcription-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsTranscriptionMinimized(!isTranscriptionMinimized)}>
 
-              <h6>
+              <h6 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, flex: 1 }}>
 
                 Transcrição
 
@@ -4372,6 +4457,36 @@ export function ConsultationRoom({
                 </span>
 
               </h6>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTranscriptionMinimized(!isTranscriptionMinimized);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.color = '#374151';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+                title="Minimizar transcrição"
+              >
+                <Minimize2 size={16} />
+              </button>
 
             </div>
 
@@ -4397,6 +4512,42 @@ export function ConsultationRoom({
 
           </div>
 
+        )}
+
+        {/* Ícone flutuante da transcrição quando minimizada */}
+        {userType === 'doctor' && isTranscriptionMinimized && (
+          <button
+            onClick={() => setIsTranscriptionMinimized(false)}
+            className="transcription-floating-icon"
+            title="Expandir transcrição"
+          >
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Mic size={24} />
+              {isTranscriptionActive && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-2px',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4caf50',
+                  border: '2px solid white',
+                  animation: 'pulse 2s infinite',
+                }}></span>
+              )}
+            </div>
+            {transcriptionText.length > 0 && (
+              <span className="transcription-badge">
+                {transcriptionText.split('\n').filter(line => line.trim().length > 0).length}
+              </span>
+            )}
+          </button>
         )}
 
       </div>

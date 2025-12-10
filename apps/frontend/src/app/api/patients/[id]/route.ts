@@ -6,6 +6,7 @@ interface UpdatePatientData {
   name?: string;
   email?: string;
   phone?: string;
+  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;

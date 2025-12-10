@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LiveKitRoom, 
@@ -65,6 +67,7 @@ export function MedicalConsultationRoom({
   onEndCall,
   onShareConsultation,
 }: MedicalConsultationRoomProps) {
+  const { showError } = useNotifications();
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isLiveKitConnected, setIsLiveKitConnected] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -289,7 +292,7 @@ export function MedicalConsultationRoom({
       }, 3000);
     } catch (err) {
       console.error('Erro ao copiar link:', err);
-      alert('Erro ao copiar link. Tente novamente.');
+      showError('Erro ao copiar link. Tente novamente.', 'Erro ao Copiar');
     }
   };
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { useNotifications } from '@/components/shared/NotificationSystem';
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, MicOff, Square, Play, Volume2, FileText, Brain, AlertCircle, ClipboardList, User, Calendar, Power, PowerOff, X } from 'lucide-react';
 import { useAudioForker } from '@/hooks/useAudioForker';
@@ -353,7 +355,7 @@ export function PresentialCallRoom({
   // Função para iniciar sessão
   const handleStartSession = useCallback(async () => {
     if (!audioForker.isSupported) {
-      alert('Seu browser não suporta a captura de áudio necessária.');
+      showWarning('Seu browser não suporta a captura de áudio necessária.', 'Navegador Incompatível');
       return;
     }
 
