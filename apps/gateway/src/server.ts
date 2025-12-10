@@ -5,7 +5,7 @@ dotenv.config();
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import cors from 'cors';
+import helmet from 'helmet';
 import transcriptionRoutes from './routes/transcription';
 import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
@@ -15,24 +15,23 @@ import aiPricingRoutes from './routes/aiPricing';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 import { setupRoomsWebSocket } from './websocket/rooms';
 
+// Middlewares de segurança
+import { corsMiddleware, getCorsOrigins } from './middleware/cors';
+import { generalRateLimiter, aiRateLimiter } from './middleware/rateLimit';
+import { securityConfig } from './config';
+
 const app = express();
 const httpServer = createServer(app);
 
-// Configurar Socket.IO com CORS corrigido
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://medcall-ai-frontend-v2.vercel.app"
-];
-
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
+// Obter origens CORS configuradas
+const allowedOrigins = getCorsOrigins();
+console.log('🔧 [SERVER] CORS Origins:', allowedOrigins);
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: process.env.CORS_ALLOW_ALL === 'true' ? '*' : allowedOrigins,
     methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Session-ID", "X-User-ID"],
     credentials: true
   },
   transports: ['websocket', 'polling']
@@ -47,23 +46,81 @@ setupRoomsWebSocket(io);
 // Passar referência do Socket.IO para as rotas REST de rooms (para notificações admin)
 setSocketIO(io);
 
-// Middlewares
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"]
-}));
+// ===== MIDDLEWARES DE SEGURANÇA =====
+
+// Helmet - Headers de segurança HTTP
+if (securityConfig.helmetEnabled) {
+  app.use(helmet({
+    // Configurações customizadas para WebRTC/LiveKit
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Necessário para alguns worklets
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: [
+          "'self'",
+          "wss:", // WebSocket
+          "https:", // APIs externas
+          ...(process.env.LIVEKIT_URL ? [process.env.LIVEKIT_URL] : []),
+          ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+        ],
+        mediaSrc: ["'self'", "blob:", "data:"], // Para áudio/vídeo
+        workerSrc: ["'self'", "blob:"], // Para Web Workers/Worklets
+        frameSrc: ["'self'"],
+        fontSrc: ["'self'", "data:", "https:"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+      },
+    },
+    // Cross-Origin policies para WebRTC
+    crossOriginEmbedderPolicy: false, // Desabilitar para permitir recursos cross-origin
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    // Outras configs de segurança
+    dnsPrefetchControl: { allow: false },
+    frameguard: { action: "sameorigin" },
+    hidePoweredBy: true,
+    hsts: {
+      maxAge: 31536000, // 1 ano
+      includeSubDomains: true,
+      preload: true,
+    },
+    ieNoOpen: true,
+    noSniff: true,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    xssFilter: true,
+  }));
+  console.log('🛡️ [HELMET] Proteção de headers HTTP ativada');
+}
+
+// CORS - Configurável via variáveis de ambiente
+app.use(corsMiddleware);
+
+// Rate Limiting - Geral
+app.use(generalRateLimiter);
+
+// Body parsers
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Trust proxy (necessário para rate limit funcionar corretamente atrás de proxy/load balancer)
+app.set('trust proxy', 1);
 
 
-// Rotas da API
-app.use('/api/transcription', transcriptionRoutes);
-app.use('/api/livekit/transcription', livekitTranscriptionRoutes);
+
+// ===== ROTAS DA API =====
+
+// Rotas de transcrição/AI com rate limit específico
+app.use('/api/transcription', aiRateLimiter, transcriptionRoutes);
+app.use('/api/livekit/transcription', aiRateLimiter, livekitTranscriptionRoutes);
+app.use('/api/ai-pricing', aiRateLimiter, aiPricingRoutes);
+
+// Rotas gerais (usam rate limit geral)
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/rooms', roomsRoutes);
-app.use('/api/ai-pricing', aiPricingRoutes);
 app.use('/api', twilioRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM
@@ -114,6 +171,12 @@ app.get('/api/health', (req, res) => {
       node_env: process.env.NODE_ENV,
       port: process.env.PORT || 3001,
       frontend_url: process.env.FRONTEND_URL || 'not set'
+    },
+    security: {
+      helmet: securityConfig.helmetEnabled ? 'enabled' : 'disabled',
+      cors: process.env.CORS_ALLOW_ALL === 'true' ? 'allow-all (INSECURE)' : 'configured',
+      cors_origins_count: getCorsOrigins().length,
+      rate_limit: 'enabled',
     }
   });
 });

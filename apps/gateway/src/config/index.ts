@@ -39,6 +39,13 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutos
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   
+  // CORS
+  CORS_ORIGINS: z.string().optional(), // Lista de origens separadas por vírgula
+  CORS_ALLOW_ALL: z.coerce.boolean().default(false), // PERIGOSO: permite todas as origens
+  
+  // Helmet/Security
+  HELMET_ENABLED: z.coerce.boolean().default(true),
+  
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   SENTRY_DSN: z.string().optional(),
@@ -117,6 +124,17 @@ export const rateLimitConfig = {
   message: 'Muitas requisições, tente novamente em alguns minutos.',
   standardHeaders: true,
   legacyHeaders: false,
+};
+
+// Configurações de CORS
+export const corsConfig = {
+  origins: config.CORS_ORIGINS,
+  allowAll: config.CORS_ALLOW_ALL,
+};
+
+// Configurações de Helmet/Security
+export const securityConfig = {
+  helmetEnabled: config.HELMET_ENABLED,
 };
 
 // Configurações de áudio
