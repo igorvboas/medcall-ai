@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
 import { sendAnamneseEmail } from '@/lib/email-service';
 
+// Rotas dinâmicas (usam cookies e service role)
+export const dynamic = 'force-dynamic';
+
 // GET /api/anamnese-inicial?patient_id=xxx - Buscar anamnese inicial de um paciente
 // Permite acesso público para paciente preencher (sem autenticação)
 export async function GET(request: NextRequest) {

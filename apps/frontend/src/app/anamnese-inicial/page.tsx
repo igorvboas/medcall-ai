@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { FileText, Save, ArrowLeft } from 'lucide-react';
@@ -42,7 +42,7 @@ const leguminosasOptions = ['Feijão', 'Grão de bico', 'Lentilha', 'Ervilha', '
 const gordurasOptions = ['Azeite de oliva', 'Óleo de coco', 'Manteiga', 'Abacate', 'Castanhas', 'Nozes', 'Amendoim', 'Sementes'];
 const frutasOptions = ['Maçã', 'Banana', 'Laranja', 'Morango', 'Uva', 'Manga', 'Abacaxi', 'Melancia', 'Pêra', 'Pêssego', 'Limão'];
 
-export default function AnamneseInicialPage() {
+function AnamneseInicialContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showSuccess, showError, showWarning } = useNotifications();
@@ -571,6 +571,25 @@ export default function AnamneseInicialPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function AnamneseInicialPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        fontSize: '18px',
+        color: '#666'
+      }}>
+        Carregando...
+      </div>
+    }>
+      <AnamneseInicialContent />
+    </Suspense>
   );
 }
 
