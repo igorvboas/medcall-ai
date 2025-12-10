@@ -3845,8 +3845,14 @@ function ConsultasPageContent() {
   }, [consultaId]);
 
   // Polling automático para atualizar status da consulta (SEMPRE ativo quando há consulta aberta)
+  // Ref para controlar se devemos parar o polling (ex: erro 401)
+  const pollingActiveRef = useRef(true);
+  
   useEffect(() => {
     if (!consultaId) return;
+
+    // Resetar flag de polling ativo quando consultaId mudar
+    pollingActiveRef.current = true;
 
     // Determinar intervalo baseado no status atual
     const getPollingInterval = (currentStatus: string | null) => {
@@ -3858,7 +3864,7 @@ function ConsultasPageContent() {
       }
       // Status estáveis: polling menos frequente
       if (['COMPLETED', 'ERROR', 'CANCELLED'].includes(currentStatus)) {
-        return 30000; // 30 segundos (só para verificar mudanças raras)
+        return 60000; // 60 segundos (reduzido - status estável não precisa de polling frequente)
       }
       // Status intermediários
       return 5000; // 5 segundos
@@ -3868,11 +3874,35 @@ function ConsultasPageContent() {
     const pollingInterval = getPollingInterval(currentStatus);
 
     const intervalId = setInterval(async () => {
+      // ✅ CORREÇÃO: Verificar se polling ainda está ativo antes de fazer requisição
+      if (!pollingActiveRef.current) {
+        console.log('⏹️ Polling desativado, ignorando requisição');
+        clearInterval(intervalId);
+        return;
+      }
+
       try {
         // Buscar dados diretamente da API (com cache busting para garantir dados frescos)
         const response = await fetch(`/api/consultations/${consultaId}?t=${Date.now()}`, {
           cache: 'no-store'
         });
+        
+        // ✅ CORREÇÃO: Se erro 401 (não autenticado), parar polling imediatamente
+        if (response.status === 401) {
+          console.warn('⚠️ Sessão expirada - parando polling de consultas');
+          pollingActiveRef.current = false;
+          clearInterval(intervalId);
+          // Não redirecionar automaticamente - deixar o usuário saber que precisa fazer login
+          return;
+        }
+
+        // ✅ CORREÇÃO: Se erro 403 ou 404, parar polling (consulta não existe ou sem permissão)
+        if (response.status === 403 || response.status === 404) {
+          console.warn(`⚠️ Consulta não acessível (${response.status}) - parando polling`);
+          pollingActiveRef.current = false;
+          clearInterval(intervalId);
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -3910,7 +3940,8 @@ function ConsultasPageContent() {
           });
         }
       } catch (error) {
-        // Erro silencioso - não mostrar ao usuário
+        // Erro de rede - pode continuar tentando, mas logar para debug
+        console.warn('⚠️ Erro no polling de consulta:', error);
       }
     }, pollingInterval);
 
