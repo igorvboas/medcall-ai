@@ -1777,3 +1777,59 @@ export {
   socketToRoom, 
   openAIConnections
 };
+
+/**
+ * 📊 Obtém estatísticas das conexões OpenAI ativas em tempo real
+ * Útil para monitoramento de custos
+ */
+export function getOpenAIConnectionsStats() {
+  const now = Date.now();
+  const connections: Array<{
+    userName: string;
+    roomId: string;
+    startTime: string;
+    durationMinutes: number;
+    estimatedCost: number;
+    status: string;
+  }> = [];
+
+  // Iterar sobre conexões ativas
+  for (const [userName, ws] of openAIConnections.entries()) {
+    const usageData = openAIUsageTracker.get(userName);
+    
+    if (usageData) {
+      const durationMs = now - usageData.startTime;
+      const durationMinutes = durationMs / 60000;
+      // Custo estimado: $0.06/min input + $0.24/min output ≈ $0.30/min total
+      const estimatedCost = durationMinutes * 0.30;
+
+      connections.push({
+        userName,
+        roomId: usageData.roomId,
+        startTime: new Date(usageData.startTime).toISOString(),
+        durationMinutes: Math.round(durationMinutes * 100) / 100,
+        estimatedCost: Math.round(estimatedCost * 100) / 100,
+        status: ws.readyState === 1 ? 'OPEN' : ws.readyState === 0 ? 'CONNECTING' : 'CLOSING/CLOSED'
+      });
+    }
+  }
+
+  // Calcular totais
+  const totalConnections = connections.length;
+  const totalMinutes = connections.reduce((sum, c) => sum + c.durationMinutes, 0);
+  const totalEstimatedCost = connections.reduce((sum, c) => sum + c.estimatedCost, 0);
+
+  return {
+    timestamp: new Date().toISOString(),
+    summary: {
+      totalConnections,
+      totalMinutes: Math.round(totalMinutes * 100) / 100,
+      totalEstimatedCost: Math.round(totalEstimatedCost * 100) / 100,
+      maxConnectionTime: OPENAI_MAX_CONNECTION_TIME / 60000, // em minutos
+    },
+    connections,
+    warning: totalConnections > 0 ? 
+      `⚠️ ${totalConnections} conexão(ões) OpenAI ativa(s) consumindo aproximadamente $${totalEstimatedCost.toFixed(2)} até agora` : 
+      null
+  };
+}

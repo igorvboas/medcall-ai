@@ -151,7 +151,6 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         status,
-        room_id,
         created_at,
         consulta_inicio,
         patients!inner(name),
@@ -163,6 +162,24 @@ export async function GET(request: NextRequest) {
     if (consultationsError) {
       console.error('Erro ao buscar consultas ativas:', consultationsError);
     }
+    
+    // Buscar room_id das call_sessions associadas
+    const consultationsWithRooms = await Promise.all(
+      (activeConsultations || []).map(async (consultation) => {
+        const { data: session } = await supabase
+          .from('call_sessions')
+          .select('room_id')
+          .eq('consultation_id', consultation.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        return {
+          ...consultation,
+          room_id: session?.room_id || null
+        };
+      })
+    );
 
     // Buscar sessões de call ativas
     const { data: activeSessions, error: sessionsError } = await supabase
@@ -178,7 +195,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       stats,
-      activeConsultations: activeConsultations || [],
+      activeConsultations: consultationsWithRooms || [],
       activeSessions: activeSessions || [],
       period,
     });
@@ -252,14 +269,17 @@ export async function POST(request: NextRequest) {
       // Tentar chamar o gateway para encerrar a sala
       const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3333';
       try {
-        const { data: consultation } = await supabase
-          .from('consultations')
+        // Buscar room_id da call_session associada
+        const { data: session } = await supabase
+          .from('call_sessions')
           .select('room_id')
-          .eq('id', consultationId)
-          .single();
+          .eq('consultation_id', consultationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (consultation?.room_id) {
-          await fetch(`${gatewayUrl}/api/rooms/${consultation.room_id}/end`, {
+        if (session?.room_id) {
+          await fetch(`${gatewayUrl}/api/rooms/${session.room_id}/end`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason: 'Encerrado pelo administrador (monitor de custos)' }),
@@ -293,7 +313,7 @@ export async function POST(request: NextRequest) {
       // Fechar TODAS as consultas em status RECORDING
       const { data: recordingConsultations, error: fetchError } = await supabase
         .from('consultations')
-        .select('id, room_id')
+        .select('id')
         .eq('status', 'RECORDING');
 
       if (fetchError) {
@@ -315,16 +335,25 @@ export async function POST(request: NextRequest) {
       // Tentar notificar o gateway para cada sala
       const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3333';
       for (const consultation of recordingConsultations || []) {
-        if (consultation.room_id) {
-          try {
-            await fetch(`${gatewayUrl}/api/rooms/${consultation.room_id}/end`, {
+        try {
+          // Buscar room_id da call_session associada
+          const { data: session } = await supabase
+            .from('call_sessions')
+            .select('room_id')
+            .eq('consultation_id', consultation.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (session?.room_id) {
+            await fetch(`${gatewayUrl}/api/rooms/${session.room_id}/end`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ reason: 'Encerrado pelo administrador (fechamento em massa)' }),
             });
-          } catch (e) {
-            console.warn(`Não foi possível notificar o gateway para sala ${consultation.room_id}:`, e);
           }
+        } catch (e) {
+          console.warn(`Não foi possível notificar o gateway para consulta ${consultation.id}:`, e);
         }
       }
 
