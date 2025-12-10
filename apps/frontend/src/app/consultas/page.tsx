@@ -2976,6 +2976,17 @@ function SuplemementacaoSection({
 }
 
 // Componente da seção de Solução Alimentação
+// Interface para alimento da tabela de alimentos
+interface TabelaAlimento {
+  numero_do_alimento: string;
+  alimento: string;
+  energia_kcal: string;
+  proteina: string;
+  lipideos: string;
+  hidrato: string;
+  fibra_alimentar: string;
+}
+
 function AlimentacaoSection({ 
   consultaId
 }: {
@@ -2991,6 +3002,14 @@ function AlimentacaoSection({
     gramatura: '',
     kcal: ''
   });
+  
+  // Estados para busca de alimentos
+  const [alimentoSearch, setAlimentoSearch] = useState('');
+  const [alimentosSuggestions, setAlimentosSuggestions] = useState<TabelaAlimento[]>([]);
+  const [selectedAlimento, setSelectedAlimento] = useState<TabelaAlimento | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingAlimentos, setSearchingAlimentos] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadAlimentacaoData();
@@ -3008,6 +3027,89 @@ function AlimentacaoSection({
       window.removeEventListener('alimentacao-data-refresh', handleRefresh);
     };
   }, []);
+
+  // Função para buscar alimentos da tabela_alimentos
+  const searchAlimentos = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setAlimentosSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      setSearchingAlimentos(true);
+      const response = await fetch(`/api/tabela-alimentos?search=${encodeURIComponent(searchTerm)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAlimentosSuggestions(data.alimentos || []);
+        setShowSuggestions(true);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar alimentos:', error);
+    } finally {
+      setSearchingAlimentos(false);
+    }
+  };
+
+  // Debounce para busca de alimentos
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchAlimentos(alimentoSearch);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [alimentoSearch]);
+
+  // Calcular Kcal automaticamente quando gramatura mudar
+  useEffect(() => {
+    if (selectedAlimento && editForm.gramatura) {
+      const gramatura = parseFloat(editForm.gramatura);
+      const energiaKcalPor100g = parseFloat(selectedAlimento.energia_kcal);
+      
+      if (!isNaN(gramatura) && !isNaN(energiaKcalPor100g)) {
+        // Cálculo: (gramatura * energia_kcal) / 100
+        const kcalCalculado = (gramatura * energiaKcalPor100g) / 100;
+        setEditForm(prev => ({
+          ...prev,
+          kcal: kcalCalculado.toFixed(2)
+        }));
+      }
+    }
+  }, [editForm.gramatura, selectedAlimento]);
+
+  // Função para selecionar um alimento da lista de sugestões
+  const handleSelectAlimento = (alimento: TabelaAlimento) => {
+    setSelectedAlimento(alimento);
+    setAlimentoSearch(alimento.alimento);
+    setEditForm(prev => ({
+      ...prev,
+      alimento: alimento.alimento
+    }));
+    setShowSuggestions(false);
+
+    // Recalcular kcal se já houver gramatura
+    if (editForm.gramatura) {
+      const gramatura = parseFloat(editForm.gramatura);
+      const energiaKcalPor100g = parseFloat(alimento.energia_kcal);
+      
+      if (!isNaN(gramatura) && !isNaN(energiaKcalPor100g)) {
+        const kcalCalculado = (gramatura * energiaKcalPor100g) / 100;
+        setEditForm(prev => ({
+          ...prev,
+          kcal: kcalCalculado.toFixed(2)
+        }));
+      }
+    }
+  };
 
   const loadAlimentacaoData = async () => {
     try {
@@ -3090,6 +3192,11 @@ function AlimentacaoSection({
       gramatura: item.gramatura || '',
       kcal: item.kcal || ''
     });
+    // Resetar estados de busca de alimentos
+    setAlimentoSearch(item.alimento || '');
+    setSelectedAlimento(null);
+    setAlimentosSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleSaveEdit = async () => {
@@ -3129,6 +3236,11 @@ function AlimentacaoSection({
   const handleCancelEdit = () => {
     setEditingItem(null);
     setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
+    // Limpar estados de busca de alimentos
+    setAlimentoSearch('');
+    setSelectedAlimento(null);
+    setAlimentosSuggestions([]);
+    setShowSuggestions(false);
   };
 
   console.log('🔍 [FRONTEND] AlimentacaoSection - Estado atual:', {
@@ -3242,13 +3354,60 @@ function AlimentacaoSection({
           <div className="modal-content">
             <h3>Editar Item - {refeicoes.find(r => r.key === editingItem.refeicao)?.label}</h3>
             <div className="edit-form">
-              <div className="form-group">
+              <div className="form-group alimento-autocomplete">
                 <label>Alimento:</label>
-                <input
-                  type="text"
-                  value={editForm.alimento}
-                  onChange={(e) => setEditForm({...editForm, alimento: e.target.value})}
-                />
+                <div className="autocomplete-container">
+                  <input
+                    type="text"
+                    value={alimentoSearch}
+                    onChange={(e) => {
+                      setAlimentoSearch(e.target.value);
+                      setEditForm({...editForm, alimento: e.target.value});
+                      // Se limpar o campo, limpar também o alimento selecionado
+                      if (!e.target.value) {
+                        setSelectedAlimento(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (alimentosSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    placeholder="Digite para buscar alimentos..."
+                    autoComplete="off"
+                  />
+                  {searchingAlimentos && (
+                    <div className="autocomplete-loading">Buscando...</div>
+                  )}
+                  {showSuggestions && alimentosSuggestions.length > 0 && (
+                    <ul className="autocomplete-suggestions">
+                      {alimentosSuggestions.map((alimento, idx) => (
+                        <li
+                          key={alimento.numero_do_alimento || idx}
+                          onClick={() => handleSelectAlimento(alimento)}
+                          className="autocomplete-item"
+                        >
+                          <span className="alimento-nome">{alimento.alimento}</span>
+                          <span className="alimento-info">
+                            {alimento.energia_kcal} kcal/100g
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {showSuggestions && alimentosSuggestions.length === 0 && alimentoSearch.length >= 2 && !searchingAlimentos && (
+                    <div className="autocomplete-no-results">
+                      Nenhum alimento encontrado
+                    </div>
+                  )}
+                </div>
+                {selectedAlimento && (
+                  <div className="alimento-selecionado-info">
+                    <small>
+                      <strong>Selecionado:</strong> {selectedAlimento.alimento} ({selectedAlimento.energia_kcal} kcal/100g)
+                    </small>
+                  </div>
+                )}
               </div>
               <div className="form-group">
                 <label>Tipo:</label>
@@ -3257,21 +3416,25 @@ function AlimentacaoSection({
                   onChange={(e) => setEditForm({...editForm, tipo: e.target.value})}
                 >
                   <option value="">Selecione o tipo</option>
-                  <option value="Proteína">Proteína</option>
-                  <option value="Carboidrato">Carboidrato</option>
-                  <option value="Gordura">Gordura</option>
-                  <option value="Fibra">Fibra</option>
-                  <option value="Vitamina">Vitamina</option>
-                  <option value="Mineral">Mineral</option>
-                  <option value="Outro">Outro</option>
+                  <option value="proteinas">Proteínas</option>
+                  <option value="carboidratos">Carboidratos</option>
+                  <option value="gorduras">Gorduras</option>
+                  <option value="legumes">Legumes</option>
+                  <option value="verduras">Verduras</option>
+                  <option value="frutas">Frutas</option>
+                  <option value="lacteos">Laticínios</option>
+                  <option value="graos">Grãos</option>
+                  <option value="bebidas">Bebidas</option>
+                  <option value="outros">Outros</option>
                 </select>
               </div>
               <div className="form-group">
-                <label>Gramatura:</label>
+                <label>Gramatura (g):</label>
                 <input
-                  type="text"
+                  type="number"
                   value={editForm.gramatura}
                   onChange={(e) => setEditForm({...editForm, gramatura: e.target.value})}
+                  placeholder="Ex: 100"
                 />
               </div>
               <div className="form-group">
@@ -3279,8 +3442,20 @@ function AlimentacaoSection({
                 <input
                   type="text"
                   value={editForm.kcal}
-                  onChange={(e) => setEditForm({...editForm, kcal: e.target.value})}
+                  readOnly={selectedAlimento !== null}
+                  onChange={(e) => {
+                    if (!selectedAlimento) {
+                      setEditForm({...editForm, kcal: e.target.value});
+                    }
+                  }}
+                  className={selectedAlimento ? 'readonly-field' : ''}
+                  title={selectedAlimento ? 'Calculado automaticamente com base na gramatura' : ''}
                 />
+                {selectedAlimento && (
+                  <small className="kcal-info">
+                    Calculado automaticamente: ({editForm.gramatura || 0}g × {selectedAlimento.energia_kcal} kcal) / 100
+                  </small>
+                )}
               </div>
             </div>
             <div className="modal-actions">
