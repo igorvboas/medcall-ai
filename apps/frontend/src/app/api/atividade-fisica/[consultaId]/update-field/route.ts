@@ -14,33 +14,52 @@ export async function POST(
     const body = await request.json();
     const { id, field, value } = body;
 
-    if (!consultaId || !id || !field) {
+    if (!id || !field) {
       return NextResponse.json(
-        { error: 'ID da consulta, ID do exercício e campo são obrigatórios' },
+        { error: 'ID do exercício e campo são obrigatórios' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 DEBUG [REFERENCIA] Atualizando campo de exercício:', { id, field, value });
+    console.log('🔍 [UPDATE-EXERCICIO] Atualizando:', { id, field, value, consultaId });
 
     // Atualizar o campo específico na tabela s_exercicios_fisicos
+    // Apenas pelo ID do exercício (sem filtro por consulta_id pois pode não existir)
     const { data, error } = await supabase
       .from('s_exercicios_fisicos')
       .update({ [field]: value })
       .eq('id', id)
-      .eq('consulta_id', consultaId)
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Erro ao atualizar exercício:', error);
+      console.error('❌ [UPDATE-EXERCICIO] Erro ao atualizar:', error);
+      
+      // Log detalhado para debug
+      console.error('❌ [UPDATE-EXERCICIO] Detalhes:', {
+        id,
+        field,
+        value,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details
+      });
+      
       return NextResponse.json(
-        { error: 'Erro ao atualizar exercício' },
+        { error: 'Erro ao atualizar exercício', details: error.message },
         { status: 500 }
       );
     }
 
-    console.log('🔍 DEBUG [REFERENCIA] Exercício atualizado com sucesso:', data);
+    if (!data) {
+      console.error('❌ [UPDATE-EXERCICIO] Nenhum registro encontrado com id:', id);
+      return NextResponse.json(
+        { error: 'Exercício não encontrado' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ [UPDATE-EXERCICIO] Sucesso:', data);
 
     return NextResponse.json({
       success: true,
@@ -48,7 +67,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('❌ Erro interno na API de atualização de atividade física:', error);
+    console.error('❌ [UPDATE-EXERCICIO] Erro interno:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
