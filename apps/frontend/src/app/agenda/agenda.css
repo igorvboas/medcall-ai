@@ -467,6 +467,11 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
   padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.sidebar-section:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Dark mode sidebar */
@@ -513,31 +518,62 @@
 .consultation-card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 16px;
-  transition: all 0.2s ease;
+  padding: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.consultation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #d4a574 0%, #b8956a 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .consultation-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #d4a574;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.consultation-card:hover::before {
+  opacity: 1;
 }
 
 /* Dark mode consultation card */
 .dark .consultation-card {
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 42, 42, 0.5);
+  background: rgba(42, 42, 42, 0.6);
 }
 
 .dark .consultation-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-color: #d4a574;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  background: rgba(42, 42, 42, 0.8);
+}
+
+.dark .consultation-card::before {
+  background: linear-gradient(90deg, #d4a574 0%, #b8956a 100%);
 }
 
 .consultation-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.consultation-header .consultation-time {
+  flex: 1;
+  min-width: 0;
 }
 
 .consultation-time {
@@ -561,11 +597,14 @@
 }
 
 .consultation-status {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* CREATED - Cinza */
@@ -732,7 +771,7 @@
 
 @media (max-width: 768px) {
   .agenda-container {
-    padding: 24px 16px;
+    padding: 20px 16px;
   }
   
   .agenda-header {
@@ -743,6 +782,10 @@
   
   .agenda-title {
     font-size: 28px;
+  }
+  
+  .agenda-actions {
+    flex-wrap: wrap;
   }
   
   .calendar-header {
@@ -757,23 +800,47 @@
   
   .calendar-day {
     min-height: 80px;
-    padding: 4px;
+    padding: 6px;
   }
   
   .day-event {
     font-size: 9px;
-    padding: 1px 4px;
+    padding: 2px 4px;
   }
   
   .agenda-sidebar {
     flex-direction: column;
   }
+  
+  .consultation-card {
+    padding: 14px;
+  }
+  
+  .consultation-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .consultation-header-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .btn-card-action {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .btn-card-action svg {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 @media (max-width: 480px) {
   .calendar-day {
-    min-height: 60px;
-    padding: 2px;
+    min-height: 70px;
+    padding: 4px;
   }
   
   .day-number {
@@ -782,12 +849,47 @@
   
   .day-event {
     font-size: 8px;
-    padding: 1px 2px;
+    padding: 2px 4px;
   }
   
   .weekday-header {
     padding: 12px 4px;
     font-size: 10px;
+  }
+  
+  .consultation-card {
+    padding: 12px;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 20px;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .modal-footer {
+    padding: 16px 20px;
+    flex-direction: column;
+  }
+  
+  .modal-footer-right {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .btn-danger,
+  .btn-secondary,
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -893,8 +995,8 @@
    ======================================== */
 
 .consultation-actions {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -1200,76 +1302,114 @@
 }
 
 /* ========================================
-   Botões de Ação no Card
+   Botões de Ação no Card - Design Melhorado
    ======================================== */
 
 .consultation-header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
 .consultation-card-actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .btn-card-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn-card-action::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .btn-card-action.btn-edit {
-  background: #eff6ff;
-  color: #3b82f6;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
 .btn-card-action.btn-edit:hover {
-  background: #dbeafe;
-  color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.btn-card-action.btn-edit:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 }
 
 .btn-card-action.btn-delete {
-  background: #fef2f2;
-  color: #ef4444;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .btn-card-action.btn-delete:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.btn-card-action.btn-delete:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
 .btn-card-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-card-action svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
 }
 
 /* Dark mode */
 .dark .btn-card-action.btn-edit {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(37, 99, 235, 0.9) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
 .dark .btn-card-action.btn-edit:hover {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(29, 78, 216, 1) 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
 }
 
 .dark .btn-card-action.btn-delete {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.9) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
 }
 
 .dark .btn-card-action.btn-delete:hover {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(185, 28, 28, 1) 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
 }
 
 /* ========================================
@@ -1293,15 +1433,16 @@
 
 .modal-content {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 500px;
+  max-width: 540px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 @keyframes slideUp {
@@ -1324,8 +1465,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 24px 28px;
   border-bottom: 1px solid #e5e7eb;
+  background: white;
+}
+
+.dark .modal-header {
+  background: #1a1a1a;
 }
 
 .dark .modal-header {
@@ -1373,9 +1519,14 @@
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 28px;
   overflow-y: auto;
   flex: 1;
+  background: white;
+}
+
+.dark .modal-body {
+  background: #1a1a1a;
 }
 
 .form-group {
@@ -1529,9 +1680,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: 20px 24px;
   border-top: 1px solid #e5e7eb;
   gap: 12px;
+  background: #f9fafb;
+}
+
+.dark .modal-footer {
+  background: #222222;
 }
 
 .dark .modal-footer {
@@ -1547,10 +1703,16 @@
   background: #f3f4f6;
   color: #374151;
   border: none;
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
   background: #e5e7eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .dark .btn-secondary {
