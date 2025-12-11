@@ -4074,20 +4074,20 @@ function ConsultasPageContent() {
         }
       }
       
-      // Notificar webhook uma vez
+      // Notificar webhook via proxy (evita CORS)
       try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
+        await fetch('/api/webhook-proxy', {
           method: 'POST',
-          headers: webhookHeaders,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath: 's_exercicios_fisicos',
-            texto: 'Múltiplas alterações salvas',
-            consultaId,
-            solucao_etapa: 'ATIVIDADE_FISICA'
+            endpoint: 'edicaoSolucao',
+            payload: {
+              origem: 'MANUAL',
+              fieldPath: 's_exercicios_fisicos',
+              texto: 'Múltiplas alterações salvas',
+              consultaId,
+              solucao_etapa: 'ATIVIDADE_FISICA'
+            }
           }),
         });
       } catch (webhookError) {
