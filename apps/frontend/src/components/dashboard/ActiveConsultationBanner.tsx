@@ -1,8 +1,7 @@
 'use client';
 
 import { useNotifications } from '@/components/shared/NotificationSystem';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Video, X, CheckCircle } from 'lucide-react';
 import './ActiveConsultationBanner.css';
@@ -26,16 +25,28 @@ export function ActiveConsultationBanner() {
   const [loading, setLoading] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
   const router = useRouter();
+  
+  // ✅ Ref para controlar se polling deve continuar (para em caso de erro 401)
+  const pollingActiveRef = useRef(true);
+  // Ref para armazenar IDs dos intervalos
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fastIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    pollingActiveRef.current = true;
     checkActiveConsultation();
     
     // Polling adaptativo baseado no status da consulta ativa
-    const intervalId = setInterval(() => {
-      checkActiveConsultation();
-    }, 5000); // Verificar a cada 5 segundos (balance entre responsividade e performance)
+    intervalRef.current = setInterval(() => {
+      if (pollingActiveRef.current) {
+        checkActiveConsultation();
+      }
+    }, 10000); // ✅ Aumentado para 10 segundos (era 5)
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (fastIntervalRef.current) clearInterval(fastIntervalRef.current);
+    };
   }, []);
 
   // Polling adicional quando há consulta ativa para atualizar status mais rapidamente
@@ -46,19 +57,38 @@ export function ActiveConsultationBanner() {
     
     // Para status que mudam frequentemente, fazer polling mais rápido
     if (['PROCESSING', 'RECORDING'].includes(status)) {
-      const fastInterval = setInterval(() => {
-        checkActiveConsultation();
-      }, 3000); // 3 segundos para status de processamento
+      fastIntervalRef.current = setInterval(() => {
+        if (pollingActiveRef.current) {
+          checkActiveConsultation();
+        }
+      }, 5000); // ✅ Aumentado para 5 segundos (era 3)
 
-      return () => clearInterval(fastInterval);
+      return () => {
+        if (fastIntervalRef.current) clearInterval(fastIntervalRef.current);
+      };
     }
   }, [activeConsultation?.status]);
 
   const checkActiveConsultation = async () => {
+    // ✅ Verificar se polling ainda está ativo
+    if (!pollingActiveRef.current) {
+      return;
+    }
+
     try {
       setLoading(true);
       // Buscar apenas consultas com status RECORDING (sala aberta/gravando)
       const response = await fetch('/api/consultations?status=RECORDING&limit=10');
+      
+      // ✅ CORREÇÃO: Se erro 401, parar polling imediatamente
+      if (response.status === 401) {
+        console.warn('⚠️ [ActiveConsultationBanner] Sessão expirada - parando polling');
+        pollingActiveRef.current = false;
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (fastIntervalRef.current) clearInterval(fastIntervalRef.current);
+        setActiveConsultation(null);
+        return;
+      }
       
       if (!response.ok) {
         setActiveConsultation(null);

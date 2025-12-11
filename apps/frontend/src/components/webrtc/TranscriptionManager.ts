@@ -21,7 +21,7 @@ export class TranscriptionManager {
   private lastAudioTime: number = 0;
   
   // Configurações
-  private readonly OPENAI_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
+  private readonly OPENAI_MODEL = 'gpt-4o-mini-realtime-preview';
   private readonly AUDIO_FORMAT = 'pcm16';
 
   /**

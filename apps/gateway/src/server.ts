@@ -13,7 +13,7 @@ import roomsRoutes, { setSocketIO } from './routes/rooms';
 import twilioRoutes from './routes/index';
 import aiPricingRoutes from './routes/aiPricing';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
-import { setupRoomsWebSocket } from './websocket/rooms';
+import { setupRoomsWebSocket, getOpenAIConnectionsStats } from './websocket/rooms';
 
 // Middlewares de segurança
 import { corsMiddleware, getCorsOrigins } from './middleware/cors';
@@ -151,6 +151,31 @@ app.get('/api/pcm-transcription/health', (req, res) => {
   };
   
   res.json(health);
+});
+
+// 📊 Endpoint para monitorar conexões OpenAI ativas em tempo real
+app.get('/api/openai/connections', (req, res) => {
+  const stats = getOpenAIConnectionsStats();
+  res.json(stats);
+});
+
+// 📊 Endpoint resumido para verificar custos em tempo real
+app.get('/api/openai/costs', (req, res) => {
+  const stats = getOpenAIConnectionsStats();
+  res.json({
+    activeConnections: stats.summary.totalConnections,
+    totalMinutesConsumed: stats.summary.totalMinutes,
+    estimatedCostUSD: stats.summary.totalEstimatedCost,
+    maxConnectionTimeMinutes: stats.summary.maxConnectionTime,
+    warning: stats.warning,
+    details: stats.connections.map(c => ({
+      user: c.userName,
+      room: c.roomId,
+      minutes: c.durationMinutes,
+      cost: `$${c.estimatedCost.toFixed(2)}`,
+      status: c.status
+    }))
+  });
 });
 
 // Suas outras rotas existentes podem ser adicionadas aqui
