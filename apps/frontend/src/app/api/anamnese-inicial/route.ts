@@ -321,32 +321,61 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Preparar dados para atualização, removendo campos undefined/null vazios
-    const updateData: any = {
-      status: 'preenchida',
+    // Verificar se anamnese existe
+    const { data: existingAnamnese, error: checkError } = await supabaseClient
+      .from('a_cadastro_anamnese')
+      .select('paciente_id, status')
+      .eq('paciente_id', paciente_id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Erro ao verificar anamnese existente:', checkError);
+    }
+
+    console.log('📋 Anamnese existente:', existingAnamnese);
+
+    // Preparar dados completos para upsert (incluindo paciente_id)
+    // Sempre definir status como 'preenchida' quando paciente submete o formulário
+    const upsertData: any = {
+      paciente_id: paciente_id,  // Chave primária - necessário para upsert
+      status: 'preenchida',       // SEMPRE atualizar status para 'preenchida'
       updated_at: new Date().toISOString()
     };
 
-    // Adicionar apenas campos que têm valores
+    // Adicionar apenas campos que têm valores do formulário
     Object.keys(anamneseData).forEach(key => {
       const value = (anamneseData as any)[key];
       if (value !== undefined && value !== null && value !== '') {
         // Converter arrays JSON para formato correto se necessário
         if (Array.isArray(value)) {
-          updateData[key] = value;
+          upsertData[key] = value;
         } else {
-          updateData[key] = value;
+          upsertData[key] = value;
         }
       }
     });
 
-    // Atualizar anamnese com status 'preenchida'
+    console.log('📤 Dados para upsert:', JSON.stringify(upsertData, null, 2));
+    console.log('🔑 paciente_id:', paciente_id);
+    console.log('📋 Status atual na anamnese existente:', existingAnamnese?.status);
+    console.log('🎯 Status que será definido: preenchida');
+
+    // Usar upsert para garantir que sempre funcione (cria se não existir, atualiza se existir)
+    // O onConflict garante que se já existir um registro com esse paciente_id, ele será atualizado
     const { data: updatedAnamnese, error } = await supabaseClient
       .from('a_cadastro_anamnese')
-      .update(updateData)
-      .eq('paciente_id', paciente_id)
+      .upsert(upsertData, {
+        onConflict: 'paciente_id',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
+
+    console.log('✅ Resultado do upsert:', { updatedAnamnese, error });
+    if (updatedAnamnese) {
+      console.log('✅ Status após upsert:', updatedAnamnese.status);
+      console.log('✅ updated_at após upsert:', updatedAnamnese.updated_at);
+    }
 
     if (error) {
       console.error('❌ Erro ao atualizar anamnese:', error);
