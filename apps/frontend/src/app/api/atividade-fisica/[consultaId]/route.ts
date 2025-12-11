@@ -19,53 +19,28 @@ export async function GET(
       );
     }
 
-    console.log('🔍 DEBUG [REFERENCIA] Buscando dados de atividade física para consulta:', consultaId);
+    console.log('🔍 [ATIVIDADE-FISICA] Buscando exercícios para consulta_id:', consultaId);
 
-    // 1. Buscar o paciente_id da consulta
-    const { data: consulta, error: consultaError } = await supabase
-      .from('consultations')
-      .select('patient_id')
-      .eq('id', consultaId)
-      .single();
-
-    if (consultaError) {
-      console.error('❌ Erro ao buscar consulta:', consultaError);
-      return NextResponse.json(
-        { error: 'Erro ao buscar dados da consulta' },
-        { status: 500 }
-      );
-    }
-
-    if (!consulta) {
-      return NextResponse.json(
-        { error: 'Consulta não encontrada' },
-        { status: 404 }
-      );
-    }
-
-    console.log('🔍 DEBUG [REFERENCIA] Paciente ID encontrado:', consulta.patient_id);
-
-    // 2. Buscar exercícios físicos filtrados por paciente_id
+    // Buscar exercícios físicos filtrados por consulta_id (não paciente_id!)
     const { data: exercicios, error: exerciciosError } = await supabase
       .from('s_exercicios_fisicos')
       .select('*')
-      .eq('paciente_id', consulta.patient_id)
+      .eq('consulta_id', consultaId)
       .order('nome_treino', { ascending: true })
       .order('id', { ascending: true });
 
     if (exerciciosError) {
-      console.error('❌ Erro ao buscar exercícios físicos:', exerciciosError);
+      console.error('❌ [ATIVIDADE-FISICA] Erro ao buscar exercícios:', exerciciosError);
       return NextResponse.json(
         { error: 'Erro ao buscar exercícios físicos' },
         { status: 500 }
       );
     }
 
-    console.log('🔍 DEBUG [REFERENCIA] Exercícios encontrados:', exercicios?.length || 0);
+    console.log('✅ [ATIVIDADE-FISICA] Exercícios encontrados:', exercicios?.length || 0);
 
     return NextResponse.json({
       exercicios: exercicios || [],
-      paciente_id: consulta.patient_id,
       consulta_id: consultaId
     });
 
