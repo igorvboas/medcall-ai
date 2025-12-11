@@ -383,7 +383,7 @@ export async function PUT(request: NextRequest) {
       console.error('  - Mensagem:', error.message);
       console.error('  - Detalhes:', error.details);
       console.error('  - Hint:', error.hint);
-      console.error('  - Dados tentados:', JSON.stringify(updateData, null, 2));
+      console.error('  - Dados tentados:', JSON.stringify(upsertData, null, 2));
       return NextResponse.json(
         { 
           error: 'Erro ao atualizar anamnese', 
