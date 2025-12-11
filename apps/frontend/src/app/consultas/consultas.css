@@ -3655,6 +3655,7 @@
   padding: 32px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.5);
+  overflow: visible;
 }
 
 .dark .treino-section {
@@ -3692,9 +3693,77 @@
 }
 
 .exercicios-table-container {
-  overflow-x: auto;
+  overflow: visible;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para autocomplete de exercícios */
+.exercicio-autocomplete-wrapper {
+  position: relative;
+}
+
+.exercicio-suggestions-dropdown {
+  position: fixed;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  max-height: 250px;
+  min-width: 280px;
+  overflow-y: auto;
+  z-index: 99999;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  margin-top: 4px;
+}
+
+.dark .exercicio-suggestions-dropdown {
+  background-color: #1f1f1f;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.exercicio-suggestion-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s ease;
+}
+
+.dark .exercicio-suggestion-item {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.exercicio-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.exercicio-suggestion-item:hover {
+  background-color: #fef3e2;
+}
+
+.dark .exercicio-suggestion-item:hover {
+  background-color: #374151;
+}
+
+.exercicio-suggestion-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.dark .exercicio-suggestion-name {
+  color: #f3f4f6;
+}
+
+.exercicio-suggestion-grupo {
+  font-size: 12px;
+  color: #d4a574;
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.dark .exercicio-suggestion-grupo {
+  color: #d4a574;
 }
 
 .exercicios-table {
@@ -3702,7 +3771,7 @@
   border-collapse: collapse;
   background: white;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   font-size: 14px;
 }
 
@@ -3731,6 +3800,8 @@
   vertical-align: top;
   color: #374151;
   line-height: 1.5;
+  position: relative;
+  overflow: visible;
 }
 
 .dark .exercicios-table td {

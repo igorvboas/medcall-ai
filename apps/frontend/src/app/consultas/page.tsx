@@ -67,7 +67,6 @@ interface Consultation {
   consulta_fim?: string;
   created_at: string;
   updated_at: string;
-  consulta_inicio?: string;
   transcription?: {
     id: string;
     raw_text: string;
@@ -1943,6 +1942,8 @@ function MentalidadeSection({
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
 }) {
+  const { showError } = useNotifications();
+  
   // Estados para carregamento dinâmico
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -2653,6 +2654,8 @@ function SuplemementacaoSection({
 }: {
   consultaId: string;
 }) {
+  const { showError } = useNotifications();
+  
   const [suplementacaoData, setSuplementacaoData] = useState<{
     suplementos: SuplementacaoItem[];
     fitoterapicos: SuplementacaoItem[];
@@ -2999,6 +3002,8 @@ function AlimentacaoSection({
 }: {
   consultaId: string;
 }) {
+  const { showError } = useNotifications();
+  
   const [alimentacaoData, setAlimentacaoData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -3423,6 +3428,13 @@ function ConsultasPageContent() {
   const [atividadeFisicaData, setAtividadeFisicaData] = useState<ExercicioFisico[]>([]);
   const [loadingAtividadeFisica, setLoadingAtividadeFisica] = useState(false);
   const [editingExercicio, setEditingExercicio] = useState<{id: number, field: string} | null>(null);
+  
+  // Estado para autocomplete de exercícios
+  const [exercicioSuggestions, setExercicioSuggestions] = useState<Array<{id: number, atividade: string, grupo_muscular: string}>>([]);
+  
+  // Estado para alterações pendentes (não salvas)
+  const [pendingChanges, setPendingChanges] = useState<Record<number, Partial<ExercicioFisico>>>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Estados para modal de confirmação de exclusão
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -4001,54 +4013,105 @@ function ConsultasPageContent() {
     }
   };
 
-  const handleSaveExercicio = async (id: number, field: string, newValue: string) => {
-    if (!consultaId) return;
+  // Função para buscar exercícios da lista
+  const searchExercicios = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setExercicioSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/lista-exercicios-fisicos?search=${encodeURIComponent(searchTerm)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setExercicioSuggestions(data.exercicios || []);
+      } else {
+        setExercicioSuggestions([]);
+      }
+    } catch (error) {
+      setExercicioSuggestions([]);
+    }
+  };
+
+  // Função para atualizar exercício LOCALMENTE (sem salvar no banco)
+  const handleUpdateExercicioLocal = (id: number, field: string, newValue: string) => {
+    // Atualizar o estado local
+    setAtividadeFisicaData(prev => prev.map(ex => 
+      ex.id === id ? { ...ex, [field]: newValue } : ex
+    ));
+    
+    // Registrar a alteração pendente
+    setPendingChanges(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: newValue }
+    }));
+    
+    setHasUnsavedChanges(true);
+    setEditingExercicio(null);
+  };
+
+  // Função para SALVAR TODAS as alterações no banco
+  const handleSaveAllChanges = async () => {
+    if (!consultaId || Object.keys(pendingChanges).length === 0) return;
 
     try {
       setIsSaving(true);
       
-      // Primeiro, atualizar no banco de dados
-      const response = await fetch(`/api/atividade-fisica/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id,
-          field, 
-          value: newValue
-        }),
-      });
+      // Salvar cada alteração pendente
+      for (const [exercicioId, changes] of Object.entries(pendingChanges)) {
+        for (const [field, value] of Object.entries(changes)) {
+          const response = await fetch(`/api/atividade-fisica/${consultaId}/update-field`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              id: Number(exercicioId),
+              field, 
+              value
+            }),
+          });
 
-      if (!response.ok) throw new Error('Erro ao atualizar campo no banco de dados');
+          if (!response.ok) throw new Error(`Erro ao atualizar ${field}`);
+        }
+      }
       
-      // Depois, notificar o webhook
+      // Notificar webhook via proxy (evita CORS)
       try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.edicaoSolucao, {
+        await fetch('/api/webhook-proxy', {
           method: 'POST',
-          headers: webhookHeaders,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            origem: 'MANUAL',
-            fieldPath: `s_exercicios_fisicos.${field}`,
-            texto: newValue,
-            consultaId,
-            solucao_etapa: 'ATIVIDADE_FISICA'
+            endpoint: 'edicaoSolucao',
+            payload: {
+              origem: 'MANUAL',
+              fieldPath: 's_exercicios_fisicos',
+              texto: 'Múltiplas alterações salvas',
+              consultaId,
+              solucao_etapa: 'ATIVIDADE_FISICA'
+            }
           }),
         });
       } catch (webhookError) {
-        console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
+        console.warn('Webhook não notificado:', webhookError);
       }
 
-      // Recarregar dados
-      await loadAtividadeFisicaData();
-      setEditingExercicio(null);
+      // Limpar alterações pendentes
+      setPendingChanges({});
+      setHasUnsavedChanges(false);
+      
+      // Mostrar sucesso (você pode adicionar um toast aqui)
+      //alert('Alterações salvas com sucesso!');
       
     } catch (error) {
-      console.error('Erro ao salvar exercício:', error);
+      console.error('Erro ao salvar alterações:', error);
+      alert('Erro ao salvar. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Função antiga mantida para compatibilidade (não usada mais)
+  const handleSaveExercicio = async (id: number, field: string, newValue: string) => {
+    handleUpdateExercicioLocal(id, field, newValue);
   };
 
   // Função para selecionar solução
@@ -4801,7 +4864,7 @@ function ConsultasPageContent() {
 
 
   // Função para renderizar o conteúdo baseado no status e etapa
-  const renderConsultationContent = () => {
+  const renderConsultationContent = (): 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO_MENTALIDADE' | 'SOLUCAO_SUPLEMENTACAO' | 'SOLUCAO_ALIMENTACAO' | 'SOLUCAO_ATIVIDADE_FISICA' | 'SELECT_SOLUCAO' | JSX.Element | null => {
     if (!consultaDetails) return null;
 
     // 🔍 DEBUG: Log do status e etapa da consulta
@@ -4906,7 +4969,7 @@ function ConsultasPageContent() {
       }
 
       // Se não tiver solucao_etapa definida, mostrar tela de seleção
-      return 'SOLUCAO_SELECTION';
+      return 'SELECT_SOLUCAO';
     }
 
     // STATUS = VALIDATION (mantido para compatibilidade)
@@ -4976,7 +5039,7 @@ function ConsultasPageContent() {
               'exercicios': 'ATIVIDADE_FISICA'
             };
             
-            const etapa = solutionMapping[solutionType];
+            const etapa = solutionMapping[solutionType] as 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | undefined;
             if (etapa) {
               // Atualizar a consulta com a etapa selecionada
               handleSelectSolucao(etapa);
@@ -5618,302 +5681,6 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
-    if (typeof contentType === 'string' && contentType === 'SELECT_SOLUCAO') {
-      return (
-        <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
-            <button 
-              className="back-button"
-              onClick={handleBackToList}
-              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Voltar
-            </button>
-            <h1 className="consultas-title">Selecionar Solução</h1>
-          </div>
-
-          <div style={{
-            padding: '40px 20px',
-            maxWidth: '1200px',
-            margin: '0 auto'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '40px'
-            }}>
-              <h2 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#1f2937',
-                marginBottom: '12px'
-              }}>
-                Escolha uma das soluções para continuar:
-              </h2>
-              <p style={{
-                fontSize: '16px',
-                color: '#6b7280',
-                margin: 0
-              }}>
-                Selecione a solução que deseja implementar para este paciente.
-              </p>
-            </div>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px',
-              marginTop: '40px'
-            }}>
-              {/* Livro da Vida */}
-              <div
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('MENTALIDADE')}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '32px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                  border: '2px solid #e5e7eb',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSaving ? 0.6 : 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
-                  }
-                }}
-              >
-                <div className="solucao-icon" style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
-                  </svg>
-                </div>
-                <h3 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '8px',
-                  margin: 0
-                }}>Livro da Vida</h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  margin: 0
-                }}>Transformação Mental e Emocional</p>
-              </div>
-
-              {/* Alimentação */}
-              <div
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('ALIMENTACAO')}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '32px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                  border: '2px solid #e5e7eb',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSaving ? 0.6 : 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
-                  }
-                }}
-              >
-                <div className="solucao-icon" style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
-                    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
-                    <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
-                  </svg>
-                </div>
-                <h3 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '8px',
-                  margin: 0
-                }}>Alimentação</h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  margin: 0
-                }}>Plano Nutricional Personalizado</p>
-              </div>
-
-              {/* Suplementação */}
-              <div
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '32px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                  border: '2px solid #e5e7eb',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSaving ? 0.6 : 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
-                  }
-                }}
-              >
-                <div className="solucao-icon" style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
-                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
-                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
-                  </svg>
-                </div>
-                <h3 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '8px',
-                  margin: 0
-                }}>Suplementação</h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  margin: 0
-                }}>Protocolo de Suplementos</p>
-              </div>
-
-              {/* Atividade Física */}
-              <div
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '32px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                  border: '2px solid #e5e7eb',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSaving ? 0.6 : 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSaving) {
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
-                  }
-                }}
-              >
-                <div className="solucao-icon" style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6.5 6.5h11l-1 7h-9l1-7z"></path>
-                    <path d="M9.5 6.5V4.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2"></path>
-                    <path d="M12 13.5v5"></path>
-                    <path d="M8 16.5h8"></path>
-                  </svg>
-                </div>
-                <h3 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '8px',
-                  margin: 0
-                }}>Atividade Física</h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  margin: 0
-                }}>Programa de Exercícios</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     // Se for SOLUCAO_MENTALIDADE, renderiza a tela de Livro da Vida
     if (contentType === 'SOLUCAO_MENTALIDADE') {
       return (
@@ -6347,21 +6114,70 @@ function ConsultasPageContent() {
                                 <tr key={exercicio.id}>
                                   <td>
                                     {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'nome_exercicio' ? (
-                                      <input
-                                        type="text"
-                                        defaultValue={exercicio.nome_exercicio || ''}
-                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'nome_exercicio', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleSaveExercicio(exercicio.id, 'nome_exercicio', e.currentTarget.value);
-                                          }
-                                          if (e.key === 'Escape') {
-                                            setEditingExercicio(null);
-                                          }
-                                        }}
-                                        autoFocus
-                                        className="edit-input"
-                                      />
+                                      <div className="exercicio-autocomplete-wrapper">
+                                        <input
+                                          type="text"
+                                          id={`exercicio-input-${exercicio.id}`}
+                                          defaultValue={exercicio.nome_exercicio || ''}
+                                          onChange={(e) => searchExercicios(e.target.value)}
+                                          onBlur={() => {
+                                            setTimeout(() => {
+                                              setExercicioSuggestions([]);
+                                              setEditingExercicio(null);
+                                            }, 300);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              handleSaveExercicio(exercicio.id, 'nome_exercicio', e.currentTarget.value);
+                                              setExercicioSuggestions([]);
+                                              setEditingExercicio(null);
+                                            }
+                                            if (e.key === 'Escape') {
+                                              setExercicioSuggestions([]);
+                                              setEditingExercicio(null);
+                                            }
+                                          }}
+                                          autoFocus
+                                          className="edit-input"
+                                          placeholder="Digite 2+ letras..."
+                                        />
+                                        {exercicioSuggestions.length > 0 && (() => {
+                                          const input = document.getElementById(`exercicio-input-${exercicio.id}`);
+                                          const rect = input?.getBoundingClientRect();
+                                          return (
+                                            <div 
+                                              className="exercicio-suggestions-dropdown"
+                                              style={{
+                                                top: rect ? rect.bottom + 4 : 'auto',
+                                                left: rect ? rect.left : 'auto',
+                                                width: rect ? rect.width : 'auto'
+                                              }}
+                                            >
+                                              {exercicioSuggestions.map((suggestion) => (
+                                                <div
+                                                  key={suggestion.id}
+                                                  className="exercicio-suggestion-item"
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleSaveExercicio(exercicio.id, 'nome_exercicio', suggestion.atividade);
+                                                    setExercicioSuggestions([]);
+                                                    setEditingExercicio(null);
+                                                  }}
+                                                >
+                                                  <div className="exercicio-suggestion-name">
+                                                    {suggestion.atividade}
+                                                  </div>
+                                                  {suggestion.grupo_muscular && (
+                                                    <div className="exercicio-suggestion-grupo">
+                                                      {suggestion.grupo_muscular}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
                                     ) : (
                                       <span 
                                         className="editable-field"
@@ -6482,6 +6298,49 @@ function ConsultasPageContent() {
                         </div>
                       </div>
                     ))}
+
+                    {/* Botão Salvar Alterações */}
+                    <div style={{
+                      marginTop: '32px',
+                      padding: '24px',
+                      background: hasUnsavedChanges ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'transparent',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '16px',
+                      border: hasUnsavedChanges ? '2px solid #f59e0b' : 'none'
+                    }}>
+                      {hasUnsavedChanges && (
+                        <span style={{ color: '#92400e', fontWeight: 500 }}>
+                          Você tem alterações não salvas
+                        </span>
+                      )}
+                      <button
+                        onClick={handleSaveAllChanges}
+                        disabled={!hasUnsavedChanges || isSaving}
+                        style={{
+                          padding: '14px 32px',
+                          background: hasUnsavedChanges 
+                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                            : 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          cursor: hasUnsavedChanges && !isSaving ? 'pointer' : 'not-allowed',
+                          boxShadow: hasUnsavedChanges ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none',
+                          transition: 'all 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <Save size={20} />
+                        {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                      </button>
+                    </div>
 
                   </>
                 )}
@@ -6652,80 +6511,8 @@ function ConsultasPageContent() {
       );
     }
 
-    // Se for SOLUCAO_SELECTION, renderiza a tela de seleção de solução
-    if (contentType === 'SOLUCAO_SELECTION') {
-      return (
-        <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
-            <button 
-              className="back-button"
-              onClick={handleBackToList}
-              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Voltar
-            </button>
-            <h1 className="consultas-title">Selecionar Solução</h1>
-          </div>
-          
-          <div className="solucao-selection-container">
-            <div className="solucao-selection-header">
-              <h2>Escolha uma das soluções para continuar:</h2>
-              <p>Selecione a solução que deseja implementar para este paciente.</p>
-            </div>
-            
-            <div className="solucao-grid">
-              <div 
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('MENTALIDADE')}
-              >
-                <div className="solucao-icon">
-                  <Brain className="w-8 h-8" />
-                </div>
-                <h3>Livro da Vida</h3>
-                <p>Transformação Mental e Emocional</p>
-              </div>
-
-              <div 
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('ALIMENTACAO')}
-              >
-                <div className="solucao-icon">
-                  <Apple className="w-8 h-8" />
-                </div>
-                <h3>Alimentação</h3>
-                <p>Plano Nutricional Personalizado</p>
-              </div>
-
-              <div 
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
-              >
-                <div className="solucao-icon">
-                  <Pill className="w-8 h-8" />
-                </div>
-                <h3>Suplementação</h3>
-                <p>Protocolo de Suplementos</p>
-              </div>
-
-              <div 
-                className="solucao-card"
-                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
-              >
-                <div className="solucao-icon">
-                  <Dumbbell className="w-8 h-8" />
-                </div>
-                <h3>Atividade Física</h3>
-                <p>Programa de Exercícios</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SOLUCAO_SELECTION), renderiza só o modal
-    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SOLUCAO_SELECTION')) {
+    // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SELECT_SOLUCAO), renderiza só o modal
+    if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SELECT_SOLUCAO')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
