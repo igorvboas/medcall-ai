@@ -1520,7 +1520,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             consultation_id: consultationId,
             raw_text: rawText,
             language: 'pt-BR',
-            model_used: 'gpt-4o-mini'
+            model_used: 'gpt-4o-realtime-preview-2024-12-17'
           });
 
           if (transcription) {
