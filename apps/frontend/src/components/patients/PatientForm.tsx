@@ -2,49 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
-import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle, Upload, Trash2 } from 'lucide-react';
+import { X, Save, User, Mail, Phone, MapPin, FileText, AlertTriangle, Upload, Trash2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { supabase } from '@/lib/supabase';
 import './PatientForm.css';
 
-// Tipos locais para pacientes
+// Tipos locais para pacientes - apenas campos da tabela patients
 interface Patient {
   id: string;
   doctor_id: string;
   name: string;
-  social_name?: string;
   email?: string;
   phone?: string;
-  phone_residential?: string;
-  phone_message?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
-  gender_identity?: string;
   cpf?: string;
-  rg?: string;
-  cns?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
-  neighborhood?: string;
-  birthplace?: string;
-  nationality?: string;
-  marital_status?: string;
-  children_count?: string;
-  children_ages?: string;
-  education?: string;
-  profession?: string;
-  profession_active?: string;
-  work_status?: string;
-  work_hours?: string;
-  social_condition?: string;
-  family_income?: string;
-  household_members?: string;
-  financial_responsible?: string;
-  health_insurance?: string;
   emergency_contact?: string;
   emergency_phone?: string;
   medical_history?: string;
@@ -58,39 +33,14 @@ interface Patient {
 
 interface CreatePatientData {
   name: string;
-  social_name?: string;
   email?: string;
   phone?: string;
-  phone_residential?: string;
-  phone_message?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
-  gender_identity?: string;
   cpf?: string;
-  rg?: string;
-  cns?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
-  neighborhood?: string;
-  birthplace?: string;
-  nationality?: string;
-  marital_status?: string;
-  children_count?: string;
-  children_ages?: string;
-  education?: string;
-  profession?: string;
-  profession_active?: string;
-  work_status?: string;
-  work_hours?: string;
-  social_condition?: string;
-  family_income?: string;
-  household_members?: string;
-  financial_responsible?: string;
-  health_insurance?: string;
   emergency_contact?: string;
   emergency_phone?: string;
   medical_history?: string;
@@ -107,42 +57,17 @@ interface PatientFormProps {
 }
 
 export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormProps) {
-  const { showError, showWarning } = useNotifications();
+  const { showError } = useNotifications();
   const [formData, setFormData] = useState<CreatePatientData>({
     name: '',
-    social_name: '',
     email: '',
     phone: '',
-    phone_residential: '',
-    phone_message: '',
-    cep: '',
     city: '',
     state: '',
     birth_date: '',
     gender: undefined,
-    gender_identity: '',
     cpf: '',
-    rg: '',
-    cns: '',
     address: '',
-    address_number: '',
-    address_complement: '',
-    neighborhood: '',
-    birthplace: '',
-    nationality: '',
-    marital_status: '',
-    children_count: '',
-    children_ages: '',
-    education: '',
-    profession: '',
-    profession_active: '',
-    work_status: '',
-    work_hours: '',
-    social_condition: '',
-    family_income: '',
-    household_members: '',
-    financial_responsible: '',
-    health_insurance: '',
     emergency_contact: '',
     emergency_phone: '',
     medical_history: '',
@@ -155,7 +80,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [medicalFiles, setMedicalFiles] = useState<Array<{ id: string; name: string; url: string; file?: File }>>([]);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
-  const [loadingCep, setLoadingCep] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
@@ -163,39 +87,14 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     if (patient) {
       setFormData({
         name: patient.name,
-        social_name: patient.social_name || '',
         email: patient.email || '',
         phone: patient.phone || '',
-        phone_residential: patient.phone_residential || '',
-        phone_message: patient.phone_message || '',
-        cep: patient.cep || '',
         city: patient.city || '',
         state: patient.state || '',
         birth_date: patient.birth_date || '',
         gender: patient.gender,
-        gender_identity: patient.gender_identity || '',
         cpf: patient.cpf || '',
-        rg: patient.rg || '',
-        cns: patient.cns || '',
         address: patient.address || '',
-        address_number: patient.address_number || '',
-        address_complement: patient.address_complement || '',
-        neighborhood: patient.neighborhood || '',
-        birthplace: patient.birthplace || '',
-        nationality: patient.nationality || '',
-        marital_status: patient.marital_status || '',
-        children_count: patient.children_count || '',
-        children_ages: patient.children_ages || '',
-        education: patient.education || '',
-        profession: patient.profession || '',
-        profession_active: patient.profession_active || '',
-        work_status: patient.work_status || '',
-        work_hours: patient.work_hours || '',
-        social_condition: patient.social_condition || '',
-        family_income: patient.family_income || '',
-        household_members: patient.household_members || '',
-        financial_responsible: patient.financial_responsible || '',
-        health_insurance: patient.health_insurance || '',
         emergency_contact: patient.emergency_contact || '',
         emergency_phone: patient.emergency_phone || '',
         medical_history: patient.medical_history || '',
@@ -292,54 +191,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     }
   };
 
-  // Formatar CEP
-  const formatCEP = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
-  };
-
-  // Buscar endereço por CEP
-  const fetchAddressByCEP = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '');
-    
-    if (cleanCep.length !== 8) {
-      return;
-    }
-
-    setLoadingCep(true);
-    
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
-      
-      if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
-          address: data.logradouro || prev.address || '',
-          neighborhood: data.bairro || prev.neighborhood || '',
-          city: data.localidade || prev.city || '',
-          state: data.uf || prev.state || '',
-        }));
-      } else {
-        console.warn('CEP não encontrado');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
-    } finally {
-      setLoadingCep(false);
-    }
-  };
-
-  const handleCEPChange = (value: string) => {
-    const formattedCep = formatCEP(value);
-    setFormData(prev => ({ ...prev, cep: formattedCep }));
-    
-    const cleanCep = value.replace(/\D/g, '');
-    if (cleanCep.length === 8) {
-      fetchAddressByCEP(cleanCep);
-    }
-  };
-
   // Manipular seleção de arquivos
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -370,7 +221,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           const fileName = `paciente_${patient.id}_historico_${Date.now()}.${fileExt}`;
           const filePath = `pacientes/historicos/${fileName}`;
 
-          const { error: uploadError, data } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('medical_files')
             .upload(filePath, file, {
               cacheControl: '3600',
@@ -478,20 +329,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
             </div>
 
             <div className="form-field">
-              <label htmlFor="social_name" className="field-label">
-                Nome Social
-              </label>
-              <input
-                id="social_name"
-                type="text"
-                value={formData.social_name}
-                onChange={(e) => handleChange('social_name', e.target.value)}
-                className="form-input"
-                placeholder="Nome social (se aplicável)"
-              />
-            </div>
-
-            <div className="form-field">
               <label htmlFor="email" className="field-label">
                 Email
               </label>
@@ -508,41 +345,13 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
 
             <div className="form-field">
               <label htmlFor="phone" className="field-label">
-                Celular
+                Telefone
               </label>
               <input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', formatPhone(e.target.value))}
-                className="form-input"
-                placeholder="(11) 99999-9999"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="phone_residential" className="field-label">
-                Telefone Residencial
-              </label>
-              <input
-                id="phone_residential"
-                type="tel"
-                value={formData.phone_residential}
-                onChange={(e) => handleChange('phone_residential', formatPhone(e.target.value))}
-                className="form-input"
-                placeholder="(11) 3333-3333"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="phone_message" className="field-label">
-                Telefone para Recado
-              </label>
-              <input
-                id="phone_message"
-                type="tel"
-                value={formData.phone_message}
-                onChange={(e) => handleChange('phone_message', formatPhone(e.target.value))}
                 className="form-input"
                 placeholder="(11) 99999-9999"
               />
@@ -564,7 +373,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
 
             <div className="form-field">
               <label htmlFor="gender" className="field-label">
-                Sexo Biológico
+                Sexo
               </label>
               <select
                 id="gender"
@@ -580,50 +389,19 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
             </div>
 
             <div className="form-field">
-              <label htmlFor="gender_identity" className="field-label">
-                Gênero
-              </label>
-              <select
-                id="gender_identity"
-                value={formData.gender_identity || ''}
-                onChange={(e) => handleChange('gender_identity', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Feminino">Feminino</option>
-                <option value="Não-binário">Não-binário</option>
-                <option value="Outro">Outro</option>
-                <option value="Prefiro não informar">Prefiro não informar</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="birthplace" className="field-label">
-                Naturalidade
+              <label htmlFor="cpf" className="field-label">
+                CPF
               </label>
               <input
-                id="birthplace"
+                id="cpf"
                 type="text"
-                value={formData.birthplace}
-                onChange={(e) => handleChange('birthplace', e.target.value)}
-                className="form-input"
-                placeholder="Ex: São Paulo - SP"
+                value={formData.cpf}
+                onChange={(e) => handleChange('cpf', formatCPF(e.target.value))}
+                className={`form-input ${errors.cpf ? 'error' : ''}`}
+                placeholder="000.000.000-00"
+                maxLength={14}
               />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="nationality" className="field-label">
-                Nacionalidade
-              </label>
-              <input
-                id="nationality"
-                type="text"
-                value={formData.nationality}
-                onChange={(e) => handleChange('nationality', e.target.value)}
-                className="form-input"
-                placeholder="Ex: Brasileiro"
-              />
+              {errors.cpf && <span className="field-error">{errors.cpf}</span>}
             </div>
 
             <div className="form-field">
@@ -644,60 +422,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           </div>
         </div>
 
-        {/* Documentos */}
-        <div className="form-section">
-          <div className="section-header">
-            <FileText className="section-icon" />
-            <h3 className="section-title">Documentos</h3>
-          </div>
-          
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="cpf" className="field-label">
-                CPF
-              </label>
-              <input
-                id="cpf"
-                type="text"
-                value={formData.cpf}
-                onChange={(e) => handleChange('cpf', formatCPF(e.target.value))}
-                className={`form-input ${errors.cpf ? 'error' : ''}`}
-                placeholder="000.000.000-00"
-                maxLength={14}
-              />
-              {errors.cpf && <span className="field-error">{errors.cpf}</span>}
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="rg" className="field-label">
-                RG
-              </label>
-              <input
-                id="rg"
-                type="text"
-                value={formData.rg}
-                onChange={(e) => handleChange('rg', e.target.value)}
-                className="form-input"
-                placeholder="00.000.000-0"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="cns" className="field-label">
-                CNS (Cartão Nacional de Saúde)
-              </label>
-              <input
-                id="cns"
-                type="text"
-                value={formData.cns}
-                onChange={(e) => handleChange('cns', e.target.value)}
-                className="form-input"
-                placeholder="000 0000 0000 0000"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Endereço */}
         <div className="form-section">
           <div className="section-header">
@@ -706,30 +430,9 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           </div>
           
           <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="cep" className="field-label">
-                CEP
-              </label>
-              <input
-                id="cep"
-                type="text"
-                value={formData.cep}
-                onChange={(e) => handleCEPChange(e.target.value)}
-                className="form-input"
-                placeholder="00000-000"
-                maxLength={9}
-                disabled={loadingCep}
-              />
-              {loadingCep && (
-                <span style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
-                  Buscando endereço...
-                </span>
-              )}
-            </div>
-
-            <div className="form-field">
+            <div className="form-field" style={{ gridColumn: 'span 2' }}>
               <label htmlFor="address" className="field-label">
-                Logradouro
+                Endereço
               </label>
               <input
                 id="address"
@@ -737,49 +440,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
                 className="form-input"
-                placeholder="Rua, Avenida, etc."
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="address_number" className="field-label">
-                Número
-              </label>
-              <input
-                id="address_number"
-                type="text"
-                value={formData.address_number}
-                onChange={(e) => handleChange('address_number', e.target.value)}
-                className="form-input"
-                placeholder="123"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="address_complement" className="field-label">
-                Complemento
-              </label>
-              <input
-                id="address_complement"
-                type="text"
-                value={formData.address_complement}
-                onChange={(e) => handleChange('address_complement', e.target.value)}
-                className="form-input"
-                placeholder="Apto 101, Bloco A"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="neighborhood" className="field-label">
-                Bairro
-              </label>
-              <input
-                id="neighborhood"
-                type="text"
-                value={formData.neighborhood}
-                onChange={(e) => handleChange('neighborhood', e.target.value)}
-                className="form-input"
-                placeholder="Centro"
+                placeholder="Rua, Número, Bairro"
               />
             </div>
 
@@ -809,228 +470,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
                 className="form-input"
                 placeholder="SP"
                 maxLength={2}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Dados Sociodemográficos */}
-        <div className="form-section">
-          <div className="section-header">
-            <User className="section-icon" />
-            <h3 className="section-title">Dados Sociodemográficos</h3>
-          </div>
-          
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="marital_status" className="field-label">
-                Estado Civil
-              </label>
-              <select
-                id="marital_status"
-                value={formData.marital_status || ''}
-                onChange={(e) => handleChange('marital_status', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Solteiro(a)">Solteiro(a)</option>
-                <option value="Casado(a)">Casado(a)</option>
-                <option value="Divorciado(a)">Divorciado(a)</option>
-                <option value="Viúvo(a)">Viúvo(a)</option>
-                <option value="União Estável">União Estável</option>
-                <option value="Separado(a)">Separado(a)</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="children_count" className="field-label">
-                Número de Filhos
-              </label>
-              <input
-                id="children_count"
-                type="text"
-                value={formData.children_count}
-                onChange={(e) => handleChange('children_count', e.target.value)}
-                className="form-input"
-                placeholder="0"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="children_ages" className="field-label">
-                Idade dos Filhos
-              </label>
-              <input
-                id="children_ages"
-                type="text"
-                value={formData.children_ages}
-                onChange={(e) => handleChange('children_ages', e.target.value)}
-                className="form-input"
-                placeholder="Ex: 5, 10, 15 anos"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="education" className="field-label">
-                Escolaridade
-              </label>
-              <select
-                id="education"
-                value={formData.education || ''}
-                onChange={(e) => handleChange('education', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Fundamental Incompleto">Fundamental Incompleto</option>
-                <option value="Fundamental Completo">Fundamental Completo</option>
-                <option value="Médio Incompleto">Médio Incompleto</option>
-                <option value="Médio Completo">Médio Completo</option>
-                <option value="Superior Incompleto">Superior Incompleto</option>
-                <option value="Superior Completo">Superior Completo</option>
-                <option value="Pós-graduação">Pós-graduação</option>
-                <option value="Mestrado">Mestrado</option>
-                <option value="Doutorado">Doutorado</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="profession" className="field-label">
-                Profissão
-              </label>
-              <input
-                id="profession"
-                type="text"
-                value={formData.profession}
-                onChange={(e) => handleChange('profession', e.target.value)}
-                className="form-input"
-                placeholder="Ex: Engenheiro, Professor"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="profession_active" className="field-label">
-                Exerce a Profissão?
-              </label>
-              <select
-                id="profession_active"
-                value={formData.profession_active || ''}
-                onChange={(e) => handleChange('profession_active', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Sim">Sim</option>
-                <option value="Não">Não</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="work_status" className="field-label">
-                Situação de Trabalho
-              </label>
-              <select
-                id="work_status"
-                value={formData.work_status || ''}
-                onChange={(e) => handleChange('work_status', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Empregado">Empregado</option>
-                <option value="Autônomo">Autônomo</option>
-                <option value="Empresário">Empresário</option>
-                <option value="Desempregado">Desempregado</option>
-                <option value="Aposentado">Aposentado</option>
-                <option value="Estudante">Estudante</option>
-                <option value="Do lar">Do lar</option>
-                <option value="Afastado">Afastado</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="work_hours" className="field-label">
-                Carga Horária de Trabalho
-              </label>
-              <input
-                id="work_hours"
-                type="text"
-                value={formData.work_hours}
-                onChange={(e) => handleChange('work_hours', e.target.value)}
-                className="form-input"
-                placeholder="Ex: 40h semanais"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="social_condition" className="field-label">
-                Condição Social
-              </label>
-              <input
-                id="social_condition"
-                type="text"
-                value={formData.social_condition}
-                onChange={(e) => handleChange('social_condition', e.target.value)}
-                className="form-input"
-                placeholder="Descreva a condição social"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="family_income" className="field-label">
-                Renda Familiar
-              </label>
-              <select
-                id="family_income"
-                value={formData.family_income || ''}
-                onChange={(e) => handleChange('family_income', e.target.value)}
-                className="form-select"
-              >
-                <option value="">Selecione</option>
-                <option value="Até 1 salário mínimo">Até 1 salário mínimo</option>
-                <option value="1 a 3 salários mínimos">1 a 3 salários mínimos</option>
-                <option value="3 a 5 salários mínimos">3 a 5 salários mínimos</option>
-                <option value="5 a 10 salários mínimos">5 a 10 salários mínimos</option>
-                <option value="Acima de 10 salários mínimos">Acima de 10 salários mínimos</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="household_members" className="field-label">
-                Pessoas na Residência
-              </label>
-              <input
-                id="household_members"
-                type="text"
-                value={formData.household_members}
-                onChange={(e) => handleChange('household_members', e.target.value)}
-                className="form-input"
-                placeholder="Ex: 4 pessoas"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="financial_responsible" className="field-label">
-                Responsável Financeiro
-              </label>
-              <input
-                id="financial_responsible"
-                type="text"
-                value={formData.financial_responsible}
-                onChange={(e) => handleChange('financial_responsible', e.target.value)}
-                className="form-input"
-                placeholder="Nome do responsável"
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="health_insurance" className="field-label">
-                Convênio/Seguro Saúde
-              </label>
-              <input
-                id="health_insurance"
-                type="text"
-                value={formData.health_insurance}
-                onChange={(e) => handleChange('health_insurance', e.target.value)}
-                className="form-input"
-                placeholder="Ex: Unimed, SUS, Particular"
               />
             </div>
           </div>

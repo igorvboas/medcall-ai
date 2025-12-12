@@ -6,44 +6,19 @@ import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
-// Tipos locais para pacientes
+// Tipos locais para pacientes - apenas campos da tabela patients
 interface Patient {
   id: string;
   doctor_id: string;
   name: string;
-  social_name?: string;
   email?: string;
   phone?: string;
-  phone_residential?: string;
-  phone_message?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
-  gender_identity?: string;
   cpf?: string;
-  rg?: string;
-  cns?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
-  neighborhood?: string;
-  birthplace?: string;
-  nationality?: string;
-  marital_status?: string;
-  children_count?: string;
-  children_ages?: string;
-  education?: string;
-  profession?: string;
-  profession_active?: string;
-  work_status?: string;
-  work_hours?: string;
-  social_condition?: string;
-  family_income?: string;
-  household_members?: string;
-  financial_responsible?: string;
-  health_insurance?: string;
   emergency_contact?: string;
   emergency_phone?: string;
   medical_history?: string;
@@ -54,11 +29,6 @@ interface Patient {
   updated_at: string;
   // Campo para imagem do paciente
   profile_pic?: string;
-  picture?: string;
-  avatar_url?: string;
-  avatar?: string;
-  image_url?: string;
-  photo?: string;
   // Campo para anamnese
   anamnese?: {
     status: 'pendente' | 'preenchida';
@@ -67,39 +37,14 @@ interface Patient {
 
 interface CreatePatientData {
   name: string;
-  social_name?: string;
   email?: string;
   phone?: string;
-  phone_residential?: string;
-  phone_message?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
   gender?: 'M' | 'F' | 'O';
-  gender_identity?: string;
   cpf?: string;
-  rg?: string;
-  cns?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
-  neighborhood?: string;
-  birthplace?: string;
-  nationality?: string;
-  marital_status?: string;
-  children_count?: string;
-  children_ages?: string;
-  education?: string;
-  profession?: string;
-  profession_active?: string;
-  work_status?: string;
-  work_hours?: string;
-  social_condition?: string;
-  family_income?: string;
-  household_members?: string;
-  financial_responsible?: string;
-  health_insurance?: string;
   emergency_contact?: string;
   emergency_phone?: string;
   medical_history?: string;
@@ -169,14 +114,6 @@ export default function PatientsPage() {
       const data: PatientsResponse = await response.json();
       console.log('📋 Dados recebidos:', data);
       console.log('👤 Primeiro paciente (exemplo):', data.patients[0]);
-      console.log('🖼️ Propriedades de imagem do primeiro paciente:', {
-        profile_pic: data.patients[0]?.profile_pic,
-        picture: data.patients[0]?.picture,
-        avatar_url: data.patients[0]?.avatar_url,
-        avatar: data.patients[0]?.avatar,
-        image_url: data.patients[0]?.image_url,
-        photo: data.patients[0]?.photo
-      });
       setPatients(data.patients);
       setPagination(data.pagination);
     } catch (err) {

@@ -332,6 +332,125 @@ function DataField({
   );
 }
 
+// Componente para renderizar campo do cadastro de anamnese (a_cadastro_anamnese)
+function CadastroDataField({ 
+  label, 
+  value, 
+  fieldName,
+  onSave,
+  readOnly = false
+}: { 
+  label: string; 
+  value: any; 
+  fieldName: string;
+  onSave: (fieldName: string, newValue: string) => Promise<void>;
+  readOnly?: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEdit = () => {
+    setEditValue(String(value || ''));
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (editValue === String(value || '')) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(fieldName, editValue);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erro ao salvar campo do cadastro:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue('');
+    setIsEditing(false);
+  };
+
+  const renderValue = () => {
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      return <p className="data-value data-value-empty">—</p>;
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <ul className="data-list">
+          {value.map((item, index) => (
+            <li key={index}>{typeof item === 'object' ? JSON.stringify(item) : item}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return <p className="data-value">{String(value)}</p>;
+  };
+
+  return (
+    <div className="data-field">
+      <div className="data-field-header">
+        <label className="data-label">{label}:</label>
+        {!readOnly && !isEditing && (
+          <div className="field-actions">
+            <button 
+              className="edit-button"
+              onClick={handleEdit}
+              title="Editar campo"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {isEditing ? (
+        <div className="edit-field">
+          <textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="edit-input"
+            rows={3}
+            placeholder="Digite o novo valor..."
+          />
+          <div className="edit-actions">
+            <button 
+              className="save-button"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <div className="loading-spinner-small"></div>
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button 
+              className="cancel-button"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              <X className="w-4 h-4" />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        renderValue()
+      )}
+    </div>
+  );
+}
+
 // Tipos para mensagens do chat
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -342,6 +461,7 @@ interface ChatMessage {
 // Componente da seção de Anamnese
 function AnamneseSection({ 
   consultaId,
+  patientId,
   selectedField,
   chatMessages,
   isTyping,
@@ -355,6 +475,7 @@ function AnamneseSection({
   renderViewSolutionsButton
 }: { 
   consultaId: string;
+  patientId?: string;
   selectedField: { fieldPath: string; label: string } | null;
   chatMessages: ChatMessage[];
   isTyping: boolean;
@@ -374,6 +495,8 @@ function AnamneseSection({
   const [error, setError] = useState<string | null>(null);
   const [sinteseAnalitica, setSinteseAnalitica] = useState<any>(null);
   const [loadingSintese, setLoadingSintese] = useState(false);
+  const [cadastroAnamnese, setCadastroAnamnese] = useState<any>(null);
+  const [loadingCadastro, setLoadingCadastro] = useState(false);
 
   // Função para selecionar campo para edição com IA
   const handleAIEdit = (fieldPath: string, label: string) => {
@@ -470,6 +593,13 @@ function AnamneseSection({
     fetchSinteseAnalitica();
   }, [consultaId]);
 
+  // Buscar dados do cadastro de anamnese quando tiver patientId
+  useEffect(() => {
+    if (patientId) {
+      fetchCadastroAnamnese();
+    }
+  }, [patientId]);
+
   // Listener para recarregar dados de anamnese quando a IA processar
   useEffect(() => {
     const handleAnamneseRefresh = () => {
@@ -539,6 +669,68 @@ function AnamneseSection({
       setSinteseAnalitica(null);
     } finally {
       setLoadingSintese(false);
+    }
+  };
+
+  // Função para buscar dados do cadastro de anamnese (a_cadastro_anamnese)
+  const fetchCadastroAnamnese = async () => {
+    if (!patientId) return;
+    
+    try {
+      setLoadingCadastro(true);
+      console.log('🔍 Buscando cadastro anamnese para paciente_id:', patientId);
+      
+      const response = await fetch(`/api/cadastro-anamnese/${patientId}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          setCadastroAnamnese(null);
+          return;
+        }
+        throw new Error('Erro ao buscar cadastro de anamnese');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Dados do cadastro anamnese recebidos:', data);
+      setCadastroAnamnese(data);
+    } catch (err) {
+      console.error('❌ Erro ao carregar cadastro anamnese:', err);
+      setCadastroAnamnese(null);
+    } finally {
+      setLoadingCadastro(false);
+    }
+  };
+
+  // Função para salvar campo do cadastro de anamnese
+  const handleSaveCadastroField = async (fieldName: string, newValue: string) => {
+    if (!patientId) return;
+    
+    try {
+      const response = await fetch(`/api/cadastro-anamnese/${patientId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fieldName,
+          value: newValue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar campo do cadastro de anamnese');
+      }
+
+      const result = await response.json();
+      console.log('✅ Campo do cadastro atualizado:', result);
+
+      // Atualizar estado local
+      if (result.success && result.data) {
+        setCadastroAnamnese(result.data);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar campo do cadastro:', error);
+      throw error;
     }
   };
 
@@ -716,6 +908,55 @@ function AnamneseSection({
           </div>
         </CollapsibleSection>
       )}
+
+      {/* Dados do Paciente - Cadastro Anamnese */}
+      <CollapsibleSection title="Dados do Paciente" defaultOpen={false}>
+        {loadingCadastro ? (
+          <div className="anamnese-loading" style={{ padding: '20px', textAlign: 'center' }}>
+            <div className="loading-spinner"></div>
+            <p>Carregando dados do paciente...</p>
+          </div>
+        ) : cadastroAnamnese ? (
+          <>
+            <div className="anamnese-subsection">
+              <h4>Identificação</h4>
+              <CadastroDataField label="Nome Completo" value={cadastroAnamnese?.nome_completo} fieldName="nome_completo" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="CPF" value={cadastroAnamnese?.cpf} fieldName="cpf" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Email" value={cadastroAnamnese?.email} fieldName="email" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Gênero" value={cadastroAnamnese?.genero} fieldName="genero" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Data de Nascimento" value={cadastroAnamnese?.data_nascimento} fieldName="data_nascimento" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Estado Civil" value={cadastroAnamnese?.estado_civil} fieldName="estado_civil" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Profissão" value={cadastroAnamnese?.profissao} fieldName="profissao" onSave={handleSaveCadastroField} readOnly={readOnly} />
+            </div>
+
+            <div className="anamnese-subsection">
+              <h4>Dados Físicos</h4>
+              <CadastroDataField label="Altura" value={cadastroAnamnese?.altura} fieldName="altura" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Peso Atual" value={cadastroAnamnese?.peso_atual} fieldName="peso_atual" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Peso Antigo" value={cadastroAnamnese?.peso_antigo} fieldName="peso_antigo" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Peso Desejado" value={cadastroAnamnese?.peso_desejado} fieldName="peso_desejado" onSave={handleSaveCadastroField} readOnly={readOnly} />
+            </div>
+
+            <div className="anamnese-subsection">
+              <h4>Objetivos e Atividade Física</h4>
+              <CadastroDataField label="Objetivo Principal" value={cadastroAnamnese?.objetivo_principal} fieldName="objetivo_principal" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Pratica Atividade Física" value={cadastroAnamnese?.patrica_atividade_fisica} fieldName="patrica_atividade_fisica" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Frequência que Deseja Treinar" value={cadastroAnamnese?.frequencia_deseja_treinar} fieldName="frequencia_deseja_treinar" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Restrição de Movimento" value={cadastroAnamnese?.restricao_movimento} fieldName="restricao_movimento" onSave={handleSaveCadastroField} readOnly={readOnly} />
+            </div>
+
+            <div className="anamnese-subsection">
+              <h4>Informações Adicionais</h4>
+              <CadastroDataField label="Informações Importantes" value={cadastroAnamnese?.informacoes_importantes} fieldName="informacoes_importantes" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Necessidade Energética Diária" value={cadastroAnamnese?.NecessidadeEnergeticaDiaria} fieldName="NecessidadeEnergeticaDiaria" onSave={handleSaveCadastroField} readOnly={readOnly} />
+            </div>
+          </>
+        ) : (
+          <div className="anamnese-subsection" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+            <p>Nenhum dado de cadastro de anamnese encontrado para este paciente.</p>
+          </div>
+        )}
+      </CollapsibleSection>
 
       {/* Objetivos e Queixas */}
       <CollapsibleSection title="Objetivos e Queixas">
@@ -5550,6 +5791,7 @@ function ConsultasPageContent() {
                     <div className="anamnese-subsection" style={{ opacity: 0.85, userSelect: 'text', position: 'relative' }}>
                       <AnamneseSection 
                         consultaId={consultaId}
+                        patientId={consultaDetails?.patient_id}
                         selectedField={null}
                         chatMessages={[]}
                         isTyping={false}
@@ -6723,6 +6965,7 @@ function ConsultasPageContent() {
               <div className="anamnese-content">
                 <AnamneseSection 
                   consultaId={consultaId}
+                  patientId={consultaDetails?.patient_id}
                   selectedField={selectedField}
                   chatMessages={chatMessages}
                   isTyping={isTyping}

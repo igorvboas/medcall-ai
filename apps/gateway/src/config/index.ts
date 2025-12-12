@@ -61,7 +61,7 @@ const envSchema = z.object({
   AUDIO_SAMPLE_RATE: z.coerce.number().default(16000),
   
   // AI & RAG Settings
-  LLM_MODEL: z.string().default('gpt-4-1106-preview'),
+  LLM_MODEL: z.string().default('gpt-4o-mini'),
   LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
   LLM_MAX_TOKENS: z.coerce.number().default(500),
   RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
