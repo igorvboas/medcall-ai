@@ -73,13 +73,7 @@ export async function POST(
       .eq('consulta_id', consultaId)
       .maybeSingle();
 
-      if (!consultation) {
-        return NextResponse.json(
-          { error: 'Consulta não encontrada' },
-          { status: 404 }
-        );
-      }
-
+    if (!existing) {
       // Criar registro inicial
       const { error: insertError } = await supabase
         .from(actualTableName)
