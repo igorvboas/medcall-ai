@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
 import { syncConsultationToGoogleCalendar, removeConsultationFromGoogleCalendar } from '@/lib/google-calendar-service';
+import { logAudit, getAuditContext, sanitizeData } from '@/lib/audit-helper';
 
 // GET /api/consultations/[id] - Buscar detalhes de uma consulta específica
 export async function GET(
@@ -181,10 +182,10 @@ export async function PATCH(
     
     console.log('📝 Dados recebidos para atualização:', body);
 
-    // Validar que a consulta pertence ao médico
+    // Validar que a consulta pertence ao médico e buscar dados antes da atualização
     const { data: existingConsultation, error: checkError } = await supabase
       .from('consultations')
-      .select('id')
+      .select('*')
       .eq('id', consultationId)
       .eq('doctor_id', medico.id)
       .single();
@@ -218,6 +219,41 @@ export async function PATCH(
     }
 
     console.log('✅ Consulta atualizada com sucesso:', updatedConsultation);
+
+    // Registrar log de auditoria
+    const auditContext = getAuditContext(request);
+    const changedFields = Object.keys(body).filter(key => {
+      const oldValue = existingConsultation[key];
+      const newValue = updatedConsultation[key];
+      return JSON.stringify(oldValue) !== JSON.stringify(newValue);
+    });
+
+    await logAudit({
+      user_id: doctorAuthId,
+      user_email: user.email,
+      user_name: medico.name,
+      user_role: 'medico',
+      action: 'UPDATE',
+      resource_type: 'consultations',
+      resource_id: consultationId,
+      resource_description: `Consulta ${updatedConsultation.consultation_type} - ${updatedConsultation.patient_name}`,
+      related_patient_id: updatedConsultation.patient_id,
+      related_consultation_id: consultationId,
+      ...auditContext,
+      http_method: 'PATCH',
+      data_category: 'sensivel',
+      legal_basis: 'tutela_saude',
+      purpose: 'Atualização de dados da consulta',
+      contains_sensitive_data: true,
+      data_before: sanitizeData(existingConsultation),
+      data_after: sanitizeData(updatedConsultation),
+      data_fields_accessed: changedFields,
+      changes_summary: `Campos alterados: ${changedFields.join(', ')}`,
+      metadata: {
+        fields_changed: changedFields,
+        status_changed: existingConsultation.status !== updatedConsultation.status
+      }
+    });
 
     // Sincronizar alterações com Google Calendar (se o médico tiver conectado)
     try {

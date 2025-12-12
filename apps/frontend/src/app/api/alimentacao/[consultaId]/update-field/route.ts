@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 export async function POST(
   request: NextRequest,
@@ -19,10 +21,26 @@ export async function POST(
     // Criar cliente Supabase para server-side
     const supabase = createSupabaseServerClient();
 
+    // Buscar sessão autenticada para auditoria
+    const authResult = await getAuthenticatedSession();
+    const user = authResult?.user;
+    const doctorAuthId = user?.id;
+    
+    // Buscar médico para auditoria
+    let medico: any = null;
+    if (doctorAuthId) {
+      const { data } = await supabase
+        .from('medicos')
+        .select('id, name, email')
+        .eq('user_auth', doctorAuthId)
+        .single();
+      medico = data;
+    }
+
     // 1. Buscar na tabela consultations filtrando pelo id da consulta
     const { data: consulta, error: consultaError } = await supabase
       .from('consultations')
-      .select('patient_id')
+      .select('patient_id, patient_name')
       .eq('id', consultaId)
       .single();
 
@@ -116,6 +134,33 @@ export async function POST(
             { error: 'Erro ao salvar dados' },
             { status: 500 }
           );
+        }
+
+        // Registrar auditoria para criação de item de refeição
+        if (doctorAuthId && medico) {
+          const { data: newRecord } = await supabase
+            .from('s_gramaturas_alimentares')
+            .select('*')
+            .eq('paciente_id', consulta.patient_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          await auditTableField({
+            request,
+            user_id: doctorAuthId,
+            user_email: user?.email || '',
+            user_name: medico.name,
+            consultaId,
+            consultation: consulta,
+            tableName: 's_gramaturas_alimentares',
+            fieldName: campos.g,
+            fieldPath: `s_gramaturas_alimentares.${campos.g}`,
+            existingRecord: null,
+            updatedRecord: newRecord || null,
+            wasCreated: true,
+            resourceType: 'solucao'
+          });
         }
       }
 

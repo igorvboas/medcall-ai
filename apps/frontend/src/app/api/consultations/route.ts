@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
 import { syncConsultationToGoogleCalendar } from '@/lib/google-calendar-service';
+import { logAudit, getAuditContext, sanitizeData } from '@/lib/audit-helper';
 
 // GET /api/consultations - Listar consultas do médico logado
 export async function GET(request: NextRequest) {
@@ -236,6 +237,33 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Consulta criada com sucesso:', consultation.id, status === 'AGENDAMENTO' ? '(Agendamento)' : '');
+
+    // Registrar log de auditoria
+    const auditContext = getAuditContext(request);
+    await logAudit({
+      user_id: doctorAuthId,
+      user_email: user.email,
+      user_name: medico.name,
+      user_role: 'medico',
+      action: 'CREATE',
+      resource_type: 'consultations',
+      resource_id: consultation.id,
+      resource_description: `Consulta ${consultation_type} - ${patient_name}`,
+      related_patient_id: patient_id,
+      related_consultation_id: consultation.id,
+      ...auditContext,
+      http_method: 'POST',
+      data_category: 'sensivel',
+      legal_basis: 'tutela_saude',
+      purpose: 'Criação de consulta médica',
+      contains_sensitive_data: true,
+      data_after: sanitizeData(consultation),
+      metadata: {
+        consultation_type,
+        status: consultation.status,
+        is_scheduled: status === 'AGENDAMENTO'
+      }
+    });
 
     // Sincronizar com Google Calendar (se o médico tiver conectado)
     try {

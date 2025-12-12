@@ -5,6 +5,7 @@ import { db } from '../config/database';
 import { generateSimpleProtocol } from '../services/protocolService';
 import { generateLiveKitToken } from '../config/providers';
 import { livekitTranscriberAgent } from '../services/livekitTranscriberAgent';
+import auditService from '../services/auditService';
 
 const router = Router();
 
@@ -73,6 +74,48 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     }
 
     console.log('✅ Sessão criada com sucesso:', session.id);
+
+    // Registrar log de auditoria - Início de consulta
+    const doctorId = participants.doctor.id;
+    const patientId = participants.patient.id;
+    
+    // Buscar dados do médico para auditoria
+    const medico = await db.getDoctorByAuth(doctorId);
+    
+    await auditService.log({
+      user_id: doctorId,
+      user_email: participants.doctor.email || medico?.email,
+      user_name: participants.doctor.name || medico?.name,
+      user_role: 'medico',
+      action: 'CREATE',
+      resource_type: 'call_sessions',
+      resource_id: session.id,
+      resource_description: `Sessão ${session_type} - ${participants.patient.name}`,
+      related_patient_id: patientId,
+      related_consultation_id: consultation_id,
+      related_session_id: session.id,
+      ip_address: auditService.getClientIp(req),
+      user_agent: auditService.getUserAgent(req),
+      endpoint: '/api/sessions',
+      http_method: 'POST',
+      data_category: 'sensivel',
+      legal_basis: 'tutela_saude',
+      purpose: 'Início de consulta médica',
+      contains_sensitive_data: true,
+      data_after: {
+        session_id: session.id,
+        session_type,
+        consultation_id,
+        consent: true
+      },
+      metadata: {
+        room_name: `session-${session.id}`,
+        participants: {
+          doctor: participants.doctor.name,
+          patient: participants.patient.name
+        }
+      }
+    });
 
     const roomName = `session-${session.id}`;
 

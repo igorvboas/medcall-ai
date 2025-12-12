@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditUpdateField } from '@/lib/audit-update-field-helper';
 
 export async function PATCH(
   request: NextRequest,
@@ -21,7 +22,7 @@ export async function PATCH(
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name, email')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -86,6 +87,21 @@ export async function PATCH(
       );
     }
 
+    // Buscar dados da consulta para auditoria
+    const { data: consultation, error: consultationError } = await supabase
+      .from('consultations')
+      .select('patient_id, patient_name')
+      .eq('id', consultaId)
+      .single();
+
+    if (consultationError || !consultation) {
+      console.error('❌ Consulta não encontrada:', consultationError);
+      return NextResponse.json(
+        { error: 'Consulta não encontrada' },
+        { status: 404 }
+      );
+    }
+
     // Verificar se o registro existe
     const { data: existingRecord, error: fetchError } = await supabase
       .from(actualTableName)
@@ -118,20 +134,6 @@ export async function PATCH(
         );
       }
     } else {
-      // Se não existir, buscar o paciente_id da consulta
-      const { data: consultation } = await supabase
-        .from('consultations')
-        .select('patient_id')
-        .eq('id', consultaId)
-        .single();
-
-      if (!consultation) {
-        return NextResponse.json(
-          { error: 'Consulta não encontrada' },
-          { status: 404 }
-        );
-      }
-
       // Criar registro inicial
       const insertData = {
         user_id: userId,
@@ -157,7 +159,7 @@ export async function PATCH(
 
     console.log('✅ Campo atualizado com sucesso');
 
-    // Buscar o registro atualizado para retornar na resposta
+    // Buscar o registro atualizado para retornar na resposta e para auditoria
     const { data: updatedRecord, error: fetchUpdatedError } = await supabase
       .from(actualTableName)
       .select('*')
@@ -166,6 +168,62 @@ export async function PATCH(
 
     if (fetchUpdatedError) {
       console.warn('⚠️ Erro ao buscar registro atualizado:', fetchUpdatedError);
+    }
+
+    // Registrar log de auditoria (APÓS buscar o registro atualizado)
+    const tableRef = `${actualTableName}.${fieldName}`;
+    
+    // INSERÇÃO DIRETA NA TABELA audit_logs (SEM HELPERS)
+    const url = new URL(request.url);
+    const auditData: any = {
+      user_id: doctorAuthId,
+      user_email: user.email || null,
+      user_role: 'medico',
+      user_name: medico?.name || null,
+      resource_type: 'anamnese',
+      resource_id: consultaId,
+      resource_description: `anamnese - ${consultation?.patient_name || 'Paciente'}`,
+      action: existingRecord ? 'UPDATE' : 'CREATE',
+      ip_address: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                  request.headers.get('x-real-ip') || null,
+      user_agent: request.headers.get('user-agent') || null,
+      endpoint: url.pathname + url.search,
+      http_method: 'PATCH',
+      data_category: 'sensivel',
+      legal_basis: 'tutela_saude',
+      purpose: 'Atualização de dados de anamnese',
+      contains_sensitive_data: true,
+      data_before: existingRecord ? JSON.parse(JSON.stringify(existingRecord)) : null,
+      data_after: updatedRecord ? JSON.parse(JSON.stringify(updatedRecord)) : null,
+      data_fields_accessed: [fieldPath],
+      changes_summary: `${existingRecord ? 'Atualizado' : 'Criado'} campo ${fieldPath} na tabela ${actualTableName}`,
+      table_ref: tableRef,
+      related_patient_id: consultation?.patient_id || null,
+      related_consultation_id: consultaId,
+      metadata: {
+        table: actualTableName,
+        field_path: fieldPath,
+        field_name: fieldName,
+        was_created: !existingRecord
+      },
+      success: true
+    };
+
+    // Inserir diretamente no audit_logs
+    const { data: auditInserted, error: auditError } = await supabase
+      .from('audit_logs')
+      .insert(auditData)
+      .select();
+
+    if (auditError) {
+      console.error('❌ ERRO AO INSERIR AUDITORIA:', {
+        message: auditError.message,
+        details: auditError.details,
+        hint: auditError.hint,
+        code: auditError.code
+      });
+    } else {
+      console.log('✅ AUDITORIA INSERIDA COM SUCESSO. ID:', auditInserted?.[0]?.id);
     }
 
     return NextResponse.json({ 

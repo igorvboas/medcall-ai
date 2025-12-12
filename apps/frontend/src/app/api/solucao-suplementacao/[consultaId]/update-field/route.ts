@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 // POST /api/solucao-suplementacao/[consultaId]/update-field - Atualizar campo específico
 export async function POST(
@@ -22,7 +23,7 @@ export async function POST(
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name, email')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -56,10 +57,10 @@ export async function POST(
 
     const actualTableName = 's_suplementacao2';
 
-    // Buscar o paciente_id da consulta primeiro
+    // Buscar dados da consulta para auditoria
     const { data: consultation } = await supabase
       .from('consultations')
-      .select('patient_id')
+      .select('patient_id, patient_name')
       .eq('id', consultaId)
       .single();
 
@@ -153,6 +154,31 @@ export async function POST(
     }
     
     console.log('✅ Campo Suplementação atualizado com sucesso');
+
+    // Buscar registro atualizado para auditoria
+    const { data: updatedRecord } = await supabase
+      .from(actualTableName)
+      .select('*')
+      .eq('id', existingRecord.id)
+      .single();
+
+    // Registrar log de auditoria
+    const fieldPath = `${category}[${index}].${field}`;
+    await auditTableField({
+      request,
+      user_id: doctorAuthId,
+      user_email: user.email,
+      user_name: medico?.name,
+      consultaId,
+      consultation,
+      tableName: actualTableName,
+      fieldName: `${category}.${field}`,
+      fieldPath,
+      existingRecord,
+      updatedRecord: updatedRecord || null,
+      wasCreated: false,
+      resourceType: 'solucao'
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -65,7 +66,7 @@ export async function PATCH(request: NextRequest) {
     // Buscar médico na tabela medicos
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name, email')
       .eq('user_auth', user.id)
       .single();
 
@@ -130,6 +131,30 @@ export async function PATCH(request: NextRequest) {
     }
 
     console.log('✅ Links de exames atualizados com sucesso');
+
+    // Buscar registro atualizado para auditoria
+    const { data: updatedRecord } = await supabase
+      .from('a_observacao_clinica_lab')
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .maybeSingle();
+
+    // Registrar log de auditoria
+    await auditTableField({
+      request,
+      user_id: user.id,
+      user_email: user.email || '',
+      user_name: medico?.name,
+      consultaId,
+      consultation: consulta,
+      tableName: 'a_observacao_clinica_lab',
+      fieldName: 'links_exames',
+      fieldPath: 'a_observacao_clinica_lab.links_exames',
+      existingRecord: existingRecord || null,
+      updatedRecord: updatedRecord || null,
+      wasCreated: !existingRecord,
+      resourceType: 'anamnese'
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { logAudit, getAuditContext, sanitizeData } from '@/lib/audit-helper';
 
 // Tipos locais para pacientes
 interface CreatePatientData {
@@ -221,6 +222,33 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Paciente criado:', patient);
+
+    // Registrar log de auditoria
+    const auditContext = getAuditContext(request);
+    await logAudit({
+      user_id: doctorId,
+      user_email: user.email,
+      user_name: medico.name,
+      user_role: 'medico',
+      action: 'CREATE',
+      resource_type: 'patients',
+      resource_id: patient.id,
+      resource_description: `Paciente: ${patient.name}`,
+      related_patient_id: patient.id,
+      ...auditContext,
+      http_method: 'POST',
+      data_category: 'sensivel',
+      legal_basis: 'tutela_saude',
+      purpose: 'Cadastro de novo paciente',
+      contains_sensitive_data: true,
+      data_after: sanitizeData(patient),
+      metadata: {
+        has_cpf: !!patient.cpf,
+        has_email: !!patient.email,
+        has_medical_history: !!patient.medical_history
+      }
+    });
+
     return NextResponse.json({ patient }, { status: 201 });
 
   } catch (error) {
