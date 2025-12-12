@@ -6,14 +6,13 @@ import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
-// Tipos locais para pacientes
+// Tipos locais para pacientes - apenas campos da tabela patients
 interface Patient {
   id: string;
   doctor_id: string;
   name: string;
   email?: string;
   phone?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -30,18 +29,16 @@ interface Patient {
   updated_at: string;
   // Campo para imagem do paciente
   profile_pic?: string;
-  picture?: string;
-  avatar_url?: string;
-  avatar?: string;
-  image_url?: string;
-  photo?: string;
+  // Campo para anamnese
+  anamnese?: {
+    status: 'pendente' | 'preenchida';
+  };
 }
 
 interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -117,14 +114,6 @@ export default function PatientsPage() {
       const data: PatientsResponse = await response.json();
       console.log('📋 Dados recebidos:', data);
       console.log('👤 Primeiro paciente (exemplo):', data.patients[0]);
-      console.log('🖼️ Propriedades de imagem do primeiro paciente:', {
-        profile_pic: data.patients[0]?.profile_pic,
-        picture: data.patients[0]?.picture,
-        avatar_url: data.patients[0]?.avatar_url,
-        avatar: data.patients[0]?.avatar,
-        image_url: data.patients[0]?.image_url,
-        photo: data.patients[0]?.photo
-      });
       setPatients(data.patients);
       setPagination(data.pagination);
     } catch (err) {

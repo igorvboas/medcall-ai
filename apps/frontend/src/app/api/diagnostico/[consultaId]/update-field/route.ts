@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 // POST /api/diagnostico/[consultaId]/update-field - Atualizar campo específico
 export async function POST(
@@ -60,20 +61,26 @@ export async function POST(
       );
     }
 
+    // Buscar dados da consulta para auditoria
+    const { data: consultation } = await supabase
+      .from('consultations')
+      .select('patient_id, patient_name')
+      .eq('id', consultaId)
+      .single();
+
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada' },
+        { status: 404 }
+      );
+    }
+
     // Verificar se o registro existe (apenas por consulta_id já que não há RLS)
     const { data: existing } = await supabase
       .from(actualTableName)
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-
-    if (!existing) {
-      // Se não existir, buscar o paciente_id da consulta
-      const { data: consultation } = await supabase
-        .from('consultations')
-        .select('patient_id')
-        .eq('id', consultaId)
-        .single();
 
       if (!consultation) {
         return NextResponse.json(
@@ -116,6 +123,30 @@ export async function POST(
     }
 
     console.log('✅ Campo atualizado com sucesso');
+
+    // Buscar registro atualizado para auditoria
+    const { data: updatedRecord } = await supabase
+      .from(actualTableName)
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .maybeSingle();
+
+    // Registrar log de auditoria
+    await auditTableField({
+      request,
+      user_id: doctorAuthId,
+      user_email: user.email,
+      user_name: medico?.name,
+      consultaId,
+      consultation,
+      tableName: actualTableName,
+      fieldName,
+      fieldPath,
+      existingRecord: existing || null,
+      updatedRecord: updatedRecord || null,
+      wasCreated: !existing,
+      resourceType: 'diagnostico'
+    });
 
     return NextResponse.json({
       success: true,

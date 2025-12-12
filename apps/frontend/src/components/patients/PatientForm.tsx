@@ -8,14 +8,13 @@ import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 import './PatientForm.css';
 
-// Tipos locais para pacientes
+// Tipos locais para pacientes - apenas campos da tabela patients
 interface Patient {
   id: string;
   doctor_id: string;
   name: string;
   email?: string;
   phone?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -37,7 +36,6 @@ interface CreatePatientData {
   name: string;
   email?: string;
   phone?: string;
-  cep?: string;
   city?: string;
   state?: string;
   birth_date?: string;
@@ -66,7 +64,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     name: '',
     email: '',
     phone: '',
-    cep: '',
     city: '',
     state: '',
     birth_date: '',
@@ -85,7 +82,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [medicalFiles, setMedicalFiles] = useState<Array<{ id: string; name: string; url: string; file?: File }>>([]);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
-  const [loadingCep, setLoadingCep] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Estados para upload de foto
@@ -102,7 +98,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         name: patient.name,
         email: patient.email || '',
         phone: patient.phone || '',
-        cep: patient.cep || '',
         city: patient.city || '',
         state: patient.state || '',
         birth_date: patient.birth_date || '',
@@ -236,53 +231,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     }
   };
 
-  // Formatar CEP
-  const formatCEP = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
-  };
-
-  // Buscar endereço por CEP
-  const fetchAddressByCEP = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '');
-    
-    if (cleanCep.length !== 8) {
-      return;
-    }
-
-    setLoadingCep(true);
-    
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
-      
-      if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
-          address: data.logradouro || prev.address || '',
-          city: data.localidade || prev.city || '',
-          state: data.uf || prev.state || '',
-        }));
-      } else {
-        console.warn('CEP não encontrado');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
-    } finally {
-      setLoadingCep(false);
-    }
-  };
-
-  const handleCEPChange = (value: string) => {
-    const formattedCep = formatCEP(value);
-    setFormData(prev => ({ ...prev, cep: formattedCep }));
-    
-    const cleanCep = value.replace(/\D/g, '');
-    if (cleanCep.length === 8) {
-      fetchAddressByCEP(cleanCep);
-    }
-  };
-
   // Manipular seleção de arquivos
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -313,7 +261,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           const fileName = `paciente_${patient.id}_historico_${Date.now()}.${fileExt}`;
           const filePath = `pacientes/historicos/${fileName}`;
 
-          const { error: uploadError, data } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('medical_files')
             .upload(filePath, file, {
               cacheControl: '3600',
@@ -644,22 +592,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
             </div>
 
             <div className="form-field">
-              <label htmlFor="cpf" className="field-label">
-                CPF
-              </label>
-              <input
-                id="cpf"
-                type="text"
-                value={formData.cpf}
-                onChange={(e) => handleChange('cpf', formatCPF(e.target.value))}
-                className={`form-input ${errors.cpf ? 'error' : ''}`}
-                placeholder="000.000.000-00"
-                maxLength={14}
-              />
-              {errors.cpf && <span className="field-error">{errors.cpf}</span>}
-            </div>
-
-            <div className="form-field">
               <label htmlFor="birth_date" className="field-label">
                 Data de Nascimento
               </label>
@@ -691,6 +623,22 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
             </div>
 
             <div className="form-field">
+              <label htmlFor="cpf" className="field-label">
+                CPF
+              </label>
+              <input
+                id="cpf"
+                type="text"
+                value={formData.cpf}
+                onChange={(e) => handleChange('cpf', formatCPF(e.target.value))}
+                className={`form-input ${errors.cpf ? 'error' : ''}`}
+                placeholder="000.000.000-00"
+                maxLength={14}
+              />
+              {errors.cpf && <span className="field-error">{errors.cpf}</span>}
+            </div>
+
+            <div className="form-field">
               <label htmlFor="status" className="field-label">
                 Status
               </label>
@@ -716,30 +664,9 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           </div>
           
           <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="cep" className="field-label">
-                CEP
-              </label>
-              <input
-                id="cep"
-                type="text"
-                value={formData.cep}
-                onChange={(e) => handleCEPChange(e.target.value)}
-                className="form-input"
-                placeholder="00000-000"
-                maxLength={9}
-                disabled={loadingCep}
-              />
-              {loadingCep && (
-                <span style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
-                  Buscando endereço...
-                </span>
-              )}
-            </div>
-
-            <div className="form-field full-width">
+            <div className="form-field" style={{ gridColumn: 'span 2' }}>
               <label htmlFor="address" className="field-label">
-                Endereço Completo
+                Endereço
               </label>
               <input
                 id="address"
@@ -747,7 +674,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
                 className="form-input"
-                placeholder="Rua, número, bairro"
+                placeholder="Rua, Número, Bairro"
               />
             </div>
 

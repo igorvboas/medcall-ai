@@ -58,7 +58,7 @@ NODE_ENV=production
 FRONTEND_URL=https://your-app.vercel.app
 
 # AI Settings
-LLM_MODEL=gpt-4-1106-preview
+LLM_MODEL=gpt-4o-mini
 LLM_TEMPERATURE=0.3
 LLM_MAX_TOKENS=500
 

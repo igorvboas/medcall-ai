@@ -1380,8 +1380,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       console.log(`[ROOM ${roomId}] 📝 Transcrição "${transcription}" enviada para ${participants.length - 1} participantes`);
 
       // 🤖 GERAÇÃO DE SUGESTÕES DE IA
-      // Disparar análise de IA a cada 5 transcrições
-      if (room.transcriptions.length % 5 === 0 && room.transcriptions.length > 0) {
+      // Disparar análise de IA a cada 10 transcrições (otimizado para custo)
+      if (room.transcriptions.length % 10 === 0 && room.transcriptions.length > 0) {
         //console.log(`🤖 [ROOM ${roomId}] Disparando análise de IA (${room.transcriptions.length} transcrições)`);
         
         // ✅ Usar IIFE async para resolver o consultationId corretamente antes de chamar o serviço

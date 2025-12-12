@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, getAuthenticatedSession } from '@/lib/supabase-server';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 export async function POST(request: NextRequest, { params }: { params: { consulta_id: string } }) {
   try {
@@ -193,6 +194,26 @@ export async function POST(request: NextRequest, { params }: { params: { consult
 
     if (linksUpdateResult.error) {
       console.error('❌ Erro ao atualizar links de exames:', linksUpdateResult.error);
+      
+      // Registrar auditoria de erro
+      if (medico) {
+        await auditTableField({
+          request,
+          user_id: user.id,
+          user_email: user.email || '',
+          user_name: medico.name,
+          consultaId,
+          consultation: consulta,
+          tableName: 'a_observacao_clinica_lab',
+          fieldName: 'links_exames',
+          fieldPath: 'a_observacao_clinica_lab.links_exames',
+          existingRecord: existingRecord || null,
+          updatedRecord: null,
+          wasCreated: !existingRecord,
+          resourceType: 'anamnese'
+        });
+      }
+      
       // Reverter status da consulta baseado na etapa
       const { data: consulta } = await supabase
         .from('consultations')
@@ -221,6 +242,32 @@ export async function POST(request: NextRequest, { params }: { params: { consult
     }
 
     console.log('✅ Links de exames atualizados na tabela a_observacao_clinica_lab');
+
+    // Buscar registro atualizado para auditoria
+    const { data: updatedRecord } = await supabase
+      .from('a_observacao_clinica_lab')
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .maybeSingle();
+
+    // Registrar log de auditoria
+    if (medico) {
+      await auditTableField({
+        request,
+        user_id: user.id,
+        user_email: user.email || '',
+        user_name: medico.name,
+        consultaId,
+        consultation: consulta,
+        tableName: 'a_observacao_clinica_lab',
+        fieldName: 'links_exames',
+        fieldPath: 'a_observacao_clinica_lab.links_exames',
+        existingRecord: existingRecord || null,
+        updatedRecord: updatedRecord || null,
+        wasCreated: !existingRecord,
+        resourceType: 'anamnese'
+      });
+    }
 
     // 3. FAZER REQUISIÇÃO HTTP PARA O WEBHOOK EXTERNO
     console.log('🔍 DEBUG [REFERENCIA] Enviando dados para webhook externo');

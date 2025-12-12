@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 // POST /api/solucao-ltb/[consultaId]/update-field - Atualizar campo específico
 export async function POST(
@@ -22,7 +23,7 @@ export async function POST(
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name, email')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -145,6 +146,31 @@ export async function POST(
     }
 
     console.log('✅ Campo LTB atualizado com sucesso');
+
+    // Buscar registro atualizado para auditoria
+    const { data: updatedRecord } = await supabase
+      .from(actualTableName)
+      .select('*')
+      .eq('user_id', userId)
+      .eq('consulta_id', consultaId)
+      .maybeSingle();
+
+    // Registrar log de auditoria
+    await auditTableField({
+      request,
+      user_id: doctorAuthId,
+      user_email: user.email,
+      user_name: medico?.name,
+      consultaId,
+      consultation,
+      tableName: actualTableName,
+      fieldName,
+      fieldPath,
+      existingRecord: existingRecord || null,
+      updatedRecord: updatedRecord || null,
+      wasCreated: !existingRecord,
+      resourceType: 'solucao'
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthenticatedSession } from '@/lib/supabase-server';
+import { auditTableField } from '@/lib/audit-table-field-helper';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY!;
@@ -60,6 +62,49 @@ export async function POST(
     }
 
     console.log('✅ [UPDATE-EXERCICIO] Sucesso:', data);
+
+    // Registrar auditoria
+    const authResult = await getAuthenticatedSession();
+    if (authResult?.user) {
+      const { user } = authResult;
+      const { data: medico } = await supabase
+        .from('medicos')
+        .select('id, name, email')
+        .eq('user_auth', user.id)
+        .single();
+
+      // Buscar consulta para obter patient_id
+      const { data: consultation } = await supabase
+        .from('consultations')
+        .select('patient_id, patient_name')
+        .eq('id', consultaId)
+        .single();
+
+      // Buscar registro antes da atualização (se possível)
+      const { data: existingRecord } = await supabase
+        .from('s_exercicios_fisicos')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (medico && consultation) {
+        await auditTableField({
+          request,
+          user_id: user.id,
+          user_email: user.email || '',
+          user_name: medico.name,
+          consultaId,
+          consultation,
+          tableName: 's_exercicios_fisicos',
+          fieldName: field,
+          fieldPath: `s_exercicios_fisicos.${field}`,
+          existingRecord: existingRecord || null,
+          updatedRecord: data || null,
+          wasCreated: false,
+          resourceType: 'solucao'
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -64,7 +64,7 @@ class SuggestionService extends EventEmitter {
   // Configurações
   private readonly MIN_SUGGESTION_INTERVAL = 10000; // 10 segundos entre sugestões
   private readonly MAX_SUGGESTIONS_PER_SESSION = 20;
-  private readonly CONTEXT_WINDOW_SIZE = 10; // Últimas 10 utterances
+  private readonly CONTEXT_WINDOW_SIZE = 10; // Últimas 10 utterances (otimizado para custo)
   private readonly CONFIDENCE_THRESHOLD = 0.7;
 
   constructor() {
