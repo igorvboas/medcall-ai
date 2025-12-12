@@ -439,7 +439,7 @@ io.on('connection', (socket) => {
         }
 
         const openAIWs = new WebSocket(
-            'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+            'wss://api.openai.com/v1/realtime?model=gpt-realtime-mini-2025-10-06',
             {
                 headers: {
                     'Authorization': `Bearer ${OPENAI_API_KEY}`,
