@@ -245,24 +245,40 @@ function DataField({
   };
 
   const renderValue = () => {
-    // Se não houver valor, mostrar campo vazio
-    if (!value || (Array.isArray(value) && value.length === 0)) {
-      return <p className="data-value data-value-empty">—</p>;
+    // Função auxiliar para verificar se o valor é vazio/null
+    const isEmptyValue = (val: any): boolean => {
+      if (val === null || val === undefined) return true;
+      if (typeof val === 'string' && (val.trim() === '' || val.toLowerCase() === 'null')) return true;
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    };
+
+    // Se não houver valor ou for "null" como string, mostrar "Não informado"
+    if (isEmptyValue(value)) {
+      return <p className="data-value data-value-empty">Não informado</p>;
     }
 
     // Se for array, renderizar lista
     if (Array.isArray(value)) {
       return (
         <ul className="data-list">
-          {value.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
+          {value.map((item, index) => {
+            // Verificar se cada item do array também não é null
+            const displayItem = isEmptyValue(item) ? 'Não informado' : String(item);
+            return <li key={index}>{displayItem}</li>;
+          })}
         </ul>
       );
     }
 
+    // Converter para string e verificar se é "null"
+    const stringValue = String(value);
+    const displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '') 
+      ? 'Não informado' 
+      : stringValue;
+
     // Renderizar valor normal
-    return <p className="data-value">{String(value)}</p>;
+    return <p className="data-value">{displayValue}</p>;
   };
 
   return (
@@ -2369,10 +2385,28 @@ function MentalidadeSection({
                      editingField?.padraoNum === padraoNum && 
                      editingField?.fieldPath === fieldPath;
 
-    const displayValue = value === null ? '-' : 
-                        Array.isArray(value) ? value.join(', ') : 
-                        typeof value === 'object' ? JSON.stringify(value, null, 2) : 
-                        value;
+    // Função auxiliar para verificar se o valor é vazio/null
+    const isEmptyValue = (val: any): boolean => {
+      if (val === null || val === undefined) return true;
+      if (typeof val === 'string' && (val.trim() === '' || val.toLowerCase() === 'null')) return true;
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    };
+
+    let displayValue: string;
+    if (isEmptyValue(value)) {
+      displayValue = 'Não informado';
+    } else if (Array.isArray(value)) {
+      // Filtrar valores null/vazios do array e substituir por "Não informado"
+      displayValue = value.map(item => isEmptyValue(item) ? 'Não informado' : String(item)).join(', ');
+    } else if (typeof value === 'object') {
+      displayValue = JSON.stringify(value, null, 2);
+    } else {
+      const stringValue = String(value);
+      displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '') 
+        ? 'Não informado' 
+        : stringValue;
+    }
 
     if (isEditing) {
       return (
@@ -5454,6 +5488,57 @@ function ConsultasPageContent() {
             </div>
           </div>
 
+          {/* Seção de Anamnese (Consulta) - Movida para o topo para melhor visibilidade */}
+          <div className="anamnese-container" style={{ 
+            marginTop: '24px', 
+            marginBottom: '32px',
+            background: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div className="anamnese-header" style={{ 
+              padding: '20px 24px',
+              borderBottom: '2px solid #d4a574',
+              background: 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 100%)'
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                color: '#806D5D',
+                fontSize: '20px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <FileText className="w-6 h-6" style={{ color: '#d4a574' }} />
+                Anamnese da Consulta
+              </h2>
+              <p style={{ 
+                margin: '8px 0 0 0',
+                color: '#6b7280',
+                fontSize: '14px',
+                fontWeight: '400'
+              }}>
+                Informações coletadas durante a consulta
+              </p>
+            </div>
+            <div className="anamnese-content" style={{ padding: '24px' }}>
+              <AnamneseSection 
+                consultaId={consultaId}
+                selectedField={null}
+                chatMessages={[]}
+                isTyping={false}
+                chatInput=""
+                onFieldSelect={() => {}}
+                onSendMessage={() => {}}
+                onChatInputChange={() => {}}
+                readOnly={true}
+                renderViewSolutionsButton={renderViewSolutionsButton}
+              />
+            </div>
+          </div>
+
           <div className="details-two-column-layout">
             {/* Coluna Esquerda - Chat com IA */}
             <div className="chat-column">
@@ -5602,24 +5687,6 @@ function ConsultasPageContent() {
                     onSendMessage={handleSendAIMessage}
                     onChatInputChange={setChatInput}
                   />
-
-                  {/* Seção de Anamnese (Somente Leitura) */}
-                  <CollapsibleSection title="Anamnese (Consulta)" defaultOpen={false}>
-                    <div className="anamnese-subsection" style={{ opacity: 0.85, userSelect: 'text', position: 'relative' }}>
-                      <AnamneseSection 
-                        consultaId={consultaId}
-                        selectedField={null}
-                        chatMessages={[]}
-                        isTyping={false}
-                        chatInput=""
-                        onFieldSelect={() => {}}
-                        onSendMessage={() => {}}
-                        onChatInputChange={() => {}}
-                        readOnly={true}
-                        renderViewSolutionsButton={renderViewSolutionsButton}
-                      />
-                    </div>
-                  </CollapsibleSection>
                 </div>
               </div>
             </div>

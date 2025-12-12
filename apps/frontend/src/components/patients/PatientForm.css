@@ -1,5 +1,15 @@
 /* PatientForm Styles - Design based on the image */
 
+/* Animação de spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 .form-container {
   background: #FFFFFF;
   border-radius: 16px;

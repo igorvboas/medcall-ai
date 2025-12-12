@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
-import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle, Upload, Trash2 } from 'lucide-react';
+import { X, Save, User, Mail, Phone, MapPin, Calendar, FileText, AlertTriangle, Upload, Trash2, Camera, Loader2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 import './PatientForm.css';
 
 // Tipos locais para pacientes
@@ -49,6 +50,7 @@ interface CreatePatientData {
   allergies?: string;
   current_medications?: string;
   status?: 'active' | 'inactive' | 'archived';
+  profile_pic?: string;
 }
 
 interface PatientFormProps {
@@ -59,7 +61,7 @@ interface PatientFormProps {
 }
 
 export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormProps) {
-  const { showError, showWarning } = useNotifications();
+  const { showError, showWarning, showSuccess } = useNotifications();
   const [formData, setFormData] = useState<CreatePatientData>({
     name: '',
     email: '',
@@ -85,6 +87,13 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const [loadingCep, setLoadingCep] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para upload de foto
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(patient?.profile_pic || null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(patient?.profile_pic || null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
   useEffect(() => {
@@ -107,6 +116,8 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
         current_medications: patient.current_medications || '',
         status: patient.status,
       });
+      setProfilePicUrl(patient.profile_pic || null);
+      setImagePreview(patient.profile_pic || null);
     }
   }, [patient]);
 
@@ -159,6 +170,34 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     setIsSubmitting(true);
     
     try {
+      // Se houver imagem selecionada mas ainda não foi feito upload, fazer upload agora
+      let finalProfilePicUrl = profilePicUrl;
+      if (selectedImageFile && !profilePicUrl) {
+        // Fazer upload da imagem antes de criar o paciente
+        const fileExt = selectedImageFile.name.split('.').pop();
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const fileName = `temp_paciente_${timestamp}_${randomString}.${fileExt}`;
+        const filePath = `pacientes/temp/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('profile_pics')
+          .upload(filePath, selectedImageFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('profile_pics')
+          .getPublicUrl(filePath);
+
+        finalProfilePicUrl = publicUrl;
+      }
+
       // Limpar campos vazios antes de enviar
       const cleanedData: CreatePatientData = {
         name: formData.name,
@@ -166,7 +205,8 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
           Object.entries(formData).filter(([key, value]) => 
             key !== 'name' && value !== '' && value !== undefined && value !== null
           )
-        )
+        ),
+        profile_pic: finalProfilePicUrl || undefined
       } as CreatePatientData;
       
       console.log('📋 Dados do formulário antes do envio:', formData);
@@ -307,6 +347,80 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     }
   };
 
+  // Função para fazer upload de imagem antes de criar o paciente
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validações
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      showError('A imagem deve ter no máximo 5MB', 'Erro');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Formato de imagem não suportado. Use JPG, PNG ou WEBP', 'Erro');
+      return;
+    }
+
+    // Mostrar preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setSelectedImageFile(file);
+    setUploadingImage(true);
+
+    try {
+      // Gerar nome único para o arquivo (usando timestamp e random)
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileName = `temp_paciente_${timestamp}_${randomString}.${fileExt}`;
+      const filePath = `pacientes/temp/${fileName}`;
+
+      // Upload do arquivo para pasta temporária
+      const { error: uploadError, data } = await supabase.storage
+        .from('profile_pics')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile_pics')
+        .getPublicUrl(filePath);
+
+      setProfilePicUrl(publicUrl);
+      showSuccess('Imagem carregada! Será salva ao cadastrar o paciente.', 'Imagem Carregada');
+    } catch (error: any) {
+      console.error('Erro ao fazer upload:', error);
+      showError(`Erro ao fazer upload: ${error.message || 'Erro desconhecido'}`, 'Erro');
+      setImagePreview(null);
+      setSelectedImageFile(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setSelectedImageFile(null);
+    setProfilePicUrl(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
   // Remover arquivo
   const handleRemoveFile = async (fileId: string, fileUrl: string) => {
     try {
@@ -341,12 +455,132 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       </div>
 
       <form onSubmit={handleSubmit} className="form-content">
-        {/* Avatar - apenas quando editando */}
+        {/* Upload de Imagem - Disponível antes e depois do cadastro */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', position: 'relative' }}>
+          <div 
+            style={{
+              position: 'relative',
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              cursor: uploadingImage ? 'wait' : 'pointer',
+              border: '3px solid #e5e7eb',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f9fafb'
+            }}
+            onClick={() => {
+              if (!uploadingImage && !patient?.id) {
+                imageInputRef.current?.click();
+              }
+            }}
+            onMouseEnter={(e) => {
+              if (!uploadingImage && !patient?.id) {
+                e.currentTarget.style.borderColor = '#d4a574';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(212, 165, 116, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            {imagePreview || profilePicUrl ? (
+              <>
+                <Image
+                  src={imagePreview || profilePicUrl || ''}
+                  alt="Foto do paciente"
+                  fill
+                  style={{ objectFit: 'cover' }}
+                />
+                {!uploadingImage && !patient?.id && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0,
+                    transition: 'opacity 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+                  >
+                    <Camera size={24} color="white" />
+                  </div>
+                )}
+                {!uploadingImage && !patient?.id && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage();
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ef4444',
+                      border: 'none',
+                      color: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                    }}
+                    title="Remover imagem"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                color: '#6b7280'
+              }}>
+                {uploadingImage ? (
+                  <Loader2 size={32} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <>
+                    <Camera size={32} />
+                    <span style={{ fontSize: '12px', textAlign: 'center' }}>Adicionar Foto</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          {!patient?.id && (
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/jpg,image/webp"
+              onChange={handleImageSelect}
+              disabled={uploadingImage}
+              style={{ display: 'none' }}
+            />
+          )}
+        </div>
+
+        {/* AvatarUpload - apenas quando editando */}
         {patient && patient.id && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
             <AvatarUpload
-              currentImageUrl={patient.profile_pic}
+              currentImageUrl={profilePicUrl || patient.profile_pic}
               onUploadComplete={(url) => {
+                setProfilePicUrl(url);
                 // Avatar foi atualizado com sucesso
                 console.log('Avatar atualizado:', url);
               }}

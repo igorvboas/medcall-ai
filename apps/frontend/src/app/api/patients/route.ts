@@ -18,6 +18,7 @@ interface CreatePatientData {
   medical_history?: string;
   allergies?: string;
   current_medications?: string;
+  profile_pic?: string;
 }
 
 // GET /api/patients - Listar pacientes do médico logado
