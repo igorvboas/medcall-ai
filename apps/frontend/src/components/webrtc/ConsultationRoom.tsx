@@ -4014,19 +4014,19 @@ export function ConsultationRoom({
             <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center' }}>
               {/* Dropdown Menu */}
               <div style={{ position: 'relative' }}>
-                <button
+              <button 
                   onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-                  style={{
-                    padding: '0.5rem 1rem',
+                style={{
+                  padding: '0.5rem 1rem',
                     background: '#f3f4f6',
                     color: '#374151',
                     border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
                     transition: 'all 0.2s ease',
                   }}
                   title="Ações da consulta"
@@ -4094,31 +4094,31 @@ export function ConsultationRoom({
                       >
                         {linkCopied ? <Check size={16} /> : <Copy size={16} />}
                         <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
-                      </button>
-
+              </button>
+              
                       {/* Sugestões IA */}
-                      <button
-                        onClick={() => {
-                          setSuggestionsEnabled(!suggestionsEnabled);
-                          if (!suggestionsEnabled) {
-                            setAiSuggestions([]);
-                            setSuggestionsPanelVisible(true);
-                          } else {
-                            setSuggestionsPanelVisible(false);
-                          }
+              <button 
+                onClick={() => {
+                  setSuggestionsEnabled(!suggestionsEnabled);
+                  if (!suggestionsEnabled) {
+                    setAiSuggestions([]);
+                    setSuggestionsPanelVisible(true);
+                  } else {
+                    setSuggestionsPanelVisible(false);
+                  }
                           setShowActionsDropdown(false);
-                        }}
-                        style={{
+                }}
+                style={{
                           width: '100%',
                           padding: '0.75rem 1rem',
                           background: suggestionsEnabled ? '#f0fdf4' : 'transparent',
                           color: suggestionsEnabled ? '#16a34a' : '#374151',
                           border: 'none',
                           borderBottom: '1px solid #f3f4f6',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
                           gap: '0.75rem',
                           transition: 'background 0.2s',
                           textAlign: 'left',
@@ -4132,123 +4132,123 @@ export function ConsultationRoom({
                       >
                         <Brain size={16} style={{ color: suggestionsEnabled ? '#16a34a' : '#6b7280' }} />
                         <span>{suggestionsEnabled ? 'Desativar' : 'Ativar'} Sugestões IA</span>
-                      </button>
+              </button>
 
                       {/* Gerar/Acessar Anamnese */}
-                      <button
-                        onClick={async () => {
+              <button 
+                onClick={async () => {
                           setShowActionsDropdown(false);
                           
-                          // ✅ Se anamnese já está pronta, abrir em nova aba
-                          if (anamneseReady && currentConsultationId) {
-                            const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
-                            window.open(anamneseUrl, '_blank');
-                            return;
-                          }
-                          
-                          if (isGeneratingAnamnese) return;
-                          
-                          try {
-                            setIsGeneratingAnamnese(true);
-                            
-                            // Obter consultationId e doctorId
-                            const { supabase } = await import('@/lib/supabase');
-                            const { data: { session } } = await supabase.auth.getSession();
-                            
-                            let doctorId: string | null = null;
-                            if (session?.user?.id) {
-                              const { data: medico } = await supabase
-                                .from('medicos')
-                                .select('id')
-                                .eq('user_auth', session.user.id)
-                                .single();
-                              doctorId = medico?.id || null;
-                            }
-                            
-                            let consultationId: string | null = null;
-                            const { data: callSession } = await supabase
-                              .from('call_sessions')
-                              .select('consultation_id')
-                              .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
-                              .single();
-                            consultationId = callSession?.consultation_id || null;
-                            
-                            if (!consultationId && doctorId) {
-                              const { data: consultation } = await supabase
-                                .from('consultations')
-                                .select('id')
-                                .eq('doctor_id', doctorId)
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .single();
-                              consultationId = consultation?.id || null;
-                            }
-                            
-                            if (!consultationId) {
+                  // ✅ Se anamnese já está pronta, abrir em nova aba
+                  if (anamneseReady && currentConsultationId) {
+                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
+                    window.open(anamneseUrl, '_blank');
+                    return;
+                  }
+                  
+                  if (isGeneratingAnamnese) return;
+                  
+                  try {
+                    setIsGeneratingAnamnese(true);
+                    
+                    // Obter consultationId e doctorId
+                    const { supabase } = await import('@/lib/supabase');
+                    const { data: { session } } = await supabase.auth.getSession();
+                    
+                    let doctorId: string | null = null;
+                    if (session?.user?.id) {
+                      const { data: medico } = await supabase
+                        .from('medicos')
+                        .select('id')
+                        .eq('user_auth', session.user.id)
+                        .single();
+                      doctorId = medico?.id || null;
+                    }
+                    
+                    let consultationId: string | null = null;
+                    const { data: callSession } = await supabase
+                      .from('call_sessions')
+                      .select('consultation_id')
+                      .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+                      .single();
+                    consultationId = callSession?.consultation_id || null;
+                    
+                    if (!consultationId && doctorId) {
+                      const { data: consultation } = await supabase
+                        .from('consultations')
+                        .select('id')
+                        .eq('doctor_id', doctorId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                      consultationId = consultation?.id || null;
+                    }
+                    
+                    if (!consultationId) {
                               showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
-                              setIsGeneratingAnamnese(false);
-                              return;
-                            }
-                            
-                            // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
-                            const webhookEndpoints = getWebhookEndpoints();
-                            const webhookHeaders = getWebhookHeaders();
-                            
-                            const webhookData = {
-                              consultationId: consultationId,
-                              doctorId: doctorId || null,
-                              patientId: patientId || 'unknown',
-                              transcription: transcriptionText,
-                              consulta_finalizada: false  // ✅ Consulta continua ativa
-                            };
-                            
-                            console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
-                            
-                            const response = await fetch(webhookEndpoints.transcricao, {
-                              method: 'POST',
-                              headers: webhookHeaders,
-                              body: JSON.stringify(webhookData),
-                            });
+                      setIsGeneratingAnamnese(false);
+                      return;
+                    }
+                    
+                    // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
+                    const webhookEndpoints = getWebhookEndpoints();
+                    const webhookHeaders = getWebhookHeaders();
+                    
+                    const webhookData = {
+                      consultationId: consultationId,
+                      doctorId: doctorId || null,
+                      patientId: patientId || 'unknown',
+                      transcription: transcriptionText,
+                      consulta_finalizada: false  // ✅ Consulta continua ativa
+                    };
+                    
+                    console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
+                    
+                    const response = await fetch(webhookEndpoints.transcricao, {
+                      method: 'POST',
+                      headers: webhookHeaders,
+                      body: JSON.stringify(webhookData),
+                    });
 
-                            if (!response.ok) {
-                              throw new Error('Erro ao enviar transcrição para gerar anamnese');
-                            }
+                    if (!response.ok) {
+                      throw new Error('Erro ao enviar transcrição para gerar anamnese');
+                    }
 
-                            // Atualizar status da consulta para PROCESSING
-                            await fetch(`/api/consultations/${consultationId}`, {
-                              method: 'PATCH',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                status: 'PROCESSING',
-                                etapa: 'ANAMNESE'
-                              }),
-                            });
+                    // Atualizar status da consulta para PROCESSING
+                    await fetch(`/api/consultations/${consultationId}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        status: 'PROCESSING',
+                        etapa: 'ANAMNESE'
+                      }),
+                    });
 
-                            // Iniciar polling para verificar quando anamnese estiver pronta
-                            startAnamnesePolling(consultationId);
-                            
-                            // Mostrar mensagem informativa
+                    // Iniciar polling para verificar quando anamnese estiver pronta
+                    startAnamnesePolling(consultationId);
+                    
+                    // Mostrar mensagem informativa
                             showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
-                            
-                          } catch (error) {
-                            console.error('Erro ao gerar anamnese:', error);
+                    
+                  } catch (error) {
+                    console.error('Erro ao gerar anamnese:', error);
                             showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
-                            setIsGeneratingAnamnese(false);
-                          }
-                        }}
-                        disabled={isGeneratingAnamnese}
-                        style={{
+                    setIsGeneratingAnamnese(false);
+                  }
+                }}
+                disabled={isGeneratingAnamnese}
+                style={{
                           width: '100%',
                           padding: '0.75rem 1rem',
                           background: isGeneratingAnamnese ? '#f3f4f6' : 'transparent',
                           color: isGeneratingAnamnese ? '#9ca3af' : (anamneseReady ? '#3b82f6' : '#10b981'),
-                          border: 'none',
-                          cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
+                  border: 'none',
+                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
                           gap: '0.75rem',
                           transition: 'background 0.2s',
                           textAlign: 'left',
@@ -4260,31 +4260,31 @@ export function ConsultationRoom({
                         onMouseLeave={(e) => {
                           if (!isGeneratingAnamnese) e.currentTarget.style.background = 'transparent';
                         }}
-                      >
-                        {isGeneratingAnamnese ? (
-                          <>
-                            <div style={{
-                              width: '16px',
-                              height: '16px',
+              >
+                {isGeneratingAnamnese ? (
+                  <>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
                               border: '2px solid #9ca3af',
                               borderTop: '2px solid transparent',
-                              borderRadius: '50%',
-                              animation: 'spin 1s linear infinite'
-                            }}></div>
-                            <span>Gerando...</span>
-                          </>
-                        ) : anamneseReady ? (
-                          <>
-                            <CheckCircle size={16} />
-                            <span>Acessar Anamnese</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={16} />
-                            <span>Gerar Anamnese</span>
-                          </>
-                        )}
-                      </button>
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <span>Gerando...</span>
+                  </>
+                ) : anamneseReady ? (
+                  <>
+                    <CheckCircle size={16} />
+                    <span>Acessar Anamnese</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Gerar Anamnese</span>
+                  </>
+                )}
+              </button>
                     </div>
                   </>
                 )}
@@ -4541,7 +4541,7 @@ export function ConsultationRoom({
                   animation: 'pulse 2s infinite',
                 }}></span>
               )}
-            </div>
+      </div>
             {transcriptionText.length > 0 && (
               <span className="transcription-badge">
                 {transcriptionText.split('\n').filter(line => line.trim().length > 0).length}
