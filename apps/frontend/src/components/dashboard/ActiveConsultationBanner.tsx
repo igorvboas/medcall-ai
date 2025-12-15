@@ -161,14 +161,15 @@ export function ActiveConsultationBanner() {
     }
   };
 
-  const handleFinishConsultation = async () => {
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+
+  const handleFinishConsultation = () => {
     if (!activeConsultation) return;
+    setShowFinishConfirm(true);
+  };
 
-    const confirmFinish = window.confirm(
-      `Tem certeza que deseja encerrar a consulta com ${activeConsultation.patients?.name || activeConsultation.patient_name}?\n\nA consulta será finalizada e o status será alterado para PROCESSING para iniciar o processamento.`
-    );
-
-    if (!confirmFinish) return;
+  const handleConfirmFinish = async () => {
+    if (!activeConsultation) return;
 
     try {
       setIsFinishing(true);
@@ -196,7 +197,6 @@ export function ActiveConsultationBanner() {
     } catch (error) {
       console.error('Erro ao finalizar consulta:', error);
       showError('Erro ao finalizar consulta. Tente novamente.', 'Erro');
-    } finally {
       setIsFinishing(false);
     }
   };
@@ -232,7 +232,18 @@ export function ActiveConsultationBanner() {
   const consultationType = activeConsultation.consultation_type === 'PRESENCIAL' ? 'Presencial' : 'Telemedicina';
 
   return (
-    <div className="active-consultation-banner">
+    <>
+      <ConfirmModal
+        isOpen={showFinishConfirm}
+        onClose={() => setShowFinishConfirm(false)}
+        onConfirm={handleConfirmFinish}
+        title="Encerrar Consulta"
+        message={`Tem certeza que deseja encerrar a consulta com ${activeConsultation?.patients?.name || activeConsultation?.patient_name}?\n\nA consulta será finalizada e o status será alterado para PROCESSING para iniciar o processamento.`}
+        confirmText="Encerrar"
+        cancelText="Cancelar"
+        variant="warning"
+      />
+      <div className="active-consultation-banner">
       <div className="banner-content">
         <div className="banner-icon">
           <AlertCircle className="w-5 h-5" />
@@ -284,6 +295,7 @@ export function ActiveConsultationBanner() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

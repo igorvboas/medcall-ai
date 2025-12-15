@@ -1,105 +1,207 @@
 'use client';
 
-import { useState } from 'react';
-import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import './administracao.css';
 
-export default function AdministracaoPage() {
-  const [periodo, setPeriodo] = useState('Semana');
+interface DashboardData {
+  estatisticas: {
+    totalConsultas: number;
+    totalPacientes: number;
+    tempoMedioMinutos: number;
+    taxaNoShow: string;
+    variacaoConsultas: number;
+    variacaoPacientes: number;
+  };
+  graficos: {
+    consultasPorDia: Array<{ data: string; presencial: number; telemedicina: number }>;
+    consultasPorProfissional: Array<{ nome: string; count: number }>;
+    statusCount: Record<string, number>;
+    etapaCount: Record<string, number>;
+  };
+  consultasAtivas: Array<{
+    id: string;
+    medico: string;
+    tipo: string;
+    paciente: string;
+    inicio: string;
+    duracao: string;
+    sala: string;
+  }>;
+  proximasConsultas: Array<{
+    id: string;
+    paciente: string;
+    tipo: string;
+    horario: string;
+    iniciais: string;
+  }>;
+  consultasCalendario: Record<string, {
+    agendadas: Array<{
+      id: string;
+      paciente: string;
+      medico: string;
+      tipo: string;
+      horario: string;
+      data: string;
+    }>;
+    canceladas: Array<{
+      id: string;
+      paciente: string;
+      medico: string;
+      tipo: string;
+      horario: string;
+      data: string;
+    }>;
+  }>;
+}
 
-  // Dados mockados
-  const estatisticas = [
+export default function AdministracaoPage() {
+  const [periodo, setPeriodo] = useState('semana');
+  const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'TELEMEDICINA' | 'TODAS'>('TODAS');
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; content: string }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    content: ''
+  });
+  const [calendarTooltip, setCalendarTooltip] = useState<{ visible: boolean; x: number; y: number; content: React.ReactNode }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    content: null
+  });
+  const [mesAtualCalendario, setMesAtualCalendario] = useState(new Date());
+  const [visualizacaoCalendario, setVisualizacaoCalendario] = useState<'mes' | 'semana' | 'dia'>('mes');
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [periodo, tipoConsulta, mesAtualCalendario]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({ periodo });
+      if (tipoConsulta !== 'TODAS') {
+        params.append('tipoConsulta', tipoConsulta);
+      }
+      // Adicionar mês do calendário para buscar consultas corretas
+      params.append('mesCalendario', mesAtualCalendario.toISOString());
+      const response = await fetch(`/api/admin/dashboard?${params.toString()}`);
+      if (!response.ok) throw new Error('Erro ao buscar dados');
+      const data = await response.json();
+      setDashboardData(data);
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular dias baseado na visualização
+  const calcularDiasVisualizacao = () => {
+    if (visualizacaoCalendario === 'dia') {
+      // Mostrar apenas o dia atual do mês
+      return [{ dia: mesAtualCalendario.getDate(), mes: mesAtualCalendario.getMonth(), ano: mesAtualCalendario.getFullYear() }];
+    } else if (visualizacaoCalendario === 'semana') {
+      // Mostrar a semana atual (7 dias começando no domingo)
+      const primeiroDiaSemana = new Date(mesAtualCalendario);
+      primeiroDiaSemana.setDate(mesAtualCalendario.getDate() - mesAtualCalendario.getDay());
+      
+      const diasSemana: Array<{ dia: number; mes: number; ano: number }> = [];
+      for (let i = 0; i < 7; i++) {
+        const dia = new Date(primeiroDiaSemana);
+        dia.setDate(primeiroDiaSemana.getDate() + i);
+        diasSemana.push({ 
+          dia: dia.getDate(), 
+          mes: dia.getMonth(), 
+          ano: dia.getFullYear() 
+        });
+      }
+      return diasSemana;
+    } else {
+      // Visualização mensal (padrão)
+      const diasNoMes = new Date(mesAtualCalendario.getFullYear(), mesAtualCalendario.getMonth() + 1, 0).getDate();
+      return Array.from({ length: diasNoMes }, (_, i) => ({ 
+        dia: i + 1, 
+        mes: mesAtualCalendario.getMonth(), 
+        ano: mesAtualCalendario.getFullYear() 
+      }));
+    }
+  };
+
+  const diasVisualizacao = calcularDiasVisualizacao();
+  const primeiroDiaMes = new Date(mesAtualCalendario.getFullYear(), mesAtualCalendario.getMonth(), 1);
+  const primeiroDiaSemana = visualizacaoCalendario === 'mes' 
+    ? primeiroDiaMes.getDay() 
+    : 0; // Para semana e dia, não precisa de espaços vazios no início
+  
+  // Função para formatar data no formato da chave do calendário
+  const formatarDataChave = (ano: number, mes: number, dia: number) => {
+    return `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+  };
+  
+  // Função para obter consultas do dia
+  const obterConsultasDoDia = (dia: number, mes?: number, ano?: number) => {
+    const mesFinal = mes !== undefined ? mes : mesAtualCalendario.getMonth();
+    const anoFinal = ano !== undefined ? ano : mesAtualCalendario.getFullYear();
+    const chave = formatarDataChave(anoFinal, mesFinal, dia);
+    return dashboardData?.consultasCalendario[chave] || { agendadas: [], canceladas: [] };
+  };
+
+  // Preparar dados para os cards com base nos dados dinâmicos
+  const estatisticas = dashboardData ? [
     {
       titulo: 'Consultas',
-      valor: '245',
-      variacao: '+2',
-      icone: '/card1.svg',
-      cor: '#4F46E5'
+      valor: String(dashboardData.estatisticas.totalConsultas),
+      variacao: dashboardData.estatisticas.variacaoConsultas > 0 
+        ? `+${dashboardData.estatisticas.variacaoConsultas}` 
+        : dashboardData.estatisticas.variacaoConsultas < 0 
+        ? `${dashboardData.estatisticas.variacaoConsultas}` 
+        : '0',
+      icone: '/card1.svg'
     },
     {
       titulo: 'Pacientes cadastrados',
-      valor: '1.250',
-      variacao: '+25',
-      icone: '/card2.svg',
-      cor: '#10B981'
+      valor: String(dashboardData.estatisticas.totalPacientes),
+      variacao: dashboardData.estatisticas.variacaoPacientes > 0 
+        ? `+${dashboardData.estatisticas.variacaoPacientes}` 
+        : dashboardData.estatisticas.variacaoPacientes < 0 
+        ? `${dashboardData.estatisticas.variacaoPacientes}` 
+        : '0',
+      icone: '/card2.svg'
     },
     {
       titulo: 'Tempo médio de consulta',
-      valor: '35:40 min',
-      variacao: 'Aproximado: 34 min - Presencial: 38 min',
-      icone: '/card3.svg',
-      cor: '#F59E0B'
+      valor: `${dashboardData.estatisticas.tempoMedioMinutos} min`,
+      variacao: `Tempo médio: ${dashboardData.estatisticas.tempoMedioMinutos} minutos`,
+      icone: '/card3.svg'
     },
     {
       titulo: 'Taxa de No-show',
-      valor: '4,5%',
-      variacao: 'Meta: -6%',
-      variacao_positiva: false,
-      icone: '/card4.svg',
-      cor: '#EF4444'
+      valor: `${dashboardData.estatisticas.taxaNoShow}%`,
+      variacao: 'Meta: <5%',
+      variacao_positiva: parseFloat(dashboardData.estatisticas.taxaNoShow) < 5,
+      icone: '/card4.svg'
     }
-  ];
+  ] : [];
 
-  const consultasProfissional = [
-    { nome: 'Dra. Ana Silva', consultas: 8 },
-    { nome: 'Dr Carlos Mendes', consultas: 7 },
-    { nome: 'Dra. Teste', consultas: 6 },
-    { nome: 'Dra. Teste', consultas: 7 },
-    { nome: 'Dra. Teste', consultas: 4 },
-    { nome: 'Dra. Teste', consultas: 4 }
-  ];
+  const consultasProfissional = dashboardData?.graficos.consultasPorProfissional || [];
+  const consultasAtivas = dashboardData?.consultasAtivas || [];
+  const proximasConsultas = dashboardData?.proximasConsultas || [];
 
-  const consultasAtivas = [
-    {
-      medico: 'Dra. Ana Silva',
-      tipo: 'Telemedicina',
-      paciente: 'Lucas Pereira',
-      inicio: '10:00',
-      duracao: '58 min',
-      sala: 'Sala virtual'
-    },
-    {
-      medico: 'Dra. Ana Silva',
-      tipo: 'Telemedicina',
-      paciente: 'Lucas Pereira',
-      inicio: '10:00',
-      duracao: '58 min',
-      sala: 'Sala virtual'
-    },
-    {
-      medico: 'Dra. Ana Silva',
-      tipo: 'Telemedicina',
-      paciente: 'Lucas Pereira',
-      inicio: '10:00',
-      duracao: '58 min',
-      sala: 'Sala virtual'
-    },
-    {
-      medico: 'Dra. Ana Silva',
-      tipo: 'Telemedicina',
-      paciente: 'Lucas Pereira',
-      inicio: '10:00',
-      duracao: '58 min',
-      sala: 'Sala virtual'
-    }
-  ];
-
-  const proximasConsultas = [
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '16:30', iniciais: 'TM' },
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '16:30', iniciais: 'TM' },
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '16:30', iniciais: 'TM' },
-    { paciente: 'Rafael Moreira', tipo: 'Retorno', horario: '18:00', iniciais: 'RM' },
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '11:30', iniciais: 'TM' },
-    { paciente: 'Thiago Mendes', tipo: 'Primeira Consulta', horario: '16:30', iniciais: 'TM' },
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '16:30', iniciais: 'TM' },
-    { paciente: 'Rafael Moreira', tipo: 'Retorno', horario: '18:00', iniciais: 'RM' },
-    { paciente: 'Thiago Mendes', tipo: 'Retorno', horario: '11:30', iniciais: 'TM' },
-    { paciente: 'Thiago Mendes', tipo: 'Primeira Consulta', horario: '16:30', iniciais: 'TM' }
-  ];
-
-  const diasMes = Array.from({ length: 31 }, (_, i) => i + 1);
-  const primeiroDiaSemana = 6; // Domingo
+  if (loading) {
+    return (
+      <div className="administracao-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={48} className="spinning" style={{ animation: 'spin 1s linear infinite', marginBottom: '16px', color: '#1B4266' }} />
+          <p style={{ color: '#6B7280', fontSize: '16px' }}>Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="administracao-page">
@@ -113,10 +215,10 @@ export default function AdministracaoPage() {
       {/* Filtros e período em uma linha */}
       <div className="filters-row">
         <div className="period-filter">
-          <button className={periodo === 'Hoje' ? 'active' : ''} onClick={() => setPeriodo('Hoje')}>Hoje</button>
-          <button className={periodo === 'Semana' ? 'active' : ''} onClick={() => setPeriodo('Semana')}>Semana</button>
-          <button className={periodo === 'Mês' ? 'active' : ''} onClick={() => setPeriodo('Mês')}>Mês</button>
-          <button className={periodo === 'Personalizado' ? 'active' : ''} onClick={() => setPeriodo('Personalizado')}>Personalizado</button>
+          <button className={periodo === 'hoje' ? 'active' : ''} onClick={() => setPeriodo('hoje')}>Hoje</button>
+          <button className={periodo === 'semana' ? 'active' : ''} onClick={() => setPeriodo('semana')}>Semana</button>
+          <button className={periodo === 'mes' ? 'active' : ''} onClick={() => setPeriodo('mes')}>Mês</button>
+          <button className={periodo === 'personalizado' ? 'active' : ''} onClick={() => setPeriodo('personalizado')}>Personalizado</button>
         </div>
 
         <div className="header-filters">
@@ -137,9 +239,24 @@ export default function AdministracaoPage() {
           <div className="type-filter">
             <label>Tipo de Consulta</label>
             <div className="type-buttons">
-              <button className="active">Presencial</button>
-              <button>Telemedicina</button>
-              <button>Todas</button>
+              <button 
+                className={tipoConsulta === 'PRESENCIAL' ? 'active' : ''}
+                onClick={() => setTipoConsulta('PRESENCIAL')}
+              >
+                Presencial
+              </button>
+              <button 
+                className={tipoConsulta === 'TELEMEDICINA' ? 'active' : ''}
+                onClick={() => setTipoConsulta('TELEMEDICINA')}
+              >
+                Telemedicina
+              </button>
+              <button 
+                className={tipoConsulta === 'TODAS' ? 'active' : ''}
+                onClick={() => setTipoConsulta('TODAS')}
+              >
+                Todas
+              </button>
             </div>
           </div>
         </div>
@@ -180,57 +297,205 @@ export default function AdministracaoPage() {
         <div className="chart-card">
           <h3>Presencial vs Telemedicina</h3>
           <div className="line-chart">
-            <svg viewBox="0 0 1400 450" className="chart-svg" preserveAspectRatio="xMidYMid meet">
-              {/* Grid lines horizontais */}
-              <line x1="60" y1="60" x2="1350" y2="60" stroke="#F7F7F7" strokeWidth="1"/>
-              <line x1="60" y1="120" x2="1350" y2="120" stroke="#F7F7F7" strokeWidth="1"/>
-              <line x1="60" y1="180" x2="1350" y2="180" stroke="#F7F7F7" strokeWidth="1"/>
-              <line x1="60" y1="240" x2="1350" y2="240" stroke="#F7F7F7" strokeWidth="1"/>
-              <line x1="60" y1="300" x2="1350" y2="300" stroke="#F7F7F7" strokeWidth="1"/>
-              <line x1="60" y1="360" x2="1350" y2="360" stroke="#F7F7F7" strokeWidth="1"/>
+            {/* Tooltip */}
+            {tooltip.visible && (
+              <div 
+                className="chart-tooltip"
+                style={{
+                  left: `${tooltip.x}px`,
+                  top: `${tooltip.y}px`
+                }}
+              >
+                {tooltip.content.split('\n').map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
+              </div>
+            )}
+            {(() => {
+              const dados = dashboardData?.graficos.consultasPorDia || [];
+              if (dados.length === 0) {
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF' }}>
+                    Sem dados para exibir
+                  </div>
+                );
+              }
+
+              // Pegar primeiros 7 dias ou últimos 7 dias disponíveis
+              const dadosLimitados = dados.slice(-7);
+              const maxValue = Math.max(...dadosLimitados.map(d => Math.max(d.presencial, d.telemedicina)), 1);
               
-              {/* Linhas verticais */}
-              <line x1="260" y1="60" x2="260" y2="360" stroke="#E5E7EB" strokeWidth="1"/>
-              <line x1="700" y1="60" x2="700" y2="360" stroke="#E5E7EB" strokeWidth="1"/>
-              <line x1="1220" y1="60" x2="1220" y2="360" stroke="#E5E7EB" strokeWidth="1"/>
+              // Dimensões do gráfico - ajustadas para ocupar 100% do card
+              const width = 1000;
+              const height = 400;
+              const marginLeft = 70;
+              const marginRight = 120;
+              const marginTop = 10;
+              const marginBottom = 15;
+              const chartWidth = width - marginLeft - marginRight;
+              const chartHeight = height - marginTop - marginBottom;
               
-              {/* Labels do eixo Y */}
-              <text x="30" y="65" fill="#6B7280" fontSize="16" fontWeight="400">5</text>
-              <text x="30" y="125" fill="#6B7280" fontSize="16" fontWeight="400">4</text>
-              <text x="30" y="185" fill="#6B7280" fontSize="16" fontWeight="400">3</text>
-              <text x="30" y="245" fill="#6B7280" fontSize="16" fontWeight="400">2</text>
-              <text x="30" y="305" fill="#6B7280" fontSize="16" fontWeight="400">1</text>
-              
-              {/* Labels do eixo X */}
-              <text x="210" y="395" fill="#9CA3AF" fontSize="14" opacity="1">09 de dez.</text>
-              <text x="650" y="395" fill="#9CA3AF" fontSize="14" opacity="1">10 de dez.</text>
-              <text x="1170" y="395" fill="#9CA3AF" fontSize="14" opacity="1">11 de dez.</text>
-              
-              {/* Linha Presencial (roxa/violeta) - horizontal na parte de baixo */}
-              <line x1="260" y1="355" x2="1220" y2="355" stroke="#976EF6" strokeWidth="3"/>
-              <circle cx="260" cy="355" r="4" fill="#976EF6" stroke="white" strokeWidth="1"/>
-              <circle cx="700" cy="355" r="4" fill="#976EF6" stroke="white" strokeWidth="1"/>
-              <circle cx="1220" cy="355" r="4" fill="#976EF6" stroke="white" strokeWidth="1"/>
-              
-              {/* Linha Telemedicina (azul) - ascendente com traço */}
-              <polyline
-                points="260,300 700,70 1220,65"
-                fill="none"
-                stroke="#4387F6"
-                strokeWidth="3"
-                strokeDasharray="8,5"
-              />
-              <circle cx="260" cy="300" r="4" fill="#4387F6" stroke="white" strokeWidth="1"/>
-              <circle cx="700" cy="70" r="4" fill="#4387F6" stroke="white" strokeWidth="1"/>
-              <circle cx="1220" cy="65" r="4" fill="#4387F6" stroke="white" strokeWidth="1"/>
-              
-              {/* Legenda no canto superior direito */}
-              <line x1="1000" y1="30" x2="1040" y2="30" stroke="#976EF6" strokeWidth="3"/>
-              <text x="1050" y="36" fill="#323232" fontSize="15" fontWeight="500">Presencial</text>
-              
-              <line x1="1150" y1="30" x2="1190" y2="30" stroke="#4387F6" strokeWidth="3" strokeDasharray="8,5"/>
-              <text x="1200" y="36" fill="#323232" fontSize="15" fontWeight="500">Telemedicina</text>
-            </svg>
+              const pontosPorDia = dadosLimitados.length;
+              const espacoX = pontosPorDia > 1 ? chartWidth / (pontosPorDia - 1) : chartWidth / 2;
+
+              // Calcular pontos das linhas
+              const pontosPresencial = dadosLimitados.map((d, i) => {
+                const x = marginLeft + (i * espacoX);
+                const y = marginTop + chartHeight - (d.presencial / maxValue * chartHeight);
+                return { x, y };
+              });
+
+              const pontosTelemedicina = dadosLimitados.map((d, i) => {
+                const x = marginLeft + (i * espacoX);
+                const y = marginTop + chartHeight - (d.telemedicina / maxValue * chartHeight);
+                return { x, y };
+              });
+
+              // Criar paths para as linhas
+              const pathPresencial = pontosPresencial.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+              const pathTelemedicina = pontosTelemedicina.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+
+              return (
+                <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="chart-svg" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    {/* Grid pattern */}
+                    <pattern id="gridPattern" width="40" height="30" patternUnits="userSpaceOnUse">
+                      <path d="M 40 0 L 0 0 0 30" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="1"/>
+                    </pattern>
+                  </defs>
+
+                  {/* Grid lines horizontais */}
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <line 
+                      key={`h-${i}`} 
+                      x1={marginLeft} 
+                      y1={marginTop + (chartHeight / 5) * i} 
+                      x2={width - marginRight} 
+                      y2={marginTop + (chartHeight / 5) * i} 
+                      stroke="#F7F7F7" 
+                      strokeWidth="1"
+                    />
+                  ))}
+                  
+                  {/* Linhas verticais do grid */}
+                  {dadosLimitados.map((_, i) => (
+                    <line 
+                      key={`v-${i}`} 
+                      x1={marginLeft + (i * espacoX)} 
+                      y1={marginTop} 
+                      x2={marginLeft + (i * espacoX)} 
+                      y2={marginTop + chartHeight} 
+                      stroke="#E5E7EB" 
+                      strokeWidth="1"
+                    />
+                  ))}
+                  
+                  {/* Labels do eixo Y */}
+                  {[5, 4, 3, 2, 1, 0].map((num, i) => {
+                    const yPos = marginTop + (chartHeight / 5) * (5 - i);
+                    const labelValue = Math.round((maxValue / 5) * num);
+                    return (
+                      <text key={`y-${num}`} x={marginLeft - 10} y={yPos + 5} fill="#6B7280" fontSize="13" fontWeight="600" textAnchor="end">
+                        {labelValue}
+                      </text>
+                    );
+                  })}
+                  
+                  {/* Linha Presencial (roxa/violeta) */}
+                  <path
+                    d={pathPresencial}
+                    fill="none"
+                    stroke="#976EF6"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  
+                  {/* Linha Telemedicina (azul) - com traço */}
+                  <path
+                    d={pathTelemedicina}
+                    fill="none"
+                    stroke="#4387F6"
+                    strokeWidth="4"
+                    strokeDasharray="10,6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  
+                  {/* Pontos Presencial */}
+                  {pontosPresencial.map((p, i) => (
+                    <g key={`p-${i}`}>
+                      <circle 
+                        cx={p.x} 
+                        cy={p.y} 
+                        r="8" 
+                        fill="transparent" 
+                        style={{ cursor: 'pointer' }}
+                        onMouseMove={(e) => {
+                          setTooltip({
+                            visible: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            content: `${dadosLimitados[i].data}\nPresencial: ${dadosLimitados[i].presencial}`
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip({ visible: false, x: 0, y: 0, content: '' })}
+                      />
+                      <circle cx={p.x} cy={p.y} r="5" fill="#976EF6" stroke="white" strokeWidth="2.5" style={{ pointerEvents: 'none' }}/>
+                    </g>
+                  ))}
+                  
+                  {/* Pontos Telemedicina */}
+                  {pontosTelemedicina.map((p, i) => (
+                    <g key={`t-${i}`}>
+                      <circle 
+                        cx={p.x} 
+                        cy={p.y} 
+                        r="8" 
+                        fill="transparent" 
+                        style={{ cursor: 'pointer' }}
+                        onMouseMove={(e) => {
+                          setTooltip({
+                            visible: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            content: `${dadosLimitados[i].data}\nTelemedicina: ${dadosLimitados[i].telemedicina}`
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip({ visible: false, x: 0, y: 0, content: '' })}
+                      />
+                      <circle cx={p.x} cy={p.y} r="5" fill="#4387F6" stroke="white" strokeWidth="2.5" style={{ pointerEvents: 'none' }}/>
+                    </g>
+                  ))}
+                  
+                  {/* Labels do eixo X */}
+                  {dadosLimitados.map((d, i) => (
+                    <text 
+                      key={`x-${i}`}
+                      x={marginLeft + (i * espacoX)} 
+                      y={height - marginBottom + 25} 
+                      fill="#6B7280" 
+                      fontSize="13" 
+                      fontWeight="600"
+                      textAnchor="middle"
+                    >
+                      {d.data}
+                    </text>
+                  ))}
+                  
+                  {/* Legenda no canto superior direito - melhor posicionada */}
+                  <g>
+                    {/* Presencial */}
+                    <line x1={width - marginRight - 240} y1="15" x2={width - marginRight - 205} y2="15" stroke="#976EF6" strokeWidth="4" strokeLinecap="round"/>
+                    <text x={width - marginRight - 195} y="20" fill="#323232" fontSize="14" fontWeight="600">Presencial</text>
+                    
+                    {/* Telemedicina */}
+                    <line x1={width - marginRight - 90} y1="15" x2={width - marginRight - 55} y2="15" stroke="#4387F6" strokeWidth="4" strokeDasharray="10,6" strokeLinecap="round"/>
+                    <text x={width - marginRight - 45} y="20" fill="#323232" fontSize="14" fontWeight="600">Telemedicina</text>
+                  </g>
+                </svg>
+              );
+            })()}
           </div>
         </div>
 
@@ -245,12 +510,12 @@ export default function AdministracaoPage() {
                   <div 
                     className="bar-fill" 
                     style={{ 
-                      width: `${(item.consultas / 8) * 100}%`,
+                      width: `${Math.min((item.count / Math.max(...consultasProfissional.map(i => i.count), 1)) * 100, 100)}%`,
                       background: '#1B4266'
                     }}
                   ></div>
                 </div>
-                <span className="bar-value">{item.consultas}</span>
+                <span className="bar-value">{item.count}</span>
               </div>
             ))}
           </div>
@@ -260,8 +525,8 @@ export default function AdministracaoPage() {
       {/* Tabela de Consultas Ativas */}
       <div className="active-consultations">
         <div className="section-tabs">
-          <button className="tab active">Neste momento</button>
-          <button className="tab">Nome Médico</button>
+          <div></div>
+          <button className="tab active">Nome Médico</button>
           <button className="tab">Paciente</button>
           <button className="tab">Início</button>
           <button className="tab">Duração</button>
@@ -297,21 +562,53 @@ export default function AdministracaoPage() {
           <div className="status-card">
             <h3>Status das consultas</h3>
             <div className="status-card-content">
-              <div className="donut-chart">
-                <svg viewBox="0 0 120 120" className="donut-svg">
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#3B82F6" strokeWidth="20" strokeDasharray="70 212" />
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" strokeWidth="20" strokeDasharray="50 212" strokeDashoffset="-70" />
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#F59E0B" strokeWidth="20" strokeDasharray="50 212" strokeDashoffset="-120" />
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#EF4444" strokeWidth="20" strokeDasharray="42 212" strokeDashoffset="-170" />
-                  <text x="60" y="65" textAnchor="middle" fill="#1F2937" fontSize="24" fontWeight="bold">25</text>
-                </svg>
-              </div>
-              <div className="legend">
-                <div className="legend-item"><span className="dot blue"></span> Novos</div>
-                <div className="legend-item"><span className="dot green"></span> Retorno</div>
-                <div className="legend-item"><span className="dot yellow"></span> Cancelados</div>
-                <div className="legend-item"><span className="dot red"></span> Cancelados</div>
-              </div>
+              {(() => {
+                const statusCount = dashboardData?.graficos.statusCount || {};
+                const novos = statusCount['CREATED'] || 0;
+                const retorno = statusCount['COMPLETED'] || 0;
+                const cancelados = statusCount['CANCELLED'] || 0;
+                const erro = statusCount['ERROR'] || 0;
+                const total = novos + retorno + cancelados + erro;
+
+                // Calcular proporções para o gráfico donut (circunferência total = 282)
+                const circunferencia = 282;
+                const novosDash = total > 0 ? Math.round((novos / total) * circunferencia) : 0;
+                const retornoDash = total > 0 ? Math.round((retorno / total) * circunferencia) : 0;
+                const canceladosDash = total > 0 ? Math.round((cancelados / total) * circunferencia) : 0;
+                const erroDash = total > 0 ? Math.round((erro / total) * circunferencia) : 0;
+
+                const retornoOffset = -novosDash;
+                const canceladosOffset = -(novosDash + retornoDash);
+                const erroOffset = -(novosDash + retornoDash + canceladosDash);
+
+                return (
+                  <>
+                    <div className="donut-chart">
+                      <svg viewBox="0 0 120 120" className="donut-svg">
+                        {novosDash > 0 && (
+                          <circle cx="60" cy="60" r="45" fill="none" stroke="#3B82F6" strokeWidth="20" strokeDasharray={`${novosDash} ${circunferencia}`} />
+                        )}
+                        {retornoDash > 0 && (
+                          <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" strokeWidth="20" strokeDasharray={`${retornoDash} ${circunferencia}`} strokeDashoffset={retornoOffset} />
+                        )}
+                        {canceladosDash > 0 && (
+                          <circle cx="60" cy="60" r="45" fill="none" stroke="#F59E0B" strokeWidth="20" strokeDasharray={`${canceladosDash} ${circunferencia}`} strokeDashoffset={canceladosOffset} />
+                        )}
+                        {erroDash > 0 && (
+                          <circle cx="60" cy="60" r="45" fill="none" stroke="#EF4444" strokeWidth="20" strokeDasharray={`${erroDash} ${circunferencia}`} strokeDashoffset={erroOffset} />
+                        )}
+                        <text x="60" y="65" textAnchor="middle" fill="#1F2937" fontSize="24" fontWeight="bold">{total}</text>
+                      </svg>
+                    </div>
+                    <div className="legend">
+                      <div className="legend-item"><span className="dot blue"></span> Novos ({novos})</div>
+                      <div className="legend-item"><span className="dot green"></span> Concluídas ({retorno})</div>
+                      <div className="legend-item"><span className="dot yellow"></span> Canceladas ({cancelados})</div>
+                      {erro > 0 && <div className="legend-item"><span className="dot red"></span> Erro ({erro})</div>}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -319,18 +616,46 @@ export default function AdministracaoPage() {
         <div className="status-card">
           <h3>Situação da Consulta</h3>
           <div className="status-card-content">
-            <div className="donut-chart">
-              <svg viewBox="0 0 120 120" className="donut-svg">
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#3B82F6" strokeWidth="20" strokeDasharray="95 282" />
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#9CA3AF" strokeWidth="20" strokeDasharray="60 282" strokeDashoffset="-95" />
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" strokeWidth="20" strokeDasharray="127 282" strokeDashoffset="-155" />
-              </svg>
-            </div>
-            <div className="legend">
-              <div className="legend-item"><span className="dot blue"></span> Agendada</div>
-              <div className="legend-item"><span className="dot gray"></span> Aguardando</div>
-              <div className="legend-item"><span className="dot green"></span> Finalizada</div>
-            </div>
+            {(() => {
+              const statusCount = dashboardData?.graficos.statusCount || {};
+              const agendada = statusCount['AGENDAMENTO'] || 0;
+              const emAndamento = statusCount['RECORDING'] || statusCount['PROCESSING'] || statusCount['VALIDATION'] || 0;
+              const finalizada = statusCount['COMPLETED'] || 0;
+              const total = agendada + emAndamento + finalizada;
+
+              // Calcular proporções para o gráfico donut (circunferência total = 282)
+              const circunferencia = 282;
+              const agendadaDash = total > 0 ? Math.round((agendada / total) * circunferencia) : 0;
+              const emAndamentoDash = total > 0 ? Math.round((emAndamento / total) * circunferencia) : 0;
+              const finalizadaDash = total > 0 ? Math.round((finalizada / total) * circunferencia) : 0;
+
+              const emAndamentoOffset = -agendadaDash;
+              const finalizadaOffset = -(agendadaDash + emAndamentoDash);
+
+              return (
+                <>
+                  <div className="donut-chart">
+                    <svg viewBox="0 0 120 120" className="donut-svg">
+                      {agendadaDash > 0 && (
+                        <circle cx="60" cy="60" r="45" fill="none" stroke="#3B82F6" strokeWidth="20" strokeDasharray={`${agendadaDash} ${circunferencia}`} />
+                      )}
+                      {emAndamentoDash > 0 && (
+                        <circle cx="60" cy="60" r="45" fill="none" stroke="#9CA3AF" strokeWidth="20" strokeDasharray={`${emAndamentoDash} ${circunferencia}`} strokeDashoffset={emAndamentoOffset} />
+                      )}
+                      {finalizadaDash > 0 && (
+                        <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" strokeWidth="20" strokeDasharray={`${finalizadaDash} ${circunferencia}`} strokeDashoffset={finalizadaOffset} />
+                      )}
+                      <text x="60" y="65" textAnchor="middle" fill="#1F2937" fontSize="24" fontWeight="bold">{total}</text>
+                    </svg>
+                  </div>
+                  <div className="legend">
+                    <div className="legend-item"><span className="dot blue"></span> Agendada ({agendada})</div>
+                    <div className="legend-item"><span className="dot gray"></span> Em Andamento ({emAndamento})</div>
+                    <div className="legend-item"><span className="dot green"></span> Finalizada ({finalizada})</div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
         </div>
@@ -361,14 +686,66 @@ export default function AdministracaoPage() {
       {/* Calendário */}
       <div className="calendar-section">
           <div className="calendar-header">
-            <button className="calendar-nav">‹</button>
-            <button className="calendar-nav">›</button>
+            <button 
+              className="calendar-nav"
+              onClick={() => {
+                const novaData = new Date(mesAtualCalendario);
+                if (visualizacaoCalendario === 'dia') {
+                  novaData.setDate(novaData.getDate() - 1);
+                } else if (visualizacaoCalendario === 'semana') {
+                  novaData.setDate(novaData.getDate() - 7);
+                } else {
+                  novaData.setMonth(novaData.getMonth() - 1);
+                }
+                setMesAtualCalendario(novaData);
+              }}
+            >
+              ‹
+            </button>
+            <button 
+              className="calendar-nav"
+              onClick={() => {
+                const novaData = new Date(mesAtualCalendario);
+                if (visualizacaoCalendario === 'dia') {
+                  novaData.setDate(novaData.getDate() + 1);
+                } else if (visualizacaoCalendario === 'semana') {
+                  novaData.setDate(novaData.getDate() + 7);
+                } else {
+                  novaData.setMonth(novaData.getMonth() + 1);
+                }
+                setMesAtualCalendario(novaData);
+              }}
+            >
+              ›
+            </button>
             <button className="add-event-btn">Adicionar evento</button>
-            <span className="calendar-month">Dezembro, 2025</span>
+            <span className="calendar-month">
+              {visualizacaoCalendario === 'dia' 
+                ? mesAtualCalendario.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                : visualizacaoCalendario === 'semana'
+                ? `Semana de ${new Date(diasVisualizacao[0].ano, diasVisualizacao[0].mes, diasVisualizacao[0].dia).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}`
+                : mesAtualCalendario.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+              }
+            </span>
             <div className="calendar-view-buttons">
-              <button className="view-btn active">Mês</button>
-              <button className="view-btn">Semana</button>
-              <button className="view-btn">Dia</button>
+              <button 
+                className={`view-btn ${visualizacaoCalendario === 'mes' ? 'active' : ''}`}
+                onClick={() => setVisualizacaoCalendario('mes')}
+              >
+                Mês
+              </button>
+              <button 
+                className={`view-btn ${visualizacaoCalendario === 'semana' ? 'active' : ''}`}
+                onClick={() => setVisualizacaoCalendario('semana')}
+              >
+                Semana
+              </button>
+              <button 
+                className={`view-btn ${visualizacaoCalendario === 'dia' ? 'active' : ''}`}
+                onClick={() => setVisualizacaoCalendario('dia')}
+              >
+                Dia
+              </button>
             </div>
           </div>
           
@@ -380,15 +757,104 @@ export default function AdministracaoPage() {
             </div>
             
             <div className="calendar-days">
-              {Array.from({ length: primeiroDiaSemana }).map((_, i) => (
+              {visualizacaoCalendario === 'mes' && Array.from({ length: primeiroDiaSemana }).map((_, i) => (
                 <div key={`empty-${i}`} className="calendar-day empty"></div>
               ))}
-              {diasMes.map((dia) => (
-                <div key={dia} className="calendar-day">
-                  <span className="day-number">{dia}</span>
-                </div>
-              ))}
+              {diasVisualizacao.map((diaInfo, index) => {
+                const consultasDia = obterConsultasDoDia(diaInfo.dia, diaInfo.mes, diaInfo.ano);
+                const dataAtual = new Date();
+                const diaAtual = new Date(diaInfo.ano, diaInfo.mes, diaInfo.dia);
+                const isPassado = diaAtual < new Date(dataAtual.getFullYear(), dataAtual.getMonth(), dataAtual.getDate());
+                const isFuturo = diaAtual > new Date(dataAtual.getFullYear(), dataAtual.getMonth(), dataAtual.getDate());
+                
+                return (
+                  <div 
+                    key={`${diaInfo.ano}-${diaInfo.mes}-${diaInfo.dia}`} 
+                    className={`calendar-day ${isPassado ? 'past' : ''} ${isFuturo ? 'future' : ''}`}
+                    onMouseEnter={(e) => {
+                      if (consultasDia.agendadas.length > 0 || consultasDia.canceladas.length > 0) {
+                        setCalendarTooltip({
+                          visible: true,
+                          x: e.clientX,
+                          y: e.clientY,
+                          content: (
+                            <div>
+                              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                                {diaAtual.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                              </div>
+                              {consultasDia.agendadas.length > 0 && (
+                                <div style={{ marginBottom: '8px' }}>
+                                  <div style={{ fontWeight: '600', color: '#10B981', marginBottom: '4px' }}>
+                                    Agendadas ({consultasDia.agendadas.length})
+                                  </div>
+                                  {consultasDia.agendadas.map((c, idx) => (
+                                    <div key={idx} style={{ fontSize: '12px', marginLeft: '8px', marginBottom: '2px' }}>
+                                      {c.horario} - {c.paciente} ({c.medico})
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {consultasDia.canceladas.length > 0 && (
+                                <div>
+                                  <div style={{ fontWeight: '600', color: '#EF4444', marginBottom: '4px' }}>
+                                    Canceladas ({consultasDia.canceladas.length})
+                                  </div>
+                                  {consultasDia.canceladas.map((c, idx) => (
+                                    <div key={idx} style={{ fontSize: '12px', marginLeft: '8px', marginBottom: '2px' }}>
+                                      {c.horario} - {c.paciente} ({c.medico})
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        });
+                      }
+                    }}
+                    onMouseMove={(e) => {
+                      if (calendarTooltip.visible) {
+                        setCalendarTooltip(prev => ({ ...prev, x: e.clientX, y: e.clientY }));
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setCalendarTooltip({ visible: false, x: 0, y: 0, content: null });
+                    }}
+                  >
+                    <span className="day-number">{diaInfo.dia}</span>
+                    <div className="calendar-day-content">
+                      <div className="calendar-day-left" style={{ 
+                        backgroundColor: consultasDia.agendadas.length > 0 ? '#D1FAE5' : 'transparent',
+                        opacity: isPassado ? 0.6 : 1
+                      }}>
+                        {consultasDia.agendadas.length > 0 && (
+                          <span className="consultation-count">{consultasDia.agendadas.length}</span>
+                        )}
+                      </div>
+                      <div className="calendar-day-divider"></div>
+                      <div className="calendar-day-right" style={{ 
+                        backgroundColor: consultasDia.canceladas.length > 0 ? '#FEE2E2' : 'transparent',
+                        opacity: isPassado ? 0.6 : 1
+                      }}>
+                        {consultasDia.canceladas.length > 0 && (
+                          <span className="consultation-count">{consultasDia.canceladas.length}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+            {calendarTooltip.visible && (
+              <div 
+                className="calendar-tooltip"
+                style={{
+                  left: `${calendarTooltip.x + 10}px`,
+                  top: `${calendarTooltip.y + 10}px`
+                }}
+              >
+                {calendarTooltip.content}
+              </div>
+            )}
           </div>
         </div>
     </div>

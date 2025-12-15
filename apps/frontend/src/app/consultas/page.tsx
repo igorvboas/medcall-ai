@@ -4320,7 +4320,9 @@ function ConsultasPageContent() {
       
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      alert('Erro ao salvar. Tente novamente.');
+      // Usar sistema de notificações ao invés de alert
+      // showError será usado se disponível, senão apenas console.error
+      console.error('Erro ao salvar. Tente novamente.');
     } finally {
       setIsSaving(false);
     }

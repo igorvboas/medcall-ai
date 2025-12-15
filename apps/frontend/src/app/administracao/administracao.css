@@ -225,7 +225,7 @@
 .chart-card {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -233,16 +233,48 @@
   font-size: 16px;
   font-weight: 600;
   color: #1F2937;
-  margin: 0 0 20px 0;
+  margin: 0 0 8px 0;
 }
 
 .line-chart {
-  height: 220px;
+  height: 100%;
+  min-height: 320px;
+  position: relative;
+  overflow: hidden;
 }
 
 .chart-svg {
   width: 100%;
   height: 100%;
+  display: block;
+}
+
+/* Tooltip do gráfico */
+.chart-tooltip {
+  position: fixed;
+  background: rgba(26, 66, 102, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 10000;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  transform: translate(10px, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.chart-tooltip div {
+  line-height: 1.6;
+}
+
+.chart-tooltip div:first-child {
+  font-weight: 600;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 4px;
 }
 
 /* Bar Chart */
@@ -250,6 +282,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin-top: 48px;
+  padding-bottom: 8px;
 }
 
 .bar-item {
@@ -295,26 +329,30 @@
 }
 
 .section-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px 2fr 1.5fr 80px 100px 120px;
+  align-items: center;
+  gap: 16px;
   border-bottom: 1px solid #E5E7EB;
-  padding: 0 24px;
+  padding: 16px 24px;
 }
 
 .tab {
-  padding: 16px 20px;
+  padding: 0;
   border: none;
   background: none;
   color: #6B7280;
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  cursor: default;
+  border-bottom: none;
   transition: all 0.2s;
+  text-align: left;
 }
 
 .tab.active {
-  color: #2C5282;
-  border-bottom-color: #2C5282;
+  color: #6B7280;
+  border-bottom: none;
 }
 
 .consultations-list {
@@ -700,6 +738,70 @@
 .calendar-day.empty {
   background: rgba(26, 66, 102, 0.02);
   cursor: default;
+}
+
+.calendar-day-content {
+  display: flex;
+  flex: 1;
+  margin-top: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.calendar-day-left,
+.calendar-day-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.calendar-day-left {
+  border-right: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.calendar-day-divider {
+  width: 2px;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.consultation-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1F2937;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.calendar-day.past .consultation-count {
+  opacity: 0.7;
+}
+
+
+.calendar-tooltip {
+  position: fixed;
+  background: white;
+  color: #1F2937;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  pointer-events: none;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #E5E7EB;
+  max-width: 300px;
+  transform: translate(10px, 10px);
+}
+
+.calendar-tooltip div {
+  line-height: 1.5;
 }
 
 .day-number {

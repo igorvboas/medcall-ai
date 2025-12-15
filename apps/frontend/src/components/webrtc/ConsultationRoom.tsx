@@ -18,6 +18,7 @@ import { getPatientNameById } from '@/lib/supabase';
 import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2 } from 'lucide-react';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { useNotifications } from '@/components/shared/NotificationSystem';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
 
 
@@ -97,6 +98,7 @@ export function ConsultationRoom({
 
   // ✅ NOVO: Estado para controlar se o link foi copiado
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showEndRoomConfirm, setShowEndRoomConfirm] = useState(false);
 
   // ✅ NOVO: Estado para notificação de paciente entrando
   const [showPatientJoinedNotification, setShowPatientJoinedNotification] = useState(false);
@@ -3681,12 +3683,13 @@ export function ConsultationRoom({
   };
 
   const endRoom = async () => {
+    setShowEndRoomConfirm(true);
+  };
 
-    if (confirm('Tem certeza que deseja finalizar esta sala? As transcrições serão salvas.')) {
-
-      // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
-      console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
-      setIsEndingRoom(true);
+  const handleConfirmEndRoom = async () => {
+    // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
+    console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
+    setIsEndingRoom(true);
 
       socketRef.current.emit('endRoom', {
 
@@ -3778,9 +3781,6 @@ export function ConsultationRoom({
         }
 
       });
-
-    }
-
   };
 
 
@@ -3794,6 +3794,16 @@ export function ConsultationRoom({
   return (
 
     <div className="consultation-room-container">
+      <ConfirmModal
+        isOpen={showEndRoomConfirm}
+        onClose={() => setShowEndRoomConfirm(false)}
+        onConfirm={handleConfirmEndRoom}
+        title="Finalizar Sala"
+        message="Tem certeza que deseja finalizar esta sala? As transcrições serão salvas."
+        confirmText="Finalizar"
+        cancelText="Cancelar"
+        variant="warning"
+      />
 
       {/* ✅ NOVO: Notificação de paciente entrando */}
       {showPatientJoinedNotification && userType === 'doctor' && (
