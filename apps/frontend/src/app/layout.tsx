@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { Layout } from '@/components/shared/Layout';
 import { NotificationProvider } from '@/components/shared/NotificationSystem';
+import { SuppressHydrationWarnings } from './suppress-warnings';
 
 export const metadata: Metadata = {
   title: 'TRIA - Plataforma de Consultas Médicas com IA',
@@ -41,6 +42,7 @@ export default function RootLayout({
         }} />
       </head>
       <body suppressHydrationWarning>
+        <SuppressHydrationWarnings />
         <ThemeProvider>
           <NotificationProvider>
           {children}

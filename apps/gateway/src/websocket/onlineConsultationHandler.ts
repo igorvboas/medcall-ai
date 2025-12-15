@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import { livekitTranscriptionService } from '../services/livekitTranscriptionService';
+import { transcriptionService } from '../services/transcriptionService';
 import { SessionNotifier } from './index';
 
 interface OnlineConsultationData {
@@ -27,13 +27,8 @@ export function setupOnlineConsultationHandlers(socket: Socket, notifier: Sessio
         return;
       }
 
-      // Iniciar transcrição LiveKit
-      await livekitTranscriptionService.startTranscription({
-        roomName,
-        consultationId,
-        participantId,
-        participantName: participantName || participantId
-      });
+      // Iniciar transcrição
+      await transcriptionService.startTranscription(roomName, consultationId);
 
       // Entrar na sala de notificação
       socket.join(`consultation:${consultationId}`);
@@ -70,8 +65,8 @@ export function setupOnlineConsultationHandlers(socket: Socket, notifier: Sessio
       
       console.log(`🛑 Parando transcrição online para sala: ${roomName}`);
       
-      // Parar transcrição LiveKit
-      await livekitTranscriptionService.stopTranscription(roomName);
+      // Parar transcrição
+      await transcriptionService.stopTranscription(roomName);
       
       // Sair da sala de notificação
       socket.leave(`consultation:${consultationId}`);
@@ -106,7 +101,12 @@ export function setupOnlineConsultationHandlers(socket: Socket, notifier: Sessio
     try {
       const { roomName } = data;
       
-      const stats = await livekitTranscriptionService.getTranscriptionStats(roomName);
+      // TODO: Implementar getStats no transcriptionService se necessário
+      const stats = {
+        roomName,
+        active: true,
+        startTime: new Date().toISOString()
+      };
       
       socket.emit('online:transcription-stats-response', {
         roomName,
@@ -204,24 +204,29 @@ export function setupOnlineConsultationHandlers(socket: Socket, notifier: Sessio
     }
   });
 
-  // Handler para receber áudio do LiveKit
+  // Handler para receber áudio
   socket.on('online:audio-data', async (data: { roomName: string; participantId: string; audioData: string; sampleRate: number; channels: number }) => {
     try {
       const { roomName, participantId, audioData, sampleRate, channels } = data;
       
-      console.log(`🎤 Áudio recebido do LiveKit para sala: ${roomName}, participante: ${participantId}`);
+      console.log(`🎤 Áudio recebido para sala: ${roomName}, participante: ${participantId}`);
       
       // Converter base64 para Buffer
       const audioBuffer = Buffer.from(audioData, 'base64');
       
-      // Processar áudio
-      await livekitTranscriptionService.processLiveKitAudio(audioBuffer, participantId, roomName);
+      // Processar áudio via transcriptionService
+      await transcriptionService.processAudioChunk({
+        data: audioBuffer,
+        participantId,
+        sampleRate,
+        channels
+      }, roomName);
       
     } catch (error) {
-      console.error('❌ Erro ao processar áudio LiveKit:', error);
+      console.error('❌ Erro ao processar áudio:', error);
       socket.emit('error', {
         code: 'AUDIO_PROCESSING_ERROR',
-        message: 'Erro ao processar áudio do LiveKit'
+        message: 'Erro ao processar áudio'
       });
     }
   });

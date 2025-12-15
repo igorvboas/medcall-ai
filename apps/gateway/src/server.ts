@@ -7,7 +7,6 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import helmet from 'helmet';
 import transcriptionRoutes from './routes/transcription';
-import livekitTranscriptionRoutes from './routes/livekitTranscription';
 import sessionsRoutes from './routes/sessions';
 import roomsRoutes, { setSocketIO } from './routes/rooms';
 import twilioRoutes from './routes/index';
@@ -52,7 +51,7 @@ setSocketIO(io);
 // Helmet - Headers de segurança HTTP
 if (securityConfig.helmetEnabled) {
   app.use(helmet({
-    // Configurações customizadas para WebRTC/LiveKit
+    // Configurações customizadas para WebRTC
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -63,7 +62,6 @@ if (securityConfig.helmetEnabled) {
           "'self'",
           "wss:", // WebSocket
           "https:", // APIs externas
-          ...(process.env.LIVEKIT_URL ? [process.env.LIVEKIT_URL] : []),
           ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
         ],
         mediaSrc: ["'self'", "blob:", "data:"], // Para áudio/vídeo
@@ -116,7 +114,6 @@ app.set('trust proxy', 1);
 
 // Rotas de transcrição/AI com rate limit específico
 app.use('/api/transcription', aiRateLimiter, transcriptionRoutes);
-app.use('/api/livekit/transcription', aiRateLimiter, livekitTranscriptionRoutes);
 app.use('/api/ai-pricing', aiRateLimiter, aiPricingRoutes);
 
 // Rotas gerais (usam rate limit geral)
@@ -147,7 +144,6 @@ app.get('/api/pcm-transcription/health', (req, res) => {
     },
     environment: {
       node_env: process.env.NODE_ENV,
-      livekit_url: process.env.LIVEKIT_URL ? 'configured' : 'missing',
       openai_key: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
     }
   };
@@ -191,7 +187,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       transcription: 'running',
-      livekit: 'native-integration',
+      webrtc: 'native-integration',
       socketio: io ? 'initialized' : 'not initialized'
     },
     environment: {

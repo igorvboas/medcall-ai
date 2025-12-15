@@ -188,7 +188,7 @@ export function useTranscriptionWebSocket({
         
       } catch (error) {
         console.error('❌ Erro no processamento:', error);
-        setError('Erro ao processar áudio do LiveKit');
+        setError('Erro ao processar áudio');
       }
     };
 
@@ -212,10 +212,10 @@ export function useTranscriptionWebSocket({
       }
     };
 
-    // Aguardar LiveKit carregar completamente
+    // Aguardar áudio carregar completamente
     const timeout = setTimeout(() => {
       tryCaptureLiveKitAudio();
-    }, 3000); // 3 segundos para LiveKit carregar
+    }, 3000);
 
     return () => {
       clearTimeout(timeout);
@@ -231,13 +231,10 @@ export function useTranscriptionWebSocket({
         audioContextRef.current = null;
       }
       
-      // Não parar o stream se for do LiveKit
+      // Limpar stream
       if (mediaStreamRef.current) {
         const tracks = mediaStreamRef.current.getTracks();
-        // Só parar se for nosso stream direto
-        if (tracks.length > 0 && tracks[0].label.includes('default')) {
-          tracks.forEach(track => track.stop());
-        }
+        tracks.forEach(track => track.stop());
         mediaStreamRef.current = null;
       }
     };

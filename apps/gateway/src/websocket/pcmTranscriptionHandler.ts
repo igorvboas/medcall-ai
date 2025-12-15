@@ -2,7 +2,6 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 import { URL } from 'url';
 import { transcriptionService } from '../services/transcriptionService';
-import { livekitTranscriptionService } from '../services/livekitTranscriptionService';
 
 interface PCMConnectionInfo {
   sessionId: string;
@@ -211,7 +210,7 @@ export class PCMTranscriptionHandler {
   }
 
   /**
-   * Processar resultado de transcrição e enviar via LiveKit DataChannel
+   * Processar resultado de transcrição e enviar via WebSocket
    */
   private async handleTranscriptionResult(data: any): Promise<void> {
     try {
@@ -222,9 +221,12 @@ export class PCMTranscriptionHandler {
         return;
       }
 
-      // Publicar via LiveKit DataChannel
-      await livekitTranscriptionService.publishTranscription(roomName, {
-        type: 'transcription',
+      // Enviar transcrição via WebSocket para todos os participantes da sessão
+      const sessionConnections = Array.from(this.connections.values())
+        .filter(conn => conn.sessionId === roomName);
+
+      const transcriptionData = {
+        type: 'transcription_result',
         data: {
           id: segment.id || `seg-${Date.now()}`,
           text: segment.text,
@@ -233,20 +235,13 @@ export class PCMTranscriptionHandler {
           final: segment.final || false,
           confidence: segment.confidence || 0.8
         }
-      });
-
-      console.log(`[PCMTranscription] Published transcription to LiveKit: ${roomName}`);
-
-      // Opcional: também enviar de volta via WebSocket para debug/latência
-      const sessionConnections = Array.from(this.connections.values())
-        .filter(conn => conn.sessionId === roomName);
+      };
 
       sessionConnections.forEach(conn => {
-        this.sendMessage(conn.ws, {
-          type: 'transcription_result',
-          data: segment
-        });
+        this.sendMessage(conn.ws, transcriptionData);
       });
+
+      console.log(`[PCMTranscription] Published transcription via WebSocket: ${roomName} (${sessionConnections.length} connections)`);
 
     } catch (error) {
       console.error('[PCMTranscription] Error handling transcription result:', error);

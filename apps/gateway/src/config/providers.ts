@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { AccessToken } from 'livekit-server-sdk';
 import { config } from './index';
 import { aiPricingService, LLMType, AIStage } from '../services/aiPricingService';
 
@@ -33,93 +32,7 @@ export async function testOpenAIConnection(): Promise<boolean> {
   }
 }
 
-// Configurações do LiveKit
-export const livekitSettings = {
-  url: config.LIVEKIT_URL,
-  apiKey: config.LIVEKIT_API_KEY,
-  apiSecret: config.LIVEKIT_API_SECRET,
-};
-
-// Geração de tokens LiveKit
-export async function generateLiveKitToken(
-  identity: string,
-  roomName: string,
-  options: {
-    canPublish?: boolean;
-    canSubscribe?: boolean;
-    canPublishData?: boolean;
-    metadata?: string;
-  } = {}
-): Promise<string> {
-  const {
-    canPublish = true,
-    canSubscribe = true,
-    canPublishData = true,
-    metadata,
-  } = options;
-
-
-  try {
-    // Criar token com expiração de 2 horas a partir de agora
-    const now = Math.floor(Date.now() / 1000); // timestamp atual em segundos
-    const expiresIn = 2 * 60 * 60; // 2 horas em segundos
-    
-    const at = new AccessToken(
-      config.LIVEKIT_API_KEY,
-      config.LIVEKIT_API_SECRET,
-      { 
-        identity, 
-        metadata,
-        ttl: expiresIn // TTL em segundos
-      }
-    );
-
-    at.addGrant({
-      room: roomName,
-      roomJoin: true,
-      canPublish,
-      canSubscribe,
-      canPublishData,
-    });
-
-    const token = await at.toJwt();
-    
-    // Debug: log detalhado para verificar token
-    const expiresAt = now + expiresIn;
-    console.log(`✅ Token LiveKit gerado:`);
-    console.log(`   - Identity: ${identity}`);
-    console.log(`   - Room: ${roomName}`);
-    console.log(`   - TTL: ${expiresIn}s (${expiresIn/3600}h)`);
-    console.log(`   - Issued at: ${now} (${new Date(now * 1000).toISOString()})`);
-    console.log(`   - Expires at: ${expiresAt} (${new Date(expiresAt * 1000).toISOString()})`);
-    console.log(`   - Token length: ${token.length} chars`);
-    
-    return token;
-    
-  } catch (error) {
-    console.error('❌ Erro ao gerar token LiveKit:', error);
-    throw new Error(`Falha na geração do token LiveKit: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-  }
-}
-
-// Teste de configuração do LiveKit
-export async function testLiveKitConfig(): Promise<boolean> {
-  try {
-    const testToken = await generateLiveKitToken('test-user', 'test-room'); // <- await
-
-    if (testToken && testToken.length > 0) {
-      console.log('✅ Configuração do LiveKit válida');
-      console.log(`   URL: ${config.LIVEKIT_URL}`);
-      return true;
-    }
-
-    console.error('❌ Falha ao gerar token LiveKit');
-    return false;
-  } catch (error) {
-    console.error('❌ Configuração inválida do LiveKit:', error);
-    return false;
-  }
-}
+// LiveKit removido - usando WebRTC direto via WebSocket
 
 // Configuração Redis (opcional por enquanto)
 export const redisSettings = config.REDIS_URL 
@@ -251,20 +164,17 @@ export async function makeEmbedding(
 // Validação de todas as configurações
 export async function validateAllProviders(): Promise<{
   openai: boolean;
-  livekit: boolean;
   redis: boolean;
 }> {
   console.log('🔄 Validando conexões com provedores...\n');
 
   const results = {
     openai: await testOpenAIConnection(),
-    livekit: await testLiveKitConfig(),
     redis: await testRedisConnection(),
   };
 
   console.log('\n📊 Resultado da validação:');
   console.log(`   OpenAI: ${results.openai ? '✅' : '❌'}`);
-  console.log(`   LiveKit: ${results.livekit ? '✅' : '❌'}`);
   console.log(`   Redis: ${results.redis ? '✅' : '⚠️'}`);
 
   return results;

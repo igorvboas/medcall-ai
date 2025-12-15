@@ -5,9 +5,7 @@ dotenv.config();
 import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
-import { RoomServiceClient, AccessToken, DataPacket_Kind } from 'livekit-server-sdk';
 import { randomUUID } from 'crypto';
-import { TextEncoder } from 'util';
 import { logError, logWarning } from '../config/database';
 
 interface TranscriptionSegment {
@@ -38,7 +36,6 @@ interface TranscriptionOptions {
 export class TranscriptionService extends EventEmitter {
   private openai: OpenAI;
   private supabase: any;
-  private livekitClient: RoomServiceClient;
   private activeRooms: Map<string, Set<string>> = new Map();
   private audioBuffers: Map<string, Buffer[]> = new Map();
   private processingQueue: Map<string, NodeJS.Timeout> = new Map();
@@ -54,12 +51,6 @@ export class TranscriptionService extends EventEmitter {
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-    
-    this.livekitClient = new RoomServiceClient(
-      process.env.LIVEKIT_URL!,
-      process.env.LIVEKIT_API_KEY!,
-      process.env.LIVEKIT_API_SECRET!
-    );
   }
 
   async startTranscription(roomName: string, consultationId: string): Promise<void> {
@@ -70,11 +61,11 @@ export class TranscriptionService extends EventEmitter {
         this.activeRooms.set(roomName, new Set());
       }
       
-      // Ativar transcrição LiveKit
-      console.log(`✅ Transcrição LiveKit ativada para sala: ${roomName}`);
+      // Ativar transcrição via WebSocket
+      console.log(`✅ Transcrição ativada para sala: ${roomName}`);
       
-      // Simular captura de áudio do LiveKit (será implementado via WebSocket)
-      this.setupLiveKitAudioCapture(roomName, consultationId);
+      // Captura de áudio via WebSocket
+      this.setupAudioCapture(roomName, consultationId);
       
     } catch (error) {
       console.error('Erro ao iniciar transcrição:', error);
@@ -88,11 +79,11 @@ export class TranscriptionService extends EventEmitter {
     }
   }
 
-  private setupLiveKitAudioCapture(roomName: string, consultationId: string): void {
-    console.log(`🎵 Configurando captura de áudio LiveKit para sala: ${roomName}`);
+  private setupAudioCapture(roomName: string, consultationId: string): void {
+    console.log(`🎵 Configurando captura de áudio para sala: ${roomName}`);
     
-    // Em vez de simular, aguardar áudio real do frontend
-    console.log(`⏳ Aguardando áudio real do LiveKit para sala: ${roomName}`);
+    // Aguardar áudio real do frontend via WebSocket
+    console.log(`⏳ Aguardando áudio via WebSocket para sala: ${roomName}`);
     
     // O áudio será recebido via WebSocket do frontend
     // quando o usuário falar no microfone

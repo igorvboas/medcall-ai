@@ -3,8 +3,6 @@ import { z } from 'zod';
 import { asyncHandler, ValidationError } from '../middleware/errorHandler';
 import { db } from '../config/database';
 import { generateSimpleProtocol } from '../services/protocolService';
-import { generateLiveKitToken } from '../config/providers';
-import { livekitTranscriberAgent } from '../services/livekitTranscriberAgent';
 import auditService from '../services/auditService';
 
 const router = Router();
@@ -119,90 +117,28 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
 
     const roomName = `session-${session.id}`;
 
-    // Para sessões presenciais, não precisamos de tokens LiveKit
-    if (session_type === 'presencial') {
-      // Resposta para sessão presencial (sem LiveKit)
-      res.status(201).json({
-        session: {
-          id: session.id,
-          type: session_type,
-          roomName,
-          startedAt: session.started_at,
-          participants: session.participants,
-          consultation_id: session.consultation_id,
-        },
-        presential: {
-          websocketUrl: process.env.WEBSOCKET_URL || 'ws://localhost:3001',
-        },
-      });
-    } else {
-      // Para sessões online, gerar tokens LiveKit
-      console.log(`🌐 PROCESSANDO SESSÃO ONLINE - roomName: ${roomName}`);
-      const [doctorToken, patientToken] = await Promise.all([
-        generateLiveKitToken(
-          participants.doctor.id,
-          roomName,
-          {
-            canPublish: true,
-            canSubscribe: true,
-            canPublishData: true,
-            metadata: JSON.stringify({ role: 'doctor', sessionId: session.id }),
-          }
-        ),
-        generateLiveKitToken(
-          participants.patient.id,
-          roomName,
-          {
-            canPublish: true,
-            canSubscribe: true,
-            canPublishData: false, // Paciente não pode enviar dados arbitrários
-            metadata: JSON.stringify({ role: 'patient', sessionId: session.id }),
-          }
-        ),
-      ]);
-
-      // Gerar URLs específicas para médico e paciente
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const doctorUrl = `${baseUrl}/consulta/online/doctor?sessionId=${session.id}&roomName=${roomName}&token=${doctorToken}&consultationId=${session.consultation_id}&patientName=${encodeURIComponent(participants.patient.name)}`;
-      const patientUrl = `${baseUrl}/consulta/online/patient?sessionId=${session.id}&roomName=${roomName}&token=${patientToken}&consultationId=${session.consultation_id}&doctorName=${encodeURIComponent(participants.doctor.name)}`;
-
-      // TEMPORARIAMENTE DESABILITADO: Transcriber agent antigo (conflita com PCM WebSocket)
-      // TODO: Remover completamente após validar que PCM WebSocket funciona
-      /*
-      try {
-        console.log(`🎤 Iniciando transcriber agent para sala: ${roomName}`);
-        await livekitTranscriberAgent.start(roomName);
-        console.log(`✅ Transcriber agent iniciado para sala: ${roomName}`);
-      } catch (error) {
-        console.error(`❌ Erro ao iniciar transcriber agent para sala ${roomName}:`, error);
-        // Não falhar a criação da sessão se o transcriber agent falhar
-      }
-      */
-      console.log(`🔇 [DISABLED] LiveKit transcriber agent disabled, using PCM WebSocket instead`);
-
-      // Resposta com tokens e informações da sessão online
-      res.status(201).json({
-        session: {
-          id: session.id,
-          type: session_type,
-          roomName,
-          startedAt: session.started_at,
-          participants: session.participants,
-          consultation_id: session.consultation_id,
-        },
-        tokens: {
-          doctor: doctorToken,
-          patient: patientToken,
-        },
-        urls: {
-          doctor: doctorUrl,
-          patient: patientUrl,
-        },
-        livekit: {
-          url: process.env.LIVEKIT_URL,
-        },
-      });
-    }
+    // Resposta unificada para ambos tipos de sessão (presencial e online)
+    // Ambas usam WebRTC direto via WebSocket
+    const websocketUrl = process.env.WEBSOCKET_URL || 'ws://localhost:3001';
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    res.status(201).json({
+      session: {
+        id: session.id,
+        type: session_type,
+        roomName,
+        startedAt: session.started_at,
+        participants: session.participants,
+        consultation_id: session.consultation_id,
+      },
+      websocket: {
+        url: websocketUrl,
+      },
+      urls: {
+        doctor: `${baseUrl}/consulta/webrtc?roomId=${roomName}&role=host&userType=doctor&patientId=${participants.patient.id}&patientName=${encodeURIComponent(participants.patient.name)}`,
+        patient: `${baseUrl}/consulta/webrtc?roomId=${roomName}&role=participant&userType=patient`,
+      },
+    });
 
   } catch (error) {
     console.error('❌ Erro ao criar sessão:', error);

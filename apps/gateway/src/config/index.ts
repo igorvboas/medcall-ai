@@ -14,10 +14,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(process.env.PORT ? parseInt(process.env.PORT) : 8080),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   
-  // LiveKit
-  LIVEKIT_URL: z.string().min(1, 'LIVEKIT_URL é obrigatório'),
-  LIVEKIT_API_KEY: z.string().min(1, 'LIVEKIT_API_KEY é obrigatório'),
-  LIVEKIT_API_SECRET: z.string().min(1, 'LIVEKIT_API_SECRET é obrigatório'),
+  // LiveKit removido - usando WebRTC direto
   
   // Supabase
   SUPABASE_URL: z.string().min(1, 'SUPABASE_URL é obrigatório'),
