@@ -13,6 +13,7 @@ import {
   Plus,
   LogOut,
   ShieldCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +33,10 @@ const menuItems = [
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
 ];
 
-const adminMenuItem = { icon: ShieldCheck, label: 'Admin', href: '/consultas-admin' };
+const adminMenuItems = [
+  { icon: LayoutDashboard, label: 'Administração Geral', href: '/administracao' },
+  { icon: ShieldCheck, label: 'Admin', href: '/consultas-admin' }
+];
 
 export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
   const pathname = usePathname();
@@ -102,15 +106,20 @@ export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
         })}
         
         {/* Menu Admin - visível apenas para administradores */}
-        {isAdmin && (
-          <Link 
-            href={adminMenuItem.href} 
-            className={`nav-btn nav-btn-admin ${pathname === adminMenuItem.href ? 'is-active' : ''}`}
-          >
-            <adminMenuItem.icon size={20} />
-            <span className="nav-label">{adminMenuItem.label}</span>
-          </Link>
-        )}
+        {isAdmin && adminMenuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              className={`nav-btn nav-btn-admin ${isActive ? 'is-active' : ''}`}
+            >
+              <Icon size={20} />
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="bottom">

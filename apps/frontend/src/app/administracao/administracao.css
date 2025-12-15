@@ -1,0 +1,764 @@
+.administracao-page {
+  min-height: 100vh;
+  background: #EBF3F6;
+  padding: 24px 32px;
+  overflow-x: hidden;
+}
+
+/* Header */
+.admin-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 16px;
+  background: transparent;
+  padding: 20px 24px 0;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Filtros e Período na mesma linha */
+.filters-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  padding: 0 24px;
+}
+
+.header-filters {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.clinic-filter,
+.professional-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clinic-filter label,
+.professional-filter label,
+.type-filter label {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.clinic-filter select,
+.professional-filter select {
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+  background: white;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.type-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.type-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.type-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: white;
+  color: #6B7280;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-buttons button.active {
+  background: #2C5282;
+  color: white;
+  border-color: #2C5282;
+}
+
+.type-buttons button:hover:not(.active) {
+  border-color: #9CA3AF;
+}
+
+/* Filtro de Período */
+.period-filter {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.period-filter button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.period-filter button.active {
+  background: #2C5282;
+  color: white;
+}
+
+.period-filter button:hover:not(.active) {
+  background: #F3F4F6;
+}
+
+/* Cards de Estatísticas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: cover;
+}
+
+.stat-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-content h3 {
+  font-size: 16px;
+  color: #374151;
+  font-weight: 600;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2C3E50;
+  line-height: 1;
+}
+
+.stat-variation {
+  font-size: 18px;
+  font-weight: 700;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-variation::before {
+  content: '↑';
+  font-size: 20px;
+}
+
+.stat-variation.negative {
+  color: #DC2626;
+}
+
+.stat-variation.negative::before {
+  content: '↓';
+}
+
+.stat-subtitle {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+  font-weight: 400;
+}
+
+.stat-subtitle.meta-badge {
+  display: inline-block;
+  background: #D1FAE5;
+  color: #059669;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+
+/* Gráficos */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chart-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 20px 0;
+}
+
+.line-chart {
+  height: 220px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Bar Chart */
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bar-item {
+  display: grid;
+  grid-template-columns: 150px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  font-size: 14px;
+  color: #4B5563;
+}
+
+.bar-wrapper {
+  height: 24px;
+  background: #F3F4F6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.bar-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+  text-align: center;
+}
+
+/* Tabela de Consultas Ativas */
+.active-consultations {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.section-tabs {
+  display: flex;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 0 24px;
+}
+
+.tab {
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  color: #2C5282;
+  border-bottom-color: #2C5282;
+}
+
+.consultations-list {
+  padding: 12px 24px;
+}
+
+.consultation-item {
+  display: grid;
+  grid-template-columns: 48px 2fr 1.5fr 80px 100px 120px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.consultation-item:last-child {
+  border-bottom: none;
+}
+
+.consultation-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4B5563;
+}
+
+.consultation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.medico-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.medico-info strong {
+  font-size: 14px;
+  color: #1F2937;
+}
+
+.tipo-badge {
+  font-size: 12px;
+  color: #6B7280;
+  background: #F3F4F6;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.consultation-patient,
+.consultation-time,
+.consultation-duration,
+.consultation-room {
+  font-size: 14px;
+  color: #4B5563;
+}
+
+/* Seção Inferior */
+.bottom-section {
+  display: grid !important;
+  grid-template-columns: 300px 1fr !important;
+  gap: 20px !important;
+}
+
+.charts-left-column {
+  display: grid !important;
+  grid-template-rows: auto auto !important;
+  gap: 20px !important;
+}
+
+.status-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+}
+
+.status-card-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.donut-chart {
+  flex-shrink: 0;
+}
+
+.donut-svg {
+  width: 100px;
+  height: 100px;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4B5563;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot.blue { background: #3B82F6; }
+.dot.green { background: #10B981; }
+.dot.yellow { background: #F59E0B; }
+.dot.red { background: #EF4444; }
+.dot.gray { background: #9CA3AF; }
+
+/* Próximas Consultas */
+.upcoming-consultations {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  align-self: start;
+}
+
+.upcoming-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.upcoming-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+}
+
+.info-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #6B7280;
+  cursor: help;
+}
+
+.upcoming-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.upcoming-item:hover {
+  border-color: #3B82F6;
+  background: #F9FAFB;
+}
+
+.upcoming-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #BFDBFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E40AF;
+  flex-shrink: 0;
+}
+
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upcoming-info strong {
+  display: block;
+  font-size: 13px;
+  color: #1F2937;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upcoming-info span {
+  display: block;
+  font-size: 11px;
+  color: #6B7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upcoming-time {
+  font-size: 13px;
+  color: #3B82F6;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Calendário */
+.calendar-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.calendar-nav {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 9px;
+  background: rgba(26, 66, 102, 0.1);
+  color: #2A3547;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.calendar-nav:hover {
+  background: rgba(26, 66, 102, 0.15);
+  opacity: 1;
+}
+
+.add-event-btn {
+  padding: 10px 18px;
+  background: #1A4266;
+  color: white;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-event-btn:hover {
+  background: #0D2847;
+}
+
+.calendar-month {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B4266;
+}
+
+.calendar-view-buttons {
+  display: flex;
+  gap: 0;
+  border: 1px solid #1A4266;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.view-btn {
+  padding: 8px 16px;
+  border: none;
+  background: white;
+  color: #1A4266;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-right: 1px solid #1A4266;
+}
+
+.view-btn:last-child {
+  border-right: none;
+}
+
+.view-btn.active {
+  background: #1B4266;
+  color: white;
+}
+
+.view-btn:hover:not(.active) {
+  background: #F3F4F6;
+}
+
+.calendar-grid {
+  width: 100%;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(26, 66, 102, 0.1);
+}
+
+.weekday {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(26, 66, 102, 0.6);
+  padding: 12px 0;
+  background: rgba(26, 66, 102, 0.05);
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+
+.calendar-day {
+  min-height: 100px;
+  border: 1px solid rgba(26, 66, 102, 0.1);
+  border-radius: 0;
+  padding: 12px;
+  font-size: 14px;
+  color: #2A3547;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.calendar-day:hover:not(.empty) {
+  background: rgba(26, 66, 102, 0.05);
+}
+
+.calendar-day.empty {
+  background: rgba(26, 66, 102, 0.02);
+  cursor: default;
+}
+
+.day-number {
+  display: block;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+/* Responsividade */
+@media (max-width: 1600px) {
+  .bottom-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .header-filters {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .bottom-section {
+    grid-template-columns: 1fr;
+  }
+  
+  .upcoming-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .consultation-item {
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+  }
+  
+  .consultation-patient,
+  .consultation-time,
+  .consultation-duration,
+  .consultation-room {
+    grid-column: 2;
+  }
+}
+
