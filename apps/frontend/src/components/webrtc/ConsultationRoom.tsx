@@ -15,7 +15,8 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2 } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle } from 'lucide-react';
+import { useRecording } from '@/hooks/useRecording';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -147,6 +148,24 @@ export function ConsultationRoom({
   
   // ✅ NOVO: ID da consulta atual (para usar no botão "Acessar Anamnese")
   const [currentConsultationId, setCurrentConsultationId] = useState<string | null>(null);
+
+  // ✅ GRAVAÇÃO: Estados para controle de gravação da consulta
+  const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
+  const [recordingConsent, setRecordingConsent] = useState(false);
+  const [showRecordingConsentModal, setShowRecordingConsentModal] = useState(false);
+  
+  // Ref para evitar que o modal seja aberto múltiplas vezes
+  const isConsentModalOpeningRef = useRef(false);
+  
+  // Hook de gravação
+  const { 
+    state: recordingState, 
+    startRecording, 
+    stopRecording, 
+    pauseRecording, 
+    resumeRecording, 
+    formatDuration: formatRecordingDuration 
+  } = useRecording();
 
   
 
@@ -3686,9 +3705,170 @@ export function ConsultationRoom({
     setShowEndRoomConfirm(true);
   };
 
+  // ✅ GRAVAÇÃO: Funções de controle
+  const handleStartRecording = async () => {
+    console.log('🎬 [RECORDING] handleStartRecording chamado');
+    console.log('🎬 [RECORDING] recordingConsent:', recordingConsent);
+    console.log('🎬 [RECORDING] localStreamRef.current:', localStreamRef.current);
+    console.log('🎬 [RECORDING] remoteStreamRef.current:', remoteStreamRef.current);
+    
+    if (!recordingConsent) {
+      // Evitar abrir o modal múltiplas vezes
+      if (isConsentModalOpeningRef.current || showRecordingConsentModal) {
+        console.log('🎬 [RECORDING] Modal já está aberto ou sendo aberto, ignorando...');
+        return;
+      }
+      
+      console.log('🎬 [RECORDING] Solicitando consentimento...');
+      isConsentModalOpeningRef.current = true;
+      setShowRecordingConsentModal(true);
+      return;
+    }
+    
+    // Verificar streams disponíveis
+    const localStream = localStreamRef.current;
+    const remoteStream = remoteStreamRef.current;
+    
+    console.log('🎬 [RECORDING] Verificando streams:', {
+      hasLocal: !!localStream,
+      hasRemote: !!remoteStream,
+      localTracks: localStream?.getTracks().length || 0,
+      remoteTracks: remoteStream?.getTracks().length || 0,
+    });
+    
+    if (!localStream && !remoteStream) {
+      showWarning('Aguarde a conexão de vídeo para iniciar a gravação.', 'Gravação');
+      return;
+    }
+
+    // Obter sessionId da call_sessions
+    let sessionId = roomId; // fallback para roomId
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: callSession } = await supabase
+        .from('call_sessions')
+        .select('id, consultation_id')
+        .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+        .single();
+      
+      if (callSession?.id) {
+        sessionId = callSession.id;
+      }
+      
+      console.log('🎬 [RECORDING] Iniciando gravação com:', {
+        sessionId,
+        consultationId: callSession?.consultation_id || currentConsultationId,
+        roomId,
+        userName,
+      });
+      
+      await startRecording({
+        sessionId,
+        consultationId: callSession?.consultation_id || currentConsultationId || undefined,
+        roomId,
+        userName: userName || 'unknown',
+        localStream,
+        remoteStream,
+        onRecordingComplete: (url) => {
+          console.log('✅ [RECORDING] Gravação salva:', url);
+          showSuccess('Gravação salva com sucesso!', 'Gravação');
+        },
+        onError: (error) => {
+          console.error('❌ [RECORDING] Erro callback:', error);
+          showError(`Erro na gravação: ${error}`, 'Gravação');
+        },
+      });
+      
+      setIsRecordingEnabled(true);
+      showSuccess('Gravação iniciada!', 'Gravação');
+    } catch (error) {
+      console.error('❌ [RECORDING] Erro ao iniciar:', error);
+      showError(`Erro ao iniciar gravação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Gravação');
+    }
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      await stopRecording();
+      setIsRecordingEnabled(false);
+      showInfo('Gravação finalizada. Salvando...', 'Gravação');
+    } catch (error) {
+      console.error('❌ [RECORDING] Erro ao parar:', error);
+    }
+  };
+
+  const handleRecordingConsent = async () => {
+    console.log('✅ [RECORDING] Consentimento dado');
+    setRecordingConsent(true);
+    setShowRecordingConsentModal(false);
+    isConsentModalOpeningRef.current = false; // Resetar flag
+    
+    // Iniciar gravação diretamente após consentimento (sem passar pelo handleStartRecording novamente)
+    // para evitar que o modal abra duas vezes
+    const localStream = localStreamRef.current;
+    const remoteStream = remoteStreamRef.current;
+    
+    if (!localStream && !remoteStream) {
+      showWarning('Aguarde a conexão de vídeo para iniciar a gravação.', 'Gravação');
+      return;
+    }
+
+    // Obter sessionId da call_sessions
+    let sessionId = roomId;
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: callSession } = await supabase
+        .from('call_sessions')
+        .select('id, consultation_id')
+        .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+        .single();
+      
+      if (callSession?.id) {
+        sessionId = callSession.id;
+      }
+      
+      console.log('🎬 [RECORDING] Iniciando gravação após consentimento:', {
+        sessionId,
+        consultationId: callSession?.consultation_id || currentConsultationId,
+        roomId,
+        userName,
+      });
+      
+      await startRecording({
+        sessionId,
+        consultationId: callSession?.consultation_id || currentConsultationId || undefined,
+        roomId,
+        userName: userName || 'unknown',
+        localStream,
+        remoteStream,
+        onRecordingComplete: (url) => {
+          console.log('✅ [RECORDING] Gravação salva:', url);
+          showSuccess('Gravação salva com sucesso!', 'Gravação');
+        },
+        onError: (error) => {
+          console.error('❌ [RECORDING] Erro callback:', error);
+          showError(`Erro na gravação: ${error}`, 'Gravação');
+        },
+      });
+      
+      setIsRecordingEnabled(true);
+      showSuccess('Gravação iniciada!', 'Gravação');
+    } catch (error) {
+      console.error('❌ [RECORDING] Erro ao iniciar após consentimento:', error);
+      showError(`Erro ao iniciar gravação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Gravação');
+    }
+  };
+
   const handleConfirmEndRoom = async () => {
     // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
     console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
+    
+    // ✅ GRAVAÇÃO: Parar gravação antes de finalizar
+    if (recordingState.isRecording) {
+      console.log('⏹️ [RECORDING] Parando gravação antes de finalizar sala...');
+      await stopRecording();
+    }
+    
     setIsEndingRoom(true);
 
       socketRef.current.emit('endRoom', {
@@ -3804,6 +3984,61 @@ export function ConsultationRoom({
         cancelText="Cancelar"
         variant="warning"
       />
+
+      {/* ✅ GRAVAÇÃO: Modal de consentimento */}
+      <ConfirmModal
+        isOpen={showRecordingConsentModal}
+        onClose={() => {
+          setShowRecordingConsentModal(false);
+          isConsentModalOpeningRef.current = false; // Resetar flag ao fechar
+        }}
+        onConfirm={handleRecordingConsent}
+        title="🎥 Consentimento para Gravação"
+        message="Ao prosseguir, você autoriza a gravação desta consulta. A gravação será armazenada de forma segura e poderá ser acessada posteriormente. Ambos os participantes serão notificados que a consulta está sendo gravada."
+        confirmText="Autorizar Gravação"
+        cancelText="Cancelar"
+        variant="warning"
+      />
+
+      {/* ✅ GRAVAÇÃO: Indicador flutuante de gravação */}
+      {recordingState.isRecording && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '80px',
+            left: '20px',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: 'white',
+            padding: '0.75rem 1.25rem',
+            borderRadius: '30px',
+            boxShadow: '0 4px 20px rgba(239, 68, 68, 0.4)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            animation: 'pulse 2s infinite',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+          }}
+          onClick={handleStopRecording}
+          title="Clique para parar a gravação"
+        >
+          <Circle 
+            size={12} 
+            fill="white" 
+            style={{ 
+              animation: 'pulse 1s infinite',
+            }} 
+          />
+          <span>🔴 REC {formatRecordingDuration(recordingState.duration)}</span>
+          {recordingState.isUploading && (
+            <span style={{ fontSize: '12px', opacity: 0.8 }}>
+              📤 Salvando...
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ✅ NOVO: Notificação de paciente entrando */}
       {showPatientJoinedNotification && userType === 'doctor' && (
@@ -4105,6 +4340,58 @@ export function ConsultationRoom({
                         {linkCopied ? <Check size={16} /> : <Copy size={16} />}
                         <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
               </button>
+
+                      {/* ✅ GRAVAÇÃO: Botão de gravação */}
+                      <button
+                        onClick={() => {
+                          setShowActionsDropdown(false);
+                          if (recordingState.isRecording) {
+                            handleStopRecording();
+                          } else {
+                            handleStartRecording();
+                          }
+                        }}
+                        disabled={recordingState.isUploading}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          background: recordingState.isRecording ? '#fef2f2' : 'transparent',
+                          color: recordingState.isRecording ? '#dc2626' : '#374151',
+                          border: 'none',
+                          borderBottom: '1px solid #f3f4f6',
+                          cursor: recordingState.isUploading ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          transition: 'background 0.2s',
+                          textAlign: 'left',
+                          opacity: recordingState.isUploading ? 0.6 : 1,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!recordingState.isRecording && !recordingState.isUploading) {
+                            e.currentTarget.style.background = '#f9fafb';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!recordingState.isRecording) {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <Circle 
+                          size={16} 
+                          fill={recordingState.isRecording ? '#dc2626' : 'none'}
+                          style={{ color: recordingState.isRecording ? '#dc2626' : '#6b7280' }} 
+                        />
+                        <span>
+                          {recordingState.isUploading 
+                            ? '📤 Salvando...' 
+                            : recordingState.isRecording 
+                              ? `🔴 Parar (${formatRecordingDuration(recordingState.duration)})` 
+                              : '⏺️ Gravar Consulta'}
+                        </span>
+                      </button>
               
                       {/* Sugestões IA */}
               <button 

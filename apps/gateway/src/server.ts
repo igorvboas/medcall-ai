@@ -12,6 +12,7 @@ import roomsRoutes, { setSocketIO } from './routes/rooms';
 import twilioRoutes from './routes/index';
 import aiPricingRoutes from './routes/aiPricing';
 import auditRoutes from './routes/audit';
+import recordingsRoutes from './routes/recordings';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 import { setupRoomsWebSocket, getOpenAIConnectionsStats } from './websocket/rooms';
 
@@ -120,6 +121,7 @@ app.use('/api/ai-pricing', aiRateLimiter, aiPricingRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/recordings', recordingsRoutes);
 app.use('/api', twilioRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM

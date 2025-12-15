@@ -973,6 +973,165 @@ export const db = {
     
     return transcription;
   },
+
+  // ==================== GRAVAÇÕES ====================
+
+  /**
+   * Salva metadados de gravação
+   */
+  async saveRecordingMetadata(data: {
+    id: string;
+    session_id: string;
+    consultation_id?: string | null;
+    room_id?: string;
+    file_path: string;
+    file_url?: string;
+    file_size: number;
+    duration_seconds?: number | null;
+    mime_type: string;
+    status: 'recording' | 'processing' | 'completed' | 'error';
+    created_at: string;
+  }): Promise<any | null> {
+    const { data: recording, error } = await supabase
+      .from('recordings')
+      .insert(data)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao salvar metadados de gravação:', error);
+      logError(`Erro ao salvar metadados de gravação`, 'error', data.consultation_id || null, { 
+        error: error.message, 
+        code: error.code,
+        session_id: data.session_id 
+      });
+      return null;
+    }
+    
+    console.log('✅ [DB] Metadados de gravação salvos:', data.id);
+    return recording;
+  },
+
+  /**
+   * Atualiza URL de gravação na sessão
+   */
+  async updateSessionRecording(sessionId: string, recordingUrl: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('call_sessions')
+      .update({ 
+        recording_url: recordingUrl,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', sessionId);
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao atualizar recording_url na sessão:', error);
+      logError(`Erro ao atualizar recording_url na sessão`, 'error', null, { 
+        error: error.message, 
+        code: error.code,
+        session_id: sessionId 
+      });
+      return false;
+    }
+    
+    console.log('✅ [DB] Recording URL atualizada na sessão:', sessionId);
+    return true;
+  },
+
+  /**
+   * Busca gravação por ID
+   */
+  async getRecordingById(recordingId: string): Promise<any | null> {
+    const { data: recording, error } = await supabase
+      .from('recordings')
+      .select('*')
+      .eq('id', recordingId)
+      .single();
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao buscar gravação:', error);
+      return null;
+    }
+    
+    return recording;
+  },
+
+  /**
+   * Lista gravações por sessão
+   */
+  async getRecordingsBySession(sessionId: string): Promise<any[]> {
+    const { data: recordings, error } = await supabase
+      .from('recordings')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao listar gravações por sessão:', error);
+      return [];
+    }
+    
+    return recordings || [];
+  },
+
+  /**
+   * Lista gravações por consulta
+   */
+  async getRecordingsByConsultation(consultationId: string): Promise<any[]> {
+    const { data: recordings, error } = await supabase
+      .from('recordings')
+      .select('*')
+      .eq('consultation_id', consultationId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao listar gravações por consulta:', error);
+      return [];
+    }
+    
+    return recordings || [];
+  },
+
+  /**
+   * Atualiza status de gravação
+   */
+  async updateRecordingStatus(recordingId: string, status: string, additionalData?: Record<string, any>): Promise<boolean> {
+    const updateData: any = { 
+      status,
+      updated_at: new Date().toISOString(),
+      ...additionalData
+    };
+
+    const { error } = await supabase
+      .from('recordings')
+      .update(updateData)
+      .eq('id', recordingId);
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao atualizar status da gravação:', error);
+      return false;
+    }
+    
+    return true;
+  },
+
+  /**
+   * Remove gravação
+   */
+  async deleteRecording(recordingId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('recordings')
+      .delete()
+      .eq('id', recordingId);
+    
+    if (error) {
+      console.error('❌ [DB] Erro ao remover gravação:', error);
+      return false;
+    }
+    
+    console.log('🗑️ [DB] Gravação removida:', recordingId);
+    return true;
+  },
 };
 
 // ==================== LOG DE ERROS ====================
