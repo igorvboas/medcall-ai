@@ -2783,9 +2783,9 @@ export function ConsultationRoom({
             facingMode: 'user'
           },
           audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
           }
         });
       } catch (error) {

@@ -137,8 +137,8 @@ export function useMediaDevices(): UseMediaDevicesReturn {
         },
         audio: { 
           deviceId: { exact: selectedMicrophone },
-          echoCancellation: true,
-          noiseSuppression: true
+          echoCancellation: false,
+          noiseSuppression: false
         }
       });
 

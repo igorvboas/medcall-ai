@@ -177,14 +177,14 @@ export function useMicTransmitter() {
     try {
       console.log('[uMT] >> [MicTransmitter] 🎤 Setting up audio capture...');
 
-      // Solicitar acesso ao microfone
+      // Solicitar acesso ao microfone (filtros desativados para reduzir uso de CPU)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
           channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
         },
       });
 

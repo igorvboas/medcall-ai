@@ -53,16 +53,16 @@ export function getWebhookEndpoints(): WebhookEndpoints {
   });
   
   return {
-    anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento${suffix}`,
+    anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,
     edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-anamnese${suffix}`,
     transcricao: `${config.baseUrl}/webhook/usi-input-transcricao${suffix}`,
-    edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico${suffix}`,
-    diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal${suffix}`,
-    edicaoSolucao: `${config.baseUrl}/webhook/usi-input-edicao-solucao${suffix}`,
-    edicaoLivroDaVida: 'https://webhook.tc1.triacompany.com.br/webhook/c2aaae3a-e1f4-4f94-9133-a793f9725528',
+    edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico-v2`,
+    diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal-v2`,
+    edicaoSolucao: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
+    edicaoLivroDaVida: `${config.baseUrl}/webhook/usi-solucao-livro-vida-v2`,
     triggerSolucao: `${config.baseUrl}/webhook/usi-trigger-solucao${suffix}`,
     solucaoCriacaoEntregaveis: `${config.baseUrl}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
-    exames: `${config.baseUrl}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi${suffix}`
+    exames: `${config.baseUrl}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-v2`
   };
 }
 
