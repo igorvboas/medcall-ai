@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
-import { Layout } from '@/components/shared/Layout';
-import { NotificationProvider } from '@/components/shared/NotificationSystem';
+import { ProvidersWrapper } from '@/components/providers/ProvidersWrapper';
 import { SuppressHydrationWarnings } from './suppress-warnings';
 
 export const metadata: Metadata = {
@@ -43,11 +41,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <SuppressHydrationWarnings />
-        <ThemeProvider>
-          <NotificationProvider>
+        <ProvidersWrapper>
           {children}
-          </NotificationProvider>
-        </ThemeProvider>
+        </ProvidersWrapper>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Video, X, CheckCircle } from 'lucide-react';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import './ActiveConsultationBanner.css';
 
 interface ActiveConsultation {
@@ -24,6 +25,7 @@ export function ActiveConsultationBanner() {
   const [activeConsultation, setActiveConsultation] = useState<ActiveConsultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const router = useRouter();
   
   // ✅ Ref para controlar se polling deve continuar (para em caso de erro 401)
@@ -160,8 +162,6 @@ export function ActiveConsultationBanner() {
       router.push(`/consultas?consulta_id=${activeConsultation.id}`);
     }
   };
-
-  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
 
   const handleFinishConsultation = () => {
     if (!activeConsultation) return;

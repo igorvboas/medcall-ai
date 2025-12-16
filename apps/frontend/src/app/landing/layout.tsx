@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import '../globals.css';
 import './landing.css';
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'Auton Health - Plataforma de Consultas Médicas com IA',
@@ -13,18 +12,5 @@ export default function LandingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }

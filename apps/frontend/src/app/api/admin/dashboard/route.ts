@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
       .select(`
         doctor_id,
         consultation_type,
-        medicos!inner(name)
+        medicos(name)
       `)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
@@ -187,7 +187,11 @@ export async function GET(request: NextRequest) {
       porMedicoQuery = porMedicoQuery.eq('consultation_type', tipoConsulta);
     }
     
-    const { data: consultasPorMedico } = await porMedicoQuery;
+    const { data: consultasPorMedico, error: errorPorMedico } = await porMedicoQuery;
+
+    if (errorPorMedico) {
+      console.error('Erro ao buscar consultas por médico:', errorPorMedico);
+    }
 
     const medicosCount: Record<string, { nome: string; count: number }> = {};
     consultasPorMedico?.forEach((c: any) => {
