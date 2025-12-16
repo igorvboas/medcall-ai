@@ -1,4 +1,2 @@
-export * from './api';
-export * from './call';
-export * from './transcription';
+// Exportar apenas medical.ts que tem conteúdo
 export * from './medical';

@@ -261,48 +261,21 @@ export class TranscriptionService extends EventEmitter {
 
   private async sendTranscriptionToRoom(roomName: string, segment: TranscriptionSegment): Promise<void> {
     try {
-      // ✅ Salvar no banco ANTES de enviar (para não perder dados)
+      // ✅ Salvar no banco (LiveKit removido - usando WebRTC direto via WebSocket)
       await this.saveTranscriptionToDatabase(roomName, segment);
       
-      // Enviar via LiveKit Data Channel nativo
-      await this.sendDataViaRoomService(roomName, {
-        type: 'transcription',
-        data: segment
-      });
-      
+      // Emitir evento para que outros serviços possam escutar
       this.emit('transcription', { roomName, segment });
       
-      console.log(`📝 Transcrição enviada via LiveKit nativo: ${segment.participantName}: ${segment.text}`);
+      console.log(`📝 Transcrição salva no banco: ${segment.participantName}: ${segment.text}`);
       
     } catch (error) {
-      console.error('❌ Erro ao enviar transcrição:', error);
+      console.error('❌ Erro ao salvar transcrição:', error);
       logError(
-        `Erro ao enviar transcrição para sala`,
+        `Erro ao salvar transcrição para sala`,
         'error',
         null,
         { roomName, participantId: segment.participantId, error: error instanceof Error ? error.message : String(error) }
-      );
-    }
-  }
-
-  private async sendDataViaRoomService(roomName: string, message: any): Promise<void> {
-    try {
-      const messageData = JSON.stringify(message);
-      const encoder = new TextEncoder();
-      const data = encoder.encode(messageData);
-      
-      // Usar RoomServiceClient.sendData para enviar dados sem conectar como participante
-      await this.livekitClient.sendData(roomName, data, DataPacket_Kind.RELIABLE);
-      
-      console.log(`Dados enviados via RoomServiceClient para sala ${roomName}`);
-      
-    } catch (error) {
-      console.error('Erro ao enviar dados via RoomServiceClient:', error);
-      logError(
-        `Erro ao enviar dados via RoomServiceClient LiveKit`,
-        'error',
-        null,
-        { roomName, error: error instanceof Error ? error.message : String(error) }
       );
     }
   }

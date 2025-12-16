@@ -29,7 +29,6 @@ router.get('/detailed', asyncHandler(async (req: Request, res: Response) => {
   // Determinar status geral
   const dbOk = dbHealth.status === 'fulfilled' && dbHealth.value;
   const openaiOk = providersHealth.status === 'fulfilled' && providersHealth.value.openai;
-  const livekitOk = providersHealth.status === 'fulfilled' && providersHealth.value.livekit;
   const redisOk = providersHealth.status === 'fulfilled' && providersHealth.value.redis;
 
   // Status geral: healthy se database estiver OK (outros são opcionais)
@@ -52,11 +51,6 @@ router.get('/detailed', asyncHandler(async (req: Request, res: Response) => {
         status: openaiOk ? 'up' : 'down',
         required: false,
         details: providersHealth.status === 'rejected' ? 'Connection failed' : undefined,
-      },
-      livekit: {
-        status: livekitOk ? 'up' : 'down',
-        required: false,
-        details: !livekitOk ? 'Token generation failed' : undefined,
       },
       redis: {
         status: redisOk ? 'up' : 'not_configured',
