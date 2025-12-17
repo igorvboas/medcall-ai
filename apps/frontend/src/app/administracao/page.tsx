@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import './administracao.css';
 
 interface DashboardData {
@@ -57,6 +58,7 @@ interface DashboardData {
 }
 
 export default function AdministracaoPage() {
+  const router = useRouter();
   const [periodo, setPeriodo] = useState('semana');
   const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'TELEMEDICINA' | 'TODAS'>('TODAS');
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,17 @@ export default function AdministracaoPage() {
   });
   const [mesAtualCalendario, setMesAtualCalendario] = useState(new Date());
   const [visualizacaoCalendario, setVisualizacaoCalendario] = useState<'mes' | 'semana' | 'dia'>('mes');
+  const [consultasModal, setConsultasModal] = useState<{
+    visible: boolean;
+    tipo: 'agendadas' | 'canceladas';
+    data: string;
+    medicoSelecionado: string | null;
+  }>({
+    visible: false,
+    tipo: 'agendadas',
+    data: '',
+    medicoSelecionado: null
+  });
 
   useEffect(() => {
     fetchDashboardData();
@@ -149,6 +162,42 @@ export default function AdministracaoPage() {
     const anoFinal = ano !== undefined ? ano : mesAtualCalendario.getFullYear();
     const chave = formatarDataChave(anoFinal, mesFinal, dia);
     return dashboardData?.consultasCalendario[chave] || { agendadas: [], canceladas: [] };
+  };
+
+  const obterMedicosUnicos = (consultas: Array<{ medico: string }>) => {
+    const medicos = new Set(consultas.map(c => c.medico));
+    return Array.from(medicos).sort();
+  };
+
+  const obterConsultasPorMedico = (consultas: Array<{ medico: string; id: string; paciente: string; horario: string; tipo: string }>, medico: string) => {
+    return consultas.filter(c => c.medico === medico);
+  };
+
+  const handleAbrirModalConsultas = (tipo: 'agendadas' | 'canceladas', dia: number, mes: number, ano: number) => {
+    const chave = formatarDataChave(ano, mes, dia);
+    const consultasDia = dashboardData?.consultasCalendario[chave];
+    const consultas = tipo === 'agendadas' ? consultasDia?.agendadas || [] : consultasDia?.canceladas || [];
+    
+    if (consultas.length > 0) {
+      setConsultasModal({
+        visible: true,
+        tipo,
+        data: chave,
+        medicoSelecionado: null
+      });
+    }
+  };
+
+  const handleSelecionarMedico = (medico: string) => {
+    setConsultasModal(prev => ({ ...prev, medicoSelecionado: medico }));
+  };
+
+  const handleVoltarMedicos = () => {
+    setConsultasModal(prev => ({ ...prev, medicoSelecionado: null }));
+  };
+
+  const handleAbrirConsulta = (consultaId: string) => {
+    router.push(`/consultas?consulta_id=${consultaId}`);
   };
 
   // Preparar dados para os cards com base nos dados dinâmicos
@@ -822,19 +871,39 @@ export default function AdministracaoPage() {
                   >
                     <span className="day-number">{diaInfo.dia}</span>
                     <div className="calendar-day-content">
-                      <div className="calendar-day-left" style={{ 
-                        backgroundColor: consultasDia.agendadas.length > 0 ? '#D1FAE5' : 'transparent',
-                        opacity: isPassado ? 0.6 : 1
-                      }}>
+                      <div 
+                        className="calendar-day-left" 
+                        style={{ 
+                          backgroundColor: consultasDia.agendadas.length > 0 ? '#D1FAE5' : 'transparent',
+                          opacity: isPassado ? 0.6 : 1,
+                          cursor: consultasDia.agendadas.length > 0 ? 'pointer' : 'default'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (consultasDia.agendadas.length > 0) {
+                            handleAbrirModalConsultas('agendadas', diaInfo.dia, diaInfo.mes, diaInfo.ano);
+                          }
+                        }}
+                      >
                         {consultasDia.agendadas.length > 0 && (
                           <span className="consultation-count">{consultasDia.agendadas.length}</span>
                         )}
                       </div>
                       <div className="calendar-day-divider"></div>
-                      <div className="calendar-day-right" style={{ 
-                        backgroundColor: consultasDia.canceladas.length > 0 ? '#FEE2E2' : 'transparent',
-                        opacity: isPassado ? 0.6 : 1
-                      }}>
+                      <div 
+                        className="calendar-day-right" 
+                        style={{ 
+                          backgroundColor: consultasDia.canceladas.length > 0 ? '#FEE2E2' : 'transparent',
+                          opacity: isPassado ? 0.6 : 1,
+                          cursor: consultasDia.canceladas.length > 0 ? 'pointer' : 'default'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (consultasDia.canceladas.length > 0) {
+                            handleAbrirModalConsultas('canceladas', diaInfo.dia, diaInfo.mes, diaInfo.ano);
+                          }
+                        }}
+                      >
                         {consultasDia.canceladas.length > 0 && (
                           <span className="consultation-count">{consultasDia.canceladas.length}</span>
                         )}
@@ -857,6 +926,100 @@ export default function AdministracaoPage() {
             )}
           </div>
         </div>
+
+        {/* Modal de Consultas */}
+        {consultasModal.visible && (() => {
+          const consultasDia = dashboardData?.consultasCalendario[consultasModal.data] || { agendadas: [], canceladas: [] };
+          const consultas = consultasModal.tipo === 'agendadas' ? consultasDia.agendadas : consultasDia.canceladas;
+          const medicos = obterMedicosUnicos(consultas);
+          const consultasMedico = consultasModal.medicoSelecionado 
+            ? obterConsultasPorMedico(consultas, consultasModal.medicoSelecionado)
+            : [];
+
+          const [ano, mes, dia] = consultasModal.data.split('-').map(Number);
+          const dataFormatada = new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          });
+
+          return (
+            <div 
+              className="consultas-modal-overlay"
+              onClick={() => setConsultasModal({ visible: false, tipo: 'agendadas', data: '', medicoSelecionado: null })}
+            >
+              <div 
+                className="consultas-modal-container"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="consultas-modal-header">
+                  <h2>
+                    {consultasModal.tipo === 'agendadas' ? 'Consultas Agendadas' : 'Consultas Canceladas'} - {dataFormatada}
+                  </h2>
+                  <button
+                    className="consultas-modal-close"
+                    onClick={() => setConsultasModal({ visible: false, tipo: 'agendadas', data: '', medicoSelecionado: null })}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="consultas-modal-body">
+                  {!consultasModal.medicoSelecionado ? (
+                    <>
+                      <h3>Selecione um médico:</h3>
+                      <div className="medicos-list">
+                        {medicos.map((medico, index) => {
+                          const count = consultas.filter(c => c.medico === medico).length;
+                          return (
+                            <div
+                              key={index}
+                              className="medico-item"
+                              onClick={() => handleSelecionarMedico(medico)}
+                            >
+                              <div className="medico-info">
+                                <strong>{medico}</strong>
+                                <span className="medico-count">{count} consulta{count > 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="consultas-modal-nav">
+                        <button
+                          className="consultas-modal-back"
+                          onClick={handleVoltarMedicos}
+                        >
+                          ← Voltar
+                        </button>
+                        <h3>Consultas de {consultasModal.medicoSelecionado}</h3>
+                      </div>
+                      <div className="consultas-list-modal">
+                        {consultasMedico.map((consulta, index) => (
+                          <div
+                            key={index}
+                            className="consulta-item-modal"
+                            onClick={() => handleAbrirConsulta(consulta.id)}
+                          >
+                            <div className="consulta-horario">{consulta.horario}</div>
+                            <div className="consulta-info">
+                              <strong>{consulta.paciente}</strong>
+                              <span className="consulta-tipo">{consulta.tipo}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
