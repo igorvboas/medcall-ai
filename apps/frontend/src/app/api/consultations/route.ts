@@ -7,13 +7,13 @@ import { logAudit, getAuditContext, sanitizeData } from '@/lib/audit-helper';
 export async function GET(request: NextRequest) {
   try {
     console.log('=== GET /api/consultations ===');
-    
+
     const authResult = await getAuthenticatedSession();
-    
+
     if (!authResult) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-    
+
     const { supabase, session, user } = authResult;
     const doctorAuthId = user.id;
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .select('id')
       .eq('user_auth', doctorAuthId)
       .single();
-    
+
     if (medicoError || !medico) {
       console.error('❌ Médico não encontrado:', medicoError);
       return NextResponse.json(
@@ -70,16 +70,16 @@ export async function GET(request: NextRequest) {
     // Aplicar filtro de data
     if (dateFilter && date) {
       const selectedDate = new Date(date);
-      
+
       if (dateFilter === 'day') {
         // Filtrar por dia específico
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(selectedDate);
         endOfDay.setHours(23, 59, 59, 999);
-        
+
         query = query.gte('created_at', startOfDay.toISOString())
-                     .lte('created_at', endOfDay.toISOString());
+          .lte('created_at', endOfDay.toISOString());
       } else if (dateFilter === 'week') {
         // Filtrar por semana (segunda a domingo da semana selecionada)
         const dayOfWeek = selectedDate.getDay();
@@ -88,23 +88,23 @@ export async function GET(request: NextRequest) {
         const startOfWeek = new Date(selectedDate);
         startOfWeek.setDate(selectedDate.getDate() + diff);
         startOfWeek.setHours(0, 0, 0, 0);
-        
+
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         endOfWeek.setHours(23, 59, 59, 999);
-        
+
         query = query.gte('created_at', startOfWeek.toISOString())
-                     .lte('created_at', endOfWeek.toISOString());
+          .lte('created_at', endOfWeek.toISOString());
       } else if (dateFilter === 'month') {
         // Filtrar por mês
         const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
         startOfMonth.setHours(0, 0, 0, 0);
-        
+
         const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
         endOfMonth.setHours(23, 59, 59, 999);
-        
+
         query = query.gte('created_at', startOfMonth.toISOString())
-                     .lte('created_at', endOfMonth.toISOString());
+          .lte('created_at', endOfMonth.toISOString());
       }
     }
 
@@ -146,13 +146,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('=== POST /api/consultations ===');
-    
+
     const authResult = await getAuthenticatedSession();
-    
+
     if (!authResult) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-    
+
     const { supabase, session, user } = authResult;
     const doctorAuthId = user.id;
 
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       .select('id, name')
       .eq('user_auth', doctorAuthId)
       .single();
-    
+
     if (medicoError || !medico) {
       console.error('❌ Médico não encontrado:', medicoError);
       return NextResponse.json(
@@ -266,37 +266,40 @@ export async function POST(request: NextRequest) {
     });
 
     // Sincronizar com Google Calendar (se o médico tiver conectado)
-    try {
-      const syncResult = await syncConsultationToGoogleCalendar(supabase, medico.id, {
-        id: consultation.id,
-        patient_name: consultation.patient_name,
-        consultation_type: consultation.consultation_type,
-        consulta_inicio: consultation.consulta_inicio,
-        created_at: consultation.created_at,
-        duration: consultation.duration,
-        notes: consultation.notes,
-        doctor_name: medico.name, // Nome do médico para o evento
-      });
+    // Apenas para consultas não presenciais
+    if (consultation_type !== 'PRESENCIAL') {
+      try {
+        const syncResult = await syncConsultationToGoogleCalendar(supabase, medico.id, {
+          id: consultation.id,
+          patient_name: consultation.patient_name,
+          consultation_type: consultation.consultation_type,
+          consulta_inicio: consultation.consulta_inicio,
+          created_at: consultation.created_at,
+          duration: consultation.duration,
+          notes: consultation.notes,
+          doctor_name: medico.name, // Nome do médico para o evento
+        });
 
-      if (syncResult.success && syncResult.eventId) {
-        console.log('📅 Consulta sincronizada com Google Calendar:', syncResult.eventId);
-        // Buscar consulta atualizada com google_event_id
-        const { data: updatedConsultation } = await supabase
-          .from('consultations')
-          .select('*')
-          .eq('id', consultation.id)
-          .single();
-        
-        if (updatedConsultation) {
-          return NextResponse.json(updatedConsultation, { status: 201 });
+        if (syncResult.success && syncResult.eventId) {
+          console.log('📅 Consulta sincronizada com Google Calendar:', syncResult.eventId);
+          // Buscar consulta atualizada com google_event_id
+          const { data: updatedConsultation } = await supabase
+            .from('consultations')
+            .select('*')
+            .eq('id', consultation.id)
+            .single();
+
+          if (updatedConsultation) {
+            return NextResponse.json(updatedConsultation, { status: 201 });
+          }
+        } else if (!syncResult.success && syncResult.error) {
+          console.warn('⚠️ Falha ao sincronizar com Google Calendar:', syncResult.error);
+          // Não retorna erro, a consulta foi criada com sucesso no banco
         }
-      } else if (!syncResult.success && syncResult.error) {
-        console.warn('⚠️ Falha ao sincronizar com Google Calendar:', syncResult.error);
+      } catch (syncError) {
+        console.warn('⚠️ Erro ao sincronizar com Google Calendar:', syncError);
         // Não retorna erro, a consulta foi criada com sucesso no banco
       }
-    } catch (syncError) {
-      console.warn('⚠️ Erro ao sincronizar com Google Calendar:', syncError);
-      // Não retorna erro, a consulta foi criada com sucesso no banco
     }
 
     return NextResponse.json(consultation, { status: 201 });

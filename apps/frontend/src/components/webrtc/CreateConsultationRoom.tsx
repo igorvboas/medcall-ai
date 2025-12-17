@@ -32,8 +32,8 @@ interface CreateConsultationRoomProps {
   preselectedConsultationType?: 'online' | 'presencial' | null;
 }
 
-export function CreateConsultationRoom({ 
-  onRoomCreated, 
+export function CreateConsultationRoom({
+  onRoomCreated,
   onCancel,
   agendamentoId,
   preselectedPatientId,
@@ -55,15 +55,15 @@ export function CreateConsultationRoom({
   const [consent, setConsent] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
-  
+
   // Novos estados para agendamento
   const [creationType, setCreationType] = useState<'instantanea' | 'agendamento'>('instantanea');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
-  
+
   // Estado para indicar se estamos iniciando a partir de um agendamento
   const [isFromAgendamento, setIsFromAgendamento] = useState(false);
-  
+
   const socketRef = useRef<Socket | null>(null);
 
   // Efeito para pré-configurar valores quando iniciando a partir de um agendamento
@@ -85,11 +85,11 @@ export function CreateConsultationRoom({
   // Efeito para iniciar automaticamente a consulta quando vier de um agendamento
   useEffect(() => {
     if (
-      isFromAgendamento && 
-      socketConnected && 
-      !loadingDoctor && 
-      !loadingPatients && 
-      selectedPatient && 
+      isFromAgendamento &&
+      socketConnected &&
+      !loadingDoctor &&
+      !loadingPatients &&
+      selectedPatient &&
       hostName &&
       !isCreatingRoom &&
       !roomCreated
@@ -111,14 +111,14 @@ export function CreateConsultationRoom({
       }
       return;
     }
-    
+
     if (!hostName) return; // aguarda carregar nome do médico
     if (socketRef.current?.connected) return; // já conectado
 
     const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001';
-    
+
     console.log('🔌 Conectando ao Socket.IO...', gatewayUrl);
-    
+
     // Criar conexão Socket.IO com polling primeiro (mais confiável)
     const socket = io(gatewayUrl, {
       auth: {
@@ -148,7 +148,7 @@ export function CreateConsultationRoom({
     socket.on('disconnect', (reason) => {
       console.log('❌ Socket.IO desconectado:', reason);
       setSocketConnected(false);
-      
+
       // Se foi desconexão forçada pelo servidor, não tentar reconectar
       if (reason === 'io server disconnect') {
         console.warn('⚠️ Servidor desconectou a conexão');
@@ -176,7 +176,7 @@ export function CreateConsultationRoom({
       try {
         setLoadingDoctor(true);
         const response = await fetch('/api/medico');
-        
+
         if (response.ok) {
           const data = await response.json();
           const doctorName = data.medico?.name || 'Dr. Médico';
@@ -204,7 +204,7 @@ export function CreateConsultationRoom({
         setLoadingPatients(true);
         const patientsData = await getPatients();
         setPatients(patientsData);
-        
+
         // Selecionar primeiro paciente por padrão, EXCETO se vier de um agendamento
         if (patientsData.length > 0 && !preselectedPatientId) {
           setSelectedPatient(patientsData[0].id);
@@ -220,12 +220,19 @@ export function CreateConsultationRoom({
   }, [preselectedPatientId]);
 
   // Carregar dispositivos de áudio (microfones)
+  // ✅ DESABILITADO: Não solicitar microfone na página de criação
+  // A permissão será solicitada apenas na página presencial quando necessário
   useEffect(() => {
+    // Apenas para consultas online instantâneas
+    if (consultationType !== 'online' || creationType !== 'instantanea') {
+      return;
+    }
+
     const loadAudioDevices = async () => {
       try {
         // Solicitar permissão para acessar microfone
         await navigator.mediaDevices.getUserMedia({ audio: true });
-        
+
         // Listar dispositivos de áudio
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioInputs = devices
@@ -234,9 +241,9 @@ export function CreateConsultationRoom({
             deviceId: device.deviceId,
             label: device.label || `Microfone ${device.deviceId.slice(0, 8)}`
           }));
-        
+
         setMicrophones(audioInputs);
-        
+
         // Selecionar primeiro microfone por padrão
         if (audioInputs.length > 0) {
           setSelectedMicrophone(audioInputs[0].deviceId);
@@ -247,7 +254,7 @@ export function CreateConsultationRoom({
     };
 
     loadAudioDevices();
-  }, []);
+  }, [consultationType, creationType]);
 
   const handleCreateRoom = async () => {
     // Validações
@@ -291,7 +298,7 @@ export function CreateConsultationRoom({
       if (creationType === 'agendamento') {
         // Combinar data e hora para criar o timestamp
         const consultaInicio = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-        
+
         const response = await fetch('/api/consultations', {
           method: 'POST',
           headers: {
@@ -311,7 +318,7 @@ export function CreateConsultationRoom({
         if (response.ok) {
           const consultation = await response.json();
           console.log('✅ Agendamento criado:', consultation);
-          
+
           // Redirecionar para página de consultas
           router.push('/consultas');
         } else {
@@ -321,7 +328,37 @@ export function CreateConsultationRoom({
         return;
       }
 
-      // ✅ CONSULTA INSTANTÂNEA: Criar sala via Socket.IO (comportamento original)
+      // ✅ CONSULTA PRESENCIAL INSTANTÂNEA: Criar consulta e redirecionar para página presencial
+      if (consultationType === 'presencial') {
+        const response = await fetch('/api/consultations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id: selectedPatient,
+            patient_name: selectedPatientData.name,
+            consultation_type: 'PRESENCIAL',
+            status: 'CREATED',
+          }),
+        });
+
+        setIsCreatingRoom(false);
+
+        if (response.ok) {
+          const consultation = await response.json();
+          console.log('✅ Consulta presencial criada:', consultation.id);
+
+          // Redirecionar para página presencial
+          router.push(`/consulta/presencial?consultationId=${consultation.id}`);
+        } else {
+          const errorData = await response.json();
+          showError('Erro ao criar consulta: ' + (errorData.error || 'Erro desconhecido'), 'Erro ao Criar');
+        }
+        return;
+      }
+
+      // ✅ CONSULTA ONLINE INSTANTÂNEA: Criar sala via Socket.IO (comportamento original)
       // Obter user autenticado (para buscar doctor_id no backend)
       const { getCurrentUser } = await import('@/lib/supabase');
       const user = await getCurrentUser();
@@ -374,7 +411,7 @@ export function CreateConsultationRoom({
 
             setRoomData(roomInfo);
             setRoomCreated(true);
-            
+
             // Callback para integração com sistema médico
             onRoomCreated?.(roomInfo);
           } else {
@@ -404,13 +441,13 @@ export function CreateConsultationRoom({
   const handleShareWhatsApp = (link: string, patientName?: string) => {
     // Mensagem formatada para WhatsApp
     const message = `Olá${patientName ? ` ${patientName}` : ''}! 👋\n\n🔗 Link para sua consulta online:\n${link}\n\nPor favor, clique no link acima para entrar na consulta.`;
-    
+
     // Codificar a mensagem para URL
     const encodedMessage = encodeURIComponent(message);
-    
+
     // URL do WhatsApp Web
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    
+
     // Abrir WhatsApp em nova aba
     window.open(whatsappUrl, '_blank');
   };
@@ -427,10 +464,10 @@ export function CreateConsultationRoom({
           <div className="loading-overlay" style={{ position: 'relative', background: 'transparent' }}>
             <div className="spinner"></div>
             <p style={{ marginTop: '20px', color: '#6b7280' }}>
-              {!socketConnected ? 'Conectando ao servidor...' : 
-               loadingDoctor ? 'Carregando dados do médico...' :
-               loadingPatients ? 'Carregando dados do paciente...' :
-               'Iniciando consulta...'}
+              {!socketConnected ? 'Conectando ao servidor...' :
+                loadingDoctor ? 'Carregando dados do médico...' :
+                  loadingPatients ? 'Carregando dados do paciente...' :
+                    'Iniciando consulta...'}
             </p>
           </div>
         </div>
@@ -443,14 +480,14 @@ export function CreateConsultationRoom({
       <div className="create-room-container">
         <div className="link-container show">
           <h5 className="text-center mb-3">Sala Criada com Sucesso!</h5>
-          
+
           {/* Link do Paciente */}
           <p className="text-muted small text-center mb-2">
             <strong>Link para o Paciente:</strong>
             (Compartilhe este link)
           </p>
 
-          <button 
+          <button
             className="btn btn-copy"
             onClick={() => handleCopyLink(roomData.participantRoomUrl)}
           >
@@ -458,28 +495,28 @@ export function CreateConsultationRoom({
           </button>
 
           {/* Botão WhatsApp */}
-          <button 
+          <button
             className="btn btn-whatsapp"
             onClick={() => handleShareWhatsApp(roomData.participantRoomUrl, roomData.patientName)}
             style={{ marginTop: '12px' }}
           >
-            <svg 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
               fill="currentColor"
             >
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
             </svg>
             Enviar Link via WhatsApp
           </button>
-          
+
           {/* Link do Médico */}
           <p className="text-muted small text-center mb-2 mt-4">
             <strong>Seu link (Médico):</strong>
           </p>
 
-          <button 
+          <button
             className="btn btn-enter"
             onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
           >
@@ -530,67 +567,6 @@ export function CreateConsultationRoom({
             </select>
           </div>
 
-          {/* Tipo de Criação: Instantânea ou Agendamento (ocultar se vier de agendamento) */}
-          {!isFromAgendamento && (
-          <div className="form-group">
-            <label className="form-label">
-              Tipo de Consulta <span className="required">*</span>
-            </label>
-            <div className="consultation-type-buttons">
-              <button
-                type="button"
-                className={`type-button ${creationType === 'instantanea' ? 'active' : ''}`}
-                onClick={() => setCreationType('instantanea')}
-              >
-                Instantânea
-                {creationType === 'instantanea' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`type-button ${creationType === 'agendamento' ? 'active' : ''}`}
-                onClick={() => setCreationType('agendamento')}
-              >
-                Agendamento
-                {creationType === 'agendamento' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          )}
-
-          {/* Campos de Data e Hora (apenas para agendamento) */}
-          {creationType === 'agendamento' && (
-            <div className="form-group">
-              <label className="form-label">
-                Data e Horário da Consulta <span className="required">*</span>
-              </label>
-              <div className="schedule-inputs">
-                <input
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="form-input schedule-date"
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="form-input schedule-time"
-                  required
-                />
-              </div>
-            </div>
-          )}
-
           {/* Tipo de Atendimento */}
           <div className="form-group">
             <label className="form-label">
@@ -623,6 +599,69 @@ export function CreateConsultationRoom({
               </button>
             </div>
           </div>
+
+          {/* Tipo de Criação: Instantânea ou Agendamento (ocultar se vier de agendamento OU se for presencial) */}
+          {!isFromAgendamento && consultationType !== 'presencial' && (
+            <div className="form-group">
+              <label className="form-label">
+                Tipo de Consulta <span className="required">*</span>
+              </label>
+              <div className="consultation-type-buttons">
+                <button
+                  type="button"
+                  className={`type-button ${creationType === 'instantanea' ? 'active' : ''}`}
+                  onClick={() => setCreationType('instantanea')}
+                >
+                  Instantânea
+                  {creationType === 'instantanea' && (
+                    <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`type-button ${creationType === 'agendamento' ? 'active' : ''}`}
+                  onClick={() => setCreationType('agendamento')}
+                >
+                  Agendamento
+                  {creationType === 'agendamento' && (
+                    <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Campos de Data e Hora (apenas para agendamento) */}
+          {creationType === 'agendamento' && (
+            <div className="form-group">
+              <label className="form-label">
+                Data e Horário da Consulta <span className="required">*</span>
+              </label>
+              <div className="schedule-inputs">
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="form-input schedule-date"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="form-input schedule-time"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+
 
           {/* Microfone do Médico (apenas para consultas online instantâneas) */}
           {consultationType === 'online' && creationType === 'instantanea' && (
@@ -666,22 +705,22 @@ export function CreateConsultationRoom({
           </div>
 
           {/* Botão Iniciar/Agendar Consulta */}
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn-submit"
             disabled={
-              isCreatingRoom || 
-              loadingPatients || 
+              isCreatingRoom ||
+              loadingPatients ||
               loadingDoctor ||
               (creationType === 'instantanea' && !socketConnected) ||
-              !selectedPatient || 
+              !selectedPatient ||
               !consent ||
               (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
               (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
             }
           >
-            {isCreatingRoom 
-              ? (creationType === 'agendamento' ? 'Agendando...' : 'Criando Consulta...') 
+            {isCreatingRoom
+              ? (creationType === 'agendamento' ? 'Agendando...' : 'Criando Consulta...')
               : (creationType === 'agendamento' ? 'Agendar Consulta' : 'Iniciar Consulta')
             }
           </button>
