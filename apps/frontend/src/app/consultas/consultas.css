@@ -4661,3 +4661,179 @@
     width: 100%;
   }
 }
+
+/* ===============================================
+   Audit History Styles
+   =============================================== */
+
+.chat-history-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.audit-history-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dark .audit-history-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #94a3b8;
+}
+
+.audit-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.audit-history-item {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.dark .audit-history-item {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-color: #334155;
+}
+
+.audit-history-item:hover {
+  border-color: #d4a574;
+  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.15);
+}
+
+.audit-history-date {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.dark .audit-history-date {
+  color: #94a3b8;
+}
+
+.audit-history-solicitation {
+  font-size: 14px;
+  color: #1e293b;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+  line-height: 1.5;
+}
+
+.dark .audit-history-solicitation {
+  background: linear-gradient(135deg, #422006 0%, #451a03 100%);
+  color: #fef3c7;
+  border-left-color: #f59e0b;
+}
+
+.audit-history-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.audit-history-before,
+.audit-history-after {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.audit-history-before {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-left: 4px solid #ef4444;
+}
+
+.dark .audit-history-before {
+  background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+  border-left-color: #ef4444;
+}
+
+.audit-history-after {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-left: 4px solid #22c55e;
+}
+
+.dark .audit-history-after {
+  background: linear-gradient(135deg, #052e16 0%, #14532d 100%);
+  border-left-color: #22c55e;
+}
+
+.audit-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+}
+
+.dark .audit-history-before .audit-label {
+  color: #fecaca;
+}
+
+.dark .audit-history-after .audit-label {
+  color: #bbf7d0;
+}
+
+.audit-value {
+  color: #1e293b;
+  word-break: break-word;
+}
+
+.dark .audit-history-before .audit-value {
+  color: #fca5a5;
+}
+
+.dark .audit-history-after .audit-value {
+  color: #86efac;
+}
+
+.audit-history-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dark .audit-history-footer {
+  border-top-color: #334155;
+}
+
+/* Responsividade do histórico de auditoria */
+@media (max-width: 768px) {
+  .audit-history-item {
+    padding: 12px;
+  }
+
+  .audit-history-solicitation {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+
+  .audit-history-before,
+  .audit-history-after {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}
