@@ -9,7 +9,7 @@
 import { supabase, logError } from '../config/database';
 
 // Tipos de LLM suportados
-export type LLMType = 
+export type LLMType =
   | 'whisper-1'                                // Transcrição Whisper
   | 'gpt-4o-mini-realtime-preview'  // Realtime API (mini - mais barato)
   | 'gpt-4o'                                   // Chat Completion
@@ -24,7 +24,7 @@ const doctorTesterCache = new Map<string, { isTester: boolean; timestamp: number
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos de cache
 
 // Etapas do processo onde IA é utilizada
-export type AIStage = 
+export type AIStage =
   | 'transcricao_whisper'       // Transcrição de áudio com Whisper
   | 'transcricao_realtime'      // Transcrição em tempo real (Realtime API)
   | 'analise_contexto'          // Análise de contexto para sugestões
@@ -48,7 +48,9 @@ const AI_PRICING: Record<LLMType, { input: number; output: number; unit: 'tokens
 export interface AIPricingRecord {
   consulta_id?: string;
   LLM: LLMType;
-  token: number;          // Tokens usados OU minutos de áudio
+  token: number;          // Total de tokens (mantido para compatibilidade) OU minutos de áudio
+  in_tokens_ia?: number;  // Tokens de entrada (input)
+  out_tokens_ia?: number; // Tokens de saída (output)
   price: number;          // Preço calculado em USD
   tester?: boolean;       // Se é ambiente de teste
   etapa: AIStage;         // Etapa onde foi usado
@@ -129,10 +131,10 @@ class AIPricingService {
           .maybeSingle();
 
         const isTester = doctor?.tester === true;
-        
+
         // Salvar no cache
         doctorTesterCache.set(consultaId, { isTester, timestamp: Date.now() });
-        
+
         console.log(`📊 [AI_PRICING] Médico ${doctorId} é tester: ${isTester}`);
         return isTester;
       }
@@ -192,12 +194,12 @@ class AIPricingService {
     try {
       // Determinar se é tester baseado no médico da consulta
       let isTester = record.tester;
-      
+
       // Se não foi passado explicitamente, buscar do médico
       if (isTester === undefined && record.consulta_id) {
         isTester = await this.isDoctorTester(record.consulta_id);
       }
-      
+
       // Default para false se não conseguiu determinar
       if (isTester === undefined) {
         isTester = false;
@@ -209,6 +211,8 @@ class AIPricingService {
           consulta_id: record.consulta_id || null,
           LLM: record.LLM,
           token: record.token,
+          in_tokens_ia: record.in_tokens_ia || null,
+          out_tokens_ia: record.out_tokens_ia || null,
           price: record.price,
           tester: isTester,
           etapa: record.etapa,
@@ -226,7 +230,10 @@ class AIPricingService {
       }
 
       const testerLabel = isTester ? '[TESTER]' : '[PROD]';
-      console.log(`📊 AI Pricing ${testerLabel}: ${record.etapa} - ${record.LLM} - ${record.token} ${AI_PRICING[record.LLM]?.unit || 'units'} - $${record.price.toFixed(6)}`);
+      const tokenInfo = record.in_tokens_ia !== undefined
+        ? `in:${record.in_tokens_ia} out:${record.out_tokens_ia || 0}`
+        : `${record.token} ${AI_PRICING[record.LLM]?.unit || 'units'}`;
+      console.log(`📊 AI Pricing ${testerLabel}: ${record.etapa} - ${record.LLM} - ${tokenInfo} - $${record.price.toFixed(6)}`);
       return true;
     } catch (error) {
       console.error('❌ Erro ao registrar ai_pricing:', error);
@@ -252,7 +259,9 @@ class AIPricingService {
     return this.logUsage({
       consulta_id: consultaId,
       LLM: 'whisper-1',
-      token: durationMinutes, // Armazenar em minutos
+      token: durationMinutes, // Armazenar em minutos (para compatibilidade)
+      in_tokens_ia: Math.round(durationMs), // Duração em ms como "input"
+      out_tokens_ia: 0, // Whisper não tem output tokens
       price,
       etapa: 'transcricao_whisper',
     });
@@ -270,7 +279,9 @@ class AIPricingService {
     return this.logUsage({
       consulta_id: consultaId,
       LLM: 'gpt-4o-mini-realtime-preview',
-      token: durationMinutes, // Armazenar em minutos
+      token: durationMinutes, // Armazenar em minutos (para compatibilidade)
+      in_tokens_ia: Math.round(durationMs), // Duração em ms como "input"
+      out_tokens_ia: Math.round(durationMs), // Realtime tem output também (resposta de áudio)
       price,
       etapa: 'transcricao_realtime',
     });
@@ -298,6 +309,8 @@ class AIPricingService {
       consulta_id: consultaId,
       LLM: model,
       token: totalTokens,
+      in_tokens_ia: inputTokens,
+      out_tokens_ia: outputTokens,
       price,
       etapa,
     });
@@ -320,6 +333,8 @@ class AIPricingService {
       consulta_id: consultaId,
       LLM: model,
       token: tokens,
+      in_tokens_ia: tokens,  // Embeddings só têm input tokens
+      out_tokens_ia: 0,
       price,
       etapa: 'embedding',
     });
@@ -358,12 +373,12 @@ class AIPricingService {
 
       for (const record of data || []) {
         result.total += record.price || 0;
-        
+
         // Por etapa
         if (record.etapa) {
           result.byEtapa[record.etapa] = (result.byEtapa[record.etapa] || 0) + (record.price || 0);
         }
-        
+
         // Por modelo
         if (record.LLM) {
           result.byModel[record.LLM] = (result.byModel[record.LLM] || 0) + (record.price || 0);
@@ -431,18 +446,18 @@ class AIPricingService {
       for (const record of data || []) {
         const price = record.price || 0;
         result.total += price;
-        
+
         if (record.tester) {
           result.totalTester += price;
         } else {
           result.totalProduction += price;
         }
-        
+
         // Por etapa
         if (record.etapa) {
           result.byEtapa[record.etapa] = (result.byEtapa[record.etapa] || 0) + price;
         }
-        
+
         // Por modelo
         if (record.LLM) {
           result.byModel[record.LLM] = (result.byModel[record.LLM] || 0) + price;

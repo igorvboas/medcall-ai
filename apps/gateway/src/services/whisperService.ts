@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { logError } from '../config/database';
+import { aiPricingService } from './aiPricingService';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -64,12 +65,14 @@ class WhisperService {
      * @param audioBuffer - Buffer do áudio (webm, mp3, wav, etc)
      * @param speaker - 'doctor' ou 'patient' (para logging)
      * @param language - Código do idioma (padrão: 'pt')
+     * @param consultaId - ID da consulta para rastreamento de custos (opcional)
      * @returns Texto transcrito
      */
     async transcribeAudioChunk(
         audioBuffer: Buffer,
         speaker: 'doctor' | 'patient' = 'doctor',
-        language: string = 'pt'
+        language: string = 'pt',
+        consultaId?: string
     ): Promise<{ text: string; duration?: number }> {
         if (!this.openai.apiKey) {
             throw new Error('OPENAI_API_KEY não configurada');
@@ -115,6 +118,13 @@ class WhisperService {
 
             const duration = Date.now() - startTime;
             const text = transcription.text || '';
+
+            // 📊 Registrar uso do Whisper para monitoramento de custos
+            // Estimar duração do áudio em ms baseado no tamanho do buffer (aproximação)
+            // Para áudio WebM ~128kbps: 1 segundo ≈ 16KB
+            const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
+            await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
+            console.log(`📊 [WHISPER] Uso registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio`);
 
             console.log(`✅ [WHISPER] Transcrito ${speaker} em ${duration}ms: "${text.substring(0, 50)}..."`);
 
