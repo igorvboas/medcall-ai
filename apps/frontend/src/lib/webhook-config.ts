@@ -27,7 +27,7 @@ export function getWebhookConfig(): WebhookConfig {
   // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
   const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
   const isDevelopment = nodeEnv === 'development';
-  
+
   return {
     baseUrl: 'https://webhook.tc1.triacompany.com.br',
     authHeader: 'Vc1mgGDEcnyqLH3LoHGUXoLTUg2BRVSu'
@@ -42,19 +42,19 @@ export function getWebhookEndpoints(): WebhookEndpoints {
   // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
   const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
   const isDevelopment = nodeEnv === 'development';
-  
+
   const suffix = isDevelopment ? '-teste' : '';
-  
+
   console.log('🔗🔗 Webhook endpoints configurados:', {
     baseUrl: config.baseUrl,
     suffix,
     isDevelopment,
     nodeEnv
   });
-  
+
   return {
     anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,
-    edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-anamnese${suffix}`,
+    edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
     transcricao: `${config.baseUrl}/webhook/usi-input-transcricao${suffix}`,
     edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico-v2`,
     diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal-v2`,
@@ -71,7 +71,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
  */
 export function getWebhookHeaders(): Record<string, string> {
   const config = getWebhookConfig();
-  
+
   return {
     'Content-Type': 'application/json',
     'Authorization': config.authHeader

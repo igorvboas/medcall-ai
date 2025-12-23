@@ -3,8 +3,8 @@ import { z } from 'zod';
 import path from 'path';
 
 // Carrega variáveis de ambiente do próprio gateway
-dotenv.config({ 
-  path: path.resolve(process.cwd(), '.env') 
+dotenv.config({
+  path: path.resolve(process.cwd(), '.env')
 });
 
 // Schema de validação das variáveis de ambiente
@@ -13,57 +13,68 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(process.env.PORT ? parseInt(process.env.PORT) : 8080),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
-  
+
   // LiveKit removido - usando WebRTC direto
-  
+
   // Supabase
   SUPABASE_URL: z.string().min(1, 'SUPABASE_URL é obrigatório'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY é obrigatório'),
-  
-  // OpenAI
-  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY é obrigatório'),
+
+  // Azure OpenAI (Primary)
+  AZURE_OPENAI_ENDPOINT: z.string().min(1, 'AZURE_OPENAI_ENDPOINT é obrigatório'),
+  AZURE_OPENAI_API_KEY: z.string().min(1, 'AZURE_OPENAI_API_KEY é obrigatório'),
+  AZURE_OPENAI_CHAT_DEPLOYMENT: z.string().default('gpt-4o-mini'),
+  AZURE_OPENAI_WHISPER_DEPLOYMENT: z.string().default('whisper'),
+  AZURE_OPENAI_REALTIME_DEPLOYMENT: z.string().default('gpt-realtime-mini'),
+  AZURE_OPENAI_CHAT_API_VERSION: z.string().default('2025-01-01-preview'),
+  AZURE_OPENAI_WHISPER_API_VERSION: z.string().default('2024-06-01'),
+  AZURE_OPENAI_REALTIME_API_VERSION: z.string().default('2024-10-01-preview'),
+
+  // OpenAI (Legacy - mantido para compatibilidade)
+  OPENAI_API_KEY: z.string().optional(),
   OPENAI_ORGANIZATION: z.string().optional(),
-  
+
   // Security
   JWT_SECRET: z.string().min(32, 'JWT_SECRET deve ter pelo menos 32 caracteres'),
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY deve ter pelo menos 32 caracteres'),
-  
+
+
   // Redis (opcional por enquanto)
   REDIS_URL: z.string().optional(),
   REDIS_PASSWORD: z.string().optional(),
-  
+
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutos
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
-  
+
   // CORS
   CORS_ORIGINS: z.string().optional(), // Lista de origens separadas por vírgula
   CORS_ALLOW_ALL: z.coerce.boolean().default(false), // PERIGOSO: permite todas as origens
-  
+
   // Helmet/Security
   HELMET_ENABLED: z.coerce.boolean().default(true),
-  
+
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   SENTRY_DSN: z.string().optional(),
-  
+
   // Medical & Compliance
   ENABLE_RECORDING: z.coerce.boolean().default(false),
   DATA_RETENTION_DAYS: z.coerce.number().default(30),
   HIPAA_COMPLIANT_MODE: z.coerce.boolean().default(true),
-  
+
   // Audio Processing
   VAD_SILENCE_THRESHOLD_MS: z.coerce.number().default(1200),
   MAX_AUDIO_DURATION_MS: z.coerce.number().default(300000), // 5 minutos
   AUDIO_SAMPLE_RATE: z.coerce.number().default(16000),
-  
+
   // AI & RAG Settings
   LLM_MODEL: z.string().default('gpt-4o-mini'),
   LLM_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
   LLM_MAX_TOKENS: z.coerce.number().default(500),
   RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   RAG_MAX_RESULTS: z.coerce.number().default(5),
-  
+
   // Development
   DEBUG_AUDIO: z.coerce.boolean().default(false),
   MOCK_ASR: z.coerce.boolean().default(false),
@@ -74,14 +85,14 @@ const envSchema = z.object({
 function validateEnv() {
   try {
     const parsed = envSchema.parse(process.env);
-    
+
     // ✅ Log de configuração (sem mostrar valores sensíveis)
     if (process.env.NODE_ENV === 'production') {
       console.log('🔧 [CONFIG] Ambiente: PRODUÇÃO');
       console.log('🔧 [CONFIG] SUPABASE_URL:', parsed.SUPABASE_URL ? '✅ Configurado' : '❌ Não configurado');
       console.log('🔧 [CONFIG] SUPABASE_SERVICE_ROLE_KEY:', parsed.SUPABASE_SERVICE_ROLE_KEY ? '✅ Configurado' : '❌ Não configurado');
     }
-    
+
     return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -102,7 +113,7 @@ export const isProduction = config.NODE_ENV === 'production';
 export const isTest = config.NODE_ENV === 'test';
 
 // Configurações específicas por ambiente
-export const corsOrigins = isDevelopment 
+export const corsOrigins = isDevelopment
   ? ['http://localhost:3000', 'http://localhost:3001']
   : [config.FRONTEND_URL];
 
@@ -144,6 +155,22 @@ export const audioConfig = {
 
 // Configurações de AI
 export const aiConfig = {
+  // Azure OpenAI (Primary)
+  azure: {
+    endpoint: config.AZURE_OPENAI_ENDPOINT,
+    apiKey: config.AZURE_OPENAI_API_KEY,
+    deployments: {
+      chat: config.AZURE_OPENAI_CHAT_DEPLOYMENT,
+      whisper: config.AZURE_OPENAI_WHISPER_DEPLOYMENT,
+      realtime: config.AZURE_OPENAI_REALTIME_DEPLOYMENT,
+    },
+    apiVersions: {
+      chat: config.AZURE_OPENAI_CHAT_API_VERSION,
+      whisper: config.AZURE_OPENAI_WHISPER_API_VERSION,
+      realtime: config.AZURE_OPENAI_REALTIME_API_VERSION,
+    },
+  },
+  // OpenAI (Legacy - mantido para compatibilidade)
   openai: {
     apiKey: config.OPENAI_API_KEY,
     organization: config.OPENAI_ORGANIZATION,

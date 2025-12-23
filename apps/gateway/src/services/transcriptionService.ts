@@ -2,12 +2,12 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { logError, logWarning } from '../config/database';
 import { aiPricingService } from './aiPricingService';
+import { aiConfig } from '../config';
 
 interface TranscriptionSegment {
   id: string;
@@ -35,18 +35,25 @@ interface TranscriptionOptions {
 }
 
 export class TranscriptionService extends EventEmitter {
-  private openai: OpenAI;
   private supabase: any;
   private activeRooms: Map<string, Set<string>> = new Map();
   private audioBuffers: Map<string, Buffer[]> = new Map();
   private processingQueue: Map<string, NodeJS.Timeout> = new Map();
 
+  // Azure OpenAI config
+  private azureEndpoint: string;
+  private azureApiKey: string;
+  private azureDeployment: string;
+  private azureApiVersion: string;
+
   constructor() {
     super();
 
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Configurar Azure OpenAI
+    this.azureEndpoint = aiConfig.azure.endpoint;
+    this.azureApiKey = aiConfig.azure.apiKey;
+    this.azureDeployment = aiConfig.azure.deployments.whisper;
+    this.azureApiVersion = aiConfig.azure.apiVersions.whisper;
 
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -202,28 +209,44 @@ export class TranscriptionService extends EventEmitter {
   private async transcribeAudio(audioBuffer: Buffer, options: TranscriptionOptions = {}, consultaId?: string): Promise<any> {
     try {
       const wavBuffer = this.convertToWav(audioBuffer);
-      const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+
+      // Azure OpenAI Whisper endpoint
+      const azureUrl = `${this.azureEndpoint}/openai/deployments/${this.azureDeployment}/audio/transcriptions?api-version=${this.azureApiVersion}`;
+
+      // Usar node-fetch com form-data (compatibilidade com Node.js)
+      const FormData = (await import('form-data')).default;
+      const nodeFetch = (await import('node-fetch')).default;
+      const { Readable } = await import('stream');
 
       const formData = new FormData();
-      formData.append('file', blob, 'audio.wav');
-      formData.append('model', options.model || 'whisper-1');
+      // Converter Buffer para Readable stream para form-data
+      const audioStream = Readable.from(wavBuffer);
+      formData.append('file', audioStream, {
+        filename: 'audio.wav',
+        contentType: 'audio/wav',
+        knownLength: wavBuffer.length
+      });
       formData.append('language', options.language || 'pt');
       formData.append('response_format', options.response_format || 'verbose_json');
       formData.append('temperature', (options.temperature || 0).toString());
 
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      console.log(`🌐 [TRANSCRIPTION-SERVICE] Enviando para Azure: ${azureUrl}`);
+
+      const response = await nodeFetch(azureUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'api-key': this.azureApiKey,
+          ...formData.getHeaders()
         },
         body: formData
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Azure Whisper API error: ${response.status} - ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as any;
 
       // 📊 Registrar uso do Whisper para monitoramento de custos
       // Estimar duração do áudio baseado no tamanho do buffer (aproximação)
@@ -237,10 +260,10 @@ export class TranscriptionService extends EventEmitter {
     } catch (error) {
       console.error('Erro na transcrição:', error);
       logError(
-        `Erro na transcrição de áudio via OpenAI Whisper`,
+        `Erro na transcrição de áudio via Azure OpenAI Whisper`,
         'error',
         consultaId || null,
-        { language: options.language, model: options.model, error: error instanceof Error ? error.message : String(error) }
+        { language: options.language, error: error instanceof Error ? error.message : String(error) }
       );
       return null;
     }

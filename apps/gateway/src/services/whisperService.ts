@@ -1,6 +1,6 @@
-import OpenAI from 'openai';
 import { logError } from '../config/database';
 import { aiPricingService } from './aiPricingService';
+import { aiConfig } from '../config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -11,30 +11,33 @@ import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 /**
- * Serviço de integração com Whisper API da OpenAI
+ * Serviço de integração com Azure OpenAI Whisper API
  * Para transcrição de áudio em consultas presenciais
  */
 class WhisperService {
-    private openai: OpenAI;
-    private model = 'whisper-1';
+    private azureEndpoint: string;
+    private azureApiKey: string;
+    private azureDeployment: string;
+    private azureApiVersion: string;
 
     // Cache de transcrições (opcional - evitar reprocessamento)
     private transcriptionCache = new Map<string, string>();
 
     constructor() {
-        const apiKey = process.env.OPENAI_API_KEY || '';
+        this.azureEndpoint = aiConfig.azure.endpoint;
+        this.azureApiKey = aiConfig.azure.apiKey;
+        this.azureDeployment = aiConfig.azure.deployments.whisper;
+        this.azureApiVersion = aiConfig.azure.apiVersions.whisper;
 
-        if (!apiKey) {
-            console.error('❌ [WHISPER] OPENAI_API_KEY não configurada!');
+        if (!this.azureApiKey || !this.azureEndpoint) {
+            console.error('❌ [WHISPER] Azure OpenAI não configurado!');
             logError(
-                'OPENAI_API_KEY não configurada para Whisper',
+                'Azure OpenAI não configurado para Whisper',
                 'error',
                 null,
                 { service: 'whisper' }
             );
         }
-
-        this.openai = new OpenAI({ apiKey });
     }
 
     /**
@@ -60,7 +63,7 @@ class WhisperService {
     }
 
     /**
-     * Transcreve chunk de áudio usando Whisper API
+     * Transcreve chunk de áudio usando Azure OpenAI Whisper API
      * 
      * @param audioBuffer - Buffer do áudio (webm, mp3, wav, etc)
      * @param speaker - 'doctor' ou 'patient' (para logging)
@@ -74,8 +77,8 @@ class WhisperService {
         language: string = 'pt',
         consultaId?: string
     ): Promise<{ text: string; duration?: number }> {
-        if (!this.openai.apiKey) {
-            throw new Error('OPENAI_API_KEY não configurada');
+        if (!this.azureApiKey || !this.azureEndpoint) {
+            throw new Error('Azure OpenAI não configurado');
         }
 
         const startTime = Date.now();
@@ -92,14 +95,13 @@ class WhisperService {
                 };
             }
 
-            console.log(`🎤 [WHISPER] Transcrevendo áudio ${speaker} (${audioBuffer.length} bytes)...`);
+            console.log(`🎤 [WHISPER] Transcrevendo áudio ${speaker} (${audioBuffer.length} bytes) via Azure...`);
 
             // Detectar formato do áudio baseado nos magic bytes
             const audioFormat = this.detectAudioFormat(audioBuffer);
             console.log(`🔍 [WHISPER] Formato detectado: ${audioFormat}`);
 
             // Criar arquivo temporário com extensão correta
-            // Whisper API aceita webm, mp3, mp4, mpeg, mpga, m4a, wav, e webm diretamente
             const tempDir = os.tmpdir();
             tempFilePath = path.join(tempDir, `whisper_${speaker}_${Date.now()}.${audioFormat}`);
 
@@ -107,42 +109,131 @@ class WhisperService {
             fs.writeFileSync(tempFilePath, audioBuffer);
             console.log(`💾 [WHISPER] Arquivo ${audioFormat} criado: ${tempFilePath} (${audioBuffer.length} bytes)`);
 
-            // Whisper API aceita WebM e outros formatos diretamente - não precisa converter!
-            const transcription = await this.openai.audio.transcriptions.create({
-                file: fs.createReadStream(tempFilePath),
-                model: this.model,
-                language: language,
-                response_format: 'json',
-                temperature: 0.0
+            // Azure Whisper API - chamada HTTP direta
+            const azureUrl = `${this.azureEndpoint}/openai/deployments/${this.azureDeployment}/audio/transcriptions?api-version=${this.azureApiVersion}`;
+
+            // Usar node-fetch com form-data (compatibilidade garantida)
+            const FormData = (await import('form-data')).default;
+            const nodeFetch = (await import('node-fetch')).default;
+
+            const formData = new FormData();
+            formData.append('file', fs.createReadStream(tempFilePath), {
+                filename: `audio.${audioFormat}`,
+                contentType: `audio/${audioFormat}`
             });
+            formData.append('language', language);
+            formData.append('response_format', 'json');
+            formData.append('temperature', '0');
 
-            const duration = Date.now() - startTime;
-            const text = transcription.text || '';
+            console.log(`🌐 [WHISPER] Enviando para Azure: ${azureUrl}`);
 
-            // 📊 Registrar uso do Whisper para monitoramento de custos
-            // Estimar duração do áudio em ms baseado no tamanho do buffer (aproximação)
-            // Para áudio WebM ~128kbps: 1 segundo ≈ 16KB
-            const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
-            await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
-            console.log(`📊 [WHISPER] Uso registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio`);
+            // Retry com backoff exponencial para lidar com rate limits (429)
+            const MAX_RETRIES = 3;
+            let lastError: Error | null = null;
 
-            console.log(`✅ [WHISPER] Transcrito ${speaker} em ${duration}ms: "${text.substring(0, 50)}..."`);
+            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                if (attempt > 0) {
+                    const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                    console.log(`⏳ [WHISPER] Retry ${attempt}/${MAX_RETRIES} após ${delay / 1000}s...`);
+                    await new Promise(r => setTimeout(r, delay));
 
-            // Salvar no cache
-            this.transcriptionCache.set(cacheKey, text);
+                    // Recriar FormData porque o stream foi consumido
+                    const freshFormData = new FormData();
+                    freshFormData.append('file', fs.createReadStream(tempFilePath), {
+                        filename: `audio.${audioFormat}`,
+                        contentType: `audio/${audioFormat}`
+                    });
+                    freshFormData.append('language', language);
+                    freshFormData.append('response_format', 'json');
+                    freshFormData.append('temperature', '0');
 
-            // Limpar cache antigo (manter apenas últimos 100)
-            if (this.transcriptionCache.size > 100) {
-                const firstKey = this.transcriptionCache.keys().next().value;
-                if (firstKey) {
-                    this.transcriptionCache.delete(firstKey);
+                    const retryResponse = await nodeFetch(azureUrl, {
+                        method: 'POST',
+                        headers: {
+                            'api-key': this.azureApiKey,
+                            ...freshFormData.getHeaders()
+                        },
+                        body: freshFormData
+                    });
+
+                    if (retryResponse.ok) {
+                        const result = await retryResponse.json() as { text?: string };
+                        const text = result.text || '';
+                        const duration = Date.now() - startTime;
+                        console.log(`✅ [WHISPER] Retry ${attempt} bem-sucedido!`);
+
+                        // Limpar arquivo temporário
+                        try { fs.unlinkSync(tempFilePath); } catch (e) { }
+
+                        await aiPricingService.logWhisperUsage(Math.max(1000, (audioBuffer.length / 16000) * 1000), consultaId);
+                        this.transcriptionCache.set(cacheKey, text);
+
+                        return { text, duration };
+                    }
+
+                    if (retryResponse.status === 429) {
+                        lastError = new Error(`Rate limit ainda ativo (tentativa ${attempt + 1})`);
+                        continue;
+                    }
+
+                    const errorText = await retryResponse.text();
+                    throw new Error(`Azure Whisper API error: ${retryResponse.status} - ${errorText}`);
                 }
+
+                const response = await nodeFetch(azureUrl, {
+                    method: 'POST',
+                    headers: {
+                        'api-key': this.azureApiKey,
+                        ...formData.getHeaders()
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json() as { text?: string };
+                    const text = result.text || '';
+                    const duration = Date.now() - startTime;
+
+
+                    // 📊 Registrar uso do Whisper para monitoramento de custos
+                    // Estimar duração do áudio em ms baseado no tamanho do buffer (aproximação)
+                    // Para áudio WebM ~128kbps: 1 segundo ≈ 16KB
+                    const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
+                    await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
+                    console.log(`📊 [WHISPER] Uso registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio`);
+
+                    console.log(`✅ [WHISPER] Transcrito ${speaker} em ${duration}ms: "${text.substring(0, 50)}..."`);
+
+                    // Salvar no cache
+                    this.transcriptionCache.set(cacheKey, text);
+
+                    // Limpar cache antigo (manter apenas últimos 100)
+                    if (this.transcriptionCache.size > 100) {
+                        const firstKey = this.transcriptionCache.keys().next().value;
+                        if (firstKey) {
+                            this.transcriptionCache.delete(firstKey);
+                        }
+                    }
+
+                    return {
+                        text,
+                        duration
+                    };
+                }
+
+                // Se for rate limit (429), continuar retry
+                if (response.status === 429) {
+                    console.log(`⚠️ [WHISPER] Rate limit (429), tentativa ${attempt + 1}/${MAX_RETRIES}`);
+                    continue;
+                }
+
+                // Outro erro - falhar imediatamente
+                const errorText = await response.text();
+                throw new Error(`Azure Whisper API error: ${response.status} - ${errorText}`);
             }
 
-            return {
-                text,
-                duration
-            };
+            // Não deveria chegar aqui após todas tentativas
+            throw new Error('Falha após todas as tentativas de retry');
 
         } catch (error) {
             const duration = Date.now() - startTime;

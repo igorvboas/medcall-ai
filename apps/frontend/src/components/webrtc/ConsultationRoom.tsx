@@ -41,19 +41,19 @@ interface ConsultationRoomProps {
 
 
 
-export function ConsultationRoom({ 
+export function ConsultationRoom({
 
-  roomId, 
+  roomId,
 
-  role, 
+  role,
 
   userType = 'doctor',
 
-  patientId, 
+  patientId,
 
-  patientName, 
+  patientName,
 
-  onEndCall 
+  onEndCall
 
 }: ConsultationRoomProps) {
 
@@ -75,7 +75,7 @@ export function ConsultationRoom({
   const [isCallActive, setIsCallActive] = useState(false);
 
   const [participantName, setParticipantName] = useState('');
-  
+
   // ✅ NOVO: Estado para controlar se paciente está pronto para entrar
   const [isPatientReadyToJoin, setIsPatientReadyToJoin] = useState(false);
 
@@ -105,7 +105,7 @@ export function ConsultationRoom({
   const [showPatientJoinedNotification, setShowPatientJoinedNotification] = useState(false);
   const [patientJoinedName, setPatientJoinedName] = useState('');
 
-  
+
 
   // Estados para modal do paciente - igual ao projeto original
 
@@ -113,13 +113,13 @@ export function ConsultationRoom({
 
   const [errorMessage, setErrorMessage] = useState('');
 
-  
+
 
   // Estados para botão Answer - igual ao projeto original
 
   const [offerData, setOfferData] = useState<any>(null);
 
-  
+
 
   // Estados para sugestões de IA
 
@@ -133,19 +133,19 @@ export function ConsultationRoom({
   // Estado para dropdown de ações
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
-  
+
 
   // Estado para modal de finalização (removido - agora redireciona para página)
-  
+
   // Estado para loading da finalização da sala
   const [isEndingRoom, setIsEndingRoom] = useState(false);
 
   // Estado para geração de anamnese
   const [isGeneratingAnamnese, setIsGeneratingAnamnese] = useState(false);
-  
+
   // ✅ NOVO: Estado para saber se anamnese está pronta para acessar
   const [anamneseReady, setAnamneseReady] = useState(false);
-  
+
   // ✅ NOVO: ID da consulta atual (para usar no botão "Acessar Anamnese")
   const [currentConsultationId, setCurrentConsultationId] = useState<string | null>(null);
 
@@ -153,21 +153,21 @@ export function ConsultationRoom({
   const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
   const [recordingConsent, setRecordingConsent] = useState(false);
   const [showRecordingConsentModal, setShowRecordingConsentModal] = useState(false);
-  
+
   // Ref para evitar que o modal seja aberto múltiplas vezes
   const isConsentModalOpeningRef = useRef(false);
-  
+
   // Hook de gravação
-  const { 
-    state: recordingState, 
-    startRecording, 
-    stopRecording, 
-    pauseRecording, 
-    resumeRecording, 
-    formatDuration: formatRecordingDuration 
+  const {
+    state: recordingState,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    formatDuration: formatRecordingDuration
   } = useRecording();
 
-  
+
 
   // Refs para WebRTC
 
@@ -187,7 +187,7 @@ export function ConsultationRoom({
   const anamnesePollingRef = useRef<NodeJS.Timeout | null>(null);
   const anamneseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  
+
 
   // Refs para transcrição
 
@@ -195,25 +195,28 @@ export function ConsultationRoom({
 
   const transcriptionManagerRef = useRef<TranscriptionManager | null>(null);
 
-  
+
 
   // Fila de ICE candidates pendentes
 
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
 
   // ✅ NOVO: Fila de offers pendentes (para quando mídia ainda não está pronta)
-  
-  const pendingOfferRef = useRef<{offer: RTCSessionDescriptionInit, userName: string} | null>(null);
-  
+
+  const pendingOfferRef = useRef<{ offer: RTCSessionDescriptionInit, userName: string } | null>(null);
+
   const isMediaReadyRef = useRef<boolean>(false);
-  
+
   // ✅ NOVO: Flag para evitar múltiplas chamadas simultâneas a rejoinRoom
-  
+
   const isRejoiningRef = useRef<boolean>(false);
-  
+
   const hasJoinedRoomRef = useRef<boolean>(false);
 
-  
+  // ✅ NOVO: Contador de tentativas de reconexão (para backoff exponencial)
+  const reconnectAttemptsRef = useRef<number>(0);
+
+
 
   // Variáveis WebRTC
 
@@ -221,7 +224,7 @@ export function ConsultationRoom({
 
   const [remoteUserName, setRemoteUserName] = useState('');
 
-  
+
 
   // ✅ CORREÇÃO: Refs para valores sempre atualizados (evitar closure)
 
@@ -283,17 +286,17 @@ export function ConsultationRoom({
   // Buscar credenciais efêmeras da Twilio via gateway (se disponível)
   // ✅ CORREÇÃO: Adicionar ref para evitar múltiplas chamadas
   const turnCredentialsFetchedRef = useRef<boolean>(false);
-  
+
   useEffect(() => {
     // ✅ CORREÇÃO: Evitar múltiplas chamadas
     if (turnCredentialsFetchedRef.current) {
       return;
     }
     turnCredentialsFetchedRef.current = true;
-    
+
     const httpBase = (process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001').replace(/^ws/i, 'http');
     console.log('🔄 [TURN] Buscando credenciais TURN do gateway...');
-    
+
     fetch(`${httpBase}/api/turn-credentials`)
       .then(async (r) => {
         // ✅ CORREÇÃO: Agora o endpoint sempre retorna 200 (com STUN se Twilio não estiver configurado)
@@ -317,61 +320,61 @@ export function ConsultationRoom({
 
   console.log('🟢 userName inicial:', userName);
 
-  
+
 
   // Função para carregar Socket.IO dinamicamente
 
   const loadSocketIO = async () => {
 
-      try {
+    try {
 
-        // Se Socket.IO já está carregado, usar diretamente
+      // Se Socket.IO já está carregado, usar diretamente
 
-        if (window.io) {
+      if (window.io) {
 
-          console.log('Socket.IO já disponível, conectando...');
+        console.log('Socket.IO já disponível, conectando...');
+
+        connectSocket();
+
+      } else {
+
+        // Carregar Socket.IO do backend (mesmo domínio)
+
+        console.log('Carregando Socket.IO do servidor...');
+
+        const script = document.createElement('script');
+
+        script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
+
+        script.onload = () => {
+
+          console.log('Socket.IO carregado com sucesso');
 
           connectSocket();
 
-        } else {
+        };
 
-          // Carregar Socket.IO do backend (mesmo domínio)
+        script.onerror = () => {
 
-          console.log('Carregando Socket.IO do servidor...');
+          console.error('Erro ao carregar Socket.IO');
 
-          const script = document.createElement('script');
+          showError('Erro ao carregar Socket.IO do servidor. Verifique se o backend está rodando.', 'Erro de Conexão');
 
-          script.src = `${process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001'}/socket.io/socket.io.js`;
+        };
 
-          script.onload = () => {
-
-            console.log('Socket.IO carregado com sucesso');
-
-            connectSocket();
-
-          };
-
-          script.onerror = () => {
-
-            console.error('Erro ao carregar Socket.IO');
-
-            showError('Erro ao carregar Socket.IO do servidor. Verifique se o backend está rodando.', 'Erro de Conexão');
-
-          };
-
-          document.head.appendChild(script);
-
-        }
-
-      } catch (error) {
-
-        console.error('Erro ao carregar Socket.IO:', error);
-
-        showError('Erro ao carregar Socket.IO: ' + error, 'Erro de Conexão');
+        document.head.appendChild(script);
 
       }
 
-    };
+    } catch (error) {
+
+      console.error('Erro ao carregar Socket.IO:', error);
+
+      showError('Erro ao carregar Socket.IO: ' + error, 'Erro de Conexão');
+
+    }
+
+  };
 
 
 
@@ -390,7 +393,7 @@ export function ConsultationRoom({
 
 
     console.log('🔄 RENEGOCIAÇÃO: Iniciando...');
-    
+
     // ✅ CORREÇÃO: Verificar se stream local ainda está disponível
     if (!localStreamRef.current) {
       console.log('❌ RENEGOCIAÇÃO: Stream local não disponível, tentando recriar...');
@@ -402,7 +405,7 @@ export function ConsultationRoom({
       }
     }
 
-    
+
 
     try {
 
@@ -411,11 +414,11 @@ export function ConsultationRoom({
       if (userType === 'doctor' && didIOffer) {
 
         console.log('🔄 RENEGOCIAÇÃO: Criando nova offer com ICE restart...');
-        
+
         // ✅ NOVO: Se PeerConnection não existe ou está em estado ruim, recriar
-        if (!peerConnectionRef.current || 
-            peerConnectionRef.current.connectionState === 'failed' ||
-            peerConnectionRef.current.connectionState === 'closed') {
+        if (!peerConnectionRef.current ||
+          peerConnectionRef.current.connectionState === 'failed' ||
+          peerConnectionRef.current.connectionState === 'closed') {
           console.log('🔄 RENEGOCIAÇÃO: PeerConnection não existe ou falhou, recriando...');
           await createPeerConnection();
         }
@@ -428,7 +431,7 @@ export function ConsultationRoom({
 
         await peerConnectionRef.current!.setLocalDescription(offer);
 
-        
+
 
         socketRef.current.emit('newOffer', {
 
@@ -438,20 +441,20 @@ export function ConsultationRoom({
 
         });
 
-        
+
 
         console.log('✅ RENEGOCIAÇÃO: Nova offer enviada!');
 
       } else {
 
         console.log('⏳ RENEGOCIAÇÃO: Aguardando nova offer do host...');
-        
+
         // ✅ NOVO: Paciente precisa recriar PeerConnection se estiver em estado failed/closed
         if (!peerConnectionRef.current ||
-            peerConnectionRef.current.connectionState === 'failed' ||
-            peerConnectionRef.current.connectionState === 'closed' ||
-            peerConnectionRef.current.iceConnectionState === 'failed' ||
-            peerConnectionRef.current.iceConnectionState === 'closed') {
+          peerConnectionRef.current.connectionState === 'failed' ||
+          peerConnectionRef.current.connectionState === 'closed' ||
+          peerConnectionRef.current.iceConnectionState === 'failed' ||
+          peerConnectionRef.current.iceConnectionState === 'closed') {
           console.log('🔄 RENEGOCIAÇÃO: PeerConnection não existe ou falhou, recriando...');
           await createPeerConnection();
           console.log('✅ RENEGOCIAÇÃO: PeerConnection recriado, aguardando offer...');
@@ -474,19 +477,19 @@ export function ConsultationRoom({
   const rejoinRoom = () => {
 
     if (!socketRef.current || !roomId) return;
-    
+
     // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
     if (isRejoiningRef.current) {
       console.warn('⚠️ rejoinRoom já está em execução, ignorando chamada duplicada');
       return;
     }
-    
+
     // ✅ CORREÇÃO: Evitar rejoin se já entrou na sala
     if (hasJoinedRoomRef.current) {
       console.warn('⚠️ Já está na sala, ignorando rejoinRoom duplicado');
       return;
     }
-    
+
     isRejoiningRef.current = true;
     console.log('🔄 Rejuntando à sala:', roomId, 'como', userType);
 
@@ -503,7 +506,7 @@ export function ConsultationRoom({
       if (response.success) {
 
         console.log('✅ Rejuntado à sala com sucesso!');
-        
+
         console.log('📊 Room Status:', response.roomData?.status);
 
         setRoomData(response.roomData);
@@ -511,7 +514,7 @@ export function ConsultationRoom({
         setUserRole(response.role);
 
         setHasJoinedRoom(true); // ✅ Garantir que flag está setada
-        
+
         // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag de rejoining
         hasJoinedRoomRef.current = true;
         isRejoiningRef.current = false;
@@ -521,7 +524,7 @@ export function ConsultationRoom({
         if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
 
           console.log(`🔄 Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
-          
+
           // Restaurar cada transcrição no TranscriptionManager
           if (transcriptionManagerRef.current) {
 
@@ -539,124 +542,124 @@ export function ConsultationRoom({
 
         }
 
-        
+
 
         // ✅ NOVO: Restaurar WebRTC baseado no status da sala e tipo de usuário
-        
+
         const roomStatus = response.roomData?.status;
-        
+
         // Se a sala está ativa, significa que o WebRTC deve ser reestabelecido
-        
+
         if (roomStatus === 'active' || roomStatus === 'waiting') {
-          
+
           console.log('🔄 Sala estava ativa, restaurando WebRTC...');
-          
+
           // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
           if (roomStatus === 'active') {
             setIsCallActive(true);
             console.log('✅ [REJOIN] isCallActive = true (sala está ativa)');
           }
-          
+
           // MÉDICO: Reconstruir conexão e criar nova offer
-          
+
           if (userType === 'doctor') {
-            
+
             setTimeout(async () => {
-              
+
               console.log('👨‍⚕️ [RELOAD] Médico reconectando: iniciando chamada...');
-              
+
               try {
-                
+
                 // Garantir que mídia está disponível
-                
+
                 if (!localStreamRef.current) {
-                  
+
                   await fetchUserMedia();
-                  
+
                 }
-                
-                
+
+
                 // Criar nova conexão WebRTC
-                
+
                 await createPeerConnection();
-                
-                
+
+
                 // Criar nova offer
-                
+
                 const offer = await peerConnectionRef.current!.createOffer();
-                
+
                 await peerConnectionRef.current!.setLocalDescription(offer);
-                
-                
+
+
                 setDidIOffer(true);
-                
+
                 didOfferRef.current = true;
-                
+
                 setIsCallActive(true);
-                
-                
+
+
                 // Emitir nova offer para o paciente
-                
-                socketRef.current!.emit('newOffer', { 
-                  
-                  offer: offer, 
-                  
-                  roomId: roomId 
-                  
+
+                socketRef.current!.emit('newOffer', {
+
+                  offer: offer,
+
+                  roomId: roomId
+
                 });
-                
-                
+
+
                 console.log('✅ [RELOAD] Nova offer enviada após reload!');
-                
+
               } catch (error) {
-                
+
                 console.error('❌ [RELOAD] Erro ao restaurar WebRTC do médico:', error);
-                
+
               }
-              
+
             }, 1500);
-            
-          } 
-          
-          // PACIENTE: Aguardar offer do médico
-          
-          else {
-            
-            console.log('👤 [RELOAD] Paciente reconectando: aguardando offer...');
-            
-            setTimeout(async () => {
-              
-              try {
-                
-                // Garantir que mídia está disponível
-                
-                if (!localStreamRef.current) {
-                  
-                  await fetchUserMedia();
-                  
-                }
-                
-                
-                // Criar conexão WebRTC (aguardando offer)
-                
-                await createPeerConnection();
-                
-                
-                console.log('✅ [RELOAD] Paciente pronto para receber offer');
-                
-              } catch (error) {
-                
-                console.error('❌ [RELOAD] Erro ao restaurar WebRTC do paciente:', error);
-                
-              }
-              
-            }, 1000);
-            
+
           }
-          
+
+          // PACIENTE: Aguardar offer do médico
+
+          else {
+
+            console.log('👤 [RELOAD] Paciente reconectando: aguardando offer...');
+
+            setTimeout(async () => {
+
+              try {
+
+                // Garantir que mídia está disponível
+
+                if (!localStreamRef.current) {
+
+                  await fetchUserMedia();
+
+                }
+
+
+                // Criar conexão WebRTC (aguardando offer)
+
+                await createPeerConnection();
+
+
+                console.log('✅ [RELOAD] Paciente pronto para receber offer');
+
+              } catch (error) {
+
+                console.error('❌ [RELOAD] Erro ao restaurar WebRTC do paciente:', error);
+
+              }
+
+            }, 1000);
+
+          }
+
         }
 
-        
+
 
         // ✅ Reconectar transcrição se estava ativa (ou iniciar automaticamente para médico)
 
@@ -664,9 +667,9 @@ export function ConsultationRoom({
 
           console.log('🔄 Restabelecendo transcrição do médico...');
 
-          // Auto-start novamente
-
-          setTimeout(() => autoStartTranscription(), 2000);
+          // ✅ REMOVIDO: setTimeout para autoStartTranscription
+          // Agora a transcrição é iniciada automaticamente pelo oniceconnectionstatechange
+          console.log('🎙️ Transcrição será iniciada quando ICE estabilizar');
 
         } else if (isTranscriptionActive && transcriptionManagerRef.current) {
 
@@ -688,11 +691,11 @@ export function ConsultationRoom({
 
   };
 
-  
+
   // ✅ NOVO: Força nova conexão Socket.IO (sem reusar SID)
   const forceNewConnection = async () => {
     console.log('🔄 FORÇANDO NOVA CONEXÃO Socket.IO...');
-    
+
     try {
       // 1. Desconectar socket antigo completamente
       if (socketRef.current) {
@@ -701,24 +704,24 @@ export function ConsultationRoom({
         socketRef.current.disconnect();
         socketRef.current = null;
       }
-      
+
       setIsConnected(false);
-      
+
       // 2. Aguardar um pouco
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // 3. Verificar se Socket.IO está disponível
       if (!window || !(window as any).io) {
         console.error('❌ Socket.IO não está disponível');
         showError('Socket.IO não está carregado. Recarregue a página.', 'Erro de Conexão');
         return;
       }
-      
+
       // 4. Criar NOVA conexão com forceNew: true
       console.log('🔄 Criando nova conexão Socket.IO...');
-      
+
       const tempUserName = userName || localStorage.getItem('userName') || 'Anônimo';
-      
+
       socketRef.current = (window as any).io.connect(
         process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
         {
@@ -734,29 +737,29 @@ export function ConsultationRoom({
           reconnectionAttempts: 10     // Limitar tentativas para não travar
         }
       );
-      
+
       // 5. Configurar listeners
       socketRef.current.on('connect', () => {
         console.log('✅ NOVA CONEXÃO estabelecida!');
         setIsConnected(true);
         setIsReconnecting(false); // ✅ Desativar indicador de reconexão
         setupSocketListeners();
-        
+
         // 6. Rejuntar à sala se já estava na sala
         if (hasJoinedRoom && roomId) {
           setTimeout(() => rejoinRoom(), 1000);
         }
       });
-      
+
       socketRef.current.on('connect_error', (error: any) => {
         console.error('❌ Erro na nova conexão:', error);
       });
-      
+
       socketRef.current.on('disconnect', (reason: string) => {
         console.log('❌ Nova conexão desconectada:', reason);
         setIsConnected(false);
       });
-      
+
     } catch (error) {
       console.error('❌ Erro ao forçar nova conexão:', error);
       showError('Erro ao reconectar. Por favor, recarregue a página.', 'Erro de Conexão');
@@ -767,252 +770,252 @@ export function ConsultationRoom({
 
   const connectSocket = () => {
 
-      if (window.io) {
+    if (window.io) {
 
-        console.log('Conectando ao servidor Socket.IO...');
+      console.log('Conectando ao servidor Socket.IO...');
 
-        const tempUserName = userName || 'Temp-' + Math.floor(Math.random() * 100000);
+      const tempUserName = userName || 'Temp-' + Math.floor(Math.random() * 100000);
 
-        socketRef.current = window.io.connect(
+      socketRef.current = window.io.connect(
 
-          process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
+        process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001',
 
-          {
+        {
 
-            auth: {
+          auth: {
 
-              userName: tempUserName,
+            userName: tempUserName,
 
-              role: userType === 'doctor' ? 'host' : 'participant',
+            role: userType === 'doctor' ? 'host' : 'participant',
 
-              password: "x"
+            password: "x"
 
-            },
+          },
 
-            // ✅ CORREÇÃO: FORÇAR NOVA CONEXÃO (não reusar SID antigo após refresh)
-            
-            forceNew: true,                // SEMPRE criar nova conexão (resolve problema de SID expirado)
+          // ✅ CORREÇÃO: FORÇAR NOVA CONEXÃO (não reusar SID antigo após refresh)
 
-            // ✅ RECONEXÃO AUTOMÁTICA habilitada
+          forceNew: true,                // SEMPRE criar nova conexão (resolve problema de SID expirado)
 
-            reconnection: true,
+          // ✅ RECONEXÃO AUTOMÁTICA habilitada
 
-            reconnectionDelay: 1000,       // 1 segundo entre tentativas
+          reconnection: true,
 
-            reconnectionDelayMax: 5000,    // máximo 5 segundos
+          reconnectionDelay: 1000,       // 1 segundo entre tentativas
 
-            reconnectionAttempts: Infinity // tentar infinitamente
+          reconnectionDelayMax: 5000,    // máximo 5 segundos
 
+          reconnectionAttempts: Infinity // tentar infinitamente
+
+        }
+
+      );
+
+
+
+      socketRef.current.on('connect', () => {
+
+        console.log('✅ Conexão estabelecida com o servidor');
+
+        setIsConnected(true);
+
+        setIsReconnecting(false); // ✅ Desativar indicador de reconexão
+
+        setupSocketListeners();
+
+      });
+
+
+
+      socketRef.current.on('connect_error', (error: any) => {
+
+        console.error('❌ Erro ao conectar:', error);
+
+
+        // ✅ CORREÇÃO: Detectar erro de SID inválido e forçar nova conexão
+        if (error.message && (error.message.includes('websocket') || error.message.includes('sid'))) {
+          console.warn('⚠️ Erro de SID/WebSocket detectado, forçando nova conexão...');
+
+          // Limpar conexão atual
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current.close();
+            socketRef.current = null;
           }
 
-        );
-
-
-
-        socketRef.current.on('connect', () => {
-
-          console.log('✅ Conexão estabelecida com o servidor');
-
-          setIsConnected(true);
-          
-          setIsReconnecting(false); // ✅ Desativar indicador de reconexão
-
-          setupSocketListeners();
-
-        });
-
-
-
-        socketRef.current.on('connect_error', (error: any) => {
-
-          console.error('❌ Erro ao conectar:', error);
-
-          
-          // ✅ CORREÇÃO: Detectar erro de SID inválido e forçar nova conexão
-          if (error.message && (error.message.includes('websocket') || error.message.includes('sid'))) {
-            console.warn('⚠️ Erro de SID/WebSocket detectado, forçando nova conexão...');
-            
-            // Limpar conexão atual
-            if (socketRef.current) {
-              socketRef.current.disconnect();
-              socketRef.current.close();
-              socketRef.current = null;
+          // Aguardar um pouco e tentar nova conexão
+          setTimeout(() => {
+            console.log('🔄 Tentando criar nova conexão com forceNew...');
+            if (!socketRef.current) {
+              connectSocket();
             }
-            
-            // Aguardar um pouco e tentar nova conexão
-            setTimeout(() => {
-              console.log('🔄 Tentando criar nova conexão com forceNew...');
-              if (!socketRef.current) {
-                connectSocket();
-              }
-            }, 2000);
-          }
+          }, 2000);
+        }
 
-        });
+      });
 
 
 
-        socketRef.current.on('disconnect', (reason: string) => {
+      socketRef.current.on('disconnect', (reason: string) => {
 
-          console.log('🔌 Desconectado do servidor. Motivo:', reason);
+        console.log('🔌 Desconectado do servidor. Motivo:', reason);
 
-          setIsConnected(false);
-          
-          // ✅ CORREÇÃO: Resetar flags ao desconectar
-          hasJoinedRoomRef.current = false;
-          isRejoiningRef.current = false;
-          console.log('🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false');
+        setIsConnected(false);
 
-          
-
-          // Mostrar toast/notificação ao usuário
-
-          if (reason === 'io server disconnect') {
-
-            // Servidor desconectou propositalmente (não vai reconectar)
-
-            setIsReconnecting(false);
-
-            showWarning('Servidor desconectou a sessão. Recarregue a página.', 'Conexão Perdida');
-
-          } else {
-
-            // Desconexão temporária (vai tentar reconectar)
-
-            setIsReconnecting(true);
-
-            console.log('⏳ Tentando reconectar...');
-
-          }
-
-        });
+        // ✅ CORREÇÃO: Resetar flags ao desconectar
+        hasJoinedRoomRef.current = false;
+        isRejoiningRef.current = false;
+        console.log('🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false');
 
 
 
-        // ✅ NOVO: Listener para reconexão bem-sucedida
+        // Mostrar toast/notificação ao usuário
 
-        socketRef.current.on('reconnect', (attemptNumber: number) => {
+        if (reason === 'io server disconnect') {
 
-          console.log(`✅ Reconectado após ${attemptNumber} tentativa(s)!`);
-
-          setIsConnected(true);
+          // Servidor desconectou propositalmente (não vai reconectar)
 
           setIsReconnecting(false);
 
-          
+          showWarning('Servidor desconectou a sessão. Recarregue a página.', 'Conexão Perdida');
 
-          // ✅ CRÍTICO: Rejuntar à sala após reconexão
+        } else {
 
-          if (roomId && hasJoinedRoom) {
-
-            console.log(`🔄 RECONEXÃO: Rejuntando à sala ${roomId} após ${attemptNumber} tentativa(s)`);
-
-            
-
-            // Aguardar um pouco para setupSocketListeners() terminar
-
-            setTimeout(() => {
-
-              rejoinRoom();
-              
-              // ✅ NOVO: Reconectar transcrição após rejuntar à sala
-              setTimeout(() => {
-                if (transcriptionManagerRef.current && isTranscriptionActive) {
-                  console.log('🔄 RECONEXÃO: Reconectando transcrição...');
-                  
-                  // Reconfigurar socket
-                  transcriptionManagerRef.current.setSocket(socketRef.current);
-                  
-                  // Tentar reconectar
-                  transcriptionManagerRef.current.reconnect().then(() => {
-                    console.log('✅ RECONEXÃO: Transcrição reconectada!');
-                  }).catch((error) => {
-                    console.error('❌ RECONEXÃO: Erro ao reconectar transcrição:', error);
-                  });
-                }
-                
-                // ✅ CORREÇÃO: SEMPRE renegociar WebRTC após reconexão do Socket.IO
-                if (isCallActive) {
-                  console.log('🔄 RECONEXÃO: Verificando estado WebRTC...');
-                  
-                  if (peerConnectionRef.current) {
-                    const connectionState = peerConnectionRef.current.connectionState;
-                    const iceState = peerConnectionRef.current.iceConnectionState;
-                    console.log(`🔍 RECONEXÃO: connectionState=${connectionState}, iceConnectionState=${iceState}`);
-                    
-                    // Renegociar se não estiver conectado
-                    if (connectionState !== 'connected' || iceState !== 'connected') {
-                      console.log('🔄 RECONEXÃO: Renegociando WebRTC...');
-                      setTimeout(() => renegotiateWebRTC(), 2000);
-                    } else {
-                      console.log('✅ RECONEXÃO: WebRTC já está conectado, não precisa renegociar');
-                    }
-                  } else {
-                    // PeerConnection não existe mais, médico precisa iniciar nova call
-                    if (userType === 'doctor') {
-                      console.log('🔄 RECONEXÃO: PeerConnection não existe, médico vai recriar chamada...');
-                      setTimeout(() => call(), 2000);
-                    }
-                  }
-                }
-              }, 1500);
-
-            }, 500);
-
-          } else {
-
-            console.log('⚠️ RECONEXÃO: Não vai rejuntar (roomId:', roomId, ', hasJoinedRoom:', hasJoinedRoom, ')');
-
-          }
-
-        });
-
-
-
-        // ✅ NOVO: Listener para tentativas de reconexão
-
-        socketRef.current.on('reconnect_attempt', (attemptNumber: number) => {
-
-          console.log(`🔄 Tentativa de reconexão #${attemptNumber}...`);
+          // Desconexão temporária (vai tentar reconectar)
 
           setIsReconnecting(true);
 
-        });
+          console.log('⏳ Tentando reconectar...');
+
+        }
+
+      });
 
 
 
-        // ✅ NOVO: Listener para erro de reconexão
+      // ✅ NOVO: Listener para reconexão bem-sucedida
 
-        socketRef.current.on('reconnect_error', (error: any) => {
+      socketRef.current.on('reconnect', (attemptNumber: number) => {
 
-          console.error('❌ Erro ao reconectar:', error);
+        console.log(`✅ Reconectado após ${attemptNumber} tentativa(s)!`);
 
-        });
+        setIsConnected(true);
+
+        setIsReconnecting(false);
 
 
 
-        // ✅ NOVO: Listener para falha de reconexão
+        // ✅ CRÍTICO: Rejuntar à sala após reconexão
 
-        socketRef.current.on('reconnect_failed', () => {
+        if (roomId && hasJoinedRoom) {
 
-          console.error('❌ Falha ao reconectar após todas as tentativas');
+          console.log(`🔄 RECONEXÃO: Rejuntando à sala ${roomId} após ${attemptNumber} tentativa(s)`);
 
-          console.log('🔄 Tentando forçar nova conexão...');
-          
-          // ✅ Forçar nova conexão do zero (sem reusar SID)
-          forceNewConnection();
 
-        });
 
-      } else {
+          // Aguardar um pouco para setupSocketListeners() terminar
 
-        console.error('Socket.IO não está disponível após carregamento');
+          setTimeout(() => {
 
-        showError('Socket.IO não carregado. Recarregue a página.', 'Erro de Conexão');
+            rejoinRoom();
 
-      }
+            // ✅ NOVO: Reconectar transcrição após rejuntar à sala
+            setTimeout(() => {
+              if (transcriptionManagerRef.current && isTranscriptionActive) {
+                console.log('🔄 RECONEXÃO: Reconectando transcrição...');
 
-    };
+                // Reconfigurar socket
+                transcriptionManagerRef.current.setSocket(socketRef.current);
+
+                // Tentar reconectar
+                transcriptionManagerRef.current.reconnect().then(() => {
+                  console.log('✅ RECONEXÃO: Transcrição reconectada!');
+                }).catch((error) => {
+                  console.error('❌ RECONEXÃO: Erro ao reconectar transcrição:', error);
+                });
+              }
+
+              // ✅ CORREÇÃO: SEMPRE renegociar WebRTC após reconexão do Socket.IO
+              if (isCallActive) {
+                console.log('🔄 RECONEXÃO: Verificando estado WebRTC...');
+
+                if (peerConnectionRef.current) {
+                  const connectionState = peerConnectionRef.current.connectionState;
+                  const iceState = peerConnectionRef.current.iceConnectionState;
+                  console.log(`🔍 RECONEXÃO: connectionState=${connectionState}, iceConnectionState=${iceState}`);
+
+                  // Renegociar se não estiver conectado
+                  if (connectionState !== 'connected' || iceState !== 'connected') {
+                    console.log('🔄 RECONEXÃO: Renegociando WebRTC...');
+                    setTimeout(() => renegotiateWebRTC(), 2000);
+                  } else {
+                    console.log('✅ RECONEXÃO: WebRTC já está conectado, não precisa renegociar');
+                  }
+                } else {
+                  // PeerConnection não existe mais, médico precisa iniciar nova call
+                  if (userType === 'doctor') {
+                    console.log('🔄 RECONEXÃO: PeerConnection não existe, médico vai recriar chamada...');
+                    setTimeout(() => call(), 2000);
+                  }
+                }
+              }
+            }, 1500);
+
+          }, 500);
+
+        } else {
+
+          console.log('⚠️ RECONEXÃO: Não vai rejuntar (roomId:', roomId, ', hasJoinedRoom:', hasJoinedRoom, ')');
+
+        }
+
+      });
+
+
+
+      // ✅ NOVO: Listener para tentativas de reconexão
+
+      socketRef.current.on('reconnect_attempt', (attemptNumber: number) => {
+
+        console.log(`🔄 Tentativa de reconexão #${attemptNumber}...`);
+
+        setIsReconnecting(true);
+
+      });
+
+
+
+      // ✅ NOVO: Listener para erro de reconexão
+
+      socketRef.current.on('reconnect_error', (error: any) => {
+
+        console.error('❌ Erro ao reconectar:', error);
+
+      });
+
+
+
+      // ✅ NOVO: Listener para falha de reconexão
+
+      socketRef.current.on('reconnect_failed', () => {
+
+        console.error('❌ Falha ao reconectar após todas as tentativas');
+
+        console.log('🔄 Tentando forçar nova conexão...');
+
+        // ✅ Forçar nova conexão do zero (sem reusar SID)
+        forceNewConnection();
+
+      });
+
+    } else {
+
+      console.error('Socket.IO não está disponível após carregamento');
+
+      showError('Socket.IO não carregado. Recarregue a página.', 'Erro de Conexão');
+
+    }
+
+  };
 
 
 
@@ -1064,7 +1067,7 @@ export function ConsultationRoom({
 
     //console.log('🔧 [TRANSCRIPTION] Configurando callbacks...');
 
-    
+
 
     // ✅ NOVO: Callback quando recebe nova transcrição (transcript puro)
 
@@ -1076,7 +1079,7 @@ export function ConsultationRoom({
       //console.log('🎤 [TRANSCRIPTION] userType:', userType);
       //console.log('🎤 [TRANSCRIPTION] userNameRef.current:', userNameRef.current);
       //console.log('🎤 [TRANSCRIPTION] remoteUserNameRef.current:', remoteUserNameRef.current);
-      
+
 
       // CASO 1: Sou o OFFERER (médico) - exibir localmente E enviar para servidor
       if (didOfferRef.current === true) {
@@ -1084,7 +1087,7 @@ export function ConsultationRoom({
         if (transcriptionManagerRef.current) {
           transcriptionManagerRef.current.addTranscriptToUI(transcript, userNameRef.current || 'Você');
         }
-        
+
         // ✅ NOVO: Médico também envia transcrição para servidor para salvar no banco
         if (socketRef.current && roomIdRef.current && userNameRef.current) {
           socketRef.current.emit('sendTranscriptionToPeer', {
@@ -1095,14 +1098,14 @@ export function ConsultationRoom({
             timestamp: new Date().toISOString()
           });
         }
-      } 
+      }
 
       // CASO 2: Sou o ANSWERER (paciente) - enviar para offerer, NUNCA exibir
 
       else if (didOfferRef.current === false && remoteUserNameRef.current) {
 
         //console.log('✅ Sou ANSWERER - enviando para offerer:', remoteUserNameRef.current);
-        
+
 
         // Enviar transcrição para o peer via socket
 
@@ -1140,14 +1143,14 @@ export function ConsultationRoom({
 
     };
 
-    
+
 
     // ✅ NOVO: Callback para atualizar UI (texto completo formatado)
 
     transcriptionManagerRef.current.onUIUpdate = (fullText: string) => {
 
       // Logs removidos
-      
+
       // ✅ PROTEÇÃO: Não substituir por texto vazio se já houver conteúdo no manager
       // O TranscriptionManager já tem proteções, mas adicionamos uma camada extra aqui
       if (!fullText || fullText.trim().length === 0) {
@@ -1160,7 +1163,7 @@ export function ConsultationRoom({
 
     };
 
-    
+
 
     //console.log('✅ [TRANSCRIPTION] Callbacks configurados');
   };
@@ -1227,7 +1230,7 @@ export function ConsultationRoom({
 
       }
 
-      
+
 
       if (savedHostName) {
 
@@ -1264,9 +1267,9 @@ export function ConsultationRoom({
           if (!resolvedName && urlPatientId) {
 
             try {
-            const fetchedName = await getPatientNameById(urlPatientId);
+              const fetchedName = await getPatientNameById(urlPatientId);
 
-            resolvedName = fetchedName || '';
+              resolvedName = fetchedName || '';
 
             } catch (err) {
               // ✅ Silenciar erro de busca de nome (não crítico)
@@ -1288,26 +1291,26 @@ export function ConsultationRoom({
 
 
           setParticipantName(resolvedName);
-          
+
           // ✅ Auto-join se roomId presente na URL (reconexão)
           if (roomId && resolvedName) {
             console.log('🔄 [PACIENTE] RoomId detectado na URL:', roomId);
             console.log('🔄 [PACIENTE] Nome do paciente:', resolvedName);
             console.log('🔄 [PACIENTE] Aguardando Socket.IO para entrar automaticamente...');
-            
+
             let attempts = 0;
             const maxAttempts = 20; // 10 segundos (20 * 500ms)
-            
+
             // Aguardar Socket.IO conectar antes de tentar auto-join
             const waitForSocket = setInterval(() => {
               attempts++;
               console.log(`🔄 [PACIENTE] Tentativa ${attempts}/${maxAttempts} - Socket conectado?`, !!socketRef.current?.connected);
-              
+
               if (socketRef.current && socketRef.current.connected) {
                 clearInterval(waitForSocket);
                 console.log('✅ [PACIENTE] Socket.IO conectado! Entrando na sala...');
                 console.log('✅ [PACIENTE] hasJoinedRoomRef.current:', hasJoinedRoomRef.current);
-                
+
                 if (!hasJoinedRoomRef.current) {
                   joinRoomAsParticipant(resolvedName);
                 } else {
@@ -1388,7 +1391,7 @@ export function ConsultationRoom({
 
       }, 1500); // 1.5 segundos de delay para garantir que mídia e conexão estão prontas
 
-      
+
 
       return () => clearTimeout(timer);
 
@@ -1407,16 +1410,16 @@ export function ConsultationRoom({
       console.warn('⚠️ joinRoomAsHost já está em execução, ignorando');
       return;
     }
-    
+
     // ✅ CORREÇÃO: Evitar join se já entrou na sala
     if (hasJoinedRoomRef.current) {
       console.warn('⚠️ Já está na sala, ignorando joinRoomAsHost duplicado');
       return;
     }
-    
+
     isRejoiningRef.current = true;
     console.log('👨‍⚕️ [MÉDICO] Entrando como HOST:', userName);
-    
+
 
     if (socketRef.current) {
 
@@ -1437,9 +1440,9 @@ export function ConsultationRoom({
           setHasJoinedRoom(true); // ✅ Marcar que já entrou na sala
 
           console.log('👨‍⚕️ [MÉDICO] ✅ Entrou na sala como HOST');
-          
+
           console.log('📊 [MÉDICO] Status da sala:', response.roomData?.status);
-          
+
           // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag
           hasJoinedRoomRef.current = true;
           isRejoiningRef.current = false;
@@ -1449,7 +1452,7 @@ export function ConsultationRoom({
           const restoreTranscriptionHistory = () => {
             if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
               console.log(`🔄 [MÉDICO] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
-              
+
               if (transcriptionManagerRef.current) {
                 response.roomData.transcriptionHistory.forEach((transcription: any) => {
                   const displayName = transcription.speaker || 'Desconhecido';
@@ -1465,24 +1468,24 @@ export function ConsultationRoom({
 
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), restaurar WebRTC
           const roomStatus = response.roomData?.status;
-          
+
           if (roomStatus === 'active') {
             console.log('🔄 [RELOAD] Sala ativa detectada! Restaurando WebRTC...');
-            
+
             // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
             setIsCallActive(true);
             console.log('✅ [RELOAD] isCallActive = true (sala já estava ativa)');
-            
+
             // Aguardar mídia carregar e então iniciar chamada
             fetchUserMedia().then(async () => {
               console.log('👨‍⚕️ [RELOAD] fetchUserMedia concluído');
-              
+
               await initializeTranscription();
               console.log('👨‍⚕️ [RELOAD] Transcrição inicializada');
-              
+
               // ✅ Restaurar histórico após TranscriptionManager estar pronto
               restoreTranscriptionHistory();
-              
+
               // Forçar início da chamada (WebRTC)
               setTimeout(() => {
                 console.log('👨‍⚕️ [RELOAD] Forçando início da chamada após reload...');
@@ -1496,7 +1499,7 @@ export function ConsultationRoom({
               return initializeTranscription();
             }).then(() => {
               console.log('👨‍⚕️ [MÉDICO] ✅ Transcrição inicializada');
-              
+
               // ✅ Restaurar histórico após TranscriptionManager estar pronto
               restoreTranscriptionHistory();
             });
@@ -1519,19 +1522,19 @@ export function ConsultationRoom({
   // ✅ NOVO: Função chamada quando paciente clica no botão "Entrar na Consulta"
   const handlePatientJoinClick = () => {
     console.log('👤 [PACIENTE] Botão "Entrar na Consulta" clicado!');
-    
+
     if (!participantName) {
       console.error('❌ Nome do paciente não definido');
       setErrorMessage('Erro: Nome não definido. Recarregue a página.');
       return;
     }
-    
+
     if (!socketRef.current) {
       console.error('❌ Socket não conectado');
       setErrorMessage('Erro: Conexão não estabelecida. Recarregue a página.');
       return;
     }
-    
+
     // Aguardar socket conectar e então entrar
     const tryJoin = () => {
       if (socketRef.current?.connected) {
@@ -1541,7 +1544,7 @@ export function ConsultationRoom({
         setTimeout(tryJoin, 200);
       }
     };
-    
+
     tryJoin();
   };
 
@@ -1550,7 +1553,7 @@ export function ConsultationRoom({
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -1560,7 +1563,7 @@ export function ConsultationRoom({
   const resumeRemotePlayback = async () => {
     console.log('🔘 [WEBRTC] Botão "Liberar áudio e vídeo" clicado!');
     const video = remoteVideoRef.current;
-    
+
     if (!video) {
       console.warn('⚠️ [WEBRTC] resumeRemotePlayback chamado mas remoteVideoRef é null');
       return;
@@ -1588,10 +1591,10 @@ export function ConsultationRoom({
       // ✅ SOLUÇÃO SIMPLES: Apenas remover o overlay e deixar o vídeo tocar
       // O vídeo já está tocando (paused: false), só estava mudo por causa do autoplay
       console.log('🔊 [WEBRTC] Liberando áudio do vídeo remoto...');
-      
+
       video.muted = false;
       video.controls = false;
-      
+
       // Se estiver pausado, tentar dar play
       if (video.paused) {
         console.log('▶️ [WEBRTC] Vídeo pausado, tentando play...');
@@ -1607,10 +1610,10 @@ export function ConsultationRoom({
           video.muted = false;
         }
       }
-      
+
       console.log('✅ [WEBRTC] Áudio liberado com sucesso!');
       setIsRemotePlaybackBlocked(false);
-      
+
     } catch (error) {
       console.error('❌ [WEBRTC] Erro ao liberar áudio:', error);
       // Fallback: mostrar controles nativos
@@ -1629,20 +1632,20 @@ export function ConsultationRoom({
       console.warn('⚠️ joinRoomAsParticipant já está em execução, ignorando');
       return;
     }
-    
+
     // ✅ CORREÇÃO: Evitar join se já entrou na sala
     if (hasJoinedRoomRef.current) {
       console.warn('⚠️ Já está na sala, ignorando joinRoomAsParticipant duplicado');
       return;
     }
-    
+
     isRejoiningRef.current = true;
     console.log('🩺 [PACIENTE] Entrando como PARTICIPANTE:', participantName);
 
     setUserName(participantName);
     userNameRef.current = participantName; // ✅ Atualizar ref também
 
-    
+
 
     if (socketRef.current) {
 
@@ -1664,9 +1667,9 @@ export function ConsultationRoom({
           setShowParticipantModal(false);
 
           console.log('🩺 [PACIENTE] ✅ Entrou na sala como PARTICIPANTE');
-          
+
           console.log('📊 [PACIENTE] Status da sala:', response.roomData?.status);
-          
+
           // ✅ CORREÇÃO: Marcar que entrou na sala e resetar flag
           hasJoinedRoomRef.current = true;
           isRejoiningRef.current = false;
@@ -1676,7 +1679,7 @@ export function ConsultationRoom({
           const restoreTranscriptionHistory = () => {
             if (response.roomData?.transcriptionHistory && response.roomData.transcriptionHistory.length > 0) {
               console.log(`🔄 [PACIENTE] Restaurando ${response.roomData.transcriptionHistory.length} transcrições históricas...`);
-              
+
               if (transcriptionManagerRef.current) {
                 response.roomData.transcriptionHistory.forEach((transcription: any) => {
                   const displayName = transcription.speaker || 'Desconhecido';
@@ -1697,59 +1700,59 @@ export function ConsultationRoom({
             console.log('🩺 [PACIENTE] ✅ Mídia inicializada COM SUCESSO');
             console.log('🩺 [PACIENTE] localStreamRef.current existe?', !!localStreamRef.current);
             console.log('🩺 [PACIENTE] Tracks no stream:', localStreamRef.current?.getTracks().length);
-            
+
             // ✅ NOVO: Marcar mídia como pronta
             isMediaReadyRef.current = true;
             console.log('🩺 [PACIENTE] ✅ isMediaReadyRef = true');
-            
+
           } catch (error) {
             console.error('❌ [PACIENTE] ERRO ao inicializar mídia:', error);
             setErrorMessage('Erro ao acessar câmera/microfone. Verifique as permissões.');
             return;
           }
-          
+
           // ✅ CORREÇÃO: Inicializar transcrição DEPOIS da mídia
           console.log('🩺 [PACIENTE] 2️⃣ Inicializando transcrição...');
           await initializeTranscription();
           console.log('🩺 [PACIENTE] ✅ Transcrição inicializada');
-          
+
           // ✅ Restaurar histórico após TranscriptionManager estar pronto
           restoreTranscriptionHistory();
-          
+
           // ✅ CORREÇÃO: Marcar que está pronto para receber offers
           console.log('🩺 [PACIENTE] 3️⃣ Pronto para receber offers do médico');
-          
+
           // ✅ NOVO: Processar offer pendente se houver
           if (pendingOfferRef.current) {
             console.log('🩺 [PACIENTE] ✅ Processando offer pendente...');
             const { offer, userName } = pendingOfferRef.current;
             pendingOfferRef.current = null; // Limpar
-            
+
             // Criar objeto compatível com createAnswerButton
-            await createAnswerButton({ 
-              offer: offer, 
-              offererUserName: userName 
+            await createAnswerButton({
+              offer: offer,
+              offererUserName: userName
             });
           }
-          
+
           // ✅ NOVO: Se sala estava ativa (reload durante chamada), preparar WebRTC
           const roomStatus = response.roomData?.status;
-          
+
           if (roomStatus === 'active') {
             console.log('🔄 [RELOAD] Sala ativa detectada! Aguardando offer do médico...');
             console.log('🩺 [RELOAD] ✅ Pronto para receber offer (PeerConnection será criado ao receber offer)');
-            
+
             // ✅ CORREÇÃO: Ativar chamada para mostrar vídeo
             setIsCallActive(true);
             console.log('✅ [RELOAD] isCallActive = true (sala já estava ativa)');
-            
+
             // ✅ CORREÇÃO: NÃO criar PeerConnection aqui para evitar race condition
             // O createAnswerButton() criará quando receber a offer do médico
           }
         } else {
 
           setErrorMessage(response.error);
-          
+
           // ✅ CORREÇÃO: Resetar flag em caso de erro
           isRejoiningRef.current = false;
           console.error('❌ Erro ao rejuntar sala, isRejoiningRef = false');
@@ -1790,7 +1793,7 @@ export function ConsultationRoom({
 
         transcriptionManagerRef.current.setSocket(socketRef.current);
 
-        
+
 
         // Definir variáveis globais para transcription.js acessar
 
@@ -1798,7 +1801,7 @@ export function ConsultationRoom({
 
         (window as any).currentRoomId = roomId;
 
-        
+
 
         resolve(true);
 
@@ -1840,7 +1843,7 @@ export function ConsultationRoom({
 
     console.log('🎤 [PACIENTE] Ativando transcrição automaticamente...');
 
-    
+
 
     // ✅ PROTEÇÃO: Evitar múltiplas ativações
 
@@ -1852,7 +1855,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     try {
 
@@ -1884,7 +1887,7 @@ export function ConsultationRoom({
 
         }, 500);
 
-        
+
 
         setTimeout(() => clearInterval(waitForSocket), 10000);
 
@@ -1900,7 +1903,7 @@ export function ConsultationRoom({
         try {
           console.log('🎤 [PACIENTE] Conectando à OpenAI...');
           console.log('🎤 [PACIENTE] Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
-          
+
           const success = await transcriptionManagerRef.current!.init();
 
           if (success) {
@@ -1935,12 +1938,12 @@ export function ConsultationRoom({
           setTranscriptionStatus('Erro');
         }
       };
-      
+
       // ✅ Verificar se socket está conectado antes de tentar
       if (!socketRef.current || !socketRef.current.connected) {
         console.error('❌ [PACIENTE] Socket não está conectado! Aguardando conexão...');
         setTranscriptionStatus('Aguardando conexão...');
-        
+
         // Aguardar até o socket conectar (máximo 10 segundos)
         let attempts = 0;
         const maxAttempts = 20; // 20 tentativas de 500ms = 10 segundos
@@ -1956,10 +1959,10 @@ export function ConsultationRoom({
             setTranscriptionStatus('Erro: Socket não conectou');
           }
         }, 500);
-        
+
         return;
       }
-      
+
       // Socket já está conectado, iniciar transcrição diretamente
       startPatientTranscription();
     } catch (error) {
@@ -1986,32 +1989,32 @@ export function ConsultationRoom({
       if (userType === 'doctor') {
         setPatientJoinedName(data.participantName || patientName || 'Paciente');
         setShowPatientJoinedNotification(true);
-        
+
         // ✅ NOVO: Tocar som de notificação
         try {
           // Criar um tom de notificação usando Web Audio API
           const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
           const oscillator = audioContext.createOscillator();
           const gainNode = audioContext.createGain();
-          
+
           oscillator.connect(gainNode);
           gainNode.connect(audioContext.destination);
-          
+
           // Configurar o som (tom agradável e curto)
           oscillator.frequency.value = 800; // Frequência em Hz
           oscillator.type = 'sine'; // Tom suave
-          
+
           // Envelope de volume (fade in/out suave)
           gainNode.gain.setValueAtTime(0, audioContext.currentTime);
           gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
           gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
-          
+
           oscillator.start(audioContext.currentTime);
           oscillator.stop(audioContext.currentTime + 0.15);
         } catch (error) {
           console.warn('Não foi possível tocar som de notificação:', error);
         }
-        
+
         // Esconder notificação após 5 segundos
         setTimeout(() => {
           setShowPatientJoinedNotification(false);
@@ -2104,10 +2107,10 @@ export function ConsultationRoom({
     // ✅ NOVO: Sala foi encerrada pelo administrador
     socketRef.current.on('roomTerminatedByAdmin', (data: any) => {
       console.log('🛑 [ADMIN] Sala encerrada pelo administrador:', data);
-      
+
       // Mostrar mensagem para o usuário
       showWarning(`A consulta foi encerrada pelo administrador.\n\nMotivo: ${data.reason || 'Encerramento administrativo'}`, 'Consulta Encerrada');
-      
+
       // Parar transcrição
       if (transcriptionManagerRef.current) {
         transcriptionManagerRef.current.stop();
@@ -2210,7 +2213,7 @@ export function ConsultationRoom({
 
         console.log('👨‍⚕️ [MÉDICO] Transcrição recebida de', data.from, ':', data.transcription);
 
-        
+
 
         // Adicionar à UI usando método público do TranscriptionManager
 
@@ -2233,15 +2236,15 @@ export function ConsultationRoom({
         setAiSuggestions(data.suggestions);
 
       });
-      
+
       // ✅ NOVO: Notificação quando paciente reconecta (refresh)
       socketRef.current.on('participantRejoined', (data: any) => {
         console.log(`🔔 [MÉDICO] Paciente ${data.participantName} reconectou! Reiniciando chamada IMEDIATAMENTE...`);
-        
+
         const restartDoctorCall = async () => {
           try {
             console.log('🔄 [MÉDICO] Iniciando restart da chamada...');
-            
+
             // Limpar eventual offer pendente / estados
             pendingOfferRef.current = null;
             isMediaReadyRef.current = true; // médico já tem mídia pronta
@@ -2280,37 +2283,37 @@ export function ConsultationRoom({
         // ✅ MUDANÇA: Reduzir delay para 800ms (o suficiente para paciente se conectar ao Socket.IO)
         setTimeout(restartDoctorCall, 800);
       });
-      
+
       // ✅ NOVO: Reconectar WebRTC quando paciente entrar/reconectar
       // ✅ CORREÇÃO: Adicionar debounce para evitar múltiplas reconexões simultâneas
       let reconnectTimeout: NodeJS.Timeout | null = null;
       let isReconnecting = false;
-      
+
       socketRef.current.on('patient-entered-reconnect-webrtc', (data: any) => {
         console.log(`🔔 [MÉDICO] Paciente ${data.participantName} entrou/reconectou!`);
-        
+
         // ✅ Se já está reconectando, ignorar
         if (isReconnecting) {
           console.log('⏭️ [MÉDICO] Reconexão já em andamento, ignorando evento duplicado');
           return;
         }
-        
+
         // ✅ Limpar timeout anterior se houver
         if (reconnectTimeout) {
           console.log('🔄 [MÉDICO] Cancelando reconexão anterior (debounce)');
           clearTimeout(reconnectTimeout);
         }
-        
+
         // ✅ Agendar reconexão com debounce de 1 segundo
         reconnectTimeout = setTimeout(async () => {
           if (isReconnecting) {
             console.log('⏭️ [MÉDICO] Reconexão já em andamento, pulando');
             return;
           }
-          
+
           isReconnecting = true;
           console.log('🔄 [MÉDICO] Iniciando RECONEXÃO FORÇADA do WebRTC...');
-          
+
           try {
             // 1. Fechar PeerConnection antiga
             if (peerConnectionRef.current) {
@@ -2326,23 +2329,23 @@ export function ConsultationRoom({
               }
               peerConnectionRef.current = null;
             }
-            
+
             // 2. Resetar estados
             pendingOfferRef.current = null;
             didOfferRef.current = false;
             setDidIOffer(false);
             setIsCallActive(false);
-            
+
             // 3. Garantir mídia local
             isMediaReadyRef.current = true; // médico já tem mídia
             if (!localStreamRef.current) {
               console.log('📹 [MÉDICO] Stream local ausente, recriando...');
               await fetchUserMedia();
             }
-            
+
             // 4. Aguardar um pouco para o paciente estar pronto
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             // 5. Criar nova conexão e enviar offer
             console.log('📞 [MÉDICO] Criando nova PeerConnection e enviando offer...');
             await call();
@@ -2390,7 +2393,7 @@ export function ConsultationRoom({
 
         console.log('✅ Entrou na sala como', response.role);
 
-        
+
 
         // Mostrar participante se já entrou
 
@@ -2419,7 +2422,7 @@ export function ConsultationRoom({
   const call = async () => {
 
     //console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
-    
+
 
     // Verificar se socket está conectado
 
@@ -2454,7 +2457,7 @@ export function ConsultationRoom({
       await peerConnectionRef.current!.setLocalDescription(offer);
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(offer) OK');
 
-      
+
 
       // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
 
@@ -2464,17 +2467,17 @@ export function ConsultationRoom({
 
       setIsCallActive(true);
 
-      
 
-      // ✅ AUTO-START: Iniciar transcrição automaticamente (médico)
 
-      setTimeout(() => autoStartTranscription(), 2000); // Aguardar 2s para WebRTC estabilizar
+      // ✅ REMOVIDO: setTimeout de autoStartTranscription
+      // Agora a transcrição é iniciada automaticamente pelo oniceconnectionstatechange
+      // quando o estado muda para 'connected' (ver createPeerConnection)
 
-      
+
 
       //console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
       //console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
-      
+
 
       // Enviar oferta com roomId
 
@@ -2490,7 +2493,7 @@ export function ConsultationRoom({
 
       console.log('👨‍⚕️ [MÉDICO] ✅ newOffer enviado');
 
-    } catch(err) {
+    } catch (err) {
 
       console.error('👨‍⚕️ [MÉDICO] ❌ Erro:', err);
 
@@ -2505,7 +2508,7 @@ export function ConsultationRoom({
   const answer = async () => {
 
     //console.log('🩺 [PACIENTE] Clicou no botão Answer - IGUAL AO PROJETO ORIGINAL');
-    
+
 
     // Verificar se socket está conectado
 
@@ -2535,20 +2538,20 @@ export function ConsultationRoom({
 
       await answerOffer(offerData);
 
-      
+
 
       // Ativar transcrição automaticamente após Answer - IGUAL AO PROJETO ORIGINAL
 
       autoActivateTranscriptionForParticipant();
 
-      
+
 
       setShowAnswerButton(false);
 
       setIsCallActive(true);
 
       //console.log('🩺 [PACIENTE] ✅ Answer processado com sucesso');
-    } catch(err) {
+    } catch (err) {
 
       console.error('❌ Erro ao responder chamada:', err);
 
@@ -2564,7 +2567,7 @@ export function ConsultationRoom({
 
     //console.log('🩺 [PACIENTE] Processando oferta - IGUAL AO PROJETO ORIGINAL...');
     //console.log('🩺 [PACIENTE] OfferData:', offerData);
-    
+
 
     try {
 
@@ -2573,16 +2576,16 @@ export function ConsultationRoom({
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] answer: fetchUserMedia');
       await fetchUserMedia();
 
-      
+
 
       // 2. createPeerConnection - igual ao projeto original
 
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] answer: createPeerConnection with remote offer');
       await createPeerConnection({ offer: offerData.offer });
 
-  
 
-      
+
+
 
       // 3. Criar e enviar resposta - igual ao projeto original
 
@@ -2592,7 +2595,7 @@ export function ConsultationRoom({
       await peerConnectionRef.current!.setLocalDescription(answer);
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(answer) OK');
 
-      
+
 
       // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
 
@@ -2602,13 +2605,13 @@ export function ConsultationRoom({
 
       //console.log('🩺 [PACIENTE] ✅ remoteUserName definido:', offerData.offererUserName);
       //console.log('🩺 [PACIENTE] ✅ remoteUserNameRef.current:', remoteUserNameRef.current);
-      
+
 
       // Processar ICE candidates pendentes
 
       processPendingIceCandidates();
 
-      
+
 
       // Enviar resposta com roomId - igual ao projeto original
 
@@ -2629,7 +2632,7 @@ export function ConsultationRoom({
 
       });
 
-      
+
 
     } catch (error) {
 
@@ -2697,7 +2700,7 @@ export function ConsultationRoom({
 
     console.log(`Processando ${pendingIceCandidatesRef.current.length} ICE candidates pendentes`);
 
-    
+
 
     for (const iceCandidate of pendingIceCandidatesRef.current) {
 
@@ -2715,7 +2718,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     // Limpar fila
 
@@ -2731,18 +2734,18 @@ export function ConsultationRoom({
 
       const currentState = peerConnectionRef.current.signalingState;
       //console.log('👨‍⚕️ [MÉDICO] addAnswer - Estado atual:', currentState);
-      
+
       // ✅ PROTEÇÃO: Só definir remoteDescription se estiver no estado correto
       if (currentState === 'have-local-offer') {
         //console.log('👨‍⚕️ [MÉDICO] ✅ Estado correto (have-local-offer), definindo answer...');
-      await peerConnectionRef.current.setRemoteDescription(data.answer);
+        await peerConnectionRef.current.setRemoteDescription(data.answer);
 
         //console.log('👨‍⚕️ [MÉDICO] ✅ Answer definido com sucesso');
         //console.log('👨‍⚕️ [MÉDICO] Novo estado:', peerConnectionRef.current.signalingState);
-        
-      // Processar ICE candidates pendentes após definir remoteDescription
 
-      processPendingIceCandidates();
+        // Processar ICE candidates pendentes após definir remoteDescription
+
+        processPendingIceCandidates();
 
       } else if (currentState === 'stable') {
         console.log('👨‍⚕️ [MÉDICO] ⚠️ Conexão já está estabelecida (stable), ignorando answer duplicado');
@@ -2767,12 +2770,12 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     try {
 
       //console.log('📹 [MÍDIA] Obtendo stream de mídia...');
-      
+
       // ✅ NOVO: Tentar primeiro com preferências específicas
       let stream;
       try {
@@ -2783,9 +2786,9 @@ export function ConsultationRoom({
             facingMode: 'user'
           },
           audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
+            echoCancellation: true,   // ✅ Elimina eco (crítico para usuários sem fones)
+            noiseSuppression: true,   // ✅ Remove ruído de fundo
+            autoGainControl: true     // ✅ Normaliza volume automaticamente
           }
         });
       } catch (error) {
@@ -2797,17 +2800,17 @@ export function ConsultationRoom({
         });
       }
 
-      
+
       // 🔍 DEBUG [REFERENCIA] MÍDIA OBTIDA
       // Logs removidos
-      
+
 
       // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
       const attachVideoStream = (stream: MediaStream, retries = 10) => {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
-          
+
           // ✅ Forçar play (elemento já tem autoPlay no HTML)
           setTimeout(() => {
             if (localVideoRef.current) {
@@ -2831,11 +2834,11 @@ export function ConsultationRoom({
       // Configurar estados iniciais dos controles
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
-      
+
       if (videoTrack) {
         setIsVideoEnabled(videoTrack.enabled);
       }
-      
+
       if (audioTrack) {
         setIsAudioEnabled(audioTrack.enabled);
       }
@@ -2849,7 +2852,7 @@ export function ConsultationRoom({
 
         await audioProcessorRef.current.init(stream);
 
-        
+
 
         // Inicializar TranscriptionManager (apenas uma vez)
 
@@ -2862,7 +2865,7 @@ export function ConsultationRoom({
 
           transcriptionManagerRef.current.setAudioProcessor(audioProcessorRef.current);
 
-          
+
 
           // ✅ CORREÇÃO: Configurar callbacks IMEDIATAMENTE após criar
 
@@ -2875,36 +2878,36 @@ export function ConsultationRoom({
         //console.log('AudioProcessor já inicializado, reutilizando...');
       }
 
-    } catch(err) {
+    } catch (err) {
 
       console.error('❌ Erro ao obter mídia:', err);
-      
+
       // ✅ NOVO: Se erro for "Device in use", tentar liberar e tentar novamente
       if (err instanceof DOMException && err.name === 'NotReadableError') {
         console.warn('⚠️ Dispositivo em uso. Tentando liberar e tentar novamente...');
-        
+
         // Liberar qualquer stream anterior que possa estar travado
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => track.stop());
           localStreamRef.current = null;
         }
-        
+
         // Aguardar um pouco e tentar novamente
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
           });
           console.log('✅ Stream obtido após retry');
-          
+
           // Usar a mesma função de anexar com retry
           const attachVideoStreamRetry = (stream: MediaStream, retries = 10) => {
             if (localVideoRef.current) {
               localVideoRef.current.srcObject = stream;
               console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo (retry)');
-              
+
               setTimeout(() => {
                 if (localVideoRef.current) {
                   localVideoRef.current.play().catch((err) => {
@@ -2917,15 +2920,15 @@ export function ConsultationRoom({
               setTimeout(() => attachVideoStreamRetry(stream, retries - 1), 100);
             }
           };
-          
+
           attachVideoStreamRetry(stream);
           localStreamRef.current = stream;
-          
+
           // Inicializar AudioProcessor
           if (!audioProcessorRef.current) {
             audioProcessorRef.current = new AudioProcessor();
             await audioProcessorRef.current.init(stream);
-            
+
             if (!transcriptionManagerRef.current) {
               transcriptionManagerRef.current = new TranscriptionManager();
               transcriptionManagerRef.current.setSocket(socketRef.current);
@@ -2948,7 +2951,7 @@ export function ConsultationRoom({
 
 
   const createPeerConnection = async (offerObj?: any) => {
-    
+
 
     // ✅ NOVO: Verificar se stream local existe antes de criar PeerConnection
     if (!localStreamRef.current) {
@@ -2970,44 +2973,66 @@ export function ConsultationRoom({
     peerConnectionRef.current = new RTCPeerConnection(peerConfiguration);
     // Log removido
 
-    
+
 
     // ✅ Monitorar estado da conexão
     peerConnectionRef.current.onconnectionstatechange = () => {
       // Log removido
     };
-    
+
     peerConnectionRef.current.oniceconnectionstatechange = () => {
       const state = peerConnectionRef.current?.iceConnectionState;
-      // Log removido
-      
-      // ✅ RECONEXÃO AUTOMÁTICA: Detectar falha e tentar renegociar
+      console.log('🔗 [ICE] Estado mudou para:', state);
+
+      // ✅ RECONEXÃO COM BACKOFF EXPONENCIAL
       if (state === 'failed' || state === 'disconnected') {
         console.log('⚠️ WebRTC desconectado! Estado:', state);
-        
-        // Tentar reconectar após 3 segundos
+
+        // Usar backoff exponencial: 1s, 2s, 4s, 8s (máx)
+        const attempts = reconnectAttemptsRef.current || 0;
+        const MAX_ATTEMPTS = 4;
+
+        if (attempts >= MAX_ATTEMPTS) {
+          console.error('❌ [ICE] Máximo de tentativas de reconexão atingido');
+          return;
+        }
+
+        const delay = Math.min(1000 * Math.pow(2, attempts), 8000);
+        console.log(`🔄 [ICE] Tentativa ${attempts + 1}/${MAX_ATTEMPTS} em ${delay / 1000}s...`);
+
+        reconnectAttemptsRef.current = attempts + 1;
+
         setTimeout(() => {
-          if (peerConnectionRef.current?.iceConnectionState === 'failed' || 
-              peerConnectionRef.current?.iceConnectionState === 'disconnected') {
+          const currentState = peerConnectionRef.current?.iceConnectionState;
+          if (currentState === 'failed' || currentState === 'disconnected') {
             console.log('🔄 Tentando renegociar WebRTC...');
             renegotiateWebRTC();
           }
-        }, 3000);
+        }, delay);
+
       } else if (state === 'connected' || state === 'completed') {
         console.log('✅ WebRTC conectado com sucesso!');
-        // Timer é controlado pelo servidor via Socket.IO
+
+        // ✅ CORREÇÃO: Resetar contador de tentativas
+        reconnectAttemptsRef.current = 0;
+
+        // ✅ NOVO: Iniciar transcrição automaticamente quando ICE estabiliza
+        if (!transcriptionManagerRef.current?.getStatus().transcribing) {
+          console.log('🎙️ [ICE] Conexão estável, iniciando transcrição...');
+          autoStartTranscription();
+        }
       }
     };
-    
+
     peerConnectionRef.current.onsignalingstatechange = () => {
       // Log removido
     };
-    
+
     // ✅ CORREÇÃO: Criar remoteStream vazio (será preenchido quando receber tracks)
     remoteStreamRef.current = new MediaStream();
 
     console.log('🔗 [WEBRTC] RemoteStream criado (vazio inicialmente)');
-    
+
 
     if (localStreamRef.current) {
 
@@ -3015,27 +3040,27 @@ export function ConsultationRoom({
 
       // console.log('🔗 [WEBRTC] Stream local disponível com', tracks.length, 'tracks');
       //console.log('🔗 [WEBRTC] userType:', userType);
-      
+
 
       // Log removido
       tracks.forEach((track, index) => {
         console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] addTrack #${index} kind=${track.kind} enabled=${track.enabled} state=${track.readyState}`);
-        
+
         // ✅ DEBUG: Verificar se é track de áudio e se está habilitado
         if (track.kind === 'audio') {
           console.log(`🔊 [WEBRTC] Track de áudio encontrado: enabled=${track.enabled}, readyState=${track.readyState}, id=${track.id}`);
         }
-        
+
         const sender = peerConnectionRef.current!.addTrack(track, localStreamRef.current!);
         console.log(`🔍 DEBUG [REFERENCIA] [WEBRTC] sender #${index} criado para ${track.kind}`, sender ? 'ok' : 'fail');
-        
+
         // ✅ DEBUG: Verificar sender de áudio
         if (track.kind === 'audio' && sender) {
           console.log(`🔊 [WEBRTC] Sender de áudio criado: track.enabled=${sender.track?.enabled}, track.readyState=${sender.track?.readyState}`);
         }
       });
 
-      
+
 
       // Verificar senders após adicionar tracks
 
@@ -3055,7 +3080,7 @@ export function ConsultationRoom({
 
     // ✅ CORREÇÃO: Usar onicecandidate ao invés de addEventListener
     peerConnectionRef.current.onicecandidate = (e) => {
-      if(e.candidate) {
+      if (e.candidate) {
         console.log('🔍 DEBUG [REFERENCIA] [ICE] candidate gerado (type, protocol):', e.candidate.type, e.candidate.protocol);
         socketRef.current.emit('sendIceCandidateToSignalingServer', {
 
@@ -3072,16 +3097,16 @@ export function ConsultationRoom({
       }
 
     };
-    
+
     // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
     peerConnectionRef.current.ontrack = (e) => {
       // Logs removidos para reduzir poluição no console
-      
+
       // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
       if (e.streams && e.streams[0]) {
         //console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
         //console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
-        
+
         // ✅ CORREÇÃO: Anexar vídeo remoto com retry
         const attachRemoteStream = (stream: MediaStream, retries = 10) => {
           if (remoteVideoRef.current) {
@@ -3092,7 +3117,7 @@ export function ConsultationRoom({
 
               const isNewStream = previousStream !== stream;
               const isFirstTime = !previousStream;
-              
+
               if (previousStream && previousStream !== stream) {
                 console.log('🔄 [WEBRTC] Substituindo stream remoto anterior por um novo (id anterior:', previousStream.id, '| novo id:', stream.id, ')');
               } else if (!previousStream) {
@@ -3111,27 +3136,27 @@ export function ConsultationRoom({
               // Evita múltiplos play() quando tracks chegam separadamente
               if (isFirstTime || isNewStream) {
                 console.log('▶️ [WEBRTC] Iniciando play() pois é', isFirstTime ? 'primeira vez' : 'stream novo');
-                
+
                 const playPromise = remoteVideoRef.current.play();
-                
+
                 if (playPromise) {
                   playPromise
                     .then(() => {
                       console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
                       setIsRemotePlaybackBlocked(false);
-                      
+
                       // ✅ CORREÇÃO: Tentar desmutar após 500ms e verificar se realmente foi desmutado
                       setTimeout(() => {
                         if (remoteVideoRef.current) {
                           const wasMuted = remoteVideoRef.current.muted;
                           remoteVideoRef.current.muted = false;
                           console.log(`🔊 [WEBRTC] Áudio remoto reativado automaticamente (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
-                          
+
                           // ✅ DEBUG: Verificar tracks de áudio do stream
                           const stream = remoteVideoRef.current.srcObject as MediaStream | null;
                           if (stream) {
                             const audioTracks = stream.getAudioTracks();
-                            console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`, 
+                            console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`,
                               audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
                             );
                           }
@@ -3140,11 +3165,11 @@ export function ConsultationRoom({
                     })
                     .catch((err: any) => {
                       console.log('⚠️ [WEBRTC] Play falhou:', err?.name, err?.message);
-                      
+
                       // Verificar se é bloqueio de autoplay real
-                      const isAutoplayError = err?.name === 'NotAllowedError' || 
-                                             err?.name === 'NotSupportedError';
-                      
+                      const isAutoplayError = err?.name === 'NotAllowedError' ||
+                        err?.name === 'NotSupportedError';
+
                       if (isAutoplayError) {
                         console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador. Solicitando interação do usuário...');
                         setIsRemotePlaybackBlocked(true);
@@ -3153,7 +3178,7 @@ export function ConsultationRoom({
                         console.log('📹 [WEBRTC] ℹ️ Play será retomado automaticamente quando stream tiver dados');
                         setIsRemotePlaybackBlocked(false);
                       }
-                      
+
                       // ✅ CORREÇÃO: Tentar desmutar mesmo quando play() falhar
                       setTimeout(() => {
                         if (remoteVideoRef.current) {
@@ -3168,7 +3193,7 @@ export function ConsultationRoom({
                 }
               } else {
                 console.log('⏭️ [WEBRTC] Pulando play() - mesmo stream já está tocando');
-                
+
                 // ✅ CORREÇÃO: Garantir que o áudio seja desmutado mesmo quando pulamos o play()
                 // (quando o segundo track chega)
                 setTimeout(() => {
@@ -3176,7 +3201,7 @@ export function ConsultationRoom({
                     const wasMuted = remoteVideoRef.current.muted;
                     remoteVideoRef.current.muted = false;
                     console.log(`🔊 [WEBRTC] Áudio remoto garantido após segundo track (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
-                    
+
                     // ✅ DEBUG: Verificar se o vídeo está tocando
                     if (remoteVideoRef.current.paused) {
                       console.warn('⚠️ [WEBRTC] Vídeo remoto está pausado, tentando play()...');
@@ -3184,12 +3209,12 @@ export function ConsultationRoom({
                         console.error('❌ [WEBRTC] Erro ao fazer play() do vídeo remoto:', err);
                       });
                     }
-                    
+
                     // ✅ DEBUG: Verificar tracks de áudio do stream
                     const stream = remoteVideoRef.current.srcObject as MediaStream | null;
                     if (stream) {
                       const audioTracks = stream.getAudioTracks();
-                      console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`, 
+                      console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`,
                         audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
                       );
                     }
@@ -3213,7 +3238,7 @@ export function ConsultationRoom({
         };
 
         if (attachRemoteStream(e.streams[0])) {
-            console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
+          console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
         }
       } else {
         console.warn('🔗 [WEBRTC] ⚠️ Nenhum stream recebido no evento track');
@@ -3221,18 +3246,18 @@ export function ConsultationRoom({
     };
 
 
-    if(offerObj) {
+    if (offerObj) {
 
       // ✅ PROTEÇÃO: Verificar estado antes de setRemoteDescription
       const currentState = peerConnectionRef.current.signalingState;
       //console.log('🔗 [WEBRTC] Estado atual da conexão:', currentState);
       //console.log('🔗 [WEBRTC] Tipo de oferta:', offerObj.offer?.type);
-      
+
       // ✅ CORREÇÃO: Para ANSWERER, só definir remoteDescription se estiver em 'stable' (estado inicial)
       // Se já estiver em 'have-remote-offer', significa que já foi definido
       if (currentState === 'stable') {
         //console.log('🔗 [WEBRTC] ✅ Estado correto (stable), definindo remoteDescription...');
-      await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
+        await peerConnectionRef.current.setRemoteDescription(offerObj.offer);
 
         //console.log('🔗 [WEBRTC] ✅ remoteDescription definido com sucesso');
         //console.log('🔗 [WEBRTC] Novo estado:', peerConnectionRef.current.signalingState);
@@ -3241,7 +3266,7 @@ export function ConsultationRoom({
       } else {
         console.warn('🔗 [WEBRTC] ⚠️ Estado inesperado:', currentState);
       }
-      
+
       // Processar ICE candidates pendentes após definir remoteDescription
 
       processPendingIceCandidates();
@@ -3257,23 +3282,23 @@ export function ConsultationRoom({
 
     console.log('🩺 [PACIENTE] Oferta recebida de:', offerData.offererUserName);
     console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Executando fluxo automaticamente...');
-    
+
     // ✅ CORREÇÃO: Verificar estado da PeerConnection para reconexão
     if (peerConnectionRef.current) {
       const state = peerConnectionRef.current.connectionState;
       const iceState = peerConnectionRef.current.iceConnectionState;
-      
+
       console.log(`🔍 [AUTO-ANSWER] PeerConnection existe. connectionState: ${state}, iceConnectionState: ${iceState}`);
-      
+
       // Se está conectado/conectando e chamada ativa, ignorar
       if (isCallActive && (state === 'connected' || state === 'connecting')) {
         console.warn('⚠️ [AUTO-ANSWER] Chamada já está ativa e conectada, ignorando nova oferta');
         return;
       }
-      
+
       // Se está failed/disconnected/closed, limpar para aceitar nova oferta
-      if (state === 'failed' || state === 'closed' || state === 'disconnected' || 
-          iceState === 'failed' || iceState === 'closed' || iceState === 'disconnected') {
+      if (state === 'failed' || state === 'closed' || state === 'disconnected' ||
+        iceState === 'failed' || iceState === 'closed' || iceState === 'disconnected') {
         console.log('🔄 [AUTO-ANSWER] Conexão anterior falhou/desconectou, limpando PeerConnection...');
         try {
           peerConnectionRef.current.close();
@@ -3285,13 +3310,13 @@ export function ConsultationRoom({
         console.log('✅ [AUTO-ANSWER] PeerConnection limpo, prosseguindo com nova oferta');
       }
     }
-    
+
     // ✅ CORREÇÃO: Verificar se mídia está pronta
     if (!isMediaReadyRef.current || !localStreamRef.current) {
       console.warn('⚠️ [AUTO-ANSWER] Mídia ainda não está pronta, GUARDANDO offer para processar depois...');
       console.log('⚠️ [AUTO-ANSWER] isMediaReadyRef.current:', isMediaReadyRef.current);
       console.log('⚠️ [AUTO-ANSWER] localStreamRef.current:', !!localStreamRef.current);
-      
+
       // ✅ GUARDAR offer pendente ao invés de tentar novamente
       pendingOfferRef.current = {
         offer: offerData.offer,
@@ -3300,7 +3325,7 @@ export function ConsultationRoom({
       console.log('✅ [AUTO-ANSWER] Offer guardada! Será processada quando mídia estiver pronta.');
       return;
     }
-    
+
     console.log('✅ [AUTO-ANSWER] Mídia pronta! Processando offer...');
     console.log('✅ [AUTO-ANSWER] Tracks disponíveis:', localStreamRef.current.getTracks().length);
 
@@ -3310,20 +3335,20 @@ export function ConsultationRoom({
 
     remoteUserNameRef.current = offerData.offererUserName;
 
-    
+
 
     // Armazenar dados da oferta
     setOfferData(offerData);
 
-    
+
 
     console.log('🩺 [PACIENTE] ✅ remoteUserName definido (createAnswerButton):', offerData.offererUserName);
-    
+
     // 🚀 AUTO-EXECUTAR: Chamar answer() automaticamente após pequeno delay
     // O delay garante que todos os estados foram atualizados
     setTimeout(async () => {
       console.log('🩺 [PACIENTE] 🚀 AUTO-ANSWER: Iniciando resposta automática...');
-      
+
       // Verificar se socket está conectado
       if (!socketRef.current || !socketRef.current.connected) {
         console.error('❌ [AUTO-ANSWER] Socket não conectado');
@@ -3340,14 +3365,14 @@ export function ConsultationRoom({
       try {
         // Executar o mesmo fluxo do botão Answer
         await answerOffer(offerData);
-        
+
         // Ativar transcrição automaticamente
         autoActivateTranscriptionForParticipant();
-        
+
         setShowAnswerButton(false);
         setIsCallActive(true);
         console.log('🩺 [PACIENTE] ✅ AUTO-ANSWER: Resposta automática processada com sucesso');
-      } catch(err) {
+      } catch (err) {
         console.error('❌ [AUTO-ANSWER] Erro ao responder chamada automaticamente:', err);
         // Em caso de erro, mostrar botão manual como fallback
         setShowAnswerButton(true);
@@ -3409,7 +3434,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     // Limpar AudioProcessor
 
@@ -3419,7 +3444,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     // Parar streams
 
@@ -3429,7 +3454,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     if (peerConnectionRef.current) {
 
@@ -3437,7 +3462,7 @@ export function ConsultationRoom({
 
     }
 
-    
+
 
     setIsCallActive(false);
 
@@ -3471,7 +3496,7 @@ export function ConsultationRoom({
 
     console.log('🎙️ AUTO-START: Iniciando transcrição automaticamente...');
 
-    
+
 
     // ✅ CRÍTICO: Configurar callbacks ANTES de iniciar
 
@@ -3479,17 +3504,17 @@ export function ConsultationRoom({
 
     setupTranscriptionCallbacks();
 
-    
+
 
     setTranscriptionStatus('Conectando...');
 
-    
+
 
     // ✅ Verificar se socket está conectado antes de tentar
     if (!socketRef.current || !socketRef.current.connected) {
       console.error('❌ AUTO-START: Socket não está conectado! Aguardando conexão...');
       setTranscriptionStatus('Aguardando conexão...');
-      
+
       // Aguardar até o socket conectar (máximo 10 segundos)
       let attempts = 0;
       const maxAttempts = 20; // 20 tentativas de 500ms = 10 segundos
@@ -3505,18 +3530,18 @@ export function ConsultationRoom({
           setTranscriptionStatus('Erro: Socket não conectou');
         }
       }, 500);
-      
+
       return;
     }
-    
+
     startTranscriptionAfterSocketReady();
   };
-  
+
   const startTranscriptionAfterSocketReady = async () => {
     try {
       console.log('🎙️ AUTO-START: Socket conectado, iniciando transcrição...');
       console.log('🎙️ AUTO-START: Socket state:', socketRef.current?.connected ? 'connected' : 'disconnected');
-      
+
       const success = await transcriptionManagerRef.current!.init();
 
       if (success) {
@@ -3554,11 +3579,11 @@ export function ConsultationRoom({
 
       setTranscriptionStatus('Conectando...');
 
-      
+
 
       const success = await transcriptionManagerRef.current.init();
 
-      
+
 
       if (success) {
 
@@ -3566,7 +3591,7 @@ export function ConsultationRoom({
 
         setIsTranscriptionActive(true);
 
-        
+
 
         // ✅ CORREÇÃO: Preservar histórico se já houver transcrições
         const hasExistingTranscript = transcriptionManagerRef.current.getStatus().transcript.length > 0;
@@ -3608,7 +3633,7 @@ export function ConsultationRoom({
     setCurrentConsultationId(consultationId);
 
     console.log('🔄 Iniciando polling para verificar status da anamnese...');
-    
+
     anamnesePollingRef.current = setInterval(async () => {
       try {
         const response = await fetch(`/api/consultations/${consultationId}`);
@@ -3616,16 +3641,16 @@ export function ConsultationRoom({
           console.error('Erro ao verificar status da consulta');
           return;
         }
-        
+
         const data = await response.json();
         const consultation = data.consultation;
-        
+
         console.log('📊 Status da consulta:', consultation.status, '| Etapa:', consultation.etapa);
-        
+
         // ✅ NOVO: Verificar se status=VALIDATION e etapa=ANAMNESE
         if (consultation.status === 'VALIDATION' && consultation.etapa === 'ANAMNESE') {
           console.log('✅ Anamnese pronta! Atualizando botão...');
-          
+
           if (anamnesePollingRef.current) {
             clearInterval(anamnesePollingRef.current);
             anamnesePollingRef.current = null;
@@ -3634,10 +3659,10 @@ export function ConsultationRoom({
             clearTimeout(anamneseTimeoutRef.current);
             anamneseTimeoutRef.current = null;
           }
-          
+
           setIsGeneratingAnamnese(false);
           setAnamneseReady(true);
-          
+
           // Mostrar notificação na página atual (sem abrir nova aba automaticamente)
           showSuccess('Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar.', 'Anamnese Gerada');
         }
@@ -3645,7 +3670,7 @@ export function ConsultationRoom({
         console.error('Erro ao verificar status da consulta:', error);
       }
     }, 3000); // Verificar a cada 3 segundos
-    
+
     // Limpar polling após 5 minutos (timeout de segurança)
     anamneseTimeoutRef.current = setTimeout(() => {
       console.log('⏰ Timeout: Polling de anamnese encerrado após 5 minutos');
@@ -3677,20 +3702,20 @@ export function ConsultationRoom({
         roomId: roomId,
         role: 'participant',
       });
-      
+
       if (patientId) {
         patientParams.append('patientId', patientId);
       }
-      
+
       if (patientName) {
         patientParams.append('patientName', patientName);
       }
 
       const patientLink = `${baseUrl}/consulta/online/patient?${patientParams.toString()}`;
-      
+
       await navigator.clipboard.writeText(patientLink);
       setLinkCopied(true);
-      
+
       // Resetar mensagem após 3 segundos
       setTimeout(() => {
         setLinkCopied(false);
@@ -3711,31 +3736,31 @@ export function ConsultationRoom({
     console.log('🎬 [RECORDING] recordingConsent:', recordingConsent);
     console.log('🎬 [RECORDING] localStreamRef.current:', localStreamRef.current);
     console.log('🎬 [RECORDING] remoteStreamRef.current:', remoteStreamRef.current);
-    
+
     if (!recordingConsent) {
       // Evitar abrir o modal múltiplas vezes
       if (isConsentModalOpeningRef.current || showRecordingConsentModal) {
         console.log('🎬 [RECORDING] Modal já está aberto ou sendo aberto, ignorando...');
         return;
       }
-      
+
       console.log('🎬 [RECORDING] Solicitando consentimento...');
       isConsentModalOpeningRef.current = true;
       setShowRecordingConsentModal(true);
       return;
     }
-    
+
     // Verificar streams disponíveis
     const localStream = localStreamRef.current;
     const remoteStream = remoteStreamRef.current;
-    
+
     console.log('🎬 [RECORDING] Verificando streams:', {
       hasLocal: !!localStream,
       hasRemote: !!remoteStream,
       localTracks: localStream?.getTracks().length || 0,
       remoteTracks: remoteStream?.getTracks().length || 0,
     });
-    
+
     if (!localStream && !remoteStream) {
       showWarning('Aguarde a conexão de vídeo para iniciar a gravação.', 'Gravação');
       return;
@@ -3750,18 +3775,18 @@ export function ConsultationRoom({
         .select('id, consultation_id')
         .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
         .single();
-      
+
       if (callSession?.id) {
         sessionId = callSession.id;
       }
-      
+
       console.log('🎬 [RECORDING] Iniciando gravação com:', {
         sessionId,
         consultationId: callSession?.consultation_id || currentConsultationId,
         roomId,
         userName,
       });
-      
+
       await startRecording({
         sessionId,
         consultationId: callSession?.consultation_id || currentConsultationId || undefined,
@@ -3778,7 +3803,7 @@ export function ConsultationRoom({
           showError(`Erro na gravação: ${error}`, 'Gravação');
         },
       });
-      
+
       setIsRecordingEnabled(true);
       showSuccess('Gravação iniciada!', 'Gravação');
     } catch (error) {
@@ -3802,12 +3827,12 @@ export function ConsultationRoom({
     setRecordingConsent(true);
     setShowRecordingConsentModal(false);
     isConsentModalOpeningRef.current = false; // Resetar flag
-    
+
     // Iniciar gravação diretamente após consentimento (sem passar pelo handleStartRecording novamente)
     // para evitar que o modal abra duas vezes
     const localStream = localStreamRef.current;
     const remoteStream = remoteStreamRef.current;
-    
+
     if (!localStream && !remoteStream) {
       showWarning('Aguarde a conexão de vídeo para iniciar a gravação.', 'Gravação');
       return;
@@ -3822,18 +3847,18 @@ export function ConsultationRoom({
         .select('id, consultation_id')
         .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
         .single();
-      
+
       if (callSession?.id) {
         sessionId = callSession.id;
       }
-      
+
       console.log('🎬 [RECORDING] Iniciando gravação após consentimento:', {
         sessionId,
         consultationId: callSession?.consultation_id || currentConsultationId,
         roomId,
         userName,
       });
-      
+
       await startRecording({
         sessionId,
         consultationId: callSession?.consultation_id || currentConsultationId || undefined,
@@ -3850,7 +3875,7 @@ export function ConsultationRoom({
           showError(`Erro na gravação: ${error}`, 'Gravação');
         },
       });
-      
+
       setIsRecordingEnabled(true);
       showSuccess('Gravação iniciada!', 'Gravação');
     } catch (error) {
@@ -3862,105 +3887,105 @@ export function ConsultationRoom({
   const handleConfirmEndRoom = async () => {
     // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
     console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
-    
+
     // ✅ GRAVAÇÃO: Parar gravação antes de finalizar
     if (recordingState.isRecording) {
       console.log('⏹️ [RECORDING] Parando gravação antes de finalizar sala...');
       await stopRecording();
     }
-    
+
     setIsEndingRoom(true);
 
-      socketRef.current.emit('endRoom', {
+    socketRef.current.emit('endRoom', {
 
-        roomId: roomId
+      roomId: roomId
 
-      }, async (response: any) => {
+    }, async (response: any) => {
 
-        if (response.success) {
+      if (response.success) {
 
-          // ✅ Enviar transcrição para o webhook ANTES do redirect (aguardar envio)
-          try {
-              // Usar o cliente Supabase já configurado do app (mantém sessão/cookies)
-              const { supabase } = await import('@/lib/supabase');
-              const { data: { session } } = await supabase.auth.getSession();
+        // ✅ Enviar transcrição para o webhook ANTES do redirect (aguardar envio)
+        try {
+          // Usar o cliente Supabase já configurado do app (mantém sessão/cookies)
+          const { supabase } = await import('@/lib/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
 
-              // Tentar obter doctorId via tabela medicos com o usuário autenticado
-              let doctorId: string | null = null;
-              if (session?.user?.id) {
-                const { data: medico } = await supabase
-                  .from('medicos')
-                  .select('id')
-                  .eq('user_auth', session.user.id)
-                  .single();
-                doctorId = medico?.id || null;
-              }
+          // Tentar obter doctorId via tabela medicos com o usuário autenticado
+          let doctorId: string | null = null;
+          if (session?.user?.id) {
+            const { data: medico } = await supabase
+              .from('medicos')
+              .select('id')
+              .eq('user_auth', session.user.id)
+              .single();
+            doctorId = medico?.id || null;
+          }
 
-              // Resolver consultationId pela call_sessions; fallback para última do médico; por fim roomId
-              let consultationId: string | null = null;
-              const { data: callSession } = await supabase
-                .from('call_sessions')
-                .select('consultation_id')
-                .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
-                .single();
-              consultationId = callSession?.consultation_id || null;
+          // Resolver consultationId pela call_sessions; fallback para última do médico; por fim roomId
+          let consultationId: string | null = null;
+          const { data: callSession } = await supabase
+            .from('call_sessions')
+            .select('consultation_id')
+            .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+            .single();
+          consultationId = callSession?.consultation_id || null;
 
-              if (!consultationId && doctorId) {
-                const { data: consultation } = await supabase
-                  .from('consultations')
-                  .select('id')
-                  .eq('doctor_id', doctorId)
-                  .order('created_at', { ascending: false })
-                  .limit(1)
-                  .single();
-                consultationId = consultation?.id || null;
-              }
+          if (!consultationId && doctorId) {
+            const { data: consultation } = await supabase
+              .from('consultations')
+              .select('id')
+              .eq('doctor_id', doctorId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            consultationId = consultation?.id || null;
+          }
 
-              if (!consultationId) consultationId = roomId;
+          if (!consultationId) consultationId = roomId;
 
-              const webhookEndpoints = getWebhookEndpoints();
-              const webhookHeaders = getWebhookHeaders();
-              
-              // ✅ NOVO: Adicionar consulta_finalizada: true ao finalizar consulta
-              const webhookData = {
-                consultationId,
-                doctorId: doctorId || null,
-                patientId: patientId || 'unknown',
-                transcription: transcriptionText,
-                consulta_finalizada: true  // ✅ Consulta está sendo finalizada
-              };
-              
-              console.log('📤 Enviando transcrição final para webhook (consulta_finalizada: true):', webhookData);
+          const webhookEndpoints = getWebhookEndpoints();
+          const webhookHeaders = getWebhookHeaders();
 
-              await fetch(webhookEndpoints.transcricao, {
-                method: 'POST',
-                headers: webhookHeaders,
-                body: JSON.stringify(webhookData),
-                keepalive: true
-              }).catch(() => {});
-            } catch (_) {
-              // Silenciar erros (não bloquear UI)
-            }
+          // ✅ NOVO: Adicionar consulta_finalizada: true ao finalizar consulta
+          const webhookData = {
+            consultationId,
+            doctorId: doctorId || null,
+            patientId: patientId || 'unknown',
+            transcription: transcriptionText,
+            consulta_finalizada: true  // ✅ Consulta está sendo finalizada
+          };
 
-          // 🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso
-          console.log('🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso');
-          setIsEndingRoom(false);
+          console.log('📤 Enviando transcrição final para webhook (consulta_finalizada: true):', webhookData);
 
-          showSuccess(`Sala finalizada!\n\nTranscrições salvas no banco de dados\nTotal: ${response.saveResult.transcriptionsCount} transcrições`, 'Sala Finalizada');
-
-          router.push('/consulta/nova');
-
-        } else {
-
-          // 🔍 DEBUG [REFERENCIA] Erro ao finalizar sala
-          console.log('🔍 DEBUG [REFERENCIA] Erro ao finalizar sala:', response.error);
-          setIsEndingRoom(false);
-
-          showError('Erro ao finalizar sala: ' + response.error, 'Erro ao Finalizar');
-
+          await fetch(webhookEndpoints.transcricao, {
+            method: 'POST',
+            headers: webhookHeaders,
+            body: JSON.stringify(webhookData),
+            keepalive: true
+          }).catch(() => { });
+        } catch (_) {
+          // Silenciar erros (não bloquear UI)
         }
 
-      });
+        // 🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso
+        console.log('🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso');
+        setIsEndingRoom(false);
+
+        showSuccess(`Sala finalizada!\n\nTranscrições salvas no banco de dados\nTotal: ${response.saveResult.transcriptionsCount} transcrições`, 'Sala Finalizada');
+
+        router.push('/consulta/nova');
+
+      } else {
+
+        // 🔍 DEBUG [REFERENCIA] Erro ao finalizar sala
+        console.log('🔍 DEBUG [REFERENCIA] Erro ao finalizar sala:', response.error);
+        setIsEndingRoom(false);
+
+        showError('Erro ao finalizar sala: ' + response.error, 'Erro ao Finalizar');
+
+      }
+
+    });
   };
 
 
@@ -4002,7 +4027,7 @@ export function ConsultationRoom({
 
       {/* ✅ GRAVAÇÃO: Indicador flutuante de gravação */}
       {recordingState.isRecording && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: '80px',
@@ -4024,12 +4049,12 @@ export function ConsultationRoom({
           onClick={handleStopRecording}
           title="Clique para parar a gravação"
         >
-          <Circle 
-            size={12} 
-            fill="white" 
-            style={{ 
+          <Circle
+            size={12}
+            fill="white"
+            style={{
               animation: 'pulse 1s infinite',
-            }} 
+            }}
           />
           <span>🔴 REC {formatRecordingDuration(recordingState.duration)}</span>
           {recordingState.isUploading && (
@@ -4042,7 +4067,7 @@ export function ConsultationRoom({
 
       {/* ✅ NOVO: Notificação de paciente entrando */}
       {showPatientJoinedNotification && userType === 'doctor' && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: '20px',
@@ -4150,7 +4175,7 @@ export function ConsultationRoom({
 
             )}
 
-            
+
 
             {/* ✅ NOVO: Indicador de transcrição automática (só para médico) */}
 
@@ -4168,7 +4193,7 @@ export function ConsultationRoom({
 
               }}>
 
-                • 🎙️ <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
+                • 🎙️ <span style={{ color: isTranscriptionActive ? '#4caf50' : '#999' }}>
 
                   {isTranscriptionActive ? 'Transcrição ativa' : 'Aguardando transcrição'}
 
@@ -4199,7 +4224,7 @@ export function ConsultationRoom({
 
           )}
 
-          
+
           {/* ✅ NOVO: Tela de boas-vindas com botão para paciente */}
           {userType === 'patient' && !hasJoinedRoom && isPatientReadyToJoin && (
             <div className="patient-welcome-screen">
@@ -4211,8 +4236,8 @@ export function ConsultationRoom({
                   <br />
                   Certifique-se de que sua câmera e microfone estão funcionando.
                 </p>
-                <button 
-                  className="join-button" 
+                <button
+                  className="join-button"
                   onClick={handlePatientJoinClick}
                 >
                   📹 Entrar na Consulta
@@ -4223,7 +4248,7 @@ export function ConsultationRoom({
               </div>
             </div>
           )}
-          
+
           {/* ✅ Indicador de carregamento (enquanto prepara) */}
           {userType === 'patient' && !hasJoinedRoom && !isPatientReadyToJoin && (
             <div className="auto-start-indicator">
@@ -4232,7 +4257,7 @@ export function ConsultationRoom({
             </div>
           )}
 
-          
+
 
           {/* ✅ DESABILITADO: Transcrição agora é automática */}
 
@@ -4252,26 +4277,26 @@ export function ConsultationRoom({
 
           )} */}
 
-          
+
 
           {/* ✅ Dropdown de Ações - apenas para médico */}
           {userType === 'doctor' && (
             <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center' }}>
               {/* Dropdown Menu */}
               <div style={{ position: 'relative' }}>
-              <button 
+                <button
                   onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-                style={{
-                  padding: '0.5rem 1rem',
+                  style={{
+                    padding: '0.5rem 1rem',
                     background: '#f3f4f6',
                     color: '#374151',
                     border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
                     transition: 'all 0.2s ease',
                   }}
                   title="Ações da consulta"
@@ -4339,7 +4364,7 @@ export function ConsultationRoom({
                       >
                         {linkCopied ? <Check size={16} /> : <Copy size={16} />}
                         <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
-              </button>
+                      </button>
 
                       {/* ✅ GRAVAÇÃO: Botão de gravação */}
                       <button
@@ -4379,43 +4404,43 @@ export function ConsultationRoom({
                           }
                         }}
                       >
-                        <Circle 
-                          size={16} 
+                        <Circle
+                          size={16}
                           fill={recordingState.isRecording ? '#dc2626' : 'none'}
-                          style={{ color: recordingState.isRecording ? '#dc2626' : '#6b7280' }} 
+                          style={{ color: recordingState.isRecording ? '#dc2626' : '#6b7280' }}
                         />
                         <span>
-                          {recordingState.isUploading 
-                            ? '📤 Salvando...' 
-                            : recordingState.isRecording 
-                              ? `🔴 Parar (${formatRecordingDuration(recordingState.duration)})` 
+                          {recordingState.isUploading
+                            ? '📤 Salvando...'
+                            : recordingState.isRecording
+                              ? `🔴 Parar (${formatRecordingDuration(recordingState.duration)})`
                               : '⏺️ Gravar Consulta'}
                         </span>
                       </button>
-              
+
                       {/* Sugestões IA */}
-              <button 
-                onClick={() => {
-                  setSuggestionsEnabled(!suggestionsEnabled);
-                  if (!suggestionsEnabled) {
-                    setAiSuggestions([]);
-                    setSuggestionsPanelVisible(true);
-                  } else {
-                    setSuggestionsPanelVisible(false);
-                  }
+                      <button
+                        onClick={() => {
+                          setSuggestionsEnabled(!suggestionsEnabled);
+                          if (!suggestionsEnabled) {
+                            setAiSuggestions([]);
+                            setSuggestionsPanelVisible(true);
+                          } else {
+                            setSuggestionsPanelVisible(false);
+                          }
                           setShowActionsDropdown(false);
-                }}
-                style={{
+                        }}
+                        style={{
                           width: '100%',
                           padding: '0.75rem 1rem',
                           background: suggestionsEnabled ? '#f0fdf4' : 'transparent',
                           color: suggestionsEnabled ? '#16a34a' : '#374151',
                           border: 'none',
                           borderBottom: '1px solid #f3f4f6',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '0.75rem',
                           transition: 'background 0.2s',
                           textAlign: 'left',
@@ -4429,123 +4454,123 @@ export function ConsultationRoom({
                       >
                         <Brain size={16} style={{ color: suggestionsEnabled ? '#16a34a' : '#6b7280' }} />
                         <span>{suggestionsEnabled ? 'Desativar' : 'Ativar'} Sugestões IA</span>
-              </button>
+                      </button>
 
                       {/* Gerar/Acessar Anamnese */}
-              <button 
-                onClick={async () => {
+                      <button
+                        onClick={async () => {
                           setShowActionsDropdown(false);
-                          
-                  // ✅ Se anamnese já está pronta, abrir em nova aba
-                  if (anamneseReady && currentConsultationId) {
-                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
-                    window.open(anamneseUrl, '_blank');
-                    return;
-                  }
-                  
-                  if (isGeneratingAnamnese) return;
-                  
-                  try {
-                    setIsGeneratingAnamnese(true);
-                    
-                    // Obter consultationId e doctorId
-                    const { supabase } = await import('@/lib/supabase');
-                    const { data: { session } } = await supabase.auth.getSession();
-                    
-                    let doctorId: string | null = null;
-                    if (session?.user?.id) {
-                      const { data: medico } = await supabase
-                        .from('medicos')
-                        .select('id')
-                        .eq('user_auth', session.user.id)
-                        .single();
-                      doctorId = medico?.id || null;
-                    }
-                    
-                    let consultationId: string | null = null;
-                    const { data: callSession } = await supabase
-                      .from('call_sessions')
-                      .select('consultation_id')
-                      .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
-                      .single();
-                    consultationId = callSession?.consultation_id || null;
-                    
-                    if (!consultationId && doctorId) {
-                      const { data: consultation } = await supabase
-                        .from('consultations')
-                        .select('id')
-                        .eq('doctor_id', doctorId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
-                      consultationId = consultation?.id || null;
-                    }
-                    
-                    if (!consultationId) {
+
+                          // ✅ Se anamnese já está pronta, abrir em nova aba
+                          if (anamneseReady && currentConsultationId) {
+                            const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
+                            window.open(anamneseUrl, '_blank');
+                            return;
+                          }
+
+                          if (isGeneratingAnamnese) return;
+
+                          try {
+                            setIsGeneratingAnamnese(true);
+
+                            // Obter consultationId e doctorId
+                            const { supabase } = await import('@/lib/supabase');
+                            const { data: { session } } = await supabase.auth.getSession();
+
+                            let doctorId: string | null = null;
+                            if (session?.user?.id) {
+                              const { data: medico } = await supabase
+                                .from('medicos')
+                                .select('id')
+                                .eq('user_auth', session.user.id)
+                                .single();
+                              doctorId = medico?.id || null;
+                            }
+
+                            let consultationId: string | null = null;
+                            const { data: callSession } = await supabase
+                              .from('call_sessions')
+                              .select('consultation_id')
+                              .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+                              .single();
+                            consultationId = callSession?.consultation_id || null;
+
+                            if (!consultationId && doctorId) {
+                              const { data: consultation } = await supabase
+                                .from('consultations')
+                                .select('id')
+                                .eq('doctor_id', doctorId)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .single();
+                              consultationId = consultation?.id || null;
+                            }
+
+                            if (!consultationId) {
                               showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
-                      setIsGeneratingAnamnese(false);
-                      return;
-                    }
-                    
-                    // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
-                    const webhookEndpoints = getWebhookEndpoints();
-                    const webhookHeaders = getWebhookHeaders();
-                    
-                    const webhookData = {
-                      consultationId: consultationId,
-                      doctorId: doctorId || null,
-                      patientId: patientId || 'unknown',
-                      transcription: transcriptionText,
-                      consulta_finalizada: false  // ✅ Consulta continua ativa
-                    };
-                    
-                    console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
-                    
-                    const response = await fetch(webhookEndpoints.transcricao, {
-                      method: 'POST',
-                      headers: webhookHeaders,
-                      body: JSON.stringify(webhookData),
-                    });
+                              setIsGeneratingAnamnese(false);
+                              return;
+                            }
 
-                    if (!response.ok) {
-                      throw new Error('Erro ao enviar transcrição para gerar anamnese');
-                    }
+                            // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
+                            const webhookEndpoints = getWebhookEndpoints();
+                            const webhookHeaders = getWebhookHeaders();
 
-                    // Atualizar status da consulta para PROCESSING
-                    await fetch(`/api/consultations/${consultationId}`, {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        status: 'PROCESSING',
-                        etapa: 'ANAMNESE'
-                      }),
-                    });
+                            const webhookData = {
+                              consultationId: consultationId,
+                              doctorId: doctorId || null,
+                              patientId: patientId || 'unknown',
+                              transcription: transcriptionText,
+                              consulta_finalizada: false  // ✅ Consulta continua ativa
+                            };
 
-                    // Iniciar polling para verificar quando anamnese estiver pronta
-                    startAnamnesePolling(consultationId);
-                    
-                    // Mostrar mensagem informativa
+                            console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
+
+                            const response = await fetch(webhookEndpoints.transcricao, {
+                              method: 'POST',
+                              headers: webhookHeaders,
+                              body: JSON.stringify(webhookData),
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Erro ao enviar transcrição para gerar anamnese');
+                            }
+
+                            // Atualizar status da consulta para PROCESSING
+                            await fetch(`/api/consultations/${consultationId}`, {
+                              method: 'PATCH',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                status: 'PROCESSING',
+                                etapa: 'ANAMNESE'
+                              }),
+                            });
+
+                            // Iniciar polling para verificar quando anamnese estiver pronta
+                            startAnamnesePolling(consultationId);
+
+                            // Mostrar mensagem informativa
                             showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
-                    
-                  } catch (error) {
-                    console.error('Erro ao gerar anamnese:', error);
+
+                          } catch (error) {
+                            console.error('Erro ao gerar anamnese:', error);
                             showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
-                    setIsGeneratingAnamnese(false);
-                  }
-                }}
-                disabled={isGeneratingAnamnese}
-                style={{
+                            setIsGeneratingAnamnese(false);
+                          }
+                        }}
+                        disabled={isGeneratingAnamnese}
+                        style={{
                           width: '100%',
                           padding: '0.75rem 1rem',
                           background: isGeneratingAnamnese ? '#f3f4f6' : 'transparent',
                           color: isGeneratingAnamnese ? '#9ca3af' : (anamneseReady ? '#3b82f6' : '#10b981'),
-                  border: 'none',
-                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
+                          border: 'none',
+                          cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '0.75rem',
                           transition: 'background 0.2s',
                           textAlign: 'left',
@@ -4557,39 +4582,39 @@ export function ConsultationRoom({
                         onMouseLeave={(e) => {
                           if (!isGeneratingAnamnese) e.currentTarget.style.background = 'transparent';
                         }}
-              >
-                {isGeneratingAnamnese ? (
-                  <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
+                      >
+                        {isGeneratingAnamnese ? (
+                          <>
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
                               border: '2px solid #9ca3af',
                               borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    <span>Gerando...</span>
-                  </>
-                ) : anamneseReady ? (
-                  <>
-                    <CheckCircle size={16} />
-                    <span>Acessar Anamnese</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} />
-                    <span>Gerar Anamnese</span>
-                  </>
-                )}
-              </button>
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }}></div>
+                            <span>Gerando...</span>
+                          </>
+                        ) : anamneseReady ? (
+                          <>
+                            <CheckCircle size={16} />
+                            <span>Acessar Anamnese</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            <span>Gerar Anamnese</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </>
                 )}
               </div>
 
               {/* Botão Finalizar Sala (separado por ser ação crítica) */}
-              <button 
-                className="btn-end-room" 
+              <button
+                className="btn-end-room"
                 onClick={endRoom}
                 disabled={isEndingRoom}
                 style={{
@@ -4640,15 +4665,15 @@ export function ConsultationRoom({
 
           <span className="video-label">Vídeo Remoto</span>
 
-          <video 
+          <video
 
-            className="video-player" 
+            className="video-player"
 
-            id="remote-video" 
+            id="remote-video"
 
             ref={remoteVideoRef}
 
-            autoPlay 
+            autoPlay
 
             playsInline
 
@@ -4663,7 +4688,7 @@ export function ConsultationRoom({
             </div>
           )}
 
-          
+
 
           {/* Vídeo local sobreposto */}
 
@@ -4671,17 +4696,17 @@ export function ConsultationRoom({
 
             <span className="video-label">Seu Vídeo</span>
 
-            <video 
+            <video
 
-              className="video-player" 
+              className="video-player"
 
-              id="local-video" 
+              id="local-video"
 
               ref={localVideoRef}
 
-              autoPlay 
+              autoPlay
 
-              playsInline 
+              playsInline
 
               muted
 
@@ -4689,13 +4714,13 @@ export function ConsultationRoom({
 
           </div>
 
-          
+
 
           {/* Controles de mídia */}
 
           <div className="media-controls">
 
-            <button 
+            <button
 
               className={`media-btn ${isVideoEnabled ? 'active' : 'disabled'}`}
 
@@ -4709,7 +4734,7 @@ export function ConsultationRoom({
 
             </button>
 
-            <button 
+            <button
 
               className={`media-btn ${isAudioEnabled ? 'active' : 'disabled'}`}
 
@@ -4723,7 +4748,7 @@ export function ConsultationRoom({
 
             </button>
 
-            
+
 
           </div>
 
@@ -4741,69 +4766,69 @@ export function ConsultationRoom({
 
             <div className="transcription-box">
 
-            <div className="transcription-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsTranscriptionMinimized(!isTranscriptionMinimized)}>
+              <div className="transcription-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsTranscriptionMinimized(!isTranscriptionMinimized)}>
 
-              <h6 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, flex: 1 }}>
+                <h6 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, flex: 1 }}>
 
-                Transcrição
+                  Transcrição
 
-                <span className={`badge ${transcriptionStatus === 'Conectado' ? 'bg-success' : 'bg-secondary'}`}>
+                  <span className={`badge ${transcriptionStatus === 'Conectado' ? 'bg-success' : 'bg-secondary'}`}>
 
-                  {transcriptionStatus}
+                    {transcriptionStatus}
 
-                </span>
+                  </span>
 
-              </h6>
+                </h6>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsTranscriptionMinimized(!isTranscriptionMinimized);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                  e.currentTarget.style.color = '#374151';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Minimizar transcrição"
-              >
-                <Minimize2 size={16} />
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTranscriptionMinimized(!isTranscriptionMinimized);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#6b7280',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f3f4f6';
+                    e.currentTarget.style.color = '#374151';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#6b7280';
+                  }}
+                  title="Minimizar transcrição"
+                >
+                  <Minimize2 size={16} />
+                </button>
 
-            </div>
+              </div>
 
-            <textarea 
+              <textarea
 
-              className="transcription-textarea"
+                className="transcription-textarea"
 
-              value={transcriptionText}
+                value={transcriptionText}
 
-              readOnly
+                readOnly
 
-              placeholder="A transcrição aparecerá aqui..."
+                placeholder="A transcrição aparecerá aqui..."
 
-            />
+              />
 
-            <div className="transcription-info">
+              <div className="transcription-info">
 
-              {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
+                {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
 
-            </div>
+              </div>
 
             </div>
 
@@ -4838,7 +4863,7 @@ export function ConsultationRoom({
                   animation: 'pulse 2s infinite',
                 }}></span>
               )}
-      </div>
+            </div>
             {transcriptionText.length > 0 && (
               <span className="transcription-badge">
                 {transcriptionText.split('\n').filter(line => line.trim().length > 0).length}
@@ -5028,7 +5053,7 @@ export function ConsultationRoom({
         </div>
 
       )}
-      
+
       {/* ✅ NOVO: Estilos para tela de boas-vindas do paciente */}
       <style jsx>{`
         .patient-welcome-screen {
