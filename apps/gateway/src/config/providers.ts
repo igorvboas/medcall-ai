@@ -1,33 +1,37 @@
+import { AzureOpenAI } from 'openai';
 import OpenAI from 'openai';
 import { config } from './index';
 import { aiPricingService, LLMType, AIStage } from '../services/aiPricingService';
 
-// Configuração do OpenAI
-export const openaiClient = new OpenAI({
-  apiKey: config.OPENAI_API_KEY,
-  // Só incluir organization se ela existir e não estiver vazia
-  ...(config.OPENAI_ORGANIZATION && config.OPENAI_ORGANIZATION.length > 0 && {
-    organization: config.OPENAI_ORGANIZATION
-  }),
+// Configuração do Azure OpenAI
+export const openaiClient = new AzureOpenAI({
+  endpoint: config.AZURE_OPENAI_ENDPOINT,
+  apiKey: config.AZURE_OPENAI_API_KEY,
+  apiVersion: config.AZURE_OPENAI_CHAT_API_VERSION,
   timeout: 30000, // 30 segundos
   maxRetries: 3,
 });
 
-// Teste de conexão com OpenAI
+// Teste de conexão com Azure OpenAI
 export async function testOpenAIConnection(): Promise<boolean> {
   try {
-    const response = await openaiClient.models.list();
-    
-    if (response.data && response.data.length > 0) {
-      console.log('✅ Conexão com OpenAI estabelecida com sucesso');
-      console.log(`   Modelos disponíveis: ${response.data.length}`);
+    // Azure OpenAI não tem endpoint models.list(), então testamos com uma chamada simples
+    const response = await openaiClient.chat.completions.create({
+      model: config.AZURE_OPENAI_CHAT_DEPLOYMENT,
+      messages: [{ role: 'user', content: 'test' }],
+      max_tokens: 1,
+    });
+
+    if (response.choices && response.choices.length > 0) {
+      console.log('✅ Conexão com Azure OpenAI estabelecida com sucesso');
+      console.log(`   Deployment: ${config.AZURE_OPENAI_CHAT_DEPLOYMENT}`);
       return true;
     }
-    
-    console.error('❌ OpenAI conectado mas sem modelos disponíveis');
+
+    console.error('❌ Azure OpenAI conectado mas resposta inválida');
     return false;
   } catch (error) {
-    console.error('❌ Falha ao conectar com OpenAI:', error);
+    console.error('❌ Falha ao conectar com Azure OpenAI:', error);
     return false;
   }
 }
@@ -35,14 +39,14 @@ export async function testOpenAIConnection(): Promise<boolean> {
 // LiveKit removido - usando WebRTC direto via WebSocket
 
 // Configuração Redis (opcional por enquanto)
-export const redisSettings = config.REDIS_URL 
+export const redisSettings = config.REDIS_URL
   ? {
-      url: config.REDIS_URL,
-      password: config.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    }
+    url: config.REDIS_URL,
+    password: config.REDIS_PASSWORD,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  }
   : null;
 
 // Alias export compatível com redis.ts
@@ -82,9 +86,9 @@ export const aiModels = {
       useEnhanced: true,
     },
   },
-  
+
   completion: {
-    model: config.LLM_MODEL,
+    model: config.AZURE_OPENAI_CHAT_DEPLOYMENT, // Usa deployment name do Azure
     temperature: config.LLM_TEMPERATURE,
     max_tokens: config.LLM_MAX_TOKENS,
     top_p: 1,
@@ -121,13 +125,17 @@ export async function makeChatCompletion(
   if (response.usage) {
     const model = (params.model || aiModels.completion.model) as LLMType;
     const etapa = trackingOptions?.etapa || 'chat_completion';
-    
+
+    // Extrair cached tokens (se disponível na API version preview)
+    const cachedTokens = (response.usage as any).prompt_tokens_details?.cached_tokens || 0;
+
     await aiPricingService.logChatCompletionUsage(
       model,
       response.usage.prompt_tokens,
       response.usage.completion_tokens,
       etapa,
-      trackingOptions?.consultaId
+      trackingOptions?.consultaId,
+      cachedTokens
     );
   }
 
@@ -150,7 +158,7 @@ export async function makeEmbedding(
   // 📊 Registrar uso para monitoramento de custos
   if (response.usage) {
     const model = aiModels.embedding.model as 'text-embedding-3-small' | 'text-embedding-3-large';
-    
+
     await aiPricingService.logEmbeddingUsage(
       model,
       response.usage.total_tokens,

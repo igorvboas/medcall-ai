@@ -51,6 +51,7 @@ export interface AIPricingRecord {
   token: number;          // Total de tokens (mantido para compatibilidade) OU minutos de áudio
   in_tokens_ia?: number;  // Tokens de entrada (input)
   out_tokens_ia?: number; // Tokens de saída (output)
+  cached_tokens_ia?: number; // Tokens de entrada em cache (desconto de 50%)
   price: number;          // Preço calculado em USD
   tester?: boolean;       // Se é ambiente de teste
   etapa: AIStage;         // Etapa onde foi usado
@@ -166,7 +167,7 @@ class AIPricingService {
   /**
    * Calcula o preço baseado no modelo e quantidade de tokens/minutos
    */
-  private calculatePrice(model: LLMType, inputTokens: number, outputTokens: number = 0): number {
+  private calculatePrice(model: LLMType, inputTokens: number, outputTokens: number = 0, cachedTokens: number = 0): number {
     const pricing = AI_PRICING[model];
     if (!pricing) {
       console.warn(`⚠️ Modelo não encontrado para pricing: ${model}`);
@@ -178,7 +179,12 @@ class AIPricingService {
       return (inputTokens * pricing.input) + (outputTokens * pricing.output);
     } else {
       // Para modelos de texto, tokens são divididos por 1000
-      return ((inputTokens / 1000) * pricing.input) + ((outputTokens / 1000) * pricing.output);
+      // Cached tokens têm 50% de desconto no preço de input
+      const regularInputTokens = inputTokens - cachedTokens;
+      const regularInputCost = (regularInputTokens / 1000) * pricing.input;
+      const cachedInputCost = (cachedTokens / 1000) * pricing.input * 0.5;
+      const outputCost = (outputTokens / 1000) * pricing.output;
+      return regularInputCost + cachedInputCost + outputCost;
     }
   }
 
@@ -213,6 +219,7 @@ class AIPricingService {
           token: record.token,
           in_tokens_ia: record.in_tokens_ia || null,
           out_tokens_ia: record.out_tokens_ia || null,
+          cached_tokens_ia: record.cached_tokens_ia || null,
           price: record.price,
           tester: isTester,
           etapa: record.etapa,
@@ -231,7 +238,7 @@ class AIPricingService {
 
       const testerLabel = isTester ? '[TESTER]' : '[PROD]';
       const tokenInfo = record.in_tokens_ia !== undefined
-        ? `in:${record.in_tokens_ia} out:${record.out_tokens_ia || 0}`
+        ? `in:${record.in_tokens_ia} out:${record.out_tokens_ia || 0} cached:${record.cached_tokens_ia || 0}`
         : `${record.token} ${AI_PRICING[record.LLM]?.unit || 'units'}`;
       console.log(`📊 AI Pricing ${testerLabel}: ${record.etapa} - ${record.LLM} - ${tokenInfo} - $${record.price.toFixed(6)}`);
       return true;
@@ -300,9 +307,10 @@ class AIPricingService {
     inputTokens: number,
     outputTokens: number,
     etapa: AIStage,
-    consultaId?: string
+    consultaId?: string,
+    cachedTokens: number = 0
   ): Promise<boolean> {
-    const price = this.calculatePrice(model, inputTokens, outputTokens);
+    const price = this.calculatePrice(model, inputTokens, outputTokens, cachedTokens);
     const totalTokens = inputTokens + outputTokens;
 
     return this.logUsage({
@@ -311,6 +319,7 @@ class AIPricingService {
       token: totalTokens,
       in_tokens_ia: inputTokens,
       out_tokens_ia: outputTokens,
+      cached_tokens_ia: cachedTokens,
       price,
       etapa,
     });
