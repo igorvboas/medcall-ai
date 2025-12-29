@@ -11,16 +11,16 @@ export default function OnlineConsultationPage() {
     router.push('/consulta/nova');
   }, [router]);
 
-  return (
-    <div className="error-page">
-      <div className="page-content">
-        <div className="page-header">
+    return (
+      <div className="error-page">
+        <div className="page-content">
+          <div className="page-header">
           <h1 className="page-title">Redirecionando...</h1>
-          <p className="page-subtitle">
+            <p className="page-subtitle">
             Esta página não está mais disponível. Redirecionando para nova consulta...
-          </p>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
   );
 }

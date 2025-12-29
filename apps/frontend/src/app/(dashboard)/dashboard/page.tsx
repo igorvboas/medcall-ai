@@ -20,6 +20,115 @@ import './dashboard.css';
 import Chart3D from '../../../components/Chart3D';
 import BarChart3D from '../../../components/BarChart3D';
 import { Calendar } from '../../../components/Calendar';
+
+// Componente de gráfico semanal simples
+const WeeklyBarChart = ({ data }: { data: { labels: string[]; values: number[]; colors: string[] } }) => {
+  const maxValue = Math.max(...data.values, 8);
+  const chartHeight = 320;
+  const chartWidth = '100%';
+  const padding = { top: 20, right: 20, bottom: 40, left: 40 };
+  const chartAreaHeight = chartHeight - padding.top - padding.bottom;
+  const chartAreaWidth = '100%';
+  
+  // Valores do eixo Y (0, 2, 4, 6, 8)
+  const yTicks = [0, 2, 4, 6, 8];
+  
+  const getBarHeight = (value: number) => {
+    return (value / maxValue) * chartAreaHeight;
+  };
+  
+  const getYPosition = (value: number) => {
+    return padding.top + chartAreaHeight - getBarHeight(value);
+  };
+  
+  return (
+    <div className="weekly-bar-chart-container">
+      <svg width={chartWidth} height={chartHeight} style={{ display: 'block' }}>
+        {/* Linhas de grade horizontais */}
+        {yTicks.map((tick) => {
+          const y = padding.top + chartAreaHeight - (tick / maxValue) * chartAreaHeight;
+          return (
+            <line
+              key={tick}
+              x1={padding.left}
+              y1={y}
+              x2="100%"
+              y2={y}
+              stroke="#E5E7EB"
+              strokeWidth="1"
+              strokeDasharray="4,4"
+            />
+          );
+        })}
+        
+        {/* Barras */}
+        {data.labels.map((label, index) => {
+          const value = data.values[index];
+          const barWidth = 40;
+          const spacing = 20;
+          const totalBarArea = data.labels.length * (barWidth + spacing) - spacing;
+          const startX = `calc(50% - ${totalBarArea / 2}px)`;
+          const x = index * (barWidth + spacing) + padding.left;
+          const barHeight = getBarHeight(value);
+          const y = getYPosition(value);
+          
+          return (
+            <g key={label}>
+              <rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barHeight}
+                fill="#1B4266"
+                rx="2"
+              />
+            </g>
+          );
+        })}
+        
+        {/* Labels do eixo Y */}
+        {yTicks.map((tick) => {
+          const y = padding.top + chartAreaHeight - (tick / maxValue) * chartAreaHeight;
+          return (
+            <text
+              key={tick}
+              x={padding.left - 10}
+              y={y + 5}
+              textAnchor="end"
+              fontSize="12"
+              fill="#6B7280"
+              fontFamily="Inter, sans-serif"
+            >
+              {tick}
+            </text>
+          );
+        })}
+        
+        {/* Labels do eixo X */}
+        {data.labels.map((label, index) => {
+          const barWidth = 40;
+          const spacing = 20;
+          const x = index * (barWidth + spacing) + padding.left + barWidth / 2;
+          const y = chartHeight - padding.bottom + 20;
+          
+          return (
+            <text
+              key={label}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              fontSize="12"
+              fill="#6B7280"
+              fontFamily="Inter, sans-serif"
+            >
+              {label}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
 import { StatusBadge, mapBackendStatus } from '../../../components/StatusBadge';
 import { ConsultationStatusChart } from '../../../components/ConsultationStatusChart';
 import { LoadingScreen } from '../../../components/shared/LoadingScreen';
@@ -39,6 +148,8 @@ interface DashboardData {
     consultasHoje: number;
     consultasConcluidasMes: number;
     duracaoMediaSegundos: number;
+    duracaoMediaPresencialSegundos?: number;
+    duracaoMediaTelemedicinaSegundos?: number;
     taxaSucesso: number;
   };
   distribuicoes: {
@@ -288,7 +399,7 @@ export default function DashboardPage() {
       return {
         labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
         values: [0, 0, 0, 0, 0, 0],
-        colors: ['#ff6b35', '#e91e63', '#ffc107', '#4caf50', '#f44336', '#9e9e9e']
+        colors: ['#1B4266', '#1B4266', '#1B4266', '#1B4266', '#1B4266', '#1B4266']
       };
     }
 
@@ -308,8 +419,114 @@ export default function DashboardPage() {
     return {
       labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
       values: [last7Days[1] || 0, last7Days[2] || 0, last7Days[3] || 0, last7Days[4] || 0, last7Days[5] || 0, last7Days[6] || 0],
-      colors: ['#ff6b35', '#e91e63', '#ffc107', '#4caf50', '#f44336', '#9e9e9e']
+      colors: ['#1B4266', '#1B4266', '#1B4266', '#1B4266', '#1B4266', '#1B4266']
     };
+  };
+
+  // Componente de gráfico semanal simples com SVG
+  const WeeklyBarChart = ({ data }: { data: { labels: string[]; values: number[]; colors: string[] } }) => {
+    const maxValue = Math.max(...data.values, 8);
+    const chartHeight = 280;
+    const padding = { top: 20, right: 40, bottom: 40, left: 50 };
+    const chartAreaHeight = chartHeight - padding.top - padding.bottom;
+    
+    // Valores do eixo Y (0, 2, 4, 6, 8)
+    const yTicks = [0, 2, 4, 6, 8];
+    
+    const getBarHeight = (value: number) => {
+      return (value / maxValue) * chartAreaHeight;
+    };
+    
+    const getYPosition = (value: number) => {
+      return padding.top + chartAreaHeight - getBarHeight(value);
+    };
+    
+    const barWidth = 40;
+    const spacing = 16;
+    const totalBarArea = data.labels.length * (barWidth + spacing) - spacing;
+    const chartStartX = padding.left;
+    
+    return (
+      <div className="weekly-bar-chart-container">
+        <svg width="100%" height={chartHeight} viewBox={`0 0 700 ${chartHeight}`} preserveAspectRatio="xMidYMid meet">
+          {/* Linhas de grade horizontais pontilhadas */}
+          {yTicks.map((tick) => {
+            const y = padding.top + chartAreaHeight - (tick / maxValue) * chartAreaHeight;
+            return (
+              <line
+                key={tick}
+                x1={padding.left}
+                y1={y}
+                x2={700 - padding.right}
+                y2={y}
+                stroke="#E5E7EB"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              />
+            );
+          })}
+          
+          {/* Barras */}
+          {data.labels.map((label, index) => {
+            const value = data.values[index];
+            const x = chartStartX + index * (barWidth + spacing);
+            const barHeight = getBarHeight(value);
+            const y = getYPosition(value);
+            
+            return (
+              <g key={label}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={barHeight}
+                  fill="#1B4266"
+                  rx="2"
+                />
+              </g>
+            );
+          })}
+          
+          {/* Labels do eixo Y */}
+          {yTicks.map((tick) => {
+            const y = padding.top + chartAreaHeight - (tick / maxValue) * chartAreaHeight;
+            return (
+              <text
+                key={tick}
+                x={padding.left - 10}
+                y={y + 5}
+                textAnchor="end"
+                fontSize="12"
+                fill="#6B7280"
+                fontFamily="Inter, sans-serif"
+              >
+                {tick}
+              </text>
+            );
+          })}
+          
+          {/* Labels do eixo X */}
+          {data.labels.map((label, index) => {
+            const x = chartStartX + index * (barWidth + spacing) + barWidth / 2;
+            const y = chartHeight - padding.bottom + 20;
+            
+            return (
+              <text
+                key={label}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#6B7280"
+                fontFamily="Inter, sans-serif"
+              >
+                {label}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+    );
   };
 
   if (loading) {
@@ -361,202 +578,42 @@ export default function DashboardPage() {
       {/* Banner de consulta em andamento */}
       <ActiveConsultationBanner />
       
-      {/* Layout principal: conteúdo + painel direito */}
-      <div className="dashboard-layout">
-        {/* Conteúdo principal */}
-        <div className="main-content">
-          {/* Saudação do dashboard */}
-          <div className="dashboard-greeting-section">
-            <h1 className="dashboard-title">
-              {getGreeting()}, Dr {medicoName || 'Carregando...'}
-            </h1>
-          </div>
+      {/* Saudação do dashboard */}
+      <div className="dashboard-greeting-section">
+        <h1 className="dashboard-title">
+          {getGreeting()}, Dr {medicoName || 'Carregando...'}
+        </h1>
+      </div>
 
-          {/* Linha dos KPIs conectados */}
-          <div className="kpi-row">
-            <div className="kpi kpi--cyan">
-              <div className="title">Consultas Hoje</div>
-              <div className="value">{dashboardData.estatisticas.consultasHoje}</div>
-            </div>
-            <div className="kpi kpi--amber">
-              <div className="title">Total de Atendimentos</div>
-              <div className="value">{dashboardData.estatisticas.consultasConcluidasMes}</div>
-            </div>
-            <div className="kpi kpi--lilac">
-              <div className="title">Total de Paciente</div>
-              <div className="value">{dashboardData.estatisticas.totalPacientes}</div>
-            </div>
+      {/* Grid Container - 12 colunas */}
+      <div className="dashboard-grid-container">
+        {/* Row 1: KPIs - 3 cards + Status de Consultas (col-span-3 cada) */}
+        <div className="kpi kpi--cyan dashboard-col-span-3">
+          <div className="title">Consultas</div>
+          <div className="value">{dashboardData.estatisticas.consultasHoje}</div>
+        </div>
+        <div className="kpi kpi--amber dashboard-col-span-3">
+          <div className="title">Pacientes cadastrados</div>
+          <div className="value">{dashboardData.estatisticas.totalPacientes}</div>
+        </div>
+        <div className="kpi kpi--lilac dashboard-col-span-3">
+          <div className="title">Tempo médio de consulta</div>
+          <div className="value">
+            {(() => {
+              const minutes = Math.floor(dashboardData.estatisticas.duracaoMediaSegundos / 60);
+              const seconds = dashboardData.estatisticas.duracaoMediaSegundos % 60;
+              return `${minutes}:${String(seconds).padStart(2, '0')} min`;
+            })()}
           </div>
-
-          {/* Linha dos gráficos + calendário */}
-          <div className="data-row">
-            <div className="card-dark chart-card">
-              <div className="card-header">
-                <div className="card-title">Atendimentos Presencial/Telemedicina</div>
-                <div className="card-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <select 
-                    className="year-select"
-                    value={chartPeriodType}
-                    onChange={(e) => setChartPeriodType(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                    style={{ minWidth: '100px' }}
-                  >
-                    <option value="day">Dia</option>
-                    <option value="week">Semana</option>
-                    <option value="month">Mês</option>
-                    <option value="year">Ano</option>
-                  </select>
-                  
-                  {chartPeriodType === 'day' && (
-                    <input
-                      type="date"
-                      className="year-select"
-                      value={chartSelectedDate}
-                      onChange={(e) => setChartSelectedDate(e.target.value)}
-                      style={{ minWidth: '140px' }}
-                    />
-                  )}
-                  
-                  {chartPeriodType === 'week' && (
-                    <input
-                      type="date"
-                      className="year-select"
-                      value={chartSelectedDate}
-                      onChange={(e) => setChartSelectedDate(e.target.value)}
-                      style={{ minWidth: '140px' }}
-                    />
-                  )}
-                  
-                  {chartPeriodType === 'month' && (
-                    <input
-                      type="month"
-                      className="year-select"
-                      value={chartSelectedMonth}
-                      onChange={(e) => setChartSelectedMonth(e.target.value)}
-                      style={{ minWidth: '140px' }}
-                    />
-                  )}
-                  
-                  {chartPeriodType === 'year' && (
-                    <select 
-                      className="year-select"
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(Number(e.target.value))}
-                      style={{ minWidth: '100px' }}
-                    >
-                      <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
-                      <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
-                    </select>
-                  )}
-                  {/* download button removed */}
-                </div>
-              </div>
-              <div className="chart-content">
-                <div className="line-chart">
-                  <div className="chart-legend-top">
-                    <div className="legend-item">
-                      <div className="legend-line presencial"></div>
-                      <span>Presencial</span>
-                    </div>
-                    <div className="legend-item">
-                      <div className="legend-line telemedicina"></div>
-                      <span>Telemedicina</span>
-                    </div>
-                  </div>
-                  <div className="chart-area">
-                    <Chart3D 
-                      data={{
-                        presencial: dashboardData?.graficos?.consultasPorDia?.map(d => d.presencial) || [],
-                        telemedicina: dashboardData?.graficos?.consultasPorDia?.map(d => d.telemedicina) || [],
-                        labels: dashboardData?.graficos?.consultasPorDia?.map(d => {
-                          // d.date vem como 'YYYY-MM-DD' (sem timezone). Para não deslocar o dia,
-                          // construímos a data usando Date(year, monthIndex, day) (TZ local)
-                          const [yyyy, mm, dd] = d.date.split('-').map(Number);
-                          const localDate = new Date(yyyy, (mm || 1) - 1, dd || 1);
-                          return localDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-                        }) || []
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card-dark calendar-card">
-              <div className="card-header">
-                <div className="card-title">Calendário</div>
-                <div className="card-actions">
-                  <Link href="/agenda" className="view-btn">
-                    Ver Agenda
-                  </Link>
-                </div>
-              </div>
-              <div className="calendar-content">
-                <Calendar
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                  highlightedDates={consultationDates}
-                  className="dashboard-calendar"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Linha de atendimentos e consultas */}
-          <div className="bottom-row">
-            <div className="card-dark weekly-chart">
-              <div className="card-title">Atendimentos na Semana</div>
-              <BarChart3D
-                useCSS3D={true}
-                data={getWeeklyData()}
-              />
-            </div>
-            
-            <div className="card-dark consultations-table">
-              <div className="card-header">
-                <div className="card-title">Consultas</div>
-              </div>
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Id</th>
-                      <th>Paciente</th>
-                      <th>Data</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData?.atividades?.ultimasConsultas && dashboardData.atividades.ultimasConsultas.length > 0 ? (
-                      dashboardData.atividades.ultimasConsultas.slice(0, 5).map((consulta) => (
-                        <tr key={consulta.id}>
-                          <td>{consulta.id.substring(0, 8)}</td>
-                          <td>{consulta.patients?.name || consulta.patient_name}</td>
-                          <td>{new Date(consulta.created_at).toLocaleDateString('pt-BR')}</td>
-                          <td>
-                            <StatusBadge 
-                              status={mapBackendStatus(consulta.status)} 
-                              size="sm" 
-                              showIcon={true}
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '20px' }}>
-                          Nenhuma consulta encontrada
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div className="subtitle">
+            {(() => {
+              const presencialMin = Math.round((dashboardData.estatisticas.duracaoMediaPresencialSegundos || 0) / 60);
+              const telemedicinaMin = Math.round((dashboardData.estatisticas.duracaoMediaTelemedicinaSegundos || 0) / 60);
+              return `Telemedicina: ${telemedicinaMin} min Presencial: ${presencialMin} min`;
+            })()}
           </div>
         </div>
-
-        {/* Painel lateral direito - MELHORADO */}
-        <aside className="right-panel">
+        <div className="card-dark status-card dashboard-col-span-3 dashboard-row-span-2">
           <ConsultationStatusChart 
             data={{
               created: dashboardData?.distribuicoes?.porStatus?.CREATED || 0,
@@ -566,50 +623,232 @@ export default function DashboardPage() {
             }}
             metrics={[
               { 
-                label: 'Consultas Concluídas', 
+                label: 'Consultas concluídas', 
                 value: dashboardData?.estatisticas?.consultasConcluidasMes || 0, 
-                change: 0, 
+                change: 12, 
                 isPositive: true 
               },
               { 
-                label: 'Total de Pacientes', 
+                label: 'Total de pacientes', 
                 value: dashboardData?.estatisticas?.totalPacientes || 0, 
-                change: 0, 
+                change: 12, 
                 isPositive: true 
               }
             ]}
             selectedPeriod={selectedPeriod}
             onPeriodChange={(period: string) => setSelectedPeriod(period)}
+            duracaoMedia={dashboardData?.estatisticas?.duracaoMediaSegundos || 0}
+            taxaFinalizacao={dashboardData?.estatisticas?.taxaSucesso || 0}
           />
-          
-          <div className="unified-card" style={{ marginTop: '16px' }}>
-            {/* Duração e Taxa */}
-            <div className="duration-section">
-              <div className="duration-item">
-                <div className="duration-label">Duração Média</div>
-                <div className="duration-value">
-                  {formatDuration(dashboardData?.estatisticas?.duracaoMediaSegundos || 0)}
+        </div>
+
+        {/* Row 2: Gráfico Presencial vs Telemedicina (col-span-6) */}
+        <div className="card-dark chart-card dashboard-col-span-6 dashboard-row-2-height">
+          <div className="card-header">
+            <div className="card-title">Presencial vs Telemedicina</div>
+            <div className="card-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <select 
+                className="year-select"
+                value={chartPeriodType}
+                onChange={(e) => setChartPeriodType(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                style={{ minWidth: '100px' }}
+              >
+                <option value="day">Dia</option>
+                <option value="week">Semana</option>
+                <option value="month">Mês</option>
+                <option value="year">Ano</option>
+              </select>
+              
+              {chartPeriodType === 'day' && (
+                <input
+                  type="date"
+                  className="year-select"
+                  value={chartSelectedDate}
+                  onChange={(e) => setChartSelectedDate(e.target.value)}
+                  style={{ minWidth: '140px' }}
+                />
+              )}
+              
+              {chartPeriodType === 'week' && (
+                <input
+                  type="date"
+                  className="year-select"
+                  value={chartSelectedDate}
+                  onChange={(e) => setChartSelectedDate(e.target.value)}
+                  style={{ minWidth: '140px' }}
+                />
+              )}
+              
+              {chartPeriodType === 'month' && (
+                <input
+                  type="month"
+                  className="year-select"
+                  value={chartSelectedMonth}
+                  onChange={(e) => setChartSelectedMonth(e.target.value)}
+                  style={{ minWidth: '140px' }}
+                />
+              )}
+              
+              {chartPeriodType === 'year' && (
+                <select 
+                  className="year-select"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  style={{ minWidth: '100px' }}
+                >
+                  <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                  <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                </select>
+              )}
+            </div>
+          </div>
+          <div className="chart-content">
+            <div className="line-chart">
+              <div className="chart-legend-top">
+                <div className="legend-item">
+                  <div className="legend-line presencial"></div>
+                  <span>Presencial</span>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill progress-purple" style={{
-                    width: `${Math.min(((dashboardData?.estatisticas?.duracaoMediaSegundos || 0) / 5400) * 100, 100)}%`
-                  }}></div>
+                <div className="legend-item">
+                  <div className="legend-line telemedicina"></div>
+                  <span>Telemedicina</span>
                 </div>
               </div>
-              <div className="duration-item">
-                <div className="duration-label">Taxa de Finalização</div>
-                <div className="duration-value">
-                  {Math.round(dashboardData?.estatisticas?.taxaSucesso || 0)}%
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill progress-blue" style={{
-                    width: `${dashboardData?.estatisticas?.taxaSucesso || 0}%`
-                  }}></div>
-                </div>
+              <div className="chart-area">
+                <Chart3D 
+                  data={{
+                    presencial: dashboardData?.graficos?.consultasPorDia?.map(d => d.presencial) || [],
+                    telemedicina: dashboardData?.graficos?.consultasPorDia?.map(d => d.telemedicina) || [],
+                    labels: dashboardData?.graficos?.consultasPorDia?.map(d => {
+                      const [yyyy, mm, dd] = d.date.split('-').map(Number);
+                      const localDate = new Date(yyyy, (mm || 1) - 1, dd || 1);
+                      const day = String(localDate.getDate()).padStart(2, '0');
+                      const month = localDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+                      return `${day} de ${month}`;
+                    }) || []
+                  }}
+                />
               </div>
             </div>
           </div>
-        </aside>
+        </div>
+
+        {/* Row 2: Calendário (col-span-3) - Status de Consultas ocupa o espaço ao lado com row-span-2 */}
+        <div className="card-dark calendar-card dashboard-col-span-3 dashboard-row-2-height">
+          <div className="card-header">
+            <div className="card-title">Calendário</div>
+            <div className="card-actions">
+              <Link href="/agenda" className="view-btn">
+                Ver Agenda
+              </Link>
+            </div>
+          </div>
+          <div className="calendar-content">
+            <Calendar
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+              highlightedDates={consultationDates}
+              className="dashboard-calendar"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Painel lateral removido - Status de Consultas está na Row 1 */}
+
+        {/* Row 3: Atendimentos na Semana (col-span-5) */}
+        <div className="card-dark weekly-chart dashboard-col-span-5">
+          <div className="card-title">Atendimentos na Semana</div>
+          <BarChart3D
+            useCSS3D={true}
+            data={getWeeklyData()}
+          />
+        </div>
+
+        {/* Row 3: Tabela de Consultas (col-span-7) */}
+        <div className="card-dark consultations-table dashboard-col-span-7">
+          {/* Header com design do Figma */}
+          <div className="consultations-header">
+            <div className="consultations-header-active">Consultas</div>
+            <div className="consultations-header-item consultations-header-patient">Paciente</div>
+            <div className="consultations-header-divider"></div>
+            <div className="consultations-header-item">id</div>
+            <div className="consultations-header-divider"></div>
+            <div className="consultations-header-item">Início</div>
+            <div className="consultations-header-divider"></div>
+            <div className="consultations-header-item">Duração</div>
+            <div className="consultations-header-divider"></div>
+            <div className="consultations-header-item">Sala</div>
+          </div>
+
+          {/* Lista de consultas */}
+          <div className="consultations-list">
+            {dashboardData?.atividades?.ultimasConsultas && dashboardData.atividades.ultimasConsultas.length > 0 ? (
+              dashboardData.atividades.ultimasConsultas.slice(0, 3).map((consulta: any) => {
+                // Obter iniciais do médico
+                const medicoNome = consulta.medicos?.name || dashboardData?.medico?.name || 'Médico';
+                const iniciais = medicoNome
+                  .split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .substring(0, 2);
+
+                // Formatar horário de início
+                const inicioDate = consulta.consulta_inicio 
+                  ? new Date(consulta.consulta_inicio)
+                  : new Date(consulta.created_at);
+                const horarioInicio = inicioDate.toLocaleTimeString('pt-BR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+
+                // Formatar duração
+                const duracaoMinutos = consulta.duracao 
+                  ? Math.round(consulta.duracao) 
+                  : consulta.duration 
+                    ? Math.round(consulta.duration / 60) 
+                    : 0;
+                const duracaoFormatada = `${duracaoMinutos} min`;
+
+                // Determinar tipo de sala
+                const sala = consulta.consultation_type === 'TELEMEDICINA' 
+                  ? 'Sala virtual' 
+                  : 'Presencial';
+
+                // Tipo de consulta formatado
+                const tipoConsulta = consulta.consultation_type === 'TELEMEDICINA'
+                  ? 'Telemedicina'
+                  : 'Presencial';
+
+                return (
+                  <div key={consulta.id} className="consultation-row">
+                    <div className="consultation-patient-col">
+                      <div className="consultation-avatar">
+                        {iniciais}
+                      </div>
+                      <div className="consultation-patient-info">
+                        <div className="consultation-medico-name">{medicoNome}</div>
+                        <div className="consultation-type">{tipoConsulta}</div>
+                      </div>
+                    </div>
+                    <div className="consultation-divider"></div>
+                    <div className="consultation-id-col">{consulta.id.substring(0, 8)}</div>
+                    <div className="consultation-divider"></div>
+                    <div className="consultation-time-col">{horarioInicio}</div>
+                    <div className="consultation-divider"></div>
+                    <div className="consultation-duration-col">{duracaoFormatada}</div>
+                    <div className="consultation-divider"></div>
+                    <div className="consultation-room-col">{sala}</div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="consultations-empty">
+                Nenhuma consulta encontrada
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

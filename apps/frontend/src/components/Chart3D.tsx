@@ -47,12 +47,13 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
   const createChart = () => {
     if (!plotRef.current || !isClient || !Plotly) return;
 
-    // Detectar tema atual
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartTextColor = isDarkMode ? '#ffffff' : '#1a1a1a';
-    const legendColor = isDarkMode ? '#cccccc' : '#666666';
-    const gridColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
-    const zeroLineColor = isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
+    // Cores do design Figma
+    const presencialColor = '#9770F5'; // roxo
+    const telemedicinaColor = '#4387F5'; // azul
+    const gridColorHorizontal = '#F7F7F7';
+    const gridColorVertical = '#D4D4D4';
+    const labelColorY = '#3E4954';
+    const labelColorX = 'rgba(62, 73, 84, 0.42)'; // #3E4954 com opacidade 0.42
 
     // Criar dados para o gráfico
     const trace1 = {
@@ -62,15 +63,15 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
       type: 'scatter',
       name: 'Presencial',
       line: {
-        color: '#8b5cf6',
+        color: presencialColor,
         width: 3
       },
       marker: {
-        color: '#8b5cf6',
-        size: 8,
+        color: presencialColor,
+        size: 7,
         line: {
           color: '#ffffff',
-          width: 1
+          width: 0.5
         }
       },
       hovertemplate: '<b>Presencial</b><br>' +
@@ -78,9 +79,9 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
                      'Atendimentos: %{y}<br>' +
                      '<extra></extra>',
       hoverlabel: {
-        bgcolor: '#8b5cf6',
-        bordercolor: '#a855f7',
-        font: { color: chartTextColor, family: 'Inter' }
+        bgcolor: presencialColor,
+        bordercolor: presencialColor,
+        font: { color: '#ffffff', family: 'Inter' }
       }
     };
 
@@ -91,16 +92,15 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
       type: 'scatter',
       name: 'Telemedicina',
       line: {
-        color: '#3b82f6',
-        width: 3,
-        dash: 'dash'
+        color: telemedicinaColor,
+        width: 3
       },
       marker: {
-        color: '#3b82f6',
-        size: 8,
+        color: telemedicinaColor,
+        size: 7,
         line: {
           color: '#ffffff',
-          width: 1
+          width: 0.5
         }
       },
       hovertemplate: '<b>Telemedicina</b><br>' +
@@ -108,50 +108,52 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
                      'Atendimentos: %{y}<br>' +
                      '<extra></extra>',
       hoverlabel: {
-        bgcolor: '#3b82f6',
-        bordercolor: '#60a5fa',
-        font: { color: chartTextColor, family: 'Inter' }
+        bgcolor: telemedicinaColor,
+        bordercolor: telemedicinaColor,
+        font: { color: '#ffffff', family: 'Inter' }
       }
     };
 
     const layout = {
       title: {
         text: '',
-        font: { color: chartTextColor }
+        font: { color: labelColorY }
       },
       xaxis: {
         title: {
-          text: 'Período',
-          font: { color: legendColor, size: 12 }
+          text: '',
+          font: { color: labelColorX, size: 12 }
         },
-        tickfont: { color: legendColor, size: 10 },
-        gridcolor: gridColor,
-        zerolinecolor: zeroLineColor,
+        tickfont: { color: labelColorX, size: 14 },
+        gridcolor: gridColorVertical,
+        zerolinecolor: gridColorHorizontal,
         showgrid: true,
-        zeroline: true
+        zeroline: false,
+        showline: false
       },
       yaxis: {
         title: {
-          text: 'Atendimentos',
-          font: { color: legendColor, size: 12 }
+          text: '',
+          font: { color: labelColorY, size: 12 }
         },
-        tickfont: { color: legendColor, size: 10 },
-        gridcolor: gridColor,
-        zerolinecolor: zeroLineColor,
+        tickfont: { color: labelColorY, size: 14 },
+        gridcolor: gridColorHorizontal,
+        zerolinecolor: gridColorHorizontal,
         showgrid: true,
-        zeroline: true
+        zeroline: true,
+        showline: false
       },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: chartTextColor, family: 'Inter, sans-serif' },
+      font: { color: labelColorY, family: 'Inter, sans-serif' },
       legend: {
-        font: { color: legendColor },
+        font: { color: labelColorY },
         bgcolor: 'rgba(0,0,0,0)',
         x: 0,
         y: 1,
         orientation: 'h'
       },
-      margin: { l: 50, r: 30, t: 20, b: 40 },
+      margin: { l: 40, r: 40, t: 10, b: 70 },
       showlegend: false,
       hovermode: 'closest'
     };
@@ -206,7 +208,7 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
       <div className="chart-3d-container">
         <div style={{ 
           width: '100%', 
-          height: '200px', 
+          height: '250px', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
@@ -221,7 +223,7 @@ const Chart3D: React.FC<Chart3DProps> = ({ data }) => {
 
   return (
     <div className="chart-3d-container">
-      <div ref={plotRef} style={{ width: '100%', height: '200px' }} />
+      <div ref={plotRef} style={{ width: '100%', height: '250px' }} />
     </div>
   );
 };

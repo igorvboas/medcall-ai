@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { LoadingScreen } from './LoadingScreen';
@@ -16,6 +16,10 @@ export function Layout({ children }: LayoutProps) {
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  
+  // Detectar se está na página de consulta online
+  const isConsultationPage = pathname?.includes('/consulta/online');
 
   useEffect(() => {
     // Se não está carregando autenticação
@@ -41,13 +45,14 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="layout">
+    <div className={`layout ${isConsultationPage ? 'consultation-layout' : ''}`}>
       <Sidebar 
         expanded={sidebarExpanded}
         onExpandedChange={setSidebarExpanded}
+        isTopMenu={isConsultationPage || false}
       />
       
-      <div className={`main-content ${sidebarExpanded ? 'expanded' : ''}`}>
+      <div className={`main-content ${sidebarExpanded ? 'expanded' : ''} ${isConsultationPage ? 'consultation-content' : ''}`}>
         <Header />
         
         <main className="page-content">

@@ -46,6 +46,7 @@ export async function GET(
           name,
           email,
           phone,
+          profile_pic,
           birth_date,
           gender,
           cpf,

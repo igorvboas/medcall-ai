@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Home,
   FileText,
@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 interface SidebarProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  isTopMenu?: boolean;
 }
 
 const menuItems = [
@@ -38,11 +39,12 @@ const adminMenuItems = [
   { icon: ShieldCheck, label: 'Admin', href: '/consultas-admin' }
 ];
 
-export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
+export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut, user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Verificar se o usuário é admin
   useEffect(() => {
@@ -83,23 +85,69 @@ export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
     }
   };
 
+  const handleMouseEnter = () => {
+    // Se for menu no topo, não expandir (sempre compacto)
+    if (isTopMenu) return;
+    
+    // Limpar qualquer timeout pendente
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    onExpandedChange(true);
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    // Se for menu no topo, não fazer nada
+    if (isTopMenu) return;
+    
+    const sidebar = e.currentTarget as HTMLElement;
+    const relatedTarget = e.relatedTarget as Node | null;
+    
+    // Verificar se o mouse realmente saiu do sidebar
+    if (!sidebar.contains(relatedTarget)) {
+      // Limpar qualquer timeout anterior
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      
+      // Pequeno delay para evitar colapsar durante movimentos rápidos
+      hoverTimeoutRef.current = setTimeout(() => {
+        onExpandedChange(false);
+        hoverTimeoutRef.current = null;
+      }, 150);
+    }
+  };
+  
+  // Limpar timeout quando componente desmontar
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Garantir que o menu no topo sempre fique compacto (nunca expandido)
+  useEffect(() => {
+    if (isTopMenu) {
+      onExpandedChange(false);
+    }
+  }, [isTopMenu, onExpandedChange]);
+
   return (
     <aside
-      className={`sidebar ${expanded ? 'expanded' : ''}`}
-      onMouseEnter={() => onExpandedChange(true)}
-      onMouseLeave={() => onExpandedChange(false)}
+      className={`sidebar ${expanded ? 'expanded' : ''} ${isTopMenu ? 'top-menu' : ''}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <div className="logo">
-        <img src="/logo-eva.png" alt="Eva Logo" className="sidebar-logo-image" />
-      </div>
-
       <nav className="nav">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
             <Link key={item.href} href={item.href} className={`nav-btn ${isActive ? 'is-active' : ''}`}>
-              <Icon size={20} />
+              <Icon size={24} />
               <span className="nav-label">{item.label}</span>
             </Link>
           );
@@ -110,21 +158,21 @@ export function Sidebar({ expanded, onExpandedChange }: SidebarProps) {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
-            <Link 
+          <Link 
               key={item.href}
               href={item.href} 
               className={`nav-btn nav-btn-admin ${isActive ? 'is-active' : ''}`}
-            >
-              <Icon size={20} />
+          >
+              <Icon size={24} />
               <span className="nav-label">{item.label}</span>
-            </Link>
+          </Link>
           );
         })}
       </nav>
 
       <div className="bottom">
         <button className="nav-btn" aria-label="Sair" onClick={handleLogout}>
-          <LogOut size={20} />
+          <LogOut size={24} />
           <span className="nav-label">Sair</span>
         </button>
       </div>

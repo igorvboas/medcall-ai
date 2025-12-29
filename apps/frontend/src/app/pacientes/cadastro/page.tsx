@@ -440,8 +440,8 @@ export default function CadastrarPaciente() {
               onClick={handleImageClick}
               onMouseEnter={(e) => {
                 if (!uploadingImage) {
-                  e.currentTarget.style.borderColor = '#d4a574';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(212, 165, 116, 0.3)';
+                  e.currentTarget.style.borderColor = '#1B4266';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(27, 66, 102, 0.3)';
                 }
               }}
               onMouseLeave={(e) => {

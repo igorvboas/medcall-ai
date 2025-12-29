@@ -319,8 +319,19 @@ export default function PatientsPage() {
       <div className="patients-container">
         {/* Header */}
         <div className="patients-header">
-          <h1 className="patients-title">Lista de Pacientes</h1>
-          <p className="patients-subtitle">Gerencie seus pacientes de forma eficiente</p>
+          <div className="patients-header-content">
+            <h1 className="patients-title">Lista de Pacientes</h1>
+            <button 
+              onClick={() => setShowForm(true)}
+              className="btn btn-primary btn-novo-paciente"
+            >
+              <Plus className="btn-icon" />
+              Novo Paciente
+            </button>
+          </div>
+          <div className="patients-count-badge">
+            {pagination.total} {pagination.total === 1 ? 'paciente cadastrado' : 'pacientes cadastrados'}
+          </div>
         </div>
         
         {loading ? (
@@ -354,209 +365,133 @@ export default function PatientsPage() {
             </button>
           </div>
         ) : (
-          <div className="patients-cards-container">
-            {/* Filtros */}
-            <div className="filters-section">
-              <div className="search-container">
-                <Search className="search-icon" size={20} />
-                <input
-                  type="text"
-                  placeholder="Buscar pacientes..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                  }}
-                  className="search-input"
-                />
+          <div className="patients-table-container">
+            {/* Cabeçalho da Tabela */}
+            <div className="patients-table-header">
+              <div className="table-header-cell table-header-paciente">
+                <div className="search-container-inline">
+                  <Search className="search-icon-inline" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Buscar"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                    }}
+                    className="search-input-inline"
+                  />
+                </div>
               </div>
-              
-              <div className="filters-right">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    const newStatus = e.target.value as 'all' | 'active' | 'inactive' | 'archived';
-                    setStatusFilter(newStatus);
-                  }}
-                  className="status-filter"
-                >
-                  <option value="all">Todos os status</option>
-                  <option value="active">Ativos</option>
-                  <option value="inactive">Inativos</option>
-                  <option value="archived">Arquivados</option>
-                </select>
-                <button 
-                  onClick={() => setShowForm(true)}
-                  className="btn btn-primary"
-                >
-                  <Plus className="btn-icon" />
-                  Novo Paciente
-                </button>
+              <div className="table-header-titles-row">
+                <div className="table-header-cell">
+                  <span className="header-label">Paciente</span>
+                </div>
+                <div className="table-header-divider"></div>
+                <div className="table-header-cell">
+                  <span className="header-label">Dados do Paciente</span>
+                </div>
+                <div className="table-header-divider"></div>
+                <div className="table-header-cell table-header-acoes">
+                  <span className="header-label">Ações</span>
+                </div>
               </div>
             </div>
 
-            {/* Lista de Pacientes em Cards Separados */}
-            <div className="patients-list-container">
-              {patients.map((patient) => (
-                <div key={patient.id} className="patient-list-card">
-                  <div className="card-content">
-                    <div className="patient-avatar">
-                      {patient.profile_pic ? (
-                        <img 
-                          src={patient.profile_pic} 
-                          alt={patient.name}
-                          className="avatar-image"
-                          onError={(e) => {
-                            // Se a imagem falhar ao carregar, mostrar placeholder
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const placeholder = target.nextElementSibling as HTMLElement;
-                            if (placeholder) placeholder.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div className="avatar-placeholder" style={{ display: patient.profile_pic ? 'none' : 'flex' }}>
-                        <span className="avatar-initial">
-                          {patient.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="patient-main-info">
-                      <div className="patient-name-section">
-                        <h3 className="patient-name">{patient.name}</h3>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span className={`patient-status ${patient.status}`}>
-                            {getStatusText(patient.status)}
-                          </span>
-                          {patient.anamnese?.status === 'pendente' && (
-                            <span 
-                              className="patient-status" 
-                              style={{
-                                background: '#fef3c7',
-                                color: '#92400e',
-                                fontSize: '11px',
-                                padding: '4px 10px',
-                                borderRadius: '12px',
-                                fontWeight: '600',
-                                textTransform: 'uppercase'
+            {/* Corpo da Tabela */}
+            <div className="patients-table-body">
+              {patients.map((patient) => {
+                const initials = patient.name
+                  .split(' ')
+                  .map(n => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+                
+                return (
+                  <div key={patient.id} className="patients-table-row">
+                    <div className="table-cell table-cell-paciente">
+                      <div className="patient-info-cell">
+                        <div className="patient-avatar-table">
+                          {patient.profile_pic ? (
+                            <img 
+                              src={patient.profile_pic} 
+                              alt={patient.name}
+                              className="avatar-image-table"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const placeholder = target.nextElementSibling as HTMLElement;
+                                if (placeholder) placeholder.style.display = 'flex';
                               }}
-                              title="Paciente precisa preencher anamnese inicial"
-                            >
-                              📝 Anamnese Pendente
-                            </span>
-                          )}
-                          {patient.anamnese?.status === 'preenchida' && (
-                            <span 
-                              className="patient-status" 
-                              style={{
-                                background: '#d1fae5',
-                                color: '#065f46',
-                                fontSize: '11px',
-                                padding: '4px 10px',
-                                borderRadius: '12px',
-                                fontWeight: '600',
-                                textTransform: 'uppercase'
-                              }}
-                              title="Anamnese inicial preenchida"
-                            >
-                              ✅ Anamnese Preenchida
-                            </span>
+                            />
+                          ) : null}
+                          <div className="avatar-placeholder-table" style={{ display: patient.profile_pic ? 'none' : 'flex' }}>
+                            <span className="avatar-initial-table">{initials}</span>
+                          </div>
+                        </div>
+                        <div className="patient-name-badge-container">
+                          <div className="patient-name-table">{patient.name}</div>
+                          {patient.status === 'active' && (
+                            <span className="patient-status-badge active">ATIVO</span>
                           )}
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="patient-contact-info">
-                      {patient.email && (
-                        <div className="contact-item">
-                          <Mail size={16} />
-                          <span className="contact-value">{patient.email}</span>
-                        </div>
-                      )}
-                      {patient.phone && (
-                        <div className="contact-item">
-                          <Phone size={16} />
-                          <span className="contact-value">{patient.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="patient-actions">
-                      {/* Mostrar botão apenas se anamnese não estiver preenchida */}
-                      {(patient.anamnese?.status !== 'preenchida') && (
-                        <button 
-                          className="action-btn"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const response = await fetch('/api/anamnese-inicial', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ patient_id: patient.id }),
-                              });
-                              if (response.ok) {
-                                const result = await response.json();
-                                showSuccess('Anamnese enviada para o paciente!', 'Sucesso');
-                                if (result.link) {
-                                  await navigator.clipboard.writeText(result.link);
-                                  showSuccess('Link copiado para área de transferência!', 'Link Copiado');
-                                }
-                                fetchPatients(pagination.page, searchTerm, statusFilter, false);
-                              } else {
-                                throw new Error('Erro ao enviar anamnese');
-                              }
-                            } catch (err) {
-                              showError('Erro ao enviar anamnese', 'Erro');
-                            }
-                          }}
-                          title="Enviar anamnese inicial"
-                          style={{ background: '#3b82f6', color: 'white' }}
-                        >
-                          <FileText size={14} />
-                          <span className="action-label">Enviar Anamnese</span>
-                        </button>
-                      )}
-                      
-                      <button 
-                        className={`action-btn copy ${copySuccess === patient.id ? 'success' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyAnamneseLink(patient.id);
-                        }}
-                        title="Copiar link da anamnese"
-                      >
-                        <Copy size={14} />
-                        {copySuccess === patient.id ? (
-                          <span className="action-label success">Copiado!</span>
-                        ) : (
-                          <span className="action-label">Copiar</span>
+                    <div className="table-cell-divider"></div>
+                    <div className="table-cell table-cell-dados">
+                      <div className="patient-contact-info-table">
+                        {patient.email && (
+                          <div className="contact-item-table">
+                            <Mail size={16} className="contact-icon-table" />
+                            <span className="contact-value-table">{patient.email}</span>
+                          </div>
                         )}
-                      </button>
-                      
-                      <button 
-                        className="action-btn edit"
-                        onClick={() => setEditingPatient(patient)}
-                        title="Editar informações do paciente"
-                      >
-                        <User size={14} />
-                        <span className="action-label">Editar</span>
-                      </button>
-                      
-                      <button 
-                        className="action-btn delete"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDeleteConfirm(patient.id);
-                        }}
-                        title="Excluir paciente"
-                      >
-                        <Trash size={14} />
-                        <span className="action-label">Excluir</span>
-                      </button>
+                        {patient.phone && (
+                          <div className="contact-item-table">
+                            <Phone size={16} className="contact-icon-table" />
+                            <span className="contact-value-table">{patient.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="table-cell-divider"></div>
+                    <div className="table-cell table-cell-acoes">
+                      <div className="patient-actions-table">
+                        <button 
+                          className={`action-btn-table copy ${copySuccess === patient.id ? 'success' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyAnamneseLink(patient.id);
+                          }}
+                          title="Copiar link da anamnese"
+                        >
+                          <Copy size={16} />
+                          <span>Copiar</span>
+                        </button>
+                        <button 
+                          className="action-btn-table edit"
+                          onClick={() => setEditingPatient(patient)}
+                          title="Editar informações do paciente"
+                        >
+                          <Edit size={16} />
+                          <span>Editar</span>
+                        </button>
+                        <button 
+                          className="action-btn-table delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDeleteConfirm(patient.id);
+                          }}
+                          title="Excluir paciente"
+                        >
+                          <Trash2 size={16} />
+                          <span>Excluir</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Paginação */}

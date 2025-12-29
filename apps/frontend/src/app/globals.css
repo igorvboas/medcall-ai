@@ -13,7 +13,7 @@ html {
 
 /* Forçar modo claro por padrão */
 html:not(.dark) {
-  --bg-primary: #F7F2EC;
+  --bg-primary: #EBF3F6;
   --text-primary: #111827;
 }
 
@@ -38,9 +38,9 @@ body {
 
 /* CSS Variables for Theme Colors */
 :root {
-  /* Light Mode - Novo tema bege do design01 */
-  --bg-primary: #F7F2EC;
-  --bg-secondary: #EFE8DF;
+  /* Light Mode - Tema azul */
+  --bg-primary: #EBF3F6;
+  --bg-secondary: #D6E8F0;
   --text-primary: #1A1A1A;
   --text-secondary: #5B5B5B;
   --text-tertiary: #7A7A7A;
@@ -48,10 +48,10 @@ body {
   --primary-hover: #95B832;
   --accent-color: #A6CE39;
   --logo-color: #8C8C8C;
-  --border-color: #E8E2DA;
+  --border-color: #C4D9E5;
   --card-bg: #FFFFFF;
-  --hover-bg: #F1EBE4;
-  --input-bg: #F3EEE7;
+  --hover-bg: #D6E8F0;
+  --input-bg: #E6F1F6;
   --error-color: #EF4444;
 
   /* Aliases do design01.md */
@@ -108,18 +108,30 @@ body {
 
 .main-content {
   flex: 1;
-  margin-left: 84px;
+  margin-left: 0;
   transition: margin-left 0.3s ease;
+  padding-left: 120px; /* Espaço para o menu flutuante */
 }
 
 .main-content.expanded {
-  margin-left: 240px;
+  margin-left: 0;
 }
 
 /* Header funciona normalmente com o sidebar */
 
 .page-content {
-  padding: 2rem;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.page-content > * {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Header visível normalmente */
@@ -127,107 +139,68 @@ body {
 /* Sidebar Styles */
 .sidebar {
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 84px;
+  left: 37px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px;
+  height: auto;
+  min-height: 335px;
   background: #FFFFFF;
-  color: #1a1a1a;
-  border-radius: 0 24px 24px 0;
-  transition: all 0.3s ease;
-  overflow: visible;
+  color: #171717;
+  border-radius: 3px;
+  transition: width 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 18px 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  gap: 0;
+  padding: 26px 0;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* Dark mode sidebar */
+/* Dark mode sidebar - mantém design branco do Figma */
 .dark .sidebar {
-  background: #1a1a1a;
-  color: #ffffff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #FFFFFF;
+  color: #171717;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
 .sidebar.expanded {
-  width: 240px;
-  padding: 18px 16px;
+  width: auto;
+  min-width: 180px;
+  padding: 26px 16px;
   align-items: flex-start;
-}
-
-.sidebar .logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-.sidebar-logo-content {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.sidebar-logo-image {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-  background: transparent;
-  mix-blend-mode: multiply;
-  filter: contrast(1.2) brightness(1.1);
-}
-
-/* Dark mode logo */
-.dark .sidebar-logo-image {
-  mix-blend-mode: normal;
-  filter: contrast(1.2) brightness(1.3) invert(0);
-}
-
-.sidebar-logo-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-logo-title {
-  font-weight: 700;
-  font-size: 1.125rem;
-  color: var(--logo-color);
-}
-
-.sidebar-logo-beta {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  overflow: visible;
 }
 
 .nav { 
   display: flex; 
   flex-direction: column; 
-  gap: 8px; 
-  margin-top: 14px; 
+  gap: 28px; 
   align-items: center;
   width: 100%;
+  padding: 0;
+  flex: 1;
 }
 
 .sidebar.expanded .nav {
   align-items: stretch;
+  gap: 8px;
 }
 
 /* Estado compacto da sidebar */
 .nav-btn { 
-  width: 60px; 
-  height: 48px; 
-  border-radius: 12px; 
+  width: 52px; 
+  height: 26px; 
+  border-radius: 0; 
   display: flex; 
   align-items: center; 
   justify-content: center;
   gap: 0;
   padding: 0;
   margin: 0;
-  color: #262626; 
+  color: #171717; 
   background: transparent; 
   border: 0; 
   cursor: pointer; 
@@ -240,9 +213,11 @@ body {
 /* Estado expandido da sidebar */
 .sidebar.expanded .nav-btn {
   width: 100%;
+  height: 48px;
   justify-content: flex-start;
   padding: 0 16px;
   gap: 12px;
+  border-radius: 12px;
 }
 
 /* Resetar posicionamento dos ícones no estado expandido */
@@ -260,12 +235,66 @@ body {
   left: auto !important;
 }
 
-.nav-btn:hover { background: #F5EEE6; }
-.nav-btn.is-active { background: #F1E6DA; color: #1e1e1e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+.nav-btn:hover { 
+  background: transparent; 
+}
 
-/* Dark mode nav buttons */
-.dark .nav-btn:hover { background: rgba(255, 255, 255, 0.08); }
-.dark .nav-btn.is-active { background: rgba(255, 255, 255, 0.12); color: #ffffff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.sidebar.expanded .nav-btn:hover {
+  background: #2D6293; 
+  color: #FFFFFF;
+}
+
+.sidebar.expanded .nav-btn:hover svg {
+  color: #FFFFFF;
+}
+
+.sidebar.expanded .nav-btn:hover .nav-label {
+  color: #FFFFFF;
+}
+
+.nav-btn.is-active { 
+  background: transparent; 
+  color: #171717; 
+}
+
+.sidebar.expanded .nav-btn.is-active { 
+  background: #2D6293; 
+  color: #FFFFFF; 
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); 
+}
+
+.sidebar.expanded .nav-btn.is-active svg {
+  color: #FFFFFF;
+}
+
+.sidebar.expanded .nav-btn.is-active .nav-label {
+  color: #FFFFFF;
+}
+
+/* Dark mode nav buttons - mantém design do Figma */
+.dark .nav-btn:hover { background: transparent; }
+.dark .sidebar.expanded .nav-btn:hover { 
+  background: #2D6293; 
+  color: #FFFFFF;
+}
+.dark .sidebar.expanded .nav-btn:hover svg {
+  color: #FFFFFF;
+}
+.dark .sidebar.expanded .nav-btn:hover .nav-label {
+  color: #FFFFFF;
+}
+.dark .nav-btn.is-active { background: transparent; color: #171717; }
+.dark .sidebar.expanded .nav-btn.is-active { 
+  background: #2D6293; 
+  color: #FFFFFF; 
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); 
+}
+.dark .sidebar.expanded .nav-btn.is-active svg {
+  color: #FFFFFF;
+}
+.dark .sidebar.expanded .nav-btn.is-active .nav-label {
+  color: #FFFFFF;
+}
 
 .nav-label {
   font-size: 14px;
@@ -276,49 +305,64 @@ body {
   transform: translateX(-10px);
   transition: all 0.3s ease;
   pointer-events: none;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
-/* Dark mode nav labels */
+/* Dark mode nav labels - mantém design do Figma */
 .dark .nav-label {
-  color: #cccccc;
+  color: #666666;
 }
 
 /* Garantir que os ícones sejam sempre visíveis e alinhados */
 .nav-btn svg {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px !important;
+  height: 24px !important;
   display: block;
   margin: 0;
-  color: #666666;
+  color: #171717;
   transition: color 0.3s ease;
+  stroke-width: 1.5;
 }
 
-/* Dark mode icons */
+/* Dark mode icons - mantém design do Figma */
 .dark .nav-btn svg {
-  color: #cccccc;
+  color: #171717;
 }
 
 /* Active state icons */
 .nav-btn.is-active svg {
-  color: #1e1e1e;
+  color: #171717;
 }
 
 .dark .nav-btn.is-active svg {
-  color: #ffffff;
+  color: #171717;
 }
 
 /* Forçar centralização absoluta dos ícones no estado compacto */
 .sidebar:not(.expanded) .nav-btn {
+  width: 52px !important;
+  height: 26px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
   position: relative !important;
 }
 
 .sidebar:not(.expanded) .nav-btn svg {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  width: 24px !important;
+  height: 24px !important;
   margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+  position: relative !important;
+  vertical-align: middle !important;
 }
 
 /* Mostrar labels quando expandido */
@@ -326,34 +370,162 @@ body {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
 }
 
-.bottom { margin-top:auto; display:flex; flex-direction:column; gap:8px; align-items:center; }
+.bottom { 
+  margin-top: auto; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0; 
+  align-items: center; 
+  padding-top: 28px;
+}
 
 .sidebar.expanded .bottom {
   align-items: stretch;
+  padding-top: 8px;
+  gap: 8px;
 }
 
 /* Botão de logout segue o mesmo padrão dos nav-btn */
 .bottom .nav-btn {
-  width: 60px;
+  width: 52px;
+  height: 26px;
+}
+
+/* ============================================
+   SIDEBAR NO TOPO (Página de Consulta Online)
+   ============================================ */
+
+/* Layout de consulta - ajustar espaçamento */
+.layout.consultation-layout {
+  flex-direction: column;
+}
+
+.layout.consultation-layout .main-content.consultation-content {
+  padding-left: 0;
+  padding-top: 0;
+  margin-top: 112px; /* Altura do banner de teste (48px) + altura do sidebar (64px) */
+}
+
+/* Ocultar Header na página de consulta (sidebar está no topo) */
+.layout.consultation-layout .main-content.consultation-content .header {
+  display: none;
+}
+
+/* Sidebar no topo - horizontal pequeno no canto esquerdo */
+.sidebar.top-menu {
+  position: fixed;
+  top: 48px; /* Posiciona abaixo do banner de teste (altura do banner) */
+  left: 0;
+  width: auto;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  min-width: auto;
+  transform: none;
+  border-radius: 0 0 3px 0;
+  z-index: 999; /* Abaixo do banner de teste (z-index: 10000) mas acima do conteúdo */
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 12px;
+  background: #EBF3F6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: visible;
+}
+
+.sidebar.top-menu.expanded {
+  width: auto;
+  min-width: auto;
+}
+
+.sidebar.top-menu .nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: auto;
+  height: 100%;
+  padding: 0;
+  flex: 0 1 auto;
+}
+
+.sidebar.top-menu .nav-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 4px;
+  border-radius: 8px;
+  background: transparent;
+  color: #171717;
+}
+
+.sidebar.top-menu .nav-btn:hover {
+  background: rgba(45, 98, 147, 0.1);
+}
+
+.sidebar.top-menu .nav-btn.is-active {
+  background: #2D6293;
+  color: #FFFFFF;
+}
+
+.sidebar.top-menu .nav-btn.is-active svg {
+  color: #FFFFFF;
+}
+
+.sidebar.top-menu .nav-btn svg {
+  width: 24px;
+  height: 24px;
+  color: #171717;
+}
+
+.sidebar.top-menu .nav-label {
+  display: none !important; /* Oculta labels no modo topo */
+}
+
+.sidebar.top-menu .bottom {
+  display: none; /* Oculta botão de logout no topo */
+}
+
+/* Dark mode para sidebar no topo */
+.dark .sidebar.top-menu {
+  background: #EBF3F6;
 }
 
 .sidebar.expanded .bottom .nav-btn {
   width: 100%;
+  height: 48px;
 }
 
 /* Centralizar ícone do logout no estado compacto */
 .sidebar:not(.expanded) .bottom .nav-btn {
-  position: relative !important;
+  width: 52px !important;
+  height: 26px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
 }
 
 .sidebar:not(.expanded) .bottom .nav-btn svg {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  width: 24px !important;
+  height: 24px !important;
   margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  display: block !important;
 }
 .toggle-darkmode { 
   width: 46px; 
@@ -422,9 +594,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.5);
-  position: relative;
-  z-index: 9999;
+  box-shadow: none;
+  border: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  z-index: 10000;
   animation: pulse-test-banner 1.5s ease-in-out infinite;
 }
 
@@ -466,14 +642,13 @@ body {
 
 /* Header vermelho em ambiente de teste */
 .header.header-test-env {
-  border-top: 4px solid #dc2626;
   background: linear-gradient(180deg, rgba(220, 38, 38, 0.08) 0%, var(--bg-primary) 100%);
 }
 
 /* Header Styles */
 .header {
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
+  background: #EBF3F6 !important;
+  border-bottom: none !important;
   padding: 0 1.5rem;
   height: 64px;
   display: flex;
@@ -484,6 +659,10 @@ body {
   box-sizing: border-box;
   z-index: 1000; /* Z-index alto mas menor que o dropdown */
   overflow-x: hidden;
+}
+
+.header-test-env {
+  margin-top: 48px; /* Altura aproximada do banner de teste */
 }
 
 .header-content {

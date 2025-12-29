@@ -15,7 +15,8 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
-import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle, Clock, Scale, Ruler, Droplet, User as UserIcon, FileText } from 'lucide-react';
+import Image from 'next/image';
 import { useRecording } from '@/hooks/useRecording';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { useNotifications } from '@/components/shared/NotificationSystem';
@@ -148,6 +149,11 @@ export function ConsultationRoom({
   
   // ✅ NOVO: ID da consulta atual (para usar no botão "Acessar Anamnese")
   const [currentConsultationId, setCurrentConsultationId] = useState<string | null>(null);
+  
+  // ✅ NOVO: Estados para dados do paciente na sidebar
+  const [patientData, setPatientData] = useState<any>(null);
+  const [patientAnamnese, setPatientAnamnese] = useState<any>(null);
+  const [loadingPatientData, setLoadingPatientData] = useState(false);
 
   // ✅ GRAVAÇÃO: Estados para controle de gravação da consulta
   const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
@@ -317,7 +323,52 @@ export function ConsultationRoom({
 
   console.log('🟢 userName inicial:', userName);
 
-  
+  // ✅ NOVO: Função para calcular idade
+  const calculateAge = (dateString?: string): number | null => {
+    if (!dateString) return null;
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // ✅ NOVO: Buscar dados do paciente para sidebar (apenas para médico)
+  useEffect(() => {
+    if (userType === 'doctor' && patientId) {
+      const fetchPatientData = async () => {
+        setLoadingPatientData(true);
+        try {
+          // Buscar dados básicos do paciente
+          const patientResponse = await fetch(`/api/patients/${patientId}`);
+          if (patientResponse.ok) {
+            const patientResult = await patientResponse.json();
+            setPatientData(patientResult.patient);
+          }
+          
+          // Buscar dados do cadastro de anamnese (peso, altura, tipo sanguíneo)
+          try {
+            const anamneseResponse = await fetch(`/api/cadastro-anamnese/${patientId}`);
+            if (anamneseResponse.ok) {
+              const anamneseResult = await anamneseResponse.json();
+              setPatientAnamnese(anamneseResult);
+            }
+          } catch (err) {
+            console.warn('⚠️ Não foi possível buscar cadastro de anamnese:', err);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados do paciente:', error);
+        } finally {
+          setLoadingPatientData(false);
+        }
+      };
+      
+      fetchPatientData();
+    }
+  }, [userType, patientId]);
 
   // Função para carregar Socket.IO dinamicamente
 
@@ -4074,122 +4125,9 @@ export function ConsultationRoom({
         </div>
       )}
 
-      {/* Header */}
-
-      <div className="room-header">
-
-        <div className="room-info">
-
-          <h1>Consulta Online - {userType === 'doctor' ? 'Médico' : 'Paciente'}</h1>
-
-          <p>
-            <span style={{ fontWeight: '600' }}>{patientName || participantName}</span>
-            {roomData?.roomName && roomData.roomName !== patientName && (
-              <>
-                {' • '}
-                <span style={{ color: '#6b7280', fontSize: '0.95em' }}>
-                  {roomData.roomName.replace(/^Consulta\s*[-–]\s*/i, '').trim() || roomData.roomName}
-                </span>
-              </>
-            )}
-            {' • '}
-            <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
-              <span className={isConnected ? 'status-indicator status-indicator-connected' : 'status-indicator status-indicator-disconnected'}></span>
-              {isConnected ? 'Conectado' : 'Desconectado'}
-            </span>
-
-            {/* ✅ NOVO: Indicador de reconexão */}
-
-            {isReconnecting && (
-
-              <span className="status-reconnecting" style={{
-
-                marginLeft: '10px',
-
-                color: '#ff9800',
-
-                fontWeight: 'bold',
-
-                animation: 'pulse 1.5s infinite'
-
-              }}>
-
-                🔄 Reconectando...
-
-              </span>
-
-            )}
-
-            {/* ✅ NOVO: Timer da chamada */}
-
-            {isCallTimerActive && (
-
-              <span style={{
-
-                marginLeft: '15px',
-
-                padding: '4px 12px',
-
-                backgroundColor: '#4CAF50',
-
-                color: 'white',
-
-                borderRadius: '20px',
-
-                fontSize: '0.9em',
-
-                fontWeight: 'bold',
-
-                fontFamily: 'monospace'
-
-              }}>
-
-                ⏱️ {formatCallDuration(callDuration)}
-
-              </span>
-
-            )}
-
-            
-
-            {/* ✅ NOVO: Indicador de transcrição automática (só para médico) */}
-
-            {userType === 'doctor' && (
-
-              <span style={{
-
-                marginLeft: '10px',
-
-                color: isTranscriptionActive ? '#4caf50' : '#999',
-
-                fontWeight: '500',
-
-                fontSize: '0.9em'
-
-              }}>
-
-                • 🎙️ <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
-
-                  {isTranscriptionActive ? 'Transcrição ativa' : 'Aguardando transcrição'}
-
-                </span>
-
-              </span>
-
-            )}
-
-          </p>
-
-        </div>
-
-
-        <div className="room-controls">
-
-          {/* ✅ Indicador de auto-início para o médico */}
-
-          {userType === 'doctor' && !isCallActive && (
-
-            <div className="auto-start-indicator">
+      {/* ✅ Indicador de auto-início para o médico */}
+      {userType === 'doctor' && !isCallActive && (
+        <div className="auto-start-indicator">
 
               <div className="spinner"></div>
 
@@ -4254,191 +4192,155 @@ export function ConsultationRoom({
 
           
 
-          {/* ✅ Dropdown de Ações - apenas para médico */}
-          {userType === 'doctor' && (
-            <div style={{ position: 'relative', display: 'flex', gap: '10px', alignItems: 'center' }}>
-              {/* Dropdown Menu */}
-              <div style={{ position: 'relative' }}>
-              <button 
-                  onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-                style={{
-                  padding: '0.5rem 1rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="Ações da consulta"
-                >
-                  <MoreVertical size={16} />
-                  <span>Ações</span>
-                  {showActionsDropdown ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
 
-                {showActionsDropdown && (
-                  <>
-                    <div
-                      style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 998,
-                      }}
-                      onClick={() => setShowActionsDropdown(false)}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        right: 0,
-                        marginTop: '8px',
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                        minWidth: '220px',
-                        zIndex: 999,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* Copiar Link */}
-                      <button
-                        onClick={() => {
-                          handleCopyPatientLink();
-                          setShowActionsDropdown(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem 1rem',
-                          background: linkCopied ? '#f0fdf4' : 'transparent',
-                          color: linkCopied ? '#16a34a' : '#374151',
-                          border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          transition: 'background 0.2s',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!linkCopied) e.currentTarget.style.background = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!linkCopied) e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        {linkCopied ? <Check size={16} /> : <Copy size={16} />}
-                        <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
-              </button>
+      {/* ✅ Botão manual de Answer como fallback (caso auto-answer falhe) */}
+      {userType === 'patient' && showAnswerButton && (
+        <button className="btn-answer" onClick={answer}>
+          Entrar na Consulta
+        </button>
+      )}
 
-                      {/* ✅ GRAVAÇÃO: Botão de gravação */}
-                      <button
-                        onClick={() => {
-                          setShowActionsDropdown(false);
-                          if (recordingState.isRecording) {
-                            handleStopRecording();
-                          } else {
-                            handleStartRecording();
-                          }
-                        }}
-                        disabled={recordingState.isUploading}
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem 1rem',
-                          background: recordingState.isRecording ? '#fef2f2' : 'transparent',
-                          color: recordingState.isRecording ? '#dc2626' : '#374151',
-                          border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
-                          cursor: recordingState.isUploading ? 'not-allowed' : 'pointer',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          transition: 'background 0.2s',
-                          textAlign: 'left',
-                          opacity: recordingState.isUploading ? 0.6 : 1,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!recordingState.isRecording && !recordingState.isUploading) {
-                            e.currentTarget.style.background = '#f9fafb';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!recordingState.isRecording) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
-                        }}
-                      >
-                        <Circle 
-                          size={16} 
-                          fill={recordingState.isRecording ? '#dc2626' : 'none'}
-                          style={{ color: recordingState.isRecording ? '#dc2626' : '#6b7280' }} 
-                        />
-                        <span>
-                          {recordingState.isUploading 
-                            ? '📤 Salvando...' 
-                            : recordingState.isRecording 
-                              ? `🔴 Parar (${formatRecordingDuration(recordingState.duration)})` 
-                              : '⏺️ Gravar Consulta'}
-                        </span>
-                      </button>
+      {/* Layout de vídeos */}
+      <div className="video-layout">
+        
+        {/* Sidebar lateral esquerda com informações do paciente - apenas para médico */}
+        {userType === 'doctor' && (
+          <div className="doctor-patient-sidebar">
+            {/* Card de informações do paciente */}
+            <div className="patient-info-card">
+              <div className="patient-avatar-section">
+                {patientData?.profile_pic ? (
+                  <Image
+                    src={patientData.profile_pic}
+                    alt={patientData.name || 'Paciente'}
+                    width={40}
+                    height={40}
+                    className="patient-avatar-img"
+                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="patient-avatar-placeholder">
+                    {(patientData?.name || patientName || 'P').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                )}
+              </div>
+              <div className="patient-name">{patientData?.name || patientName || 'Paciente'}</div>
+              <div className="patient-location">
+                {patientData?.city && patientData?.state 
+                  ? `${patientData.city} - ${patientData.state}`
+                  : patientData?.city || patientData?.state || 'Localização não informada'}
+              </div>
+              {patientData?.gender && (
+                <div className="patient-gender-icon">
+                  <UserIcon size={13} />
+                </div>
+              )}
               
-                      {/* Sugestões IA */}
-              <button 
-                onClick={() => {
-                  setSuggestionsEnabled(!suggestionsEnabled);
-                  if (!suggestionsEnabled) {
-                    setAiSuggestions([]);
-                    setSuggestionsPanelVisible(true);
-                  } else {
-                    setSuggestionsPanelVisible(false);
-                  }
-                          setShowActionsDropdown(false);
-                }}
-                style={{
-                          width: '100%',
-                          padding: '0.75rem 1rem',
-                          background: suggestionsEnabled ? '#f0fdf4' : 'transparent',
-                          color: suggestionsEnabled ? '#16a34a' : '#374151',
-                          border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                          gap: '0.75rem',
-                          transition: 'background 0.2s',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!suggestionsEnabled) e.currentTarget.style.background = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!suggestionsEnabled) e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <Brain size={16} style={{ color: suggestionsEnabled ? '#16a34a' : '#6b7280' }} />
-                        <span>{suggestionsEnabled ? 'Desativar' : 'Ativar'} Sugestões IA</span>
+              {/* Grid de dados do paciente */}
+              <div className="patient-data-grid">
+                <div className="patient-data-item">
+                  <div className="data-icon">
+                    <Clock size={14} />
+                  </div>
+                  <div className="data-content">
+                    <div className="data-label">Idade</div>
+                    <div className="data-value">
+                      {patientData?.birth_date 
+                        ? `${calculateAge(patientData.birth_date)} anos`
+                        : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="patient-data-item">
+                  <div className="data-icon">
+                    <Scale size={14} />
+                  </div>
+                  <div className="data-content">
+                    <div className="data-label">Peso</div>
+                    <div className="data-value">
+                      {patientAnamnese?.peso ? `${patientAnamnese.peso} kg` : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="patient-data-item">
+                  <div className="data-icon">
+                    <Ruler size={14} />
+                  </div>
+                  <div className="data-content">
+                    <div className="data-label">Altura</div>
+                    <div className="data-value">
+                      {patientAnamnese?.altura ? `${patientAnamnese.altura} m` : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="patient-data-item">
+                  <div className="data-icon">
+                    <Droplet size={14} />
+                  </div>
+                  <div className="data-content">
+                    <div className="data-label">Tipo sanguíneo</div>
+                    <div className="data-value">
+                      {patientAnamnese?.tipo_sanguineo || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Botões de ação */}
+            <div className="patient-actions">
+              {/* Copiar Link do Paciente */}
+              <button
+                className="patient-action-btn action-btn-outline"
+                onClick={handleCopyPatientLink}
+              >
+                <Copy size={14} />
+                <span>{linkCopied ? 'Link Copiado!' : 'Copiar link do Paciente'}</span>
               </button>
 
-                      {/* Gerar/Acessar Anamnese */}
-              <button 
+              {/* Gravar Consulta */}
+              <button
+                className="patient-action-btn action-btn-primary"
+                onClick={() => {
+                  if (recordingState.isRecording) {
+                    handleStopRecording();
+                  } else {
+                    handleStartRecording();
+                  }
+                }}
+                disabled={recordingState.isUploading}
+                style={{
+                  background: recordingState.isRecording ? '#fef2f2' : '#1B4266',
+                  color: recordingState.isRecording ? '#dc2626' : 'white',
+                  borderColor: recordingState.isRecording ? '#dc2626' : '#1B4266',
+                  opacity: recordingState.isUploading ? 0.6 : 1,
+                  cursor: recordingState.isUploading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Circle 
+                  size={14} 
+                  fill={recordingState.isRecording ? '#dc2626' : 'none'}
+                  style={{ color: recordingState.isRecording ? '#dc2626' : 'white' }} 
+                />
+                <span>
+                  {recordingState.isUploading 
+                    ? '📤 Salvando...' 
+                    : recordingState.isRecording 
+                      ? `Parar (${formatRecordingDuration(recordingState.duration)})` 
+                      : 'Gravar Consulta'}
+                </span>
+              </button>
+
+              {/* Gerar Anamnese */}
+              <button
+                className="patient-action-btn action-btn-primary"
                 onClick={async () => {
-                          setShowActionsDropdown(false);
-                          
-                  // ✅ Se anamnese já está pronta, abrir em nova aba
                   if (anamneseReady && currentConsultationId) {
-                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}`;
+                    const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}&section=anamnese`;
                     window.open(anamneseUrl, '_blank');
                     return;
                   }
@@ -4448,7 +4350,6 @@ export function ConsultationRoom({
                   try {
                     setIsGeneratingAnamnese(true);
                     
-                    // Obter consultationId e doctorId
                     const { supabase } = await import('@/lib/supabase');
                     const { data: { session } } = await supabase.auth.getSession();
                     
@@ -4482,12 +4383,11 @@ export function ConsultationRoom({
                     }
                     
                     if (!consultationId) {
-                              showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
+                      showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
                       setIsGeneratingAnamnese(false);
                       return;
                     }
                     
-                    // ✅ NOVO: Enviar transcrição para webhook com consulta_finalizada: false
                     const webhookEndpoints = getWebhookEndpoints();
                     const webhookHeaders = getWebhookHeaders();
                     
@@ -4496,10 +4396,8 @@ export function ConsultationRoom({
                       doctorId: doctorId || null,
                       patientId: patientId || 'unknown',
                       transcription: transcriptionText,
-                      consulta_finalizada: false  // ✅ Consulta continua ativa
+                      consulta_finalizada: false
                     };
-                    
-                    console.log('📤 Enviando transcrição para webhook (consulta_finalizada: false):', webhookData);
                     
                     const response = await fetch(webhookEndpoints.transcricao, {
                       method: 'POST',
@@ -4511,7 +4409,6 @@ export function ConsultationRoom({
                       throw new Error('Erro ao enviar transcrição para gerar anamnese');
                     }
 
-                    // Atualizar status da consulta para PROCESSING
                     await fetch(`/api/consultations/${consultationId}`, {
                       method: 'PATCH',
                       headers: {
@@ -4523,222 +4420,388 @@ export function ConsultationRoom({
                       }),
                     });
 
-                    // Iniciar polling para verificar quando anamnese estiver pronta
                     startAnamnesePolling(consultationId);
-                    
-                    // Mostrar mensagem informativa
-                            showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
+                    showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
                     
                   } catch (error) {
                     console.error('Erro ao gerar anamnese:', error);
-                            showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
+                    showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
                     setIsGeneratingAnamnese(false);
                   }
                 }}
                 disabled={isGeneratingAnamnese}
-                style={{
-                          width: '100%',
-                          padding: '0.75rem 1rem',
-                          background: isGeneratingAnamnese ? '#f3f4f6' : 'transparent',
-                          color: isGeneratingAnamnese ? '#9ca3af' : (anamneseReady ? '#3b82f6' : '#10b981'),
-                  border: 'none',
-                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                          gap: '0.75rem',
-                          transition: 'background 0.2s',
-                          textAlign: 'left',
-                          opacity: isGeneratingAnamnese ? 0.7 : 1,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isGeneratingAnamnese) e.currentTarget.style.background = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isGeneratingAnamnese) e.currentTarget.style.background = 'transparent';
-                        }}
               >
                 {isGeneratingAnamnese ? (
-                  <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                              border: '2px solid #9ca3af',
-                              borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    <span>Gerando...</span>
-                  </>
+                  <div className="spinner-small"></div>
                 ) : anamneseReady ? (
-                  <>
-                    <CheckCircle size={16} />
-                    <span>Acessar Anamnese</span>
-                  </>
+                  <CheckCircle size={14} />
                 ) : (
-                  <>
-                    <Sparkles size={16} />
-                    <span>Gerar Anamnese</span>
-                  </>
+                  <Sparkles size={14} />
                 )}
+                <span style={{ fontSize: '13px' }}>
+                  {isGeneratingAnamnese ? 'Gerando...' : anamneseReady ? 'Acessar Anamnese' : 'Gerar Anamnese'}
+                </span>
               </button>
-                    </div>
-                  </>
-                )}
-              </div>
 
-              {/* Botão Finalizar Sala (separado por ser ação crítica) */}
-              <button 
-                className="btn-end-room" 
-                onClick={endRoom}
-                disabled={isEndingRoom}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isEndingRoom ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: isEndingRoom ? 0.7 : 1,
+              {/* Anexar Exame */}
+              <button
+                className="patient-action-btn action-btn-primary"
+                onClick={() => {
+                  // TODO: Implementar funcionalidade de anexar exame
+                  showInfo('Funcionalidade de anexar exame será implementada em breve.', 'Em desenvolvimento');
                 }}
               >
-                {isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}
+                <FileText size={14} />
+                <span>Anexar Exame</span>
+              </button>
+
+              {/* Concluir Consulta */}
+              <button
+                className="patient-action-btn btn-finish-consultation"
+                onClick={endRoom}
+                disabled={isEndingRoom}
+              >
+                <CheckCircle size={14} />
+                <span>{isEndingRoom ? 'Finalizando...' : 'Concluir consulta'}</span>
               </button>
             </div>
-          )}
-
-
-
-          {/* ✅ Botão manual de Answer como fallback (caso auto-answer falhe) */}
-          {userType === 'patient' && showAnswerButton && (
-
-            <button className="btn-answer" onClick={answer}>
-
-              Entrar na Consulta
-            </button>
-
-          )}
-
-
-
-        </div>
-
-      </div>
-
-
-
-      {/* Layout de vídeos */}
-
-      <div className="video-layout">
-
-        {/* Container principal com vídeo remoto e local sobreposto */}
-
-        <div className="video-main-container">
-
-          <span className="video-label">Vídeo Remoto</span>
-
-          <video 
-
-            className="video-player" 
-
-            id="remote-video" 
-
-            ref={remoteVideoRef}
-
-            autoPlay 
-
-            playsInline
-
-          ></video>
-
-          {isRemotePlaybackBlocked && (
-            <div className="remote-playback-overlay">
-              <p>⚠️ O navegador bloqueou o áudio/vídeo remoto.</p>
-              <button type="button" onClick={resumeRemotePlayback}>
-                Liberar áudio e vídeo
-              </button>
-            </div>
-          )}
-
-          
-
-          {/* Vídeo local sobreposto */}
-
-          <div className="video-local-overlay">
-
-            <span className="video-label">Seu Vídeo</span>
-
-            <video 
-
-              className="video-player" 
-
-              id="local-video" 
-
-              ref={localVideoRef}
-
-              autoPlay 
-
-              playsInline 
-
-              muted
-
-            ></video>
-
-          </div>
-
-          
-
-          {/* Controles de mídia */}
-
-          <div className="media-controls">
-
-            <button 
-
-              className={`media-btn ${isVideoEnabled ? 'active' : 'disabled'}`}
-
-              onClick={toggleCamera}
-
-              title={isVideoEnabled ? "Desativar Câmera" : "Ativar Câmera"}
-
-            >
-
-              <Video size={20} />
-
-            </button>
-
-            <button 
-
-              className={`media-btn ${isAudioEnabled ? 'active' : 'disabled'}`}
-
-              onClick={toggleMicrophone}
-
-              title={isAudioEnabled ? "Desativar Microfone" : "Ativar Microfone"}
-
-            >
-
-              <Mic size={20} />
-
-            </button>
-
             
-
+            {loadingPatientData && (
+              <div className="patient-sidebar-loading">Carregando dados do paciente...</div>
+            )}
           </div>
+        )}
+        
+        {/* Sidebar lateral esquerda com botões de ação - apenas para médico (versão antiga - removida) */}
+        {false && userType === 'doctor' && (
+          <div className="doctor-actions-sidebar">
+            {/* Copiar Link do Paciente */}
+            <button
+              className="action-btn action-btn-link"
+              onClick={handleCopyPatientLink}
+              style={{
+                background: linkCopied ? '#f0fdf4' : 'transparent',
+                color: linkCopied ? '#16a34a' : '#1B4266',
+                borderColor: linkCopied ? '#16a34a' : '#1B4266',
+              }}
+            >
+              {linkCopied ? <Check size={18} /> : <Copy size={18} />}
+              <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
+            </button>
 
+            {/* Gravar Consulta */}
+            <button
+              className="action-btn action-btn-record"
+              onClick={() => {
+                if (recordingState.isRecording) {
+                  handleStopRecording();
+                } else {
+                  handleStartRecording();
+                }
+              }}
+              disabled={recordingState.isUploading}
+              style={{
+                background: recordingState.isRecording ? '#fef2f2' : 'transparent',
+                color: recordingState.isRecording ? '#dc2626' : '#1B4266',
+                borderColor: recordingState.isRecording ? '#dc2626' : '#1B4266',
+                opacity: recordingState.isUploading ? 0.6 : 1,
+                cursor: recordingState.isUploading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <Circle 
+                size={18} 
+                fill={recordingState.isRecording ? '#dc2626' : 'none'}
+                style={{ color: recordingState.isRecording ? '#dc2626' : '#1B4266' }} 
+              />
+              <span>
+                {recordingState.isUploading 
+                  ? '📤 Salvando...' 
+                  : recordingState.isRecording 
+                    ? `Parar (${formatRecordingDuration(recordingState.duration)})` 
+                    : 'Gravar Consulta'}
+              </span>
+            </button>
+
+            {/* Sugestões IA */}
+            <button
+              className="action-btn action-btn-suggestions"
+              onClick={() => {
+                setSuggestionsEnabled(!suggestionsEnabled);
+                if (!suggestionsEnabled) {
+                  setAiSuggestions([]);
+                  setSuggestionsPanelVisible(true);
+                } else {
+                  setSuggestionsPanelVisible(false);
+                }
+              }}
+              style={{
+                background: suggestionsEnabled ? '#f0fdf4' : 'transparent',
+                color: suggestionsEnabled ? '#16a34a' : '#1B4266',
+                borderColor: suggestionsEnabled ? '#16a34a' : '#1B4266',
+              }}
+            >
+              <Brain size={18} />
+              <span>{suggestionsEnabled ? 'Desativar' : 'Ativar'} Sugestões IA</span>
+            </button>
+
+            {/* Gerar/Acessar Anamnese */}
+            <button
+              className="action-btn action-btn-anamnese"
+              onClick={async () => {
+                // Se anamnese já está pronta, abrir em nova aba
+                if (anamneseReady && currentConsultationId) {
+                  const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}&section=anamnese`;
+                  window.open(anamneseUrl, '_blank');
+                  return;
+                }
+                
+                if (isGeneratingAnamnese) return;
+                
+                try {
+                  setIsGeneratingAnamnese(true);
+                  
+                  // Obter consultationId e doctorId
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data: { session } } = await supabase.auth.getSession();
+                  
+                  let doctorId: string | null = null;
+                  if (session?.user?.id) {
+                    const { data: medico } = await supabase
+                      .from('medicos')
+                      .select('id')
+                      .eq('user_auth', session.user.id)
+                      .single();
+                    doctorId = medico?.id || null;
+                  }
+                  
+                  let consultationId: string | null = null;
+                  const { data: callSession } = await supabase
+                    .from('call_sessions')
+                    .select('consultation_id')
+                    .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+                    .single();
+                  consultationId = callSession?.consultation_id || null;
+                  
+                  if (!consultationId && doctorId) {
+                    const { data: consultation } = await supabase
+                      .from('consultations')
+                      .select('id')
+                      .eq('doctor_id', doctorId)
+                      .order('created_at', { ascending: false })
+                      .limit(1)
+                      .single();
+                    consultationId = consultation?.id || null;
+                  }
+                  
+                  if (!consultationId) {
+                    showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
+                    setIsGeneratingAnamnese(false);
+                    return;
+                  }
+                  
+                  // Enviar transcrição para webhook com consulta_finalizada: false
+                  const webhookEndpoints = getWebhookEndpoints();
+                  const webhookHeaders = getWebhookHeaders();
+                  
+                  const webhookData = {
+                    consultationId: consultationId,
+                    doctorId: doctorId || null,
+                    patientId: patientId || 'unknown',
+                    transcription: transcriptionText,
+                    consulta_finalizada: false
+                  };
+                  
+                  const response = await fetch(webhookEndpoints.transcricao, {
+                    method: 'POST',
+                    headers: webhookHeaders,
+                    body: JSON.stringify(webhookData),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Erro ao enviar transcrição para gerar anamnese');
+                  }
+
+                  await fetch(`/api/consultations/${consultationId}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      status: 'PROCESSING',
+                      etapa: 'ANAMNESE'
+                    }),
+                  });
+
+                  // Iniciar polling para verificar quando anamnese estiver pronta
+                  startAnamnesePolling(consultationId);
+                  
+                  // Mostrar mensagem informativa
+                  showInfo('Anamnese da consulta está sendo gerada!\n\nO botão mudará para "Acessar Anamnese" quando estiver pronta.\n\nVocê pode continuar a consulta normalmente.', 'Gerando Anamnese');
+                  
+                } catch (error) {
+                  console.error('Erro ao gerar anamnese:', error);
+                  showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
+                  setIsGeneratingAnamnese(false);
+                }
+              }}
+              disabled={isGeneratingAnamnese}
+              style={{
+                opacity: isGeneratingAnamnese ? 0.7 : 1,
+                cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                color: anamneseReady ? '#3b82f6' : '#1B4266',
+                borderColor: anamneseReady ? '#3b82f6' : '#1B4266',
+              }}
+            >
+              {isGeneratingAnamnese ? (
+                <>
+                  <div style={{
+                    width: '18px',
+                    height: '18px',
+                    border: '2px solid #1B4266',
+                    borderTop: '2px solid transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  <span>Gerando...</span>
+                </>
+              ) : anamneseReady ? (
+                <>
+                  <CheckCircle size={18} />
+                  <span>Acessar Anamnese</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  <span>Gerar Anamnese</span>
+                </>
+              )}
+            </button>
+
+            {/* Finalizar Sala */}
+            <button
+              className="action-btn action-btn-finish"
+              onClick={endRoom}
+              disabled={isEndingRoom}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                borderColor: '#ef4444',
+                opacity: isEndingRoom ? 0.7 : 1,
+                cursor: isEndingRoom ? 'not-allowed' : 'pointer',
+                marginTop: 'auto',
+              }}
+            >
+              <CheckCircle size={18} />
+              <span>{isEndingRoom ? 'Finalizando...' : 'Finalizar Sala'}</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Container de vídeos - agora empilhados verticalmente */}
+        <div className="video-container-stacked">
+          {/* Header acima do vídeo */}
+          <div className="consultation-header-above-video">
+            <span className="consultation-header-text">
+              Consulta Online - {userType === 'doctor' ? 'Médico' : 'Paciente'}
+              {' • '}
+              <span style={{ fontWeight: '600' }}>{userType === 'doctor' ? (userName || 'Médico') : (patientName || participantName)}</span>
+              {' • '}
+              <span className={isConnected ? 'status-connected' : 'status-disconnected'}>
+                {isConnected ? 'Conectado' : 'Desconectado'}
+              </span>
+              {isCallTimerActive && (
+                <>
+                  {' • '}
+                  ⏱️ {formatCallDuration(callDuration)}
+                </>
+              )}
+              {userType === 'doctor' && (
+                <>
+                  {' • '}
+                  🎙️ <span style={{color: isTranscriptionActive ? '#4caf50' : '#999'}}>
+                    {isTranscriptionActive ? 'Transcrição ativa' : 'Aguardando transcrição'}
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+          {/* Vídeo remoto (paciente) */}
+          <div className="video-stack-item video-remote-stack">
+            <span className="video-label">Vídeo Remoto</span>
+            <video 
+              className="video-player" 
+              id="remote-video" 
+              ref={remoteVideoRef}
+              autoPlay 
+              playsInline
+            ></video>
+            {isRemotePlaybackBlocked && (
+              <div className="remote-playback-overlay">
+                <p>⚠️ O navegador bloqueou o áudio/vídeo remoto.</p>
+                <button type="button" onClick={resumeRemotePlayback}>
+                  Liberar áudio e vídeo
+                </button>
+              </div>
+            )}
+            
+            {/* Vídeo local (médico) - picture-in-picture dentro do vídeo principal */}
+            <div className="video-local-stack">
+              <video 
+                className="video-player" 
+                id="local-video" 
+                ref={localVideoRef}
+                autoPlay 
+                playsInline 
+                muted
+              ></video>
+            </div>
+            
+            {/* Barra de controles com blur - movido para o vídeo principal */}
+            {/* Sempre mostrar controles quando o usuário entrou na sala ou é médico */}
+            {/* Usar hasJoinedRoomRef.current para verificação em tempo real, mas também verificar o estado */}
+            {((hasJoinedRoom || hasJoinedRoomRef.current) || userType === 'doctor') && (
+            <div 
+              className="video-controls-overlay" 
+              style={{ 
+                zIndex: 99999,
+                position: 'absolute',
+                bottom: '16px',
+                left: 0,
+                right: 0,
+                display: 'flex',
+                justifyContent: 'center',
+                pointerEvents: 'auto',
+                visibility: 'visible',
+                opacity: 1
+              }}
+            >
+              {/* Controles de mídia */}
+              <div className="media-controls-stacked">
+                <button 
+                  className={`media-btn ${isVideoEnabled ? 'active' : 'disabled'}`}
+                  onClick={toggleCamera}
+                  title={isVideoEnabled ? "Desativar Câmera" : "Ativar Câmera"}
+                  style={{ pointerEvents: 'auto', zIndex: 100000 }}
+                >
+                  <Video size={20} />
+                </button>
+                <button 
+                  className={`media-btn ${isAudioEnabled ? 'active' : 'disabled'}`}
+                  onClick={toggleMicrophone}
+                  title={isAudioEnabled ? "Desativar Microfone" : "Ativar Microfone"}
+                  style={{ pointerEvents: 'auto', zIndex: 100000 }}
+                >
+                  <Mic size={20} />
+                </button>
+              </div>
+            </div>
+            )}
+          </div>
         </div>
 
-
-
-        {/* Sidebar - APENAS para médicos */}
-
+        {/* Sidebar direita - Transcrição (apenas para médicos) */}
         {userType === 'doctor' && !isTranscriptionMinimized && (
-
-          <div className="video-sidebar">
-
-            {/* Section de Transcrição - APENAS para médicos */}
-
+          <div className="video-sidebar transcription-sidebar">
             <div className="transcription-box">
 
             <div className="transcription-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsTranscriptionMinimized(!isTranscriptionMinimized)}>

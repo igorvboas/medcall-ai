@@ -14,6 +14,7 @@ interface Patient {
   phone: string | null;
   city: string | null;
   status: string;
+  profile_pic?: string;
 }
 
 interface AudioDevice {
@@ -63,6 +64,17 @@ export function CreateConsultationRoom({
   
   // Estado para indicar se estamos iniciando a partir de um agendamento
   const [isFromAgendamento, setIsFromAgendamento] = useState(false);
+  
+  // Estado para tipo de retorno (Novo/Retorno)
+  const [patientReturnType, setPatientReturnType] = useState<'novo' | 'retorno'>('retorno');
+  
+  // Estados para captura de áudio em tempo real
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   
   const socketRef = useRef<Socket | null>(null);
 
@@ -248,6 +260,136 @@ export function CreateConsultationRoom({
 
     loadAudioDevices();
   }, []);
+
+  // Capturar áudio do microfone selecionado e atualizar nível em tempo real
+  useEffect(() => {
+    // Só capturar se for consulta online instantânea e tiver microfone selecionado
+    if (
+      consultationType !== 'online' || 
+      creationType !== 'instantanea' || 
+      !selectedMicrophone
+    ) {
+      // Parar captura se não atender os requisitos
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      setAudioLevel(0);
+      setIsAudioMuted(true);
+      return;
+    }
+
+    let isMounted = true;
+
+    const startAudioCapture = async () => {
+      try {
+        // Parar captura anterior se existir
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        // Criar novo stream com o microfone selecionado
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: { exact: selectedMicrophone }
+          }
+        });
+
+        if (!isMounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        audioStreamRef.current = stream;
+
+        // Criar AudioContext
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioContext;
+
+        // Criar source node
+        const source = audioContext.createMediaStreamSource(stream);
+
+        // Criar analyser node
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        source.connect(analyser);
+        analyserRef.current = analyser;
+
+        // Verificar se o áudio está mutado
+        const audioTrack = stream.getAudioTracks()[0];
+        setIsAudioMuted(!audioTrack || !audioTrack.enabled || audioTrack.muted);
+
+        // Função para atualizar nível de áudio
+        const updateAudioLevel = () => {
+          if (!isMounted || !analyserRef.current) return;
+
+          const bufferLength = analyserRef.current.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          analyserRef.current.getByteFrequencyData(dataArray);
+
+          // Calcular média do nível de áudio
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          const average = sum / bufferLength;
+          const level = Math.min(100, (average / 128) * 100);
+
+          setAudioLevel(level);
+
+          // Verificar se está mutado
+          if (audioStreamRef.current) {
+            const track = audioStreamRef.current.getAudioTracks()[0];
+            setIsAudioMuted(!track || !track.enabled || track.muted || level < 1);
+          }
+
+          animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+        };
+
+        updateAudioLevel();
+
+      } catch (error) {
+        console.error('Erro ao capturar áudio:', error);
+        setAudioLevel(0);
+        setIsAudioMuted(true);
+      }
+    };
+
+    startAudioCapture();
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(console.error);
+        audioContextRef.current = null;
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [selectedMicrophone, consultationType, creationType]);
 
   const handleCreateRoom = async () => {
     // Validações
@@ -439,83 +581,166 @@ export function CreateConsultationRoom({
   }
 
   if (roomCreated && roomData) {
+    const selectedPatientData = patients.find(p => p.id === selectedPatient);
+    
     return (
-      <div className="create-room-container">
-        <div className="link-container show">
-          <h5 className="text-center mb-3">Sala Criada com Sucesso!</h5>
-          
-          {/* Link do Paciente */}
-          <p className="text-muted small text-center mb-2">
-            <strong>Link para o Paciente:</strong>
-            (Compartilhe este link)
-          </p>
+      <div className="sala-consulta-container">
+        {/* Título "Sala da Consulta" */}
+        <div className="sala-consulta-header">
+          <h1 className="sala-consulta-title">Sala da Consulta</h1>
+        </div>
 
-          <button 
-            className="btn btn-copy"
-            onClick={() => handleCopyLink(roomData.participantRoomUrl)}
-          >
-            Copiar Link do Paciente
-          </button>
+        {/* Botão Voltar */}
+        <button 
+          className="btn-voltar-consulta"
+          onClick={() => {
+            setRoomCreated(false);
+            setRoomData(null);
+            if (onCancel) onCancel();
+          }}
+        >
+          <img src="/arrow-left.svg" alt="Voltar" className="btn-voltar-icon" />
+          <span>Voltar</span>
+        </button>
 
-          {/* Botão WhatsApp */}
-          <button 
-            className="btn btn-whatsapp"
-            onClick={() => handleShareWhatsApp(roomData.participantRoomUrl, roomData.patientName)}
-            style={{ marginTop: '12px' }}
-          >
-            <svg 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
-              fill="currentColor"
-            >
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-            </svg>
-            Enviar Link via WhatsApp
-          </button>
-          
-          {/* Link do Médico */}
-          <p className="text-muted small text-center mb-2 mt-4">
-            <strong>Seu link (Médico):</strong>
-          </p>
+        {/* Card principal branco */}
+        <div className="sala-consulta-main-card">
+          {/* Seção de informações do paciente */}
+          <div className="sala-consulta-patient-info">
+            {/* Foto do paciente */}
+            <div className="sala-consulta-patient-photo">
+              {selectedPatientData?.profile_pic ? (
+                <img 
+                  src={selectedPatientData.profile_pic} 
+                  alt={selectedPatientData.name}
+                  className="sala-consulta-patient-photo-img"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="sala-consulta-patient-photo-placeholder">
+                  {selectedPatientData?.name?.charAt(0).toUpperCase() || roomData?.patientName?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
 
-          <button 
-            className="btn btn-enter"
-            onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
-          >
-            Entrar na Consulta
-          </button>
+            {/* Nome, telefone e badges */}
+            <div className="sala-consulta-patient-details">
+              <div className="sala-consulta-patient-name-row">
+                <h2 className="sala-consulta-patient-name">
+                  {selectedPatientData?.name || roomData?.patientName || 'Paciente'}
+                </h2>
+                <div className="sala-consulta-patient-badges">
+                  <button className="sala-consulta-badge-btn sala-consulta-badge-retorno">
+                    Retorno
+                  </button>
+                  <button className="sala-consulta-badge-btn sala-consulta-badge-online">
+                    Online
+                  </button>
+                </div>
+              </div>
+              <p className="sala-consulta-patient-phone">
+                {selectedPatientData?.phone || '(11)123456789'}
+              </p>
+            </div>
+          </div>
 
-          <p className="text-muted small text-center mt-3">
-            A sala expira em 5 minutos se ninguém entrar.
-          </p>
+          {/* Linha divisória */}
+          <div className="sala-consulta-divider"></div>
 
-          <div className="mt-4 text-center">
+          {/* Três cards */}
+          <div className="sala-consulta-cards-row">
+            {/* Card 1: Compartilhar Link (WhatsApp) */}
+            <div className="sala-consulta-card">
+              <div className="sala-consulta-card-icon-container">
+                <img src="/whatsapp.svg" alt="WhatsApp" className="sala-consulta-card-icon" />
+              </div>
+              <p className="sala-consulta-card-text">
+                Compartilhe o link abaixo com seu paciente
+              </p>
+              
+              <button 
+                className="sala-consulta-btn-whatsapp"
+                onClick={() => handleShareWhatsApp(roomData.participantRoomUrl, roomData.patientName)}
+              >
+                Enviar para o Whatsapp
+              </button>
+              
+              <button 
+                className="sala-consulta-btn-copy-link"
+                onClick={() => handleCopyLink(roomData.participantRoomUrl)}
+              >
+                <img src="/document-copy.svg" alt="Copiar" className="sala-consulta-copy-icon" />
+                Copiar link do Paciente
+              </button>
+            </div>
 
+            {/* Card 2: Permissões (Câmera e Microfone) */}
+            <div className="sala-consulta-card">
+              <div className="sala-consulta-card-icon-container sala-consulta-icon-permissions">
+                <img src="/consentimento.svg" alt="Câmera e Microfone" className="sala-consulta-card-icon-permissions" />
+              </div>
+              <div className="sala-consulta-card-text-container-permissions">
+                <p className="sala-consulta-card-text sala-consulta-card-text-permissions-main">
+                  Não esqueça de permitir a utilização da câmera e microfone.
+                </p>
+                <p className="sala-consulta-card-text sala-consulta-card-text-permissions-help">
+                  Certifique-se de estar em um ambiente silencioso e bem iluminado, isso garante uma experiência mais agradável para consulta
+                </p>
+              </div>
+            </div>
+
+            {/* Card 3: Entrar na Consulta */}
+            <div className="sala-consulta-card">
+              <div className="sala-consulta-card-icon-container sala-consulta-icon-login">
+                <img src="/login.svg" alt="Entrar" className="sala-consulta-card-icon-login" />
+              </div>
+              <button 
+                className="sala-consulta-btn-enter"
+                onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
+              >
+                Entrar na Consulta
+                <svg width="20" height="15" viewBox="0 0 20 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7.42499 2.54999L13.3396 7.49999L7.42499 12.45" stroke="currentColor" strokeWidth="1.24902" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <p className="sala-consulta-warning-text">
+                ⚠ Caso ninguém entre na sala nos próximos 5 minutos a sessão será encerrada automaticamente
+              </p>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  const selectedPatientData = patients.find(p => p.id === selectedPatient);
+
   return (
     <div className="create-consultation-container">
-      <div className="consultation-card">
-        <h2 className="section-title">
-          {isFromAgendamento ? 'Iniciar Consulta Agendada' : 'Informações do Paciente'}
-        </h2>
+      {/* Título "Nova Consulta" com ícone */}
+      <div className="nova-consulta-header">
+        <h1 className="nova-consulta-title">Nova Consulta</h1>
+        <svg className="nova-consulta-add-icon" viewBox="0 0 24 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11.125 3.125V10.125H4.125V11.875H11.125V18.875H12.875V11.875H19.875V10.125H12.875V3.125H11.125Z" fill="currentColor"/>
+        </svg>
+      </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleCreateRoom(); }} className="consultation-form">
-          {/* Selecionar Paciente - PRIMEIRO */}
-          <div className="form-group">
-            <label htmlFor="patient-select" className="form-label">
-              Selecionar Paciente <span className="required">*</span>
-            </label>
+      {/* Container dos três cards */}
+      <form id="consultation-form" onSubmit={(e) => { e.preventDefault(); handleCreateRoom(); }} className="consultation-cards-container">
+          {/* Card 1: Selecionar Paciente */}
+          <div className="consultation-card">
+            <div className="card-title-wrapper">
+              <h2 className="card-title">Selecionar Paciente</h2>
+              <span className="card-title-asterisk">*</span>
+            </div>
+            
             <select
-              id="patient-select"
               value={selectedPatient}
               onChange={(e) => setSelectedPatient(e.target.value)}
-              className="form-select"
+              className="form-select-figma"
               required
               disabled={loadingPatients || loadingDoctor || isFromAgendamento}
             >
@@ -528,180 +753,183 @@ export function CreateConsultationRoom({
                 </option>
               ))}
             </select>
-          </div>
 
-          {/* Tipo de Criação: Instantânea ou Agendamento (ocultar se vier de agendamento) */}
-          {!isFromAgendamento && (
-          <div className="form-group">
-            <label className="form-label">
-              Tipo de Consulta <span className="required">*</span>
-            </label>
-            <div className="consultation-type-buttons">
-              <button
-                type="button"
-                className={`type-button ${creationType === 'instantanea' ? 'active' : ''}`}
-                onClick={() => setCreationType('instantanea')}
-              >
-                Instantânea
-                {creationType === 'instantanea' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`type-button ${creationType === 'agendamento' ? 'active' : ''}`}
-                onClick={() => setCreationType('agendamento')}
-              >
-                Agendamento
-                {creationType === 'agendamento' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
+            {/* Foto do paciente */}
+            <div className="patient-photo-container">
+              {selectedPatientData?.profile_pic ? (
+                <img 
+                  src={selectedPatientData.profile_pic} 
+                  alt={selectedPatientData.name}
+                  className="patient-photo"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="patient-photo-placeholder">
+                  {selectedPatientData?.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
             </div>
-          </div>
-          )}
 
-          {/* Campos de Data e Hora (apenas para agendamento) */}
-          {creationType === 'agendamento' && (
-            <div className="form-group">
-              <label className="form-label">
-                Data e Horário da Consulta <span className="required">*</span>
-              </label>
-              <div className="schedule-inputs">
-                <input
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="form-input schedule-date"
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="form-input schedule-time"
-                  required
-                />
+            {/* Dropdown Retorno */}
+            <select
+              value={patientReturnType}
+              onChange={(e) => setPatientReturnType(e.target.value as 'novo' | 'retorno')}
+              className="retorno-select"
+            >
+              <option value="novo">Novo</option>
+              <option value="retorno">Retorno</option>
+            </select>
+
+            <p className="help-text">
+              Selecione se o paciente está se consultado pela primeira vez ou se é retorno
+            </p>
+          </div>
+
+          {/* Card 2: Tipo de Atendimento */}
+          <div className="consultation-card">
+            <div className="card-title-wrapper">
+              <h2 className="card-title">Tipo de Atendimento</h2>
+              <span className="card-title-asterisk">*</span>
+            </div>
+
+            <select
+              value={consultationType}
+              onChange={(e) => setConsultationType(e.target.value as 'online' | 'presencial')}
+              className="form-select-figma"
+              required
+            >
+              <option value="online">Online</option>
+              <option value="presencial">Presencial</option>
+            </select>
+
+            {/* Ícone circular */}
+            <div className="icon-circle-container">
+              <div className="icon-circle">
+                <svg viewBox="0 0 61 61" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5.08333 5.08333H55.9167V43.7675H30.5V55.9167M5.08333 33.0417H55.9167M28.6192 5.10875H50.0708V23.8156H45.8458L28.6192 5.10875Z" stroke="currentColor" strokeWidth="3.8125" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
             </div>
-          )}
 
-          {/* Tipo de Atendimento */}
-          <div className="form-group">
-            <label className="form-label">
-              Tipo de Atendimento <span className="required">*</span>
-            </label>
-            <div className="consultation-type-buttons">
-              <button
-                type="button"
-                className={`type-button ${consultationType === 'online' ? 'active' : ''}`}
-                onClick={() => setConsultationType('online')}
-              >
-                Online
-                {consultationType === 'online' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`type-button ${consultationType === 'presencial' ? 'active' : ''}`}
-                onClick={() => setConsultationType('presencial')}
-              >
-                Presencial
-                {consultationType === 'presencial' && (
-                  <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Microfone do Médico (apenas para consultas online instantâneas) */}
-          {consultationType === 'online' && creationType === 'instantanea' && (
-            <div className="form-group">
-              <label htmlFor="microphone-select" className="form-label">
-                Microfone do Médico <span className="required">*</span>
-              </label>
-              <select
-                id="microphone-select"
-                value={selectedMicrophone}
-                onChange={(e) => setSelectedMicrophone(e.target.value)}
-                className="form-select"
-                required
-              >
-                <option value="">Selecione o Microfone</option>
-                {microphones.map((mic) => (
-                  <option key={mic.deviceId} value={mic.deviceId}>
-                    {mic.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Consentimento */}
-          <div className="form-group">
-            <label className="form-label">
-              Consentimento <span className="required">*</span>
-            </label>
-            <label className="consent-checkbox">
+            {/* Checkbox de consentimento */}
+            <label className="consent-checkbox-figma">
               <input
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
                 required
               />
-              <span className="checkbox-text">
+              <span className="checkbox-text-figma">
                 Eu confirmo que o paciente foi informado e consentiu com a gravação e transcrição da consulta para fins médicos e de análise.
               </span>
             </label>
           </div>
 
-          {/* Botão Iniciar/Agendar Consulta */}
-          <button 
-            type="submit" 
-            className="btn-submit"
-            disabled={
-              isCreatingRoom || 
-              loadingPatients || 
-              loadingDoctor ||
-              (creationType === 'instantanea' && !socketConnected) ||
-              !selectedPatient || 
-              !consent ||
-              (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
-              (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
-            }
-          >
-            {isCreatingRoom 
-              ? (creationType === 'agendamento' ? 'Agendando...' : 'Criando Consulta...') 
-              : (creationType === 'agendamento' ? 'Agendar Consulta' : 'Iniciar Consulta')
-            }
-          </button>
+          {/* Card 3: Microfone do Médico */}
+          <div className="consultation-card">
+            {consultationType === 'online' && creationType === 'instantanea' ? (
+              <>
+                <div className="card-title-wrapper">
+                  <h2 className="card-title">Microfone do Médico</h2>
+                  <span className="card-title-asterisk">*</span>
+                </div>
 
-          {/* ✅ Indicador de status da conexão (apenas para consulta instantânea) */}
-          {creationType === 'instantanea' && !socketConnected && !loadingDoctor && (
-            <div className="connection-status">
-              <div className="spinner-small"></div>
-              <span className="text-muted small">Conectando ao servidor...</span>
-            </div>
-          )}
-        </form>
+                <select
+                  value={selectedMicrophone}
+                  onChange={(e) => setSelectedMicrophone(e.target.value)}
+                  className="form-select-figma"
+                  required
+                >
+                  <option value="">Selecione o Microfone</option>
+                  {microphones.map((mic) => (
+                    <option key={mic.deviceId} value={mic.deviceId}>
+                      {mic.label}
+                    </option>
+                  ))}
+                </select>
 
-        {isCreatingRoom && (
-          <div className="loading-overlay">
-            <div className="spinner"></div>
-            <p>Criando consulta...</p>
+                {/* Ícone circular do microfone */}
+                <div className="icon-circle-container">
+                  <div className="icon-circle">
+                    <img 
+                      src="/microphone-2.svg" 
+                      alt="Microfone" 
+                      className="microphone-icon"
+                    />
+                  </div>
+                </div>
+
+                {/* Barra de progresso de áudio */}
+                <div className="audio-progress-container">
+                  <div className="audio-progress-bar">
+                    <div className="audio-progress-fill" style={{ width: `${audioLevel}%` }}></div>
+                  </div>
+                  <img 
+                    src="/muted-mic.svg" 
+                    alt={isAudioMuted ? "Microfone mudo" : "Microfone ativo"} 
+                    className={`audio-mute-icon ${isAudioMuted ? 'muted' : 'active'}`}
+                  />
+                </div>
+
+                <p className="help-text">
+                  Não esqueça de permitir o uso do microfone em seu navegador
+                </p>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#A3A3A3', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+                Microfone disponível apenas para consultas online instantâneas
+              </div>
+            )}
           </div>
+      </form>
+
+      {/* Botões de ação */}
+      <div className="action-buttons-container">
+        {!isFromAgendamento && (
+          <button
+            type="button"
+            onClick={() => setCreationType('agendamento')}
+            className="btn-agendar"
+            disabled={isCreatingRoom}
+          >
+            <img src="/calendar.svg" alt="Calendário" className="btn-icon-calendar" />
+            Agendar Consulta
+          </button>
         )}
+        
+        <button
+          type="submit"
+          form="consultation-form"
+          onClick={(e) => {
+            e.preventDefault();
+            handleCreateRoom();
+          }}
+          className="btn-criar"
+          disabled={
+            isCreatingRoom || 
+            loadingPatients || 
+            loadingDoctor ||
+            (creationType === 'instantanea' && !socketConnected) ||
+            !selectedPatient || 
+            !consent ||
+            (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
+            (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
+          }
+        >
+          Criar Consulta
+          <img src="/arrow-left.svg" alt="Seta" className="btn-arrow" />
+        </button>
       </div>
+
+      {isCreatingRoom && (
+        <div className="loading-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>
+          <div className="spinner"></div>
+          <p>Criando consulta...</p>
+        </div>
+      )}
     </div>
   );
 }

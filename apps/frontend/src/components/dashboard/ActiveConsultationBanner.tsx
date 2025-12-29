@@ -41,7 +41,7 @@ export function ActiveConsultationBanner() {
     // Polling adaptativo baseado no status da consulta ativa
     intervalRef.current = setInterval(() => {
       if (pollingActiveRef.current) {
-        checkActiveConsultation();
+      checkActiveConsultation();
       }
     }, 10000); // ✅ Aumentado para 10 segundos (era 5)
 
@@ -61,7 +61,7 @@ export function ActiveConsultationBanner() {
     if (['PROCESSING', 'RECORDING'].includes(status)) {
       fastIntervalRef.current = setInterval(() => {
         if (pollingActiveRef.current) {
-          checkActiveConsultation();
+        checkActiveConsultation();
         }
       }, 5000); // ✅ Aumentado para 5 segundos (era 3)
 
@@ -243,7 +243,7 @@ export function ActiveConsultationBanner() {
         cancelText="Cancelar"
         variant="warning"
       />
-      <div className="active-consultation-banner">
+    <div className="active-consultation-banner">
       <div className="banner-content">
         <div className="banner-icon">
           <AlertCircle className="w-5 h-5" />

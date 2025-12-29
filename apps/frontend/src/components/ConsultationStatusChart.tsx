@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Calendar, TrendingUp, TrendingDown, Users, Plus } from 'lucide-react';
-import { StatusBadge } from './StatusBadge';
+import { useState } from 'react';
+import { TrendingUp } from 'lucide-react';
 import './ConsultationStatusChart.css';
 
 interface StatusData {
@@ -24,6 +23,8 @@ interface ConsultationStatusChartProps {
   metrics?: MetricData[];
   selectedPeriod?: string;
   onPeriodChange?: (period: string) => void;
+  duracaoMedia?: number;
+  taxaFinalizacao?: number;
 }
 
 const defaultData: StatusData = {
@@ -33,123 +34,115 @@ const defaultData: StatusData = {
   cancelled: 2
 };
 
-const defaultMetrics: MetricData[] = [
-  { label: 'Consultas Criadas', value: 25, change: 5, isPositive: true },
-  { label: 'Novos Pacientes', value: 30, change: 50, isPositive: true }
-];
-
 const periods = [
-  { value: '7d', label: '🗓️ Últimos 7 dias' },
-  { value: '15d', label: '🗓️ Últimos 15 dias' },
-  { value: '30d', label: '🗓️ Últimos 30 dias' }
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '15d', label: 'Últimos 15 dias' },
+  { value: '30d', label: 'Últimos 30 dias' }
 ];
 
 export function ConsultationStatusChart({ 
   data = defaultData, 
-  metrics = defaultMetrics,
+  metrics = [],
   selectedPeriod = '7d',
-  onPeriodChange 
+  onPeriodChange,
+  duracaoMedia = 0,
+  taxaFinalizacao = 0
 }: ConsultationStatusChartProps) {
-  const [animationProgress, setAnimationProgress] = useState(0);
-
   const total = data.created + data.inProgress + data.completed + data.cancelled;
   
-  // Calcular percentuais
+  // Calcular percentuais para o gráfico donut
   const percentages = {
-    created: total > 0 ? (data.created / total) * 100 : 0,
-    inProgress: total > 0 ? (data.inProgress / total) * 100 : 0,
-    completed: total > 0 ? (data.completed / total) * 100 : 0,
-    cancelled: total > 0 ? (data.cancelled / total) * 100 : 0
+    novos: total > 0 ? (data.created / total) * 100 : 0,
+    retorno: total > 0 ? (data.inProgress / total) * 100 : 0,
+    cancelados1: total > 0 ? (data.completed / total) * 100 : 0,
+    cancelados2: total > 0 ? (data.cancelled / total) * 100 : 0
   };
 
-  // Calcular ângulos para o gráfico de pizza
-  const angles = {
-    created: (percentages.created / 100) * 360,
-    inProgress: (percentages.inProgress / 100) * 360,
-    completed: (percentages.completed / 100) * 360,
-    cancelled: (percentages.cancelled / 100) * 360
-  };
+  // Calcular ângulos para o gráfico de donut (conic-gradient)
+  let currentAngle = 0;
+  const segments: string[] = [];
+  
+  if (data.created > 0) {
+    const angle = (percentages.novos / 100) * 360;
+    segments.push(`#5D87FF ${currentAngle}deg ${currentAngle + angle}deg`);
+    currentAngle += angle;
+  }
+  
+  if (data.inProgress > 0) {
+    const angle = (percentages.retorno / 100) * 360;
+    segments.push(`#13DDB9 ${currentAngle}deg ${currentAngle + angle}deg`);
+    currentAngle += angle;
+  }
+  
+  if (data.completed > 0) {
+    const angle = (percentages.cancelados1 / 100) * 360;
+    segments.push(`#FA8A6B ${currentAngle}deg ${currentAngle + angle}deg`);
+    currentAngle += angle;
+  }
+  
+  if (data.cancelled > 0) {
+    const angle = (percentages.cancelados2 / 100) * 360;
+    segments.push(`#1325DE ${currentAngle}deg ${currentAngle + angle}deg`);
+  }
 
-  // Animação de entrada
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimationProgress(1);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const pieGradient = segments.length > 0 ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#5D87FF 0deg 360deg)';
 
-  // Gerar gradiente do gráfico de pizza
-  const generatePieGradient = () => {
-    let currentAngle = 0;
-    const segments = [];
-
-    if (data.created > 0) {
-      segments.push(`#ffa447 ${currentAngle}deg ${currentAngle + angles.created}deg`);
-      currentAngle += angles.created;
+  // Formatar duração média
+  const formatDuration = (seconds: number) => {
+    if (seconds === 0) return '0s';
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
     }
-    
-    if (data.inProgress > 0) {
-      segments.push(`#4fa2ff ${currentAngle}deg ${currentAngle + angles.inProgress}deg`);
-      currentAngle += angles.inProgress;
-    }
-    
-    if (data.completed > 0) {
-      segments.push(`#65f6b1 ${currentAngle}deg ${currentAngle + angles.completed}deg`);
-      currentAngle += angles.completed;
-    }
-    
-    if (data.cancelled > 0) {
-      segments.push(`#ef4444 ${currentAngle}deg ${currentAngle + angles.cancelled}deg`);
-    }
-
-    return `conic-gradient(${segments.join(', ')})`;
+    return `${secs}s`;
   };
 
   return (
     <div className="consultation-status-chart">
-      {/* Header */}
-      <div className="chart-header">
-        <h3 className="chart-title">Status de Consultas</h3>
-      </div>
+      {/* Título */}
+      <h3 className="chart-title">Status das consultas</h3>
 
-      {/* Gráfico com Legenda ao Lado */}
+      {/* Gráfico com Legenda */}
       <div className="chart-with-legend">
-        <div 
-          className="enhanced-pie-chart"
-          style={{
-            background: generatePieGradient(),
-            transform: `scale(${0.8 + (animationProgress * 0.2)})`
-          }}
-        >
-          <div className="pie-center"></div>
+        <div className="donut-chart-container">
+          <div 
+            className="donut-chart"
+            style={{ background: pieGradient }}
+          >
+            <div className="donut-center">
+              <span className="donut-center-value">{total}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Legenda ao Lado */}
-        <div className="side-legend">
-          <div className="legend-item-simple">
-            <span className="legend-dot legend-created"></span>
-            <span className="legend-label">Criadas</span>
+        {/* Legenda */}
+        <div className="status-legend">
+          <div className="legend-item">
+            <span className="legend-dot legend-novos"></span>
+            <span className="legend-label">Novos</span>
           </div>
           
-          <div className="legend-item-simple">
-            <span className="legend-dot legend-progress"></span>
-            <span className="legend-label">Em Andamento</span>
+          <div className="legend-item">
+            <span className="legend-dot legend-retorno"></span>
+            <span className="legend-label">Retorno</span>
           </div>
           
-          <div className="legend-item-simple">
-            <span className="legend-dot legend-completed"></span>
-            <span className="legend-label">Concluídas</span>
+          <div className="legend-item">
+            <span className="legend-dot legend-cancelados1"></span>
+            <span className="legend-label">Cancelados</span>
           </div>
           
-          <div className="legend-item-simple">
-            <span className="legend-dot legend-cancelled"></span>
-            <span className="legend-label">Canceladas</span>
+          <div className="legend-item">
+            <span className="legend-dot legend-cancelados2"></span>
+            <span className="legend-label">Cancelados</span>
           </div>
         </div>
       </div>
 
-      {/* Seletor de Período */}
-      <div className="period-selector">
+      {/* Filtro por período */}
+      <div className="period-filter-section">
+        <label className="period-filter-label">Filtrar pro periodo</label>
         <select 
           value={selectedPeriod}
           onChange={(e) => onPeriodChange?.(e.target.value)}
@@ -163,28 +156,60 @@ export function ConsultationStatusChart({
         </select>
       </div>
 
-      {/* Métricas Melhoradas */}
-      <div className="enhanced-metrics">
-        {metrics.map((metric, index) => (
-          <div key={index} className="metric-card">
-            <div className="metric-header">
-              <span className="metric-label">{metric.label}</span>
-              {metric.isPositive ? (
-                <TrendingUp className="metric-trend positive" size={16} />
-              ) : (
-                <TrendingDown className="metric-trend negative" size={16} />
-              )}
-            </div>
-            <div className="metric-content">
-              <span className="metric-value">{metric.value}</span>
-              <span className={`metric-change ${metric.isPositive ? 'positive' : 'negative'}`}>
-                {metric.isPositive ? '+' : ''}{metric.change}
+      {/* Consultas Concluídas */}
+      {metrics.length > 0 && (
+        <div className="metric-section">
+          <div className="metric-label">{metrics[0]?.label || 'Consultas concluídas'}</div>
+          <div className="metric-value-group">
+            <span className="metric-value-large">{metrics[0]?.value || 0}</span>
+            {metrics[0]?.change !== undefined && metrics[0].change > 0 && (
+              <span className="metric-change-indicator">
+                <TrendingUp className="trend-icon" size={12} />
+                <span className="change-value">{metrics[0].change}</span>
               </span>
-            </div>
+            )}
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Total de Pacientes */}
+      {metrics.length > 1 && (
+        <div className="metric-section">
+          <div className="metric-label">{metrics[1]?.label || 'Total de pacientes'}</div>
+          <div className="metric-value-group">
+            <span className="metric-value-large">{metrics[1]?.value || 0}</span>
+            {metrics[1]?.change !== undefined && metrics[1].change > 0 && (
+              <span className="metric-change-indicator">
+                <TrendingUp className="trend-icon" size={12} />
+                <span className="change-value">{metrics[1].change}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Duração Média */}
+      <div className="metric-section metric-section-no-border">
+        <div className="metric-label">Duração média</div>
+        <div className="metric-value-small">{formatDuration(duracaoMedia)}</div>
+        <div className="progress-bar-container">
+          <div className="progress-bar-bg"></div>
+        </div>
       </div>
 
+      {/* Taxa de Finalização */}
+      <div className="metric-section">
+        <div className="metric-label">Taxa de finalização</div>
+        <div className="metric-value-small">{taxaFinalizacao.toFixed(0)}%</div>
+        <div className="progress-bar-container">
+          <div className="progress-bar-bg">
+            <div 
+              className="progress-bar-fill" 
+              style={{ width: `${Math.min(taxaFinalizacao, 100)}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
