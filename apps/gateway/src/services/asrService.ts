@@ -1,7 +1,7 @@
 import { ProcessedAudioChunk } from './audioProcessor';
 import { db, logError, logWarning } from '../config/database';
 import { randomUUID } from 'crypto';
-import OpenAI from 'openai';
+import { aiConfig } from '../config';
 import { suggestionService } from './suggestionService';
 import FormData from 'form-data';
 import { aiPricingService } from './aiPricingService';
@@ -44,7 +44,12 @@ class ASRService {
 
   private isEnabled = false;
   private enableSimulation = false; // Flag para controlar simulação - PERMANENTEMENTE DESABILITADA
-  private openai: OpenAI | null = null;
+
+  // Azure OpenAI config
+  private azureEndpoint: string = '';
+  private azureApiKey: string = '';
+  private azureDeployment: string = '';
+  private azureApiVersion: string = '';
 
   constructor() {
     this.checkASRAvailability();
@@ -52,22 +57,22 @@ class ASRService {
 
   // Verificar se ASR está disponível/configurado
   private checkASRAvailability(): void {
-    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
-    
-    if (hasOpenAI) {
+    const hasAzure = Boolean(aiConfig.azure.endpoint && aiConfig.azure.apiKey);
+
+    if (hasAzure) {
       try {
-        // Inicializar cliente OpenAI
-        this.openai = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-          organization: process.env.OPENAI_ORGANIZATION
-        });
-        
+        // Configurar Azure OpenAI
+        this.azureEndpoint = aiConfig.azure.endpoint;
+        this.azureApiKey = aiConfig.azure.apiKey;
+        this.azureDeployment = aiConfig.azure.deployments.whisper;
+        this.azureApiVersion = aiConfig.azure.apiVersions.whisper;
+
         this.isEnabled = true;
-        console.log('✅ OpenAI Whisper ASR Service habilitado');
+        console.log('✅ Azure OpenAI Whisper ASR Service habilitado');
       } catch (error) {
-        console.error('❌ Erro ao inicializar OpenAI:', error);
+        console.error('❌ Erro ao inicializar Azure OpenAI:', error);
         logError(
-          `Erro ao inicializar OpenAI Whisper ASR`,
+          `Erro ao inicializar Azure OpenAI Whisper ASR`,
           'error',
           null,
           { error: error instanceof Error ? error.message : String(error) }
@@ -75,7 +80,7 @@ class ASRService {
         this.isEnabled = false;
       }
     } else {
-      console.warn('⚠️ ASR Service desabilitado - Configure OPENAI_API_KEY');
+      console.warn('⚠️ ASR Service desabilitado - Configure AZURE_OPENAI_ENDPOINT e AZURE_OPENAI_API_KEY');
       this.isEnabled = false;
     }
   }
@@ -83,7 +88,7 @@ class ASRService {
   // Processar áudio e retornar transcrição
   public async processAudio(audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
     const asrId = `asr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    
+
     // 🔍 DEBUG: Log de entrada no ASR
     console.log(`🔍 DEBUG [ASR] processAudio CHAMADO:`, {
       asrId,
@@ -93,13 +98,13 @@ class ASRService {
       hasVoiceActivity: audioChunk.hasVoiceActivity,
       averageVolume: audioChunk.averageVolume,
       isEnabled: this.isEnabled,
-      hasOpenAI: !!this.openai,
+      hasOpenAI: !!this.azureApiKey,
       chunkId: audioChunk.sessionId + ':' + audioChunk.channel + ':' + audioChunk.timestamp
     });
 
-    if (!this.isEnabled || !this.openai) {
-      console.warn(`⚠️ [ASR] ASR não está habilitado ou OpenAI não configurado - ${asrId}`);
-      console.warn(`⚠️ [ASR] Não é possível transcrever áudio sem OpenAI Whisper configurado`);
+    if (!this.isEnabled || !this.azureApiKey) {
+      console.warn(`⚠️ [ASR] ASR não está habilitado ou Azure OpenAI não configurado - ${asrId}`);
+      console.warn(`⚠️ [ASR] Não é possível transcrever áudio sem Azure OpenAI Whisper configurado`);
       // ✅ NÃO usar simulação ou fallback - retornar null se não houver Whisper
       return null;
     }
@@ -116,7 +121,7 @@ class ASRService {
       });
        */
       return result;
-      
+
     } catch (error) {
       console.error(`❌ [ASR] ERRO WHISPER - ${asrId}:`, error);
       console.error(`❌ [ASR] Não é possível transcrever áudio devido a erro no Whisper`);
@@ -186,7 +191,7 @@ class ASRService {
 
     const texts = simulatedTexts[audioChunk.channel];
     const randomText = texts[Math.floor(Math.random() * texts.length)];
-    
+
     // Ajustar confiança baseada na qualidade do áudio simulada
     const baseConfidence = 0.75 + (intensityFactor * 0.2); // 75-95% baseado no volume
     const confidence = Math.min(baseConfidence + Math.random() * 0.1, 0.99);
@@ -228,10 +233,10 @@ class ASRService {
     // Analisar características do áudio para gerar texto mais realista
     const intensity = audioChunk.averageVolume;
     const duration = audioChunk.duration;
-    
+
     // Gerar texto baseado na duração e intensidade do áudio
     let transcribedText = '';
-    
+
     if (duration < 1000) {
       // Falas curtas (< 1s) - palavras simples
       const shortPhrases = ['Sim', 'Não', 'Certo', 'Entendi', 'Obrigado', 'Por favor', 'Desculpe'];
@@ -260,7 +265,7 @@ class ASRService {
       ];
       transcribedText = longPhrases[Math.floor(Math.random() * longPhrases.length)];
     }
-    
+
     // Adicionar indicador de intensidade
     if (intensity > 0.1) {
       transcribedText += ' [voz alta]';
@@ -290,7 +295,7 @@ class ASRService {
     try {
       await this.saveTranscription(transcriptionResult);
       console.log(`🎯 Transcrição baseada em análise real: [${audioChunk.channel}] "${transcribedText}" (${duration}ms, vol: ${intensity.toFixed(3)}, conf: ${Math.round(confidence * 100)}%)`);
-      
+
       // Trigger geração de sugestões após salvar transcrição
       await this.triggerSuggestionGeneration(transcriptionResult);
     } catch (error) {
@@ -327,7 +332,7 @@ class ASRService {
       // ✅ Usar addTranscriptionToSession para salvar em array único
       // Para consultas presenciais, usar o speaker como speaker_id (já que não temos nome real aqui)
       const speakerId = speaker; // Em consultas presenciais, pode não ter o nome real disponível
-      
+
       const success = await db.addTranscriptionToSession(transcription.sessionId, {
         speaker: speaker,
         speaker_id: speakerId,
@@ -367,21 +372,21 @@ class ASRService {
 
     // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
     const rawText = result.text.trim();
-    
+
     // ✅ Filtrar textos inválidos ANTES de processar
     if (!this.filterInvalidTranscriptions(rawText)) {
       console.log(`🔇 [ASR] Texto inválido descartado: "${rawText}"`);
       return null;
     }
-    
+
     const cleanedText = this.postProcessTranscription(rawText);
-    
+
     // Verificar se texto limpo não ficou vazio
     if (!cleanedText || cleanedText.length < 2) {
       console.log(`🔇 Texto muito curto após limpeza: "${cleanedText}"`);
       return null;
     }
-    
+
     // ✅ Validação adicional: verificar se o texto faz sentido para consulta médica
     if (!this.filterInvalidTranscriptions(cleanedText)) {
       console.log(`🔇 [ASR] Texto limpo ainda inválido, descartando: "${cleanedText}"`);
@@ -417,9 +422,9 @@ class ASRService {
       textLength: cleanedText.length,
       textPreview: cleanedText.substring(0, 50) + '...'
     });
-    
+
     try {
-    await this.saveTranscription(transcriptionResult);
+      await this.saveTranscription(transcriptionResult);
       console.log(`✅ [AUTO-SAVE] Transcrição salva automaticamente no banco: ${speaker} - "${cleanedText.substring(0, 30)}..."`);
     } catch (saveError) {
       console.error('❌ [AUTO-SAVE] Erro ao salvar transcrição automaticamente:', saveError);
@@ -434,7 +439,7 @@ class ASRService {
       );
       // Não bloquear o fluxo se o salvamento falhar
     }
-    
+
     // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
     console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
     console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
@@ -442,9 +447,9 @@ class ASRService {
     return transcriptionResult;
   }
 
-  // Integração com OpenAI Whisper
+  // Integração com Azure OpenAI Whisper
   private async transcribeWithWhisper(audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
-    if (!this.openai || !audioChunk.hasVoiceActivity) {
+    if (!this.azureApiKey || !audioChunk.hasVoiceActivity) {
       return null;
     }
 
@@ -452,19 +457,19 @@ class ASRService {
       // 🔍 VALIDAÇÕES PRÉ-ENVIO para evitar erros
       const maxFileSize = 25 * 1024 * 1024; // 25MB limite do Whisper
       const maxDuration = 25 * 60 * 1000; // 25 minutos limite do Whisper
-      
+
       // Verificar tamanho do buffer
       if (audioChunk.audioBuffer.length > maxFileSize) {
         console.warn(`⚠️ Arquivo muito grande para Whisper: ${audioChunk.audioBuffer.length} bytes (máx: ${maxFileSize} bytes)`);
         return null;
       }
-      
+
       // Verificar duração
       if (audioChunk.duration > maxDuration) {
         console.warn(`⚠️ Áudio muito longo para Whisper: ${audioChunk.duration}ms (máx: ${maxDuration}ms)`);
         return null;
       }
-      
+
       // Verificar se buffer não está vazio
       if (audioChunk.audioBuffer.length === 0) {
         console.warn(`⚠️ Buffer de áudio vazio para ${audioChunk.channel}`);
@@ -499,17 +504,17 @@ class ASRService {
 
       // 🔧 CORREÇÃO: Usar FormData de forma mais robusta
       const formData = new FormData();
-      
+
       // 🔧 CORREÇÃO: Adicionar model PRIMEIRO (algumas APIs são sensíveis à ordem)
       formData.append('model', this.config.model);
-      
+
       // Adicionar arquivo com configurações específicas para Whisper
       formData.append('file', audioChunk.audioBuffer, {
         filename: 'audio.wav',
         contentType: 'audio/wav',
         knownLength: audioChunk.audioBuffer.length
       });
-      
+
       // Adicionar outros parâmetros de configuração
       formData.append('language', this.whisperConfig.language);
       formData.append('response_format', this.whisperConfig.response_format);
@@ -522,7 +527,7 @@ class ASRService {
       //console.log(`🔍 DEBUG [AUDIO] Has voice activity: ${audioChunk.hasVoiceActivity}`);
       //console.log(`🔍 DEBUG [AUDIO] Average volume: ${audioChunk.averageVolume}`);
       //console.log(`🔍 DEBUG [AUDIO] Duration: ${audioChunk.duration}ms`);
-      
+
       // 🔍 DEBUG: Verificar parâmetros do FormData
       //console.log(`🔍 DEBUG [FORMDATA] Model: "${this.config.model}"`);
       //console.log(`🔍 DEBUG [FORMDATA] Language: "${this.whisperConfig.language}"`);
@@ -531,24 +536,29 @@ class ASRService {
 
       // 🔧 CORREÇÃO: Usar headers corretos e timeout
       console.log(`🚀 CHAMANDO WHISPER API...`);
-      
+
       // 🔧 CORREÇÃO: Usar node-fetch para melhor compatibilidade com FormData
       const fetch = (await import('node-fetch')).default;
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-      
+
       try {
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        // Azure OpenAI Whisper endpoint
+        const azureUrl = `${this.azureEndpoint}/openai/deployments/${this.azureDeployment}/audio/transcriptions?api-version=${this.azureApiVersion}`;
+
+        console.log(`🌐 [ASR] Enviando para Azure: ${azureUrl}`);
+
+        const response = await fetch(azureUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'api-key': this.azureApiKey,
             ...formData.getHeaders() // Usar headers do FormData explicitamente
           },
           body: formData,
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -557,21 +567,21 @@ class ASRService {
         }
 
         const result = await response.json() as any;
-        
+
         console.log(`✅ WHISPER API RESPONDEU!`);
         console.log(`🔍 DEBUG [WHISPER] Response received:`, result);
-        
+
         // 📊 Registrar uso do Whisper para monitoramento de custos
         await aiPricingService.logWhisperUsage(
           audioChunk.duration,
           audioChunk.sessionId
         );
-        
+
         return this.processWhisperResponse(result, audioChunk);
-        
+
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
-        
+
         if (fetchError.name === 'AbortError') {
           throw new Error('Timeout na API Whisper (30s)');
         }
@@ -580,7 +590,7 @@ class ASRService {
 
     } catch (error: any) {
       console.error('Erro na API Whisper:', error);
-      
+
       // 🔍 LOG DETALHADO do erro para diagnóstico
       console.error(`🔍 DEBUG [WHISPER_ERROR] Canal: ${audioChunk.channel}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Buffer size: ${audioChunk.audioBuffer.length} bytes`);
@@ -590,26 +600,26 @@ class ASRService {
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error status: ${error.status || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error message: ${error.message || 'N/A'}`);
       console.error(`🔍 DEBUG [WHISPER_ERROR] Error type: ${error.type || 'N/A'}`);
-      
+
       logError(
         `Erro na API Whisper - transcrição não realizada`,
         'error',
         audioChunk.sessionId,
-        { 
-          channel: audioChunk.channel, 
-          bufferSize: audioChunk.audioBuffer.length, 
+        {
+          channel: audioChunk.channel,
+          bufferSize: audioChunk.audioBuffer.length,
           duration: audioChunk.duration,
           errorCode: error.code || 'N/A',
           errorStatus: error.status || 'N/A',
           errorMessage: error.message || 'Erro desconhecido'
         }
       );
-      
+
       // Se for erro de rede ou API, lançar para usar fallback
       if (error.code === 'ENOTFOUND' || error.status >= 500) {
         throw error;
       }
-      
+
       // Se for erro de áudio inválido, retornar null
       console.warn(`⚠️ Áudio inválido para Whisper: ${audioChunk.channel} - ${error.message || 'Erro desconhecido'}`);
       return null;
@@ -626,21 +636,21 @@ class ASRService {
     processed = processed.replace(/\[.*?\]/g, ''); // Remove [música], [ruído], etc.
     processed = processed.replace(/\(.*?\)/g, ''); // Remove (tosse), (suspiro), etc.
     processed = processed.replace(/[♪♫🎵🎶]/g, ''); // Remove símbolos musicais
-    
+
     // Corrigir espaçamento
     processed = processed.replace(/\s+/g, ' '); // Múltiplos espaços → espaço único
     processed = processed.trim();
-    
+
     // Capitalizar primeira letra se não estiver
     if (processed.length > 0) {
       processed = processed.charAt(0).toUpperCase() + processed.slice(1);
     }
-    
+
     // Corrigir pontuação comum
     processed = processed.replace(/([.!?])\s*([a-z])/g, (match, p1, p2) => {
       return p1 + ' ' + p2.toUpperCase();
     });
-    
+
     // Garantir ponto final se necessário
     if (processed.length > 3 && !/[.!?]$/.test(processed)) {
       processed += '.';
@@ -667,14 +677,14 @@ class ASRService {
       /tchau.*tchau/i,
       /oi.*tudo bem.*tchau/i
     ];
-    
+
     for (const pattern of invalidPatterns) {
       if (pattern.test(text)) {
         console.warn(`⚠️ [ASR] Texto inválido filtrado: "${text}" (padrão: ${pattern})`);
         return false; // Texto inválido
       }
     }
-    
+
     return true; // Texto válido
   }
 
@@ -685,48 +695,48 @@ class ASRService {
       const avgConfidence = response.segments.reduce((sum: number, segment: any) => {
         return sum + (segment.avg_logprob || -0.5);
       }, 0) / response.segments.length;
-      
+
       // Converter logprob para probabilidade (aproximada)
       const baseConfidence = Math.max(0.3, Math.min(0.95, Math.exp(avgConfidence)));
-      
+
       // Ajustar confiança baseada na qualidade do texto
       const textQuality = this.assessTextQuality(response.text);
       return Math.min(0.95, baseConfidence * textQuality);
     }
-    
+
     // Baseado no tamanho e qualidade do texto
     const textLength = response.text.trim().length;
     const textQuality = this.assessTextQuality(response.text);
-    
+
     let baseConfidence = 0.6;
     if (textLength > 50) baseConfidence = 0.9;
     else if (textLength > 20) baseConfidence = 0.8;
     else if (textLength > 10) baseConfidence = 0.7;
-    
+
     return Math.min(0.95, baseConfidence * textQuality);
   }
 
   // Avaliar qualidade do texto transcrito
   private assessTextQuality(text: string): number {
     if (!text) return 0.1;
-    
+
     let quality = 1.0;
-    
+
     // Penalizar texto muito repetitivo
     const words = text.toLowerCase().split(/\s+/);
     const uniqueWords = new Set(words);
     const repetitionRatio = uniqueWords.size / words.length;
     if (repetitionRatio < 0.5) quality *= 0.7; // Muito repetitivo
-    
+
     // Penalizar se só tem uma palavra repetida
     if (uniqueWords.size === 1 && words.length > 2) quality *= 0.3;
-    
+
     // Bonificar se tem pontuação apropriada
     if (/[.!?]/.test(text)) quality *= 1.1;
-    
+
     // Penalizar ruídos óbvios
     if (/\b(ah|eh|uh|hm|hmm)\b/gi.test(text)) quality *= 0.8;
-    
+
     return Math.max(0.1, Math.min(1.0, quality));
   }
 
@@ -791,7 +801,7 @@ class ASRService {
   private async triggerSuggestionGeneration(transcription: TranscriptionResult): Promise<void> {
     try {
       console.log(`🤖 Triggering suggestion generation for session ${transcription.sessionId}`);
-      
+
       // Buscar informações da sessão
       const session = await db.getSession(transcription.sessionId);
       if (!session) {
@@ -801,7 +811,7 @@ class ASRService {
 
       // Buscar utterances recentes da sessão
       const utterances = await db.getSessionUtterances(transcription.sessionId);
-      
+
       // Criar contexto para geração de sugestões
       const context = {
         sessionId: transcription.sessionId,
@@ -820,7 +830,7 @@ class ASRService {
           const suggestions = await suggestionService.generateSuggestions(context);
           if (suggestions && suggestions.suggestions.length > 0) {
             console.log(`🤖 ${suggestions.suggestions.length} sugestões geradas para sessão ${transcription.sessionId}`);
-            
+
             // Notificar via WebSocket se disponível
             await this.notifyWebSocketSuggestions(transcription.sessionId, suggestions.suggestions);
           } else {
@@ -855,13 +865,13 @@ class ASRService {
     try {
       // Tentar obter notifier do WebSocket
       const { SessionNotifier } = await import('../websocket/index');
-      
+
       // Esta é uma implementação simplificada - em produção, você teria uma referência global ao notifier
       console.log(`📡 WebSocket notification preparada para sessão ${sessionId}: ${suggestions.length} sugestões`);
-      
+
       // TODO: Implementar notificação real via WebSocket
       // Por enquanto, apenas log para debug
-      
+
     } catch (error) {
       console.log('📡 WebSocket notifier não disponível - sugestões salvas no banco');
     }

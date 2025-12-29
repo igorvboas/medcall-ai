@@ -2,11 +2,12 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { logError, logWarning } from '../config/database';
+import { aiPricingService } from './aiPricingService';
+import { aiConfig } from '../config';
 
 interface TranscriptionSegment {
   id: string;
@@ -34,19 +35,26 @@ interface TranscriptionOptions {
 }
 
 export class TranscriptionService extends EventEmitter {
-  private openai: OpenAI;
   private supabase: any;
   private activeRooms: Map<string, Set<string>> = new Map();
   private audioBuffers: Map<string, Buffer[]> = new Map();
   private processingQueue: Map<string, NodeJS.Timeout> = new Map();
-  
+
+  // Azure OpenAI config
+  private azureEndpoint: string;
+  private azureApiKey: string;
+  private azureDeployment: string;
+  private azureApiVersion: string;
+
   constructor() {
     super();
-    
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    
+
+    // Configurar Azure OpenAI
+    this.azureEndpoint = aiConfig.azure.endpoint;
+    this.azureApiKey = aiConfig.azure.apiKey;
+    this.azureDeployment = aiConfig.azure.deployments.whisper;
+    this.azureApiVersion = aiConfig.azure.apiVersions.whisper;
+
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -56,17 +64,17 @@ export class TranscriptionService extends EventEmitter {
   async startTranscription(roomName: string, consultationId: string): Promise<void> {
     try {
       console.log(`🎤 Iniciando transcrição para sala: ${roomName}`);
-      
+
       if (!this.activeRooms.has(roomName)) {
         this.activeRooms.set(roomName, new Set());
       }
-      
+
       // Ativar transcrição via WebSocket
       console.log(`✅ Transcrição ativada para sala: ${roomName}`);
-      
+
       // Captura de áudio via WebSocket
       this.setupAudioCapture(roomName, consultationId);
-      
+
     } catch (error) {
       console.error('Erro ao iniciar transcrição:', error);
       logError(
@@ -81,10 +89,10 @@ export class TranscriptionService extends EventEmitter {
 
   private setupAudioCapture(roomName: string, consultationId: string): void {
     console.log(`🎵 Configurando captura de áudio para sala: ${roomName}`);
-    
+
     // Aguardar áudio real do frontend via WebSocket
     console.log(`⏳ Aguardando áudio via WebSocket para sala: ${roomName}`);
-    
+
     // O áudio será recebido via WebSocket do frontend
     // quando o usuário falar no microfone
   }
@@ -95,17 +103,17 @@ export class TranscriptionService extends EventEmitter {
   async stopTranscription(roomName: string): Promise<void> {
     try {
       console.log(`Parando transcrição para sala: ${roomName}`);
-      
+
       this.audioBuffers.delete(roomName);
-      
+
       const timeout = this.processingQueue.get(roomName);
       if (timeout) {
         clearTimeout(timeout);
         this.processingQueue.delete(roomName);
       }
-      
+
       this.activeRooms.delete(roomName);
-      
+
     } catch (error) {
       console.error('Erro ao parar transcrição:', error);
       logError(
@@ -121,15 +129,15 @@ export class TranscriptionService extends EventEmitter {
   async processAudioChunk(audioChunk: AudioChunk, roomName: string): Promise<void> {
     try {
       const { data, participantId } = audioChunk;
-      
+
       const bufferKey = `${roomName}-${participantId}`;
       if (!this.audioBuffers.has(bufferKey)) {
         this.audioBuffers.set(bufferKey, []);
       }
-      
+
       this.audioBuffers.get(bufferKey)!.push(data);
       this.scheduleProcessing(bufferKey, roomName, participantId);
-      
+
     } catch (error) {
       console.error('Erro ao processar chunk de áudio:', error);
       logError(
@@ -146,11 +154,11 @@ export class TranscriptionService extends EventEmitter {
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
-    
+
     const timeout = setTimeout(async () => {
       await this.processBufferedAudio(bufferKey, roomName, participantId);
     }, 1000);
-    
+
     this.processingQueue.set(bufferKey, timeout);
   }
 
@@ -160,20 +168,20 @@ export class TranscriptionService extends EventEmitter {
       if (!audioBuffers || audioBuffers.length === 0) {
         return;
       }
-      
+
       const combinedBuffer = Buffer.concat(audioBuffers);
       this.audioBuffers.set(bufferKey, []);
-      
+
       if (combinedBuffer.length < 8000) {
         return;
       }
-      
+
       const transcription = await this.transcribeAudio(combinedBuffer, {
         language: 'pt',
         model: 'whisper-1',
         response_format: 'verbose_json'
       });
-      
+
       if (transcription && transcription.text.trim()) {
         await this.sendTranscriptionToRoom(roomName, {
           id: randomUUID(),
@@ -186,7 +194,7 @@ export class TranscriptionService extends EventEmitter {
           language: transcription.language
         });
       }
-      
+
     } catch (error) {
       console.error('Erro ao processar áudio bufferizado:', error);
       logError(
@@ -198,39 +206,64 @@ export class TranscriptionService extends EventEmitter {
     }
   }
 
-  private async transcribeAudio(audioBuffer: Buffer, options: TranscriptionOptions = {}): Promise<any> {
+  private async transcribeAudio(audioBuffer: Buffer, options: TranscriptionOptions = {}, consultaId?: string): Promise<any> {
     try {
       const wavBuffer = this.convertToWav(audioBuffer);
-      const blob = new Blob([wavBuffer], { type: 'audio/wav' });
-      
+
+      // Azure OpenAI Whisper endpoint
+      const azureUrl = `${this.azureEndpoint}/openai/deployments/${this.azureDeployment}/audio/transcriptions?api-version=${this.azureApiVersion}`;
+
+      // Usar node-fetch com form-data (compatibilidade com Node.js)
+      const FormData = (await import('form-data')).default;
+      const nodeFetch = (await import('node-fetch')).default;
+      const { Readable } = await import('stream');
+
       const formData = new FormData();
-      formData.append('file', blob, 'audio.wav');
-      formData.append('model', options.model || 'whisper-1');
+      // Converter Buffer para Readable stream para form-data
+      const audioStream = Readable.from(wavBuffer);
+      formData.append('file', audioStream, {
+        filename: 'audio.wav',
+        contentType: 'audio/wav',
+        knownLength: wavBuffer.length
+      });
       formData.append('language', options.language || 'pt');
       formData.append('response_format', options.response_format || 'verbose_json');
       formData.append('temperature', (options.temperature || 0).toString());
 
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      console.log(`🌐 [TRANSCRIPTION-SERVICE] Enviando para Azure: ${azureUrl}`);
+
+      const response = await nodeFetch(azureUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'api-key': this.azureApiKey,
+          ...formData.getHeaders()
         },
         body: formData
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Azure Whisper API error: ${response.status} - ${errorText}`);
       }
 
-      return await response.json();
-      
+      const result = await response.json() as any;
+
+      // 📊 Registrar uso do Whisper para monitoramento de custos
+      // Estimar duração do áudio baseado no tamanho do buffer (aproximação)
+      // Para áudio WAV 16kHz mono 16-bit: 1 segundo = 32KB
+      const estimatedAudioDurationMs = Math.max(1000, (wavBuffer.length / 32000) * 1000);
+      await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
+      console.log(`📊 [TRANSCRIPTION-SERVICE] Uso Whisper registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio`);
+
+      return result;
+
     } catch (error) {
       console.error('Erro na transcrição:', error);
       logError(
-        `Erro na transcrição de áudio via OpenAI Whisper`,
+        `Erro na transcrição de áudio via Azure OpenAI Whisper`,
         'error',
-        null,
-        { language: options.language, model: options.model, error: error instanceof Error ? error.message : String(error) }
+        consultaId || null,
+        { language: options.language, error: error instanceof Error ? error.message : String(error) }
       );
       return null;
     }
@@ -239,7 +272,7 @@ export class TranscriptionService extends EventEmitter {
   private convertToWav(rawBuffer: Buffer, sampleRate: number = 16000, channels: number = 1): Buffer {
     const length = rawBuffer.length;
     const buffer = Buffer.alloc(44 + length);
-    
+
     // WAV Header
     buffer.write('RIFF', 0);
     buffer.writeUInt32LE(36 + length, 4);
@@ -254,7 +287,7 @@ export class TranscriptionService extends EventEmitter {
     buffer.writeUInt16LE(16, 34);
     buffer.write('data', 36);
     buffer.writeUInt32LE(length, 40);
-    
+
     rawBuffer.copy(buffer, 44);
     return buffer;
   }
@@ -263,12 +296,12 @@ export class TranscriptionService extends EventEmitter {
     try {
       // ✅ Salvar no banco (LiveKit removido - usando WebRTC direto via WebSocket)
       await this.saveTranscriptionToDatabase(roomName, segment);
-      
+
       // Emitir evento para que outros serviços possam escutar
       this.emit('transcription', { roomName, segment });
-      
+
       console.log(`📝 Transcrição salva no banco: ${segment.participantName}: ${segment.text}`);
-      
+
     } catch (error) {
       console.error('❌ Erro ao salvar transcrição:', error);
       logError(
@@ -284,14 +317,14 @@ export class TranscriptionService extends EventEmitter {
     try {
       // ✅ NOVO: Buscar session_id a partir do roomName
       let sessionId: string | null = null;
-      
+
       // Tentar buscar session_id da call_sessions usando roomName
       const { data: callSession, error: sessionError } = await this.supabase
         .from('call_sessions')
         .select('id')
         .or(`room_id.eq.${roomName},room_name.eq.${roomName}`)
         .maybeSingle();
-      
+
       if (callSession?.id) {
         sessionId = callSession.id;
       } else {
@@ -299,7 +332,7 @@ export class TranscriptionService extends EventEmitter {
         sessionId = roomName;
         console.warn(`⚠️ Session ID não encontrado para roomName ${roomName}, usando roomName como sessionId`);
       }
-      
+
       // Mapear speaker baseado no participantId ou participantName
       let speaker: 'doctor' | 'patient' | 'system' = 'system';
       const participantLower = (segment.participantId + segment.participantName).toLowerCase();
@@ -308,21 +341,21 @@ export class TranscriptionService extends EventEmitter {
       } else if (participantLower.includes('patient') || participantLower.includes('Paciente')) {
         speaker = 'patient';
       }
-      
+
       // ✅ Usar addTranscriptionToSession em vez de insert direto
       // Isso garante que todas as transcrições sejam salvas em um único registro (array)
       const { db } = await import('../config/database');
-      
+
       // ✅ Validar que sessionId é um UUID válido
       if (!sessionId || (sessionId.length !== 36 && !sessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
         console.error('❌ [TRANSCRIPTION-SERVICE] sessionId inválido:', sessionId);
         console.error('❌ [TRANSCRIPTION-SERVICE] roomName:', roomName);
         return;
       }
-      
+
       // ✅ Determinar speaker_id (nome real do participante)
       const speakerId = segment.participantName || segment.participantId || speaker;
-      
+
       const success = await db.addTranscriptionToSession(sessionId, {
         speaker: speaker,
         speaker_id: speakerId,
@@ -332,7 +365,7 @@ export class TranscriptionService extends EventEmitter {
         end_ms: segment.timestamp.getTime() + 1000, // Assumir 1 segundo de duração
         doctor_name: speaker === 'doctor' ? speakerId : undefined
       });
-      
+
       if (!success) {
         console.error('❌ [TRANSCRIPTION-SERVICE] Erro ao salvar transcrição no banco');
         console.error('❌ [TRANSCRIPTION-SERVICE] Dados tentados:', {
@@ -351,7 +384,7 @@ export class TranscriptionService extends EventEmitter {
       } else {
         console.log(`✅ [TRANSCRIPTION-SERVICE] Transcrição salva no banco (${speaker}):`, segment.text.substring(0, 50) + '...');
       }
-      
+
     } catch (error) {
       console.error('❌ Erro no banco de dados ao salvar transcrição:', error);
       logError(
@@ -370,9 +403,9 @@ export class TranscriptionService extends EventEmitter {
         .select('name')
         .eq('id', participantId)
         .single();
-      
+
       return data?.name || participantId;
-      
+
     } catch (error) {
       return participantId;
     }
@@ -382,7 +415,7 @@ export class TranscriptionService extends EventEmitter {
     try {
       const activeParticipants = this.activeRooms.get(roomName)?.size || 0;
       const bufferSize = this.audioBuffers.size;
-      
+
       return {
         roomName,
         activeParticipants,
@@ -390,7 +423,7 @@ export class TranscriptionService extends EventEmitter {
         isActive: this.activeRooms.has(roomName),
         livekitConnected: false // Por enquanto false até resolver SSL
       };
-      
+
     } catch (error) {
       console.error('Erro ao obter estatísticas:', error);
       return null;

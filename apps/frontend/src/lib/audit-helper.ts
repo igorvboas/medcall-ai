@@ -4,7 +4,7 @@
  * Também suporta inserção direta no Supabase para API routes
  */
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || process.env.GATEWAY_URL || 'http://localhost:3001';
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001';
 
 interface AuditLogParams {
   user_id?: string;
@@ -96,14 +96,14 @@ export function getAuditContext(request?: Request): {
 export function sanitizeData(data: Record<string, any>): Record<string, any> {
   const sensitiveFields = ['password', 'senha', 'token', 'secret', 'api_key', 'apikey'];
   const sanitized = { ...data };
-  
+
   for (const key of Object.keys(sanitized)) {
     const lowerKey = key.toLowerCase();
     if (sensitiveFields.some(sf => lowerKey.includes(sf))) {
       sanitized[key] = '[REDACTED]';
     }
   }
-  
+
   return sanitized;
 }
 

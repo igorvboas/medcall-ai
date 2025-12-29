@@ -15,6 +15,7 @@ import auditRoutes from './routes/audit';
 import recordingsRoutes from './routes/recordings';
 import { PCMTranscriptionHandler } from './websocket/pcmTranscriptionHandler';
 import { setupRoomsWebSocket, getOpenAIConnectionsStats } from './websocket/rooms';
+import { setupPresencialWebSocket } from './websocket/presencial';
 
 // Middlewares de segurança
 import { corsMiddleware, getCorsOrigins } from './middleware/cors';
@@ -43,6 +44,9 @@ const pcmHandler = new PCMTranscriptionHandler();
 
 // Configurar handlers de salas WebRTC
 setupRoomsWebSocket(io);
+
+// ✅ Configurar handlers de consultas presenciais
+setupPresencialWebSocket(io);
 
 // Passar referência do Socket.IO para as rotas REST de rooms (para notificações admin)
 setSocketIO(io);
@@ -149,7 +153,7 @@ app.get('/api/pcm-transcription/health', (req, res) => {
       openai_key: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
     }
   };
-  
+
   res.json(health);
 });
 
@@ -269,7 +273,7 @@ process.on('SIGINT', () => {
   console.log('📴 SIGINT recebido, encerrando servidor...');
   pcmHandler.destroy();
   httpServer.close(() => {
-    console.log('✅ Servidor encerrado com sucesso');  
+    console.log('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
 });
