@@ -851,10 +851,12 @@ export function CreateConsultationRoom({
 
             {/* Ícone circular */}
             <div className="icon-circle-container">
-              <div className="icon-circle">
-                <svg viewBox="0 0 61 61" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5.08333 5.08333H55.9167V43.7675H30.5V55.9167M5.08333 33.0417H55.9167M28.6192 5.10875H50.0708V23.8156H45.8458L28.6192 5.10875Z" stroke="currentColor" strokeWidth="3.8125" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              <div className="icon-circle cam-mic-circle">
+                <img 
+                  src="/cam-mic.svg" 
+                  alt="Câmera e Microfone" 
+                  className="cam-mic-icon"
+                />
               </div>
             </div>
 

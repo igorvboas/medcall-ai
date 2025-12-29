@@ -2077,7 +2077,7 @@
   padding: 0 !important;
   background: transparent;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
   gap: 16px;
   box-sizing: border-box !important;
   width: 100% !important;
@@ -2247,7 +2247,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-width: 220px !important;
+  min-width: 320px !important;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
@@ -2493,8 +2493,8 @@
   border: 1px solid rgba(27, 66, 102, 0.4);
   color: #1B4266;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
@@ -2502,6 +2502,13 @@
   box-shadow: 0 2px 6px rgba(27, 66, 102, 0.2);
   position: relative;
   overflow: hidden;
+}
+
+.ai-button svg,
+.ai-button .w-4 {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: currentColor;
 }
 
 .ai-button::before {
@@ -2525,12 +2532,12 @@
 }
 
 .edit-button {
-  background: linear-gradient(135deg, rgba(249, 250, 251, 0.8) 0%, rgba(243, 244, 246, 0.8) 100%);
-  border: 1px solid rgba(107, 114, 128, 0.2);
-  color: #6b7280;
+  background: linear-gradient(135deg, rgba(249, 250, 251, 0.8) 0%, rgba(243, 244, 246, 0.8) 100%) !important;
+  border: 1px solid rgba(27, 66, 102, 0.2) !important;
+  color: #1B4266 !important;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
@@ -2540,11 +2547,19 @@
   overflow: hidden;
 }
 
+.edit-button svg,
+.edit-button .w-4 {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: #1B4266 !important;
+  color: #1B4266 !important;
+}
+
 .edit-button::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
@@ -2552,7 +2567,7 @@
 
 .edit-button:hover {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.2);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.2);
   color: white;
 }
 
@@ -2975,27 +2990,7 @@
   background: #f9fafb;
 }
 
-.edit-button {
-  background: #edd2bd;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.edit-button:hover {
-  background: #edd2bd;
-  transform: translateY(-1px);
-}
-
-.edit-button:active {
-  transform: translateY(0);
-}
+/* Definição duplicada de .edit-button removida - usando a definição principal acima */
 
 .empty-row {
   text-align: center;

@@ -288,6 +288,19 @@
   filter: brightness(0) saturate(100%) invert(16%) sepia(44%) saturate(1000%) hue-rotate(175deg) brightness(0.95) contrast(1.1);
 }
 
+/* SVG cam-mic já tem o background incluído, então deve ocupar todo o espaço */
+.icon-circle img.cam-mic-icon {
+  width: 155px;
+  height: 155px;
+  object-fit: contain;
+  filter: none;
+}
+
+.icon-circle.cam-mic-circle {
+  background: transparent;
+  border-radius: 0;
+}
+
 /* Checkbox de consentimento */
 .consent-checkbox-figma {
   display: flex;

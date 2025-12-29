@@ -6507,8 +6507,8 @@ function ConsultasPageContent() {
     }
 
     // Se selectedSection for null e não há solução selecionada, mostrar a tela intermediária
-    // Se há uma solução selecionada, renderConsultationContent vai determinar qual tela mostrar
-    // A tela intermediária só aparece quando não há solução selecionada E selectedSection é null
+    // Se há uma solução selecionada (solucao_etapa), renderConsultationContent vai determinar qual tela mostrar
+    // A tela intermediária (overview) só aparece quando não há solução selecionada E selectedSection é null
     if (selectedSection === null && !forceShowSolutionSelection && !consultaDetails.solucao_etapa) {
       return (
         <ConsultationDetailsOverview
@@ -6598,7 +6598,15 @@ function ConsultasPageContent() {
           <div className="consultation-details-overview-header">
             <button 
               className="back-button"
-              onClick={() => setSelectedSection(null)}
+              onClick={() => {
+                setSelectedSection(null);
+                // Remover o parâmetro section da URL se existir
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('section');
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               <ArrowLeft className="w-5 h-5" />
