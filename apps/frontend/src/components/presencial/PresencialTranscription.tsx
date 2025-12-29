@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Stethoscope, User } from 'lucide-react';
 import { formatDuration } from '@/lib/audioUtils';
 
 interface Transcription {
@@ -51,7 +52,17 @@ export function PresencialTranscription({
                         >
                             <div className="transcription-header-item">
                                 <span className="speaker-name">
-                                    {t.speaker === 'doctor' ? `🩺 ${doctorName}` : `👤 ${patientName}`}
+                                    {t.speaker === 'doctor' ? (
+                                        <>
+                                            <Stethoscope className="speaker-icon" size={16} />
+                                            {doctorName}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <User className="speaker-icon" size={16} />
+                                            {patientName}
+                                        </>
+                                    )}
                                 </span>
                                 <span className="timestamp">
                                     {new Date(t.timestamp).toLocaleTimeString('pt-BR')}
@@ -70,42 +81,45 @@ export function PresencialTranscription({
           height: 100%;
           background: white;
           border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
           overflow: hidden;
+          border: 1px solid #E5E7EB;
         }
         
         .transcription-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 16px 20px;
-          border-bottom: 2px solid #e5e7eb;
-          background: #f9fafb;
+          padding: 20px 24px;
+          border-bottom: 2px solid #E5E7EB;
+          background: #F9FAFB;
         }
         
         .transcription-header h3 {
           margin: 0;
-          font-size: 18px;
-          font-weight: 600;
-          color: #111827;
+          font-size: 20px;
+          font-weight: 700;
+          color: #1B4266;
         }
         
         .transcription-count {
           font-size: 14px;
-          color: #6b7280;
+          color: #1B4266;
           background: white;
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-weight: 500;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-weight: 600;
+          border: 1px solid #E5E7EB;
         }
         
         .transcription-container {
           flex: 1;
           overflow-y: auto;
-          padding: 20px;
+          padding: 24px;
           display: flex;
           flex-direction: column;
           gap: 16px;
+          background: #FAFBFC;
         }
         
         .empty-state {
@@ -114,74 +128,88 @@ export function PresencialTranscription({
           align-items: center;
           justify-content: center;
           height: 100%;
-          color: #9ca3af;
+          color: #6b7280;
         }
         
         .empty-state p {
           margin: 4px 0;
           text-align: center;
+          font-size: 16px;
         }
         
         .empty-state .hint {
           font-size: 14px;
+          color: #9ca3af;
         }
         
         .transcription-item {
-          padding: 12px 16px;
-          border-radius: 8px;
-          border-left: 4px solid #e5e7eb;
+          padding: 16px 20px;
+          border-radius: 10px;
+          border-left: 4px solid #E5E7EB;
+          background: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
         .transcription-item.doctor {
-          background: #eff6ff;
-          border-left-color: #3b82f6;
+          background: #EBF5FF;
+          border-left-color: #1B4266;
         }
         
         .transcription-item.patient {
-          background: #f0fdf4;
-          border-left-color: #10b981;
+          background: #F0FDF4;
+          border-left-color: #10B981;
         }
         
         .transcription-header-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
         
         .speaker-name {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 600;
-          color: #374151;
+          color: #1B4266;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .speaker-icon {
+          color: #1B4266;
+          flex-shrink: 0;
         }
         
         .timestamp {
           font-size: 12px;
-          color: #9ca3af;
+          color: #6b7280;
+          font-weight: 500;
         }
         
         .transcription-text {
           margin: 0;
-          font-size: 14px;
-          line-height: 1.5;
-          color: #111827;
+          font-size: 15px;
+          line-height: 1.6;
+          color: #374151;
         }
         
         .transcription-container::-webkit-scrollbar {
-          width: 8px;
+          width: 10px;
         }
         
         .transcription-container::-webkit-scrollbar-track {
-          background: #f3f4f6;
+          background: #F3F4F6;
+          border-radius: 5px;
         }
         
         .transcription-container::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 4px;
+          background: #1B4266;
+          border-radius: 5px;
         }
         
         .transcription-container::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
+          background: #153350;
         }
       `}</style>
         </div>

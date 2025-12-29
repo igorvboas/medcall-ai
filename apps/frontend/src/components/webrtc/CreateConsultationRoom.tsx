@@ -463,7 +463,51 @@ export function CreateConsultationRoom({
         return;
       }
 
-      // ✅ CONSULTA INSTANTÂNEA: Criar sala via Socket.IO (comportamento original)
+      // ✅ CONSULTA INSTANTÂNEA
+      
+      // Se for consulta PRESENCIAL, criar via API e redirecionar para página presencial
+      if (consultationType === 'presencial') {
+        const { getCurrentUser } = await import('@/lib/supabase');
+        const user = await getCurrentUser();
+        const userAuth = user?.id || null;
+
+        if (!userAuth) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        // Criar consulta presencial via API
+        const response = await fetch('/api/consultations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id: selectedPatient,
+            patient_name: selectedPatientData.name,
+            consultation_type: 'PRESENCIAL',
+            status: 'RECORDING',
+          }),
+        });
+
+        setIsCreatingRoom(false);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao criar consulta presencial');
+        }
+
+        const consultation = await response.json();
+        console.log('✅ Consulta presencial criada:', consultation.id);
+
+        // Redirecionar para página de consulta presencial
+        const baseUrl = window.location.origin;
+        const presencialUrl = `${baseUrl}/consulta/presencial?consultationId=${consultation.id}`;
+        console.log('🚀 Redirecionando para consulta presencial:', presencialUrl);
+        window.location.href = presencialUrl;
+        return;
+      }
+
+      // ✅ CONSULTA ONLINE: Criar sala via Socket.IO (comportamento original)
       // Obter user autenticado (para buscar doctor_id no backend)
       const { getCurrentUser } = await import('@/lib/supabase');
       const user = await getCurrentUser();
@@ -828,9 +872,65 @@ export function CreateConsultationRoom({
             </label>
           </div>
 
-          {/* Card 3: Microfone do Médico */}
+          {/* Card 3: Microfone do Médico ou Agendamento */}
           <div className="consultation-card">
-            {consultationType === 'online' && creationType === 'instantanea' ? (
+            {creationType === 'agendamento' ? (
+              <>
+                <div className="card-title-wrapper">
+                  <h2 className="card-title">Data e Horário do Agendamento</h2>
+                  <span className="card-title-asterisk">*</span>
+                </div>
+
+                {/* Campo de Data */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label htmlFor="scheduled-date" className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 500, color: '#374151' }}>
+                    Data da Consulta
+                  </label>
+                  <input
+                    type="date"
+                    id="scheduled-date"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    className="form-select-figma"
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    style={{ width: '100%', padding: '12px', fontSize: '14px', border: '1px solid #D1D5DB', borderRadius: '8px' }}
+                  />
+                </div>
+
+                {/* Campo de Hora */}
+                <div>
+                  <label htmlFor="scheduled-time" className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 500, color: '#374151' }}>
+                    Horário da Consulta
+                  </label>
+                  <input
+                    type="time"
+                    id="scheduled-time"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="form-select-figma"
+                    required
+                    style={{ width: '100%', padding: '12px', fontSize: '14px', border: '1px solid #D1D5DB', borderRadius: '8px' }}
+                  />
+                </div>
+
+                {/* Ícone circular do calendário */}
+                <div className="icon-circle-container">
+                  <div className="icon-circle">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '32px', height: '32px', color: '#1B4266' }}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <p className="help-text">
+                  Selecione a data e horário para agendar a consulta
+                </p>
+              </>
+            ) : consultationType === 'online' && creationType === 'instantanea' ? (
               <>
                 <div className="card-title-wrapper">
                   <h2 className="card-title">Microfone do Médico</h2>
@@ -886,20 +986,44 @@ export function CreateConsultationRoom({
           </div>
       </form>
 
-      {/* Botões de ação */}
-      <div className="action-buttons-container">
-        {!isFromAgendamento && (
+      {/* Seletor de tipo de consulta */}
+      {!isFromAgendamento && (
+        <div style={{ 
+          display: 'flex', 
+          gap: '12px', 
+          justifyContent: 'center', 
+          marginTop: '30px',
+          marginBottom: '20px'
+        }}>
           <button
             type="button"
-            onClick={() => setCreationType('agendamento')}
-            className="btn-agendar"
+            onClick={() => {
+              setCreationType('instantanea');
+              setScheduledDate('');
+              setScheduledTime('');
+            }}
+            className={creationType === 'instantanea' ? 'consultation-type-btn active' : 'consultation-type-btn'}
+            disabled={isCreatingRoom}
+          >
+            Consulta Imediata
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCreationType('agendamento');
+              setSelectedMicrophone('');
+            }}
+            className={creationType === 'agendamento' ? 'consultation-type-btn active' : 'consultation-type-btn'}
             disabled={isCreatingRoom}
           >
             <img src="/calendar.svg" alt="Calendário" className="btn-icon-calendar" />
             Agendar Consulta
           </button>
-        )}
-        
+        </div>
+      )}
+
+      {/* Botões de ação */}
+      <div className="action-buttons-container">
         <button
           type="submit"
           form="consultation-form"

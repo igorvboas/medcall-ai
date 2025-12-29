@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Stethoscope, User, AlertTriangle } from 'lucide-react';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 
 interface AudioDevice {
@@ -113,7 +114,8 @@ export function DualMicrophoneControl({
     if (devices.length === 0) {
         return (
             <div className="dual-microphone-control error">
-                <p>⚠️ Nenhum microfone detectado</p>
+                <AlertTriangle className="error-icon" size={32} />
+                <p>Nenhum microfone detectado</p>
                 <p className="hint">Conecte um microfone e recarregue a página</p>
             </div>
         );
@@ -123,7 +125,8 @@ export function DualMicrophoneControl({
         <div className="dual-microphone-control">
             <div className="microphone-section">
                 <div className="microphone-header">
-                    <h4>🩺 Microfone do Médico</h4>
+                    <Stethoscope className="header-icon" size={20} />
+                    <h4>Microfone do Médico</h4>
                 </div>
                 <select
                     value={doctorMic}
@@ -146,7 +149,8 @@ export function DualMicrophoneControl({
 
             <div className="microphone-section">
                 <div className="microphone-header">
-                    <h4>👤 Microfone do Paciente</h4>
+                    <User className="header-icon" size={20} />
+                    <h4>Microfone do Paciente</h4>
                 </div>
                 <select
                     value={patientMic}
@@ -169,7 +173,8 @@ export function DualMicrophoneControl({
 
             {devices.length < 2 && (
                 <div className="warning-message">
-                    ⚠️ Apenas 1 microfone detectado. O mesmo microfone será usado para médico e paciente.
+                    <AlertTriangle className="warning-icon" size={18} />
+                    <span>Apenas 1 microfone detectado. O mesmo microfone será usado para médico e paciente.</span>
                 </div>
             )}
 
@@ -178,10 +183,11 @@ export function DualMicrophoneControl({
           display: flex;
           flex-direction: column;
           gap: 24px;
-          padding: 24px;
+          padding: 32px;
           background: white;
           border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          border: 1px solid #E5E7EB;
         }
         
         .dual-microphone-control.loading,
@@ -189,60 +195,100 @@ export function DualMicrophoneControl({
           text-align: center;
           padding: 40px;
           color: #6b7280;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
         }
         
         .dual-microphone-control.error {
           color: #ef4444;
         }
         
+        .error-icon {
+          color: #ef4444;
+          margin-bottom: 8px;
+        }
+        
         .hint {
           font-size: 14px;
           margin-top: 8px;
+          color: #6b7280;
         }
         
         .microphone-section {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          padding: 20px;
-          border-radius: 8px;
-          background: #f9fafb;
+          gap: 16px;
+          padding: 24px;
+          border-radius: 10px;
+          background: #F9FAFB;
+          border: 1px solid #E5E7EB;
+        }
+        
+        .microphone-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
         
         .microphone-header h4 {
           margin: 0;
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 600;
-          color: #111827;
+          color: #1B4266;
+        }
+        
+        .header-icon {
+          color: #1B4266;
+          flex-shrink: 0;
         }
         
         .microphone-select {
-          padding: 10px 12px;
-          border: 2px solid #e5e7eb;
+          padding: 12px 16px;
+          border: 2px solid #E5E7EB;
           border-radius: 8px;
-          font-size: 14px;
+          font-size: 15px;
           background: white;
           color: #374151;
           cursor: pointer;
-          transition: border-color 0.2s;
+          transition: all 0.2s ease;
+          font-weight: 500;
         }
         
         .microphone-select:hover:not(:disabled) {
-          border-color: #3b82f6;
+          border-color: #1B4266;
+          box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
+        }
+        
+        .microphone-select:focus {
+          outline: none;
+          border-color: #1B4266;
+          box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
         }
         
         .microphone-select:disabled {
           background: #f3f4f6;
           cursor: not-allowed;
+          opacity: 0.6;
         }
         
         .warning-message {
-          padding: 12px 16px;
-          background: #fef3c7;
-          border-left: 4px solid #f59e0b;
+          padding: 14px 18px;
+          background: #FEF3C7;
+          border-left: 4px solid #F59E0B;
           border-radius: 8px;
           font-size: 14px;
-          color: #92400e;
+          color: #92400E;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .warning-icon {
+          color: #F59E0B;
+          flex-shrink: 0;
         }
       `}</style>
         </div>

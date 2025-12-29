@@ -32,38 +32,39 @@ export function AudioLevelIndicator({ level, label, isSpeaking }: AudioLevelIndi
         .audio-level-indicator {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
         
         .audio-label {
           font-size: 14px;
-          font-weight: 500;
-          color: #374151;
+          font-weight: 600;
+          color: #1B4266;
         }
         
         .level-bars {
           display: flex;
-          gap: 4px;
-          height: 24px;
+          gap: 3px;
+          height: 28px;
           align-items: flex-end;
         }
         
         .level-bar {
           flex: 1;
-          background: #e5e7eb;
-          border-radius: 2px;
+          background: #E5E7EB;
+          border-radius: 3px;
           transition: all 0.1s ease;
           min-height: 4px;
         }
         
         .level-bar.active {
-          background: #10b981;
+          background: #1B4266;
           height: 100%;
         }
         
         .level-bar.speaking {
-          background: #3b82f6;
+          background: #1B4266;
           animation: pulse 0.5s ease-in-out infinite;
+          box-shadow: 0 0 8px rgba(27, 66, 102, 0.4);
         }
         
         @keyframes pulse {
@@ -71,7 +72,7 @@ export function AudioLevelIndicator({ level, label, isSpeaking }: AudioLevelIndi
             opacity: 1;
           }
           50% {
-            opacity: 0.6;
+            opacity: 0.7;
           }
         }
       `}</style>

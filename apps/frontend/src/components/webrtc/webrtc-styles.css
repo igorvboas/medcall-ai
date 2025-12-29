@@ -432,6 +432,48 @@
   cursor: not-allowed;
 }
 
+/* Botões de tipo de consulta (toggle) */
+.consultation-type-btn {
+  width: auto;
+  min-width: 180px;
+  height: 40px;
+  padding: 0 20px;
+  background: transparent;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.consultation-type-btn:hover:not(:disabled) {
+  border-color: #1B4266;
+  color: #1B4266;
+  background: rgba(27, 66, 102, 0.05);
+}
+
+.consultation-type-btn.active {
+  background: #1B4266;
+  border-color: #1B4266;
+  color: #FFFFFF;
+}
+
+.consultation-type-btn.active:hover:not(:disabled) {
+  background: #153A5C;
+  border-color: #153A5C;
+}
+
+.consultation-type-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-icon {
   width: 23.62px;
   height: 23.62px;
