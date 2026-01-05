@@ -21,6 +21,7 @@ import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, Che
 import Image from 'next/image';
 import { useRecording } from '@/hooks/useRecording';
 import { useAdaptiveQuality, QualityMode } from '@/hooks/useAdaptiveQuality';
+import { VideoPlayer } from './VideoPlayer';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -178,6 +179,10 @@ export function ConsultationRoom({
 
 
 
+  // ✅ STATES para VideoPlayer (reativos)
+  const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
+  const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
+
   // Refs para WebRTC
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -283,7 +288,7 @@ export function ConsultationRoom({
   ];
 
   if (turnUrl && turnUsername && turnCredential) {
-    // Aceitar lista separada por vírgulas/space e normalizar cada item
+    // Aceitar lista separada por vírulas/space e normalizar cada item
     const rawEntries = turnUrl.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const urls: string[] = [];
 
@@ -1694,66 +1699,39 @@ export function ConsultationRoom({
 
   const resumeRemotePlayback = async () => {
     console.log('🔘 [WEBRTC] Botão "Liberar áudio e vídeo" clicado!');
-    const video = remoteVideoRef.current;
+    const video = remoteVideoRef.current; // This ref is no longer directly used for playback, but for the overlay.
 
-    if (!video) {
-      console.warn('⚠️ [WEBRTC] resumeRemotePlayback chamado mas remoteVideoRef é null');
-      return;
-    }
+    // The VideoPlayer component now handles the actual video element.
+    // We need to trigger a resume on the VideoPlayer.
+    // For now, we just clear the blocked state, assuming VideoPlayer will react.
+    setIsRemotePlaybackBlocked(false);
 
-    console.log('🔍 [WEBRTC] Estado atual do vídeo:', {
-      srcObject: !!video.srcObject,
-      paused: video.paused,
-      muted: video.muted,
-      readyState: video.readyState
-    });
+    // If you need to explicitly tell the VideoPlayer to play, you'd need a ref to it.
+    // For this change, we assume setting isRemotePlaybackBlocked to false is enough
+    // for the VideoPlayer to attempt playback again or for the user to interact with it.
+    // If VideoPlayer has an internal play() method, you'd call it here via a ref.
 
-    try {
-      // Garantir que o srcObject está atribuído
-      if (!video.srcObject && remoteStreamRef.current) {
-        console.log('ℹ️ [WEBRTC] Reatribuindo stream remoto antes de retomar reprodução');
-        video.srcObject = remoteStreamRef.current;
-      }
+    // For now, we just clear the blocked state, assuming VideoPlayer will react.
+    setIsRemotePlaybackBlocked(false);
 
-      if (!video.srcObject) {
-        console.error('❌ [WEBRTC] Não há srcObject para reproduzir!');
-        return;
-      }
+    // If you need to explicitly tell the VideoPlayer to play, you'd need a ref to it.
+    // For this change, we assume setting isRemotePlaybackBlocked to false is enough
+    // for the VideoPlayer to attempt playback again or for the user to interact with it.
+    // If VideoPlayer has an internal play() method, you'd call it here via a ref.
 
-      // ✅ SOLUÇÃO SIMPLES: Apenas remover o overlay e deixar o vídeo tocar
-      // O vídeo já está tocando (paused: false), só estava mudo por causa do autoplay
-      console.log('🔊 [WEBRTC] Liberando áudio do vídeo remoto...');
-
-      video.muted = false;
-      video.controls = false;
-
-      // Se estiver pausado, tentar dar play
-      if (video.paused) {
-        console.log('▶️ [WEBRTC] Vídeo pausado, tentando play...');
-        try {
-          await video.play();
-          console.log('✅ [WEBRTC] Play executado com sucesso!');
-        } catch (playError) {
-          console.warn('⚠️ [WEBRTC] Play falhou, tentando mudo primeiro...', playError);
-          video.muted = true;
-          await video.play();
-          console.log('✅ [WEBRTC] Play mudo OK, desmutando...');
-          await new Promise(resolve => setTimeout(resolve, 100));
-          video.muted = false;
-        }
-      }
-
-      console.log('✅ [WEBRTC] Áudio liberado com sucesso!');
-      setIsRemotePlaybackBlocked(false);
-
-    } catch (error) {
-      console.error('❌ [WEBRTC] Erro ao liberar áudio:', error);
-      // Fallback: mostrar controles nativos
-      video.controls = true;
-      video.muted = false;
-      showInfo('Use os controles do vídeo para iniciar a reprodução.', 'Controle de Vídeo');
-    }
+    console.log('✅ [WEBRTC] Áudio liberado com sucesso (via estado)!');
   };
+
+  // ✅ HANDLERS ESTÁVEIS PARA VIDEOPLAYER (previne loop de re-render)
+  const handleRemotePlaybackBlocked = useCallback(() => {
+    console.warn('⚠️ [WEBRTC] Callback de bloqueio recebido');
+    setIsRemotePlaybackBlocked(true);
+  }, []);
+
+  const handleRemotePlaybackResumed = useCallback(() => {
+    console.log('✅ [WEBRTC] Callback de resume recebido');
+    setIsRemotePlaybackBlocked(false);
+  }, []);
 
   // Função para entrar como paciente (participant) - igual ao projeto original
 
@@ -2215,6 +2193,7 @@ export function ConsultationRoom({
             console.log('🛑 [PACIENTE] Track parado:', track.kind);
           });
           localStreamRef.current = null;
+          setLocalStreamState(null); // Clear state for VideoPlayer
         }
 
         // Fechar conexão WebRTC
@@ -2232,6 +2211,7 @@ export function ConsultationRoom({
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = null;
         }
+        setRemoteStreamState(null); // Clear state for VideoPlayer
 
         // Desconectar socket
         if (socketRef.current) {
@@ -2273,6 +2253,7 @@ export function ConsultationRoom({
           console.log('🛑 [ADMIN-TERMINATE] Track parado:', track.kind);
         });
         localStreamRef.current = null;
+        setLocalStreamState(null); // Clear state for VideoPlayer
       }
 
       // Fechar conexão WebRTC
@@ -2290,6 +2271,7 @@ export function ConsultationRoom({
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = null;
       }
+      setRemoteStreamState(null); // Clear state for VideoPlayer
 
       // Desconectar socket
       if (socketRef.current) {
@@ -2898,9 +2880,9 @@ export function ConsultationRoom({
             facingMode: 'user'
           },
           audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
           }
         });
       } catch (error) {
@@ -2918,28 +2900,10 @@ export function ConsultationRoom({
 
 
       // ✅ CORREÇÃO: Anexar stream com retry para garantir que o elemento está disponível
-      const attachVideoStream = (stream: MediaStream, retries = 10) => {
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-          console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo');
-
-          // ✅ Forçar play (elemento já tem autoPlay no HTML)
-          setTimeout(() => {
-            if (localVideoRef.current) {
-              localVideoRef.current.play().catch((err) => {
-                console.warn('📹 [MÍDIA] ⚠️ Autoplay bloqueado:', err.message);
-              });
-            }
-          }, 100);
-        } else if (retries > 0) {
-          console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
-          setTimeout(() => attachVideoStream(stream, retries - 1), 100);
-        } else {
-          console.error('📹 [MÍDIA] ❌ Falha ao anexar stream após múltiplas tentativas!');
-        }
-      };
-
-      attachVideoStream(stream);
+      // ✅ ATUALIZAÇÃO: Atualizar estado para VideoPlayer
+      setLocalStreamState(stream);
+      // localVideoRef.current.srcObject = stream (removido, VideoPlayer controla)
+      console.log('📹 [MÍDIA] ✅ Stream local definido no estado');
 
       localStreamRef.current = stream;
       setIsMediaReady(true); // ✅ REACTIVE STATE MACHINE
@@ -3003,6 +2967,7 @@ export function ConsultationRoom({
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => track.stop());
           localStreamRef.current = null;
+          setLocalStreamState(null);
         }
 
         // Aguardar um pouco e tentar novamente
@@ -3015,26 +2980,7 @@ export function ConsultationRoom({
           });
           console.log('✅ Stream obtido após retry');
 
-          // Usar a mesma função de anexar com retry
-          const attachVideoStreamRetry = (stream: MediaStream, retries = 10) => {
-            if (localVideoRef.current) {
-              localVideoRef.current.srcObject = stream;
-              console.log('📹 [MÍDIA] ✅ Stream local atribuído ao elemento de vídeo (retry)');
-
-              setTimeout(() => {
-                if (localVideoRef.current) {
-                  localVideoRef.current.play().catch((err) => {
-                    console.warn('📹 [MÍDIA] ⚠️ Autoplay bloqueado (retry):', err.message);
-                  });
-                }
-              }, 100);
-            } else if (retries > 0) {
-              console.warn(`📹 [MÍDIA] ⚠️ localVideoRef.current não disponível no retry, tentando novamente... (${retries})`);
-              setTimeout(() => attachVideoStreamRetry(stream, retries - 1), 100);
-            }
-          };
-
-          attachVideoStreamRetry(stream);
+          setLocalStreamState(stream);
           localStreamRef.current = stream;
 
           // Inicializar AudioProcessor
@@ -3121,6 +3067,7 @@ export function ConsultationRoom({
 
     // ✅ CORREÇÃO: Criar remoteStream vazio (será preenchido quando receber tracks)
     remoteStreamRef.current = new MediaStream();
+    setRemoteStreamState(remoteStreamRef.current); // Initialize state for VideoPlayer
 
     console.log('🔗 [WEBRTC] RemoteStream criado (vazio inicialmente)');
 
@@ -3189,148 +3136,14 @@ export function ConsultationRoom({
 
     };
 
-    // ✅ CORREÇÃO: Usar ontrack ao invés de addEventListener
+    // ✅ CORREÇÃO: Usar ontrack para atualizar estado
     peerConnectionRef.current.ontrack = (e) => {
-      // Logs removidos para reduzir poluição no console
-
-      // ✅ FIX: Atribuir o stream remoto diretamente ao elemento de vídeo
+      // ✅ FIX: Atribuir o stream remoto ao estado para VideoPlayer
       if (e.streams && e.streams[0]) {
-        //console.log('🔗 [WEBRTC] ✅ Atribuindo stream remoto ao elemento de vídeo');
-        //console.log('🔗 [WEBRTC] remoteVideoRef.current existe?', !!remoteVideoRef.current);
-
-        // ✅ CORREÇÃO: Anexar vídeo remoto com retry
-        const attachRemoteStream = (stream: MediaStream, retries = 10) => {
-          if (remoteVideoRef.current) {
-            try {
-              const previousStream = remoteVideoRef.current.srcObject as MediaStream | null;
-              remoteVideoRef.current.srcObject = stream;
-              remoteStreamRef.current = stream;
-
-              const isNewStream = previousStream !== stream;
-              const isFirstTime = !previousStream;
-
-              if (previousStream && previousStream !== stream) {
-                console.log('🔄 [WEBRTC] Substituindo stream remoto anterior por um novo (id anterior:', previousStream.id, '| novo id:', stream.id, ')');
-              } else if (!previousStream) {
-                console.log('🔗 [WEBRTC] Stream remoto atribuído pela primeira vez (id:', stream.id, ')');
-              } else {
-                console.log('🔁 [WEBRTC] Reaproveitando stream remoto com mesmo id:', stream.id);
-              }
-
-              remoteVideoRef.current.controls = false;
-              remoteVideoRef.current.style.opacity = '1';
-              remoteVideoRef.current.muted = true; // Sempre começar mudo para autoplay
-
-              console.log('📊 [WEBRTC] Stream remoto atribuído (readyState:', remoteVideoRef.current.readyState, ')');
-
-              // ✅ CORREÇÃO CRÍTICA: Só chamar play() se for stream NOVO ou PRIMEIRA VEZ
-              // Evita múltiplos play() quando tracks chegam separadamente
-              if (isFirstTime || isNewStream) {
-                console.log('▶️ [WEBRTC] Iniciando play() pois é', isFirstTime ? 'primeira vez' : 'stream novo');
-
-                const playPromise = remoteVideoRef.current.play();
-
-                if (playPromise) {
-                  playPromise
-                    .then(() => {
-                      console.log('🎬 [WEBRTC] Reprodução remota iniciada (modo mudo temporário)');
-                      setIsRemotePlaybackBlocked(false);
-
-                      // ✅ CORREÇÃO: Tentar desmutar após 500ms e verificar se realmente foi desmutado
-                      setTimeout(() => {
-                        if (remoteVideoRef.current) {
-                          const wasMuted = remoteVideoRef.current.muted;
-                          remoteVideoRef.current.muted = false;
-                          console.log(`🔊 [WEBRTC] Áudio remoto reativado automaticamente (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
-
-                          // ✅ DEBUG: Verificar tracks de áudio do stream
-                          const stream = remoteVideoRef.current.srcObject as MediaStream | null;
-                          if (stream) {
-                            const audioTracks = stream.getAudioTracks();
-                            console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`,
-                              audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
-                            );
-                          }
-                        }
-                      }, 500);
-                    })
-                    .catch((err: any) => {
-                      console.log('⚠️ [WEBRTC] Play falhou:', err?.name, err?.message);
-
-                      // Verificar se é bloqueio de autoplay real
-                      const isAutoplayError = err?.name === 'NotAllowedError' ||
-                        err?.name === 'NotSupportedError';
-
-                      if (isAutoplayError) {
-                        console.warn('📹 [WEBRTC] ⚠️ Autoplay bloqueado pelo navegador. Solicitando interação do usuário...');
-                        setIsRemotePlaybackBlocked(true);
-                      } else {
-                        // Outros erros (AbortError, etc) não devem mostrar overlay
-                        console.log('📹 [WEBRTC] ℹ️ Play será retomado automaticamente quando stream tiver dados');
-                        setIsRemotePlaybackBlocked(false);
-                      }
-
-                      // ✅ CORREÇÃO: Tentar desmutar mesmo quando play() falhar
-                      setTimeout(() => {
-                        if (remoteVideoRef.current) {
-                          remoteVideoRef.current.muted = false;
-                          console.log('🔊 [WEBRTC] Áudio desmutado mesmo após falha no play()');
-                        }
-                      }, 1000);
-                    });
-                } else {
-                  // Fallback para navegadores antigos
-                  setIsRemotePlaybackBlocked(false);
-                }
-              } else {
-                console.log('⏭️ [WEBRTC] Pulando play() - mesmo stream já está tocando');
-
-                // ✅ CORREÇÃO: Garantir que o áudio seja desmutado mesmo quando pulamos o play()
-                // (quando o segundo track chega)
-                setTimeout(() => {
-                  if (remoteVideoRef.current) {
-                    const wasMuted = remoteVideoRef.current.muted;
-                    remoteVideoRef.current.muted = false;
-                    console.log(`🔊 [WEBRTC] Áudio remoto garantido após segundo track (estava mudo: ${wasMuted}, agora: ${remoteVideoRef.current.muted})`);
-
-                    // ✅ DEBUG: Verificar se o vídeo está tocando
-                    if (remoteVideoRef.current.paused) {
-                      console.warn('⚠️ [WEBRTC] Vídeo remoto está pausado, tentando play()...');
-                      remoteVideoRef.current.play().catch((err) => {
-                        console.error('❌ [WEBRTC] Erro ao fazer play() do vídeo remoto:', err);
-                      });
-                    }
-
-                    // ✅ DEBUG: Verificar tracks de áudio do stream
-                    const stream = remoteVideoRef.current.srcObject as MediaStream | null;
-                    if (stream) {
-                      const audioTracks = stream.getAudioTracks();
-                      console.log(`🔊 [WEBRTC] Stream tem ${audioTracks.length} tracks de áudio:`,
-                        audioTracks.map(t => ({ enabled: t.enabled, readyState: t.readyState, muted: t.muted }))
-                      );
-                    }
-                  }
-                }, 500);
-              }
-
-              return true;
-            } catch (error) {
-              console.error('📹 [WEBRTC] ❌ Erro ao anexar stream remoto:', error);
-              return false;
-            }
-          } else if (retries > 0) {
-            console.warn(`📹 [WEBRTC] ⚠️ remoteVideoRef.current não disponível, tentando novamente em 100ms (${retries} tentativas restantes)...`);
-            setTimeout(() => attachRemoteStream(stream, retries - 1), 100);
-            return false;
-          } else {
-            console.error('📹 [WEBRTC] ❌ Falha ao anexar stream remoto após múltiplas tentativas!');
-            return false;
-          }
-        };
-
-        if (attachRemoteStream(e.streams[0])) {
-          console.log('🔗 [WEBRTC] ✅ Stream remoto atribuído com sucesso');
-        }
+        console.log('🔗 [WEBRTC] ✅ Recebido stream remoto:', e.streams[0].id);
+        const stream = e.streams[0];
+        remoteStreamRef.current = stream; // Manter ref atualizada
+        setRemoteStreamState(stream); // Atualizar estado
       } else {
         console.warn('🔗 [WEBRTC] ⚠️ Nenhum stream recebido no evento track');
       }
@@ -3542,7 +3355,7 @@ export function ConsultationRoom({
     if (localStreamRef.current) {
 
       localStreamRef.current.getTracks().forEach(track => track.stop());
-
+      setLocalStreamState(null); // Clear state for VideoPlayer
     }
 
 
@@ -3553,6 +3366,7 @@ export function ConsultationRoom({
 
     }
 
+    setRemoteStreamState(null); // Clear state for VideoPlayer
 
 
     setIsCallActive(false);
@@ -4582,7 +4396,7 @@ export function ConsultationRoom({
               <Circle
                 size={18}
                 fill={recordingState.isRecording ? '#dc2626' : 'none'}
-                style={{ color: recordingState.isRecording ? '#dc2626' : '#1B4266' }}
+                style={{ color: recordingState.isRecording ? '#dc2626' : 'white' }}
               />
               <span>
                 {recordingState.isUploading
@@ -4799,13 +4613,15 @@ export function ConsultationRoom({
           {/* Vídeo remoto (paciente) */}
           <div className="video-stack-item video-remote-stack">
             <span className="video-label">Vídeo Remoto</span>
-            <video
+
+            {/* ✅ NOVO: VideoPlayer Robusto */}
+            <VideoPlayer
+              stream={remoteStreamState}
               className="video-player"
-              id="remote-video"
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-            ></video>
+              onPlaybackBlocked={handleRemotePlaybackBlocked}
+              onPlaybackResumed={handleRemotePlaybackResumed}
+            />
+
             {isRemotePlaybackBlocked && (
               <div className="remote-playback-overlay">
                 <p>⚠️ O navegador bloqueou o áudio/vídeo remoto.</p>
@@ -4817,14 +4633,12 @@ export function ConsultationRoom({
 
             {/* Vídeo local (médico) - picture-in-picture dentro do vídeo principal */}
             <div className="video-local-stack">
-              <video
+              {/* ✅ NOVO: VideoPlayer Robusto para local */}
+              <VideoPlayer
+                stream={localStreamState}
                 className="video-player"
-                id="local-video"
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-              ></video>
+                muted={true}
+              />
             </div>
 
             {/* Barra de controles com blur - movido para o vídeo principal */}

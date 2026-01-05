@@ -77,7 +77,7 @@ export function VideoPlayer({
                 videoRef.current.srcObject = null;
             }
         };
-    }, [stream, muted, onPlaybackBlocked, onPlaybackResumed]);
+    }, [stream, muted]); // ✅ Removed callbacks from deps to avoid loop
 
     // ✅ Handler para usuário clicar e desbloquear
     const handleClick = async () => {
