@@ -934,9 +934,6 @@ export function ConsultationRoom({
 
           reconnectionAttempts: Infinity // tentar infinitamente
 
-<<<<<<< HEAD
-          reconnectionAttempts: Infinity // tentar infinitamente
-
         }
 
       );
@@ -949,42 +946,6 @@ export function ConsultationRoom({
 
         setIsConnected(true);
         setIsSocketReady(true); // ✅ REACTIVE STATE MACHINE
-
-        setIsReconnecting(false); // ✅ Desativar indicador de reconexão
-
-        setupSocketListeners();
-
-      });
-
-
-
-      socketRef.current.on('connect_error', (error: any) => {
-
-        console.error('❌ Erro ao conectar:', error);
-
-
-        // ✅ CORREÇÃO: Detectar erro de SID inválido e forçar nova conexão
-        if (error.message && (error.message.includes('websocket') || error.message.includes('sid'))) {
-          console.warn('⚠️ Erro de SID/WebSocket detectado, forçando nova conexão...');
-
-          // Limpar conexão atual
-          if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current.close();
-            socketRef.current = null;
-=======
->>>>>>> 03bdb7a338b0ee16d90f8605289b71727767b177
-          }
-
-        );
-
-
-
-      socketRef.current.on('connect', () => {
-
-        console.log('✅ Conexão estabelecida com o servidor');
-
-        setIsConnected(true);
 
         setIsReconnecting(false); // ✅ Desativar indicador de reconexão
 
@@ -2604,38 +2565,8 @@ export function ConsultationRoom({
   // WebRTC Functions
 
   const call = async () => {
-<<<<<<< HEAD
     // ✅ PERFECT NEGOTIATION: Marcar que estamos criando oferta
     makingOfferRef.current = true;
-=======
-
-    //console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
-
-
-    // Verificar se socket está conectado
-
-    if (!socketRef.current || !socketRef.current.connected) {
-
-      showWarning('Não conectado ao servidor. Aguarde a conexão...', 'Aguardando Conexão');
-
-      return;
-
-    }
-
-
-
-    //console.log('👨‍⚕️ [MÉDICO] 1. Chamando fetchUserMedia...');
-    await fetchUserMedia();
-
-    //console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído');
-
-
-    //console.log('👨‍⚕️ [MÉDICO] 2. Chamando createPeerConnection...');
-    await createPeerConnection();
-
-    //console.log('👨‍⚕️ [MÉDICO] ✅ createPeerConnection concluído');
-
->>>>>>> 03bdb7a338b0ee16d90f8605289b71727767b177
 
     try {
       // Verificar se socket está conectado
@@ -2652,33 +2583,11 @@ export function ConsultationRoom({
       await peerConnectionRef.current!.setLocalDescription(offer);
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(offer) OK');
 
-<<<<<<< HEAD
       // Atualizar estado E ref simultaneamente
-=======
-
-
-      // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
-
->>>>>>> 03bdb7a338b0ee16d90f8605289b71727767b177
       setDidIOffer(true);
       didOfferRef.current = true;
       setIsCallActive(true);
 
-<<<<<<< HEAD
-=======
-
-
-      // ✅ AUTO-START: Iniciar transcrição automaticamente (médico)
-
-      setTimeout(() => autoStartTranscription(), 2000); // Aguardar 2s para WebRTC estabilizar
-
-
-
-      //console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
-      //console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
-
-
->>>>>>> 03bdb7a338b0ee16d90f8605289b71727767b177
       // Enviar oferta com roomId
       console.log('🔍 DEBUG [REFERENCIA] [SIGNALING] emit newOffer');
       socketRef.current.emit('newOffer', {
@@ -2688,12 +2597,7 @@ export function ConsultationRoom({
 
       console.log('👨‍⚕️ [MÉDICO] ✅ newOffer enviado');
 
-<<<<<<< HEAD
     } catch (err) {
-=======
-    } catch(err) {
-
->>>>>>> 03bdb7a338b0ee16d90f8605289b71727767b177
       console.error('👨‍⚕️ [MÉDICO] ❌ Erro:', err);
       showError('Erro ao iniciar chamada: ' + err, 'Erro na Chamada');
     } finally {
