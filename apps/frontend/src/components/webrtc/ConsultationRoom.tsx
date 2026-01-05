@@ -1920,9 +1920,9 @@ export function ConsultationRoom({
 
   // Função para inicializar transcrição - igual ao projeto original
 
-  const initializeTranscription = () => {
+  const initializeTranscription = async () => {
 
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
 
       if (transcriptionManagerRef.current && socketRef.current) {
 
@@ -1937,6 +1937,15 @@ export function ConsultationRoom({
         (window as any).currentRoomId = roomId;
 
 
+
+        // ✅ CORREÇÃO: Auto-iniciar transcrição para o médico após configurar socket
+        if (userType === 'doctor') {
+          console.log('🎙️ [MÉDICO] initializeTranscription: Iniciando transcrição automaticamente...');
+          // Aguardar um pouco para garantir que o AudioProcessor está pronto
+          setTimeout(() => {
+            autoStartTranscription();
+          }, 1000);
+        }
 
         resolve(true);
 
