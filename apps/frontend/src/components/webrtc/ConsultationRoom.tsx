@@ -2,7 +2,7 @@
 
 
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -12,11 +12,14 @@ import { TranscriptionManager } from './TranscriptionManager';
 
 import { SuggestionsPanel } from './SuggestionsPanel';
 
+import { NetworkWarning } from './NetworkWarning';
+
 import './webrtc-styles.css';
 
 import { getPatientNameById } from '@/lib/supabase';
 import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle } from 'lucide-react';
 import { useRecording } from '@/hooks/useRecording';
+import { useAdaptiveQuality, QualityMode } from '@/hooks/useAdaptiveQuality';
 import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -216,6 +219,25 @@ export function ConsultationRoom({
   // ✅ NOVO: Contador de tentativas de reconexão (para backoff exponencial)
   const reconnectAttemptsRef = useRef<number>(0);
 
+  // ✅ PERFECT NEGOTIATION: Refs para evitar "glare" (colisão de ofertas)
+  const makingOfferRef = useRef<boolean>(false);
+  const ignoreOfferRef = useRef<boolean>(false);
+  const isPoliteRef = useRef<boolean>(false); // Patient = polite, Doctor = impolite
+
+  // ✅ PERFECT NEGOTIATION: Inicializar isPoliteRef baseado no userType
+  useEffect(() => {
+    isPoliteRef.current = userType === 'patient';
+    console.log(`🔧 [PERFECT NEGOTIATION] isPolite inicializado: ${isPoliteRef.current} (userType: ${userType})`);
+  }, [userType]);
+
+  // ✅ REACTIVE STATE MACHINE: Estados para eliminar timeouts mágicos
+  const [isMediaReady, setIsMediaReady] = useState(false);
+  const [isSocketReady, setIsSocketReady] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'call' | 'rejoin' | null>(null);
+
+  // ✅ BACKPRESSURE: Estado para pausar transcrição em rede ruim
+  const [isTranscriptionPausedByNetwork, setIsTranscriptionPausedByNetwork] = useState(false);
+
 
 
   // Variáveis WebRTC
@@ -317,6 +339,60 @@ export function ConsultationRoom({
   const peerConfiguration: RTCConfiguration = {
     iceServers: iceServersState
   };
+
+  // ✅ ADAPTIVE QUALITY: Monitorar qualidade da rede e adaptar automaticamente
+  const adaptiveQuality = useAdaptiveQuality({
+    peerConnection: peerConnectionRef.current,
+    localStream: localStreamRef.current,
+    onModeChange: (mode: QualityMode, reason: string) => {
+      console.log(`📊 [AdaptiveQuality] Modo alterado: ${mode}, Razão: ${reason}`);
+      if (mode === 'audio-only') {
+        showWarning(`Conexão instável: ${reason}. Vídeo desativado temporariamente.`, 'Rede Instável');
+      } else if (mode === 'reduced') {
+        showInfo(`Qualidade de vídeo reduzida: ${reason}`, 'Adaptação de Rede');
+      }
+    },
+    onTranscriptionPause: () => {
+      console.log('⏸️ [AdaptiveQuality] Pausando transcrição por rede ruim');
+      setIsTranscriptionPausedByNetwork(true);
+      if (transcriptionManagerRef.current) {
+        transcriptionManagerRef.current.pause?.();
+      }
+    },
+    onTranscriptionResume: () => {
+      console.log('▶️ [AdaptiveQuality] Resumindo transcrição');
+      setIsTranscriptionPausedByNetwork(false);
+      if (transcriptionManagerRef.current) {
+        transcriptionManagerRef.current.resume?.();
+      }
+    },
+  });
+
+  // Expor networkQuality para compatibilidade com código existente
+  const networkQuality = {
+    status: adaptiveQuality.networkStatus,
+    packetLoss: adaptiveQuality.packetLoss,
+    roundTripTime: adaptiveQuality.roundTripTime,
+  };
+
+  // ✅ REACTIVE STATE MACHINE: Substituir setTimeout por useEffect reativo
+  // Efeito para iniciar chamada quando mídia E socket estiverem prontos
+  useEffect(() => {
+    if (pendingAction === 'call' && isMediaReady && isSocketReady && socketRef.current?.connected) {
+      console.log('✅ [REACTIVE] Condições atendidas (media + socket), iniciando chamada...');
+      setPendingAction(null);
+      call();
+    }
+  }, [pendingAction, isMediaReady, isSocketReady]);
+
+  // Efeito para rejoin quando socket estiver pronto
+  useEffect(() => {
+    if (pendingAction === 'rejoin' && isSocketReady && socketRef.current?.connected) {
+      console.log('✅ [REACTIVE] Socket pronto, re-entrando na sala...');
+      setPendingAction(null);
+      rejoinRoom();
+    }
+  }, [pendingAction, isSocketReady]);
 
   console.log('🟢 userName inicial:', userName);
 
@@ -742,12 +818,13 @@ export function ConsultationRoom({
       socketRef.current.on('connect', () => {
         console.log('✅ NOVA CONEXÃO estabelecida!');
         setIsConnected(true);
+        setIsSocketReady(true); // ✅ REACTIVE STATE MACHINE
         setIsReconnecting(false); // ✅ Desativar indicador de reconexão
         setupSocketListeners();
 
         // 6. Rejuntar à sala se já estava na sala
         if (hasJoinedRoom && roomId) {
-          setTimeout(() => rejoinRoom(), 1000);
+          setPendingAction('rejoin'); // ✅ REACTIVE: usar pendingAction ao invés de setTimeout
         }
       });
 
@@ -817,6 +894,7 @@ export function ConsultationRoom({
         console.log('✅ Conexão estabelecida com o servidor');
 
         setIsConnected(true);
+        setIsSocketReady(true); // ✅ REACTIVE STATE MACHINE
 
         setIsReconnecting(false); // ✅ Desativar indicador de reconexão
 
@@ -1405,6 +1483,9 @@ export function ConsultationRoom({
 
   const joinRoomAsHost = async () => {
 
+    // ✅ PERFECT NEGOTIATION: Médico = impolite (ignora ofertas colidindo)
+    isPoliteRef.current = false;
+
     // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
     if (isRejoiningRef.current) {
       console.warn('⚠️ joinRoomAsHost já está em execução, ignorando');
@@ -1626,6 +1707,9 @@ export function ConsultationRoom({
   // Função para entrar como paciente (participant) - igual ao projeto original
 
   const joinRoomAsParticipant = async (participantName: string) => {
+
+    // ✅ PERFECT NEGOTIATION: Paciente = polite (sempre cede em colisão)
+    isPoliteRef.current = true;
 
     // ✅ CORREÇÃO: Evitar múltiplas chamadas simultâneas
     if (isRejoiningRef.current) {
@@ -2165,18 +2249,28 @@ export function ConsultationRoom({
 
     // WebRTC listeners
 
+    // ✅ PERFECT NEGOTIATION: Handler com lógica anti-glare
     socketRef.current.on('newOfferAwaiting', (data: any) => {
+      if (data.roomId !== roomId) return;
 
-      console.log('Nova oferta recebida da sala:', data.roomId);
+      console.log('📥 Nova oferta recebida da sala:', data.roomId);
 
-      if (data.roomId === roomId) {
+      // ✅ GLARE DETECTION: Verificar colisão de ofertas
+      const pc = peerConnectionRef.current;
+      const offerCollision = Boolean(makingOfferRef.current ||
+        (pc && pc.signalingState !== 'stable'));
 
-        setRemoteUserName(data.offererUserName);
+      ignoreOfferRef.current = !(isPoliteRef.current ?? false) && offerCollision;
 
-        createAnswerButton(data);
-
+      if (ignoreOfferRef.current) {
+        console.log('⚠️ [GLARE] Peer impolite ignorando oferta colidindo (já está negociando)');
+        return;
       }
 
+      // Polite peer ou sem colisão - processar oferta normalmente
+      console.log('✅ [NEGOTIATION] Processando oferta (polite ou sem colisão)');
+      setRemoteUserName(data.offererUserName);
+      createAnswerButton(data);
     });
 
 
@@ -2420,87 +2514,45 @@ export function ConsultationRoom({
   // WebRTC Functions
 
   const call = async () => {
-
-    //console.log('👨‍⚕️ [MÉDICO] Iniciando chamada...');
-
-
-    // Verificar se socket está conectado
-
-    if (!socketRef.current || !socketRef.current.connected) {
-
-      showWarning('Não conectado ao servidor. Aguarde a conexão...', 'Aguardando Conexão');
-
-      return;
-
-    }
-
-
-
-    //console.log('👨‍⚕️ [MÉDICO] 1. Chamando fetchUserMedia...');
-    await fetchUserMedia();
-
-    //console.log('👨‍⚕️ [MÉDICO] ✅ fetchUserMedia concluído');
-
-
-    //console.log('👨‍⚕️ [MÉDICO] 2. Chamando createPeerConnection...');
-    await createPeerConnection();
-
-    //console.log('👨‍⚕️ [MÉDICO] ✅ createPeerConnection concluído');
-
+    // ✅ PERFECT NEGOTIATION: Marcar que estamos criando oferta
+    makingOfferRef.current = true;
 
     try {
+      // Verificar se socket está conectado
+      if (!socketRef.current || !socketRef.current.connected) {
+        showWarning('Não conectado ao servidor. Aguarde a conexão...', 'Aguardando Conexão');
+        return;
+      }
 
-      //console.log('👨‍⚕️ [MÉDICO] 3. Criando oferta para sala:', roomId);
+      await fetchUserMedia();
+      await createPeerConnection();
+
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] createOffer()...');
       const offer = await peerConnectionRef.current!.createOffer();
-
       await peerConnectionRef.current!.setLocalDescription(offer);
       console.log('🔍 DEBUG [REFERENCIA] [WEBRTC] setLocalDescription(offer) OK');
 
-
-
-      // ✅ CORREÇÃO: Atualizar estado E ref simultaneamente
-
+      // Atualizar estado E ref simultaneamente
       setDidIOffer(true);
-
       didOfferRef.current = true;
-
       setIsCallActive(true);
 
-
-
-      // ✅ REMOVIDO: setTimeout de autoStartTranscription
-      // Agora a transcrição é iniciada automaticamente pelo oniceconnectionstatechange
-      // quando o estado muda para 'connected' (ver createPeerConnection)
-
-
-
-      //console.log('👨‍⚕️ [MÉDICO] ✅ Offer criado, didIOffer definido como TRUE');
-      //console.log('👨‍⚕️ [MÉDICO] ✅ didOfferRef.current:', didOfferRef.current);
-
-
       // Enviar oferta com roomId
-
-      //console.log('👨‍⚕️ [MÉDICO] 4. Enviando newOffer...');
       console.log('🔍 DEBUG [REFERENCIA] [SIGNALING] emit newOffer');
       socketRef.current.emit('newOffer', {
-
         roomId: roomId,
-
         offer: offer
-
       });
 
       console.log('👨‍⚕️ [MÉDICO] ✅ newOffer enviado');
 
     } catch (err) {
-
       console.error('👨‍⚕️ [MÉDICO] ❌ Erro:', err);
-
       showError('Erro ao iniciar chamada: ' + err, 'Erro na Chamada');
-
+    } finally {
+      // ✅ PERFECT NEGOTIATION: Resetar flag após conclusão
+      makingOfferRef.current = false;
     }
-
   };
 
 
@@ -2830,6 +2882,7 @@ export function ConsultationRoom({
       attachVideoStream(stream);
 
       localStreamRef.current = stream;
+      setIsMediaReady(true); // ✅ REACTIVE STATE MACHINE
 
       // Configurar estados iniciais dos controles
       const videoTrack = stream.getVideoTracks()[0];
@@ -4023,6 +4076,12 @@ export function ConsultationRoom({
         confirmText="Autorizar Gravação"
         cancelText="Cancelar"
         variant="warning"
+      />
+
+      {/* ✅ NETWORK WARNING: Aviso de conexão instável com backpressure */}
+      <NetworkWarning
+        status={networkQuality.status}
+        packetLoss={networkQuality.packetLoss}
       />
 
       {/* ✅ GRAVAÇÃO: Indicador flutuante de gravação */}

@@ -182,20 +182,20 @@ export function useMicTransmitter() {
         audio: {
           sampleRate: 16000,
           channelCount: 1,
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: true,  // ✅ Alinhado com WebRTC para evitar stream duplicado
+          noiseSuppression: true,  // ✅ Remove ruído de fundo
+          autoGainControl: true,   // ✅ Normaliza volume
         },
       });
 
       streamRef.current = stream;
       console.log('[uMT] >> [MicTransmitter] ✅ Media stream obtained:', {
         tracks: stream.getTracks().length,
-        audio: stream.getAudioTracks().map(t => ({ 
-          kind: t.kind, 
-          label: t.label, 
+        audio: stream.getAudioTracks().map(t => ({
+          kind: t.kind,
+          label: t.label,
           enabled: t.enabled,
-          readyState: t.readyState 
+          readyState: t.readyState
         }))
       });
 
@@ -257,7 +257,7 @@ export function useMicTransmitter() {
         if (wsRef.current?.readyState === WebSocket.OPEN && !state.isMuted) {
           try {
             wsRef.current.send(event.data); // Enviar ArrayBuffer binário
-            
+
             // Log ocasional para debug
             if (buffersSentRef.current % 100 === 0) {
               console.log(`[MicTransmitter] 📊 Sent ${buffersSentRef.current} buffers, last size: ${event.data.byteLength} bytes`);
@@ -337,6 +337,17 @@ export function useMicTransmitter() {
     console.log('[uMT] >> [MicTransmitter] Unmuted');
   }, []);
 
+  // ✅ NOVO: Pause/Resume para backpressure (controle de rede)
+  const pause = useCallback(() => {
+    setState(prev => ({ ...prev, isTransmitting: false }));
+    console.log('[uMT] >> [MicTransmitter] Paused (backpressure)');
+  }, []);
+
+  const resume = useCallback(() => {
+    setState(prev => ({ ...prev, isTransmitting: true }));
+    console.log('[uMT] >> [MicTransmitter] Resumed');
+  }, []);
+
   // Cleanup ao desmontar componente
   useEffect(() => {
     return () => {
@@ -350,5 +361,7 @@ export function useMicTransmitter() {
     stop,
     mute,
     unmute,
+    pause,
+    resume,
   };
 }
