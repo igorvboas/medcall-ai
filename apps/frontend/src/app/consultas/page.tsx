@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useSearchParams, useRouter } from 'next/navigation';
-import {
+import { 
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen
 } from 'lucide-react';
+import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
 import ExamesUploadSection from '../../components/ExamesUploadSection';
 import SolutionsViewer from '../../components/solutions/SolutionsViewer';
@@ -132,9 +133,9 @@ interface AnamneseData {
 
 // Função para buscar consultas da API
 async function fetchConsultations(
-  page: number = 1,
-  limit: number = 20,
-  search: string = '',
+  page: number = 1, 
+  limit: number = 20, 
+  search: string = '', 
   status: string = 'all',
   dateFilter?: { type: 'day' | 'week' | 'month', date: string }
 ): Promise<ConsultationsResponse> {
@@ -170,14 +171,19 @@ async function fetchConsultations(
 function CollapsibleSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  // Atualizar estado quando defaultOpen mudar (para suportar activeTab)
+  useEffect(() => {
+    setIsOpen(defaultOpen);
+  }, [defaultOpen]);
+
   return (
     <div className="collapsible-section">
-      <button
+      <button 
         className="collapsible-header"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="collapsible-title">{title}</span>
-        <ArrowLeft
+        <ArrowLeft 
           className={`collapsible-icon ${isOpen ? 'open' : ''}`}
           style={{ transform: isOpen ? 'rotate(-90deg)' : 'rotate(180deg)' }}
         />
@@ -192,17 +198,17 @@ function CollapsibleSection({ title, children, defaultOpen = false }: { title: s
 }
 
 // Componente para renderizar campo de dados (agora editável)
-function DataField({
-  label,
-  value,
-  fieldPath,
+function DataField({ 
+  label, 
+  value, 
+  fieldPath, 
   consultaId,
   onSave,
   onAIEdit,
   readOnly = false
-}: {
-  label: string;
-  value: any;
+}: { 
+  label: string; 
+  value: any; 
   fieldPath?: string;
   consultaId?: string;
   onSave?: (fieldPath: string, newValue: string, consultaId: string) => Promise<void>;
@@ -221,7 +227,7 @@ function DataField({
 
   const handleSave = async () => {
     if (!fieldPath || !consultaId || !onSave) return;
-
+    
     if (editValue === String(value || '')) {
       setIsEditing(false);
       return;
@@ -273,9 +279,22 @@ function DataField({
 
     // Converter para string e verificar se é "null"
     const stringValue = String(value);
-    const displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '')
-      ? 'Não informado'
+    const displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '') 
+      ? 'Não informado' 
       : stringValue;
+
+    // Se o texto contém quebras de linha, renderizar preservando as quebras
+    if (displayValue.includes('\n')) {
+      return (
+        <div className="data-value">
+          {displayValue.split('\n').map((line, idx) => (
+            <div key={idx} style={{ marginBottom: idx < displayValue.split('\n').length - 1 ? '8px' : '0' }}>
+              {line || '\u00A0'}
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     // Renderizar valor normal
     return <p className="data-value">{displayValue}</p>;
@@ -288,7 +307,7 @@ function DataField({
         {!readOnly && (
           <div className="field-actions">
             {fieldPath && consultaId && onAIEdit && !isEditing && (
-              <button
+              <button 
                 className="ai-button"
                 onClick={() => onAIEdit(fieldPath, label)}
                 title="Editar com IA"
@@ -297,7 +316,7 @@ function DataField({
               </button>
             )}
             {fieldPath && consultaId && onSave && !isEditing && (
-              <button
+              <button 
                 className="edit-button"
                 onClick={handleEdit}
                 title="Editar campo manualmente"
@@ -308,7 +327,7 @@ function DataField({
           </div>
         )}
       </div>
-
+      
       {isEditing ? (
         <div className="edit-field">
           <textarea
@@ -319,7 +338,7 @@ function DataField({
             placeholder="Digite o novo valor..."
           />
           <div className="edit-actions">
-            <button
+            <button 
               className="save-button"
               onClick={handleSave}
               disabled={isSaving}
@@ -331,7 +350,7 @@ function DataField({
               )}
               {isSaving ? 'Salvando...' : 'Salvar'}
             </button>
-            <button
+            <button 
               className="cancel-button"
               onClick={handleCancel}
               disabled={isSaving}
@@ -349,15 +368,15 @@ function DataField({
 }
 
 // Componente para renderizar campo do cadastro de anamnese (a_cadastro_anamnese)
-function CadastroDataField({
-  label,
-  value,
+function CadastroDataField({ 
+  label, 
+  value, 
   fieldName,
   onSave,
   readOnly = false
-}: {
-  label: string;
-  value: any;
+}: { 
+  label: string; 
+  value: any; 
   fieldName: string;
   onSave: (fieldName: string, newValue: string) => Promise<void>;
   readOnly?: boolean;
@@ -394,8 +413,10 @@ function CadastroDataField({
   };
 
   const renderValue = () => {
-    if (!value || (Array.isArray(value) && value.length === 0)) {
-      return <p className="data-value data-value-empty">—</p>;
+    const isEmpty = !value || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
+    
+    if (isEmpty) {
+      return <p className="data-value data-value-empty"></p>;
     }
 
     if (Array.isArray(value)) {
@@ -416,18 +437,16 @@ function CadastroDataField({
       <div className="data-field-header">
         <label className="data-label">{label}:</label>
         {!readOnly && !isEditing && (
-          <div className="field-actions">
-            <button
-              className="edit-button"
-              onClick={handleEdit}
-              title="Editar campo"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-          </div>
+          <button 
+            className="edit-button-small"
+            onClick={handleEdit}
+            title="Editar campo"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
         )}
       </div>
-
+      
       {isEditing ? (
         <div className="edit-field">
           <textarea
@@ -438,7 +457,7 @@ function CadastroDataField({
             placeholder="Digite o novo valor..."
           />
           <div className="edit-actions">
-            <button
+            <button 
               className="save-button"
               onClick={handleSave}
               disabled={isSaving}
@@ -450,7 +469,7 @@ function CadastroDataField({
               )}
               {isSaving ? 'Salvando...' : 'Salvar'}
             </button>
-            <button
+            <button 
               className="cancel-button"
               onClick={handleCancel}
               disabled={isSaving}
@@ -475,7 +494,7 @@ interface ChatMessage {
 }
 
 // Componente da seção de Anamnese
-function AnamneseSection({
+function AnamneseSection({ 
   consultaId,
   patientId,
   selectedField,
@@ -488,8 +507,9 @@ function AnamneseSection({
   readOnly = false,
   consultaStatus,
   consultaEtapa,
-  renderViewSolutionsButton
-}: {
+  renderViewSolutionsButton,
+  activeTab
+}: { 
   consultaId: string;
   patientId?: string;
   selectedField: { fieldPath: string; label: string } | null;
@@ -503,6 +523,7 @@ function AnamneseSection({
   consultaStatus?: string;
   consultaEtapa?: string;
   renderViewSolutionsButton?: () => JSX.Element;
+  activeTab?: string;
 }) {
   const [anamneseData, setAnamneseData] = useState<AnamneseData | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -545,7 +566,7 @@ function AnamneseSection({
       // 2. Fazer requisição para o webhook
       const webhookEndpoints = getWebhookEndpoints();
       const webhookHeaders = getWebhookHeaders();
-
+      
       const webhookResponse = await fetch(webhookEndpoints.edicaoAnamnese, {
         method: 'POST',
         headers: webhookHeaders,
@@ -564,11 +585,11 @@ function AnamneseSection({
       // 3. Atualizar o estado local usando os dados da API
       if (result.success && result.data) {
         console.log('🔄 Atualizando interface com dados da API:', result.data);
-
+        
         // Determinar qual seção da anamnese atualizar baseado no fieldPath
         const pathParts = fieldPath.split('.');
         const tableName = pathParts[0];
-
+        
         // Mapear nome da tabela para a chave do estado
         const stateKeyMap: { [key: string]: string } = {
           'a_cadastro_prontuario': 'cadastro_prontuario',
@@ -582,7 +603,7 @@ function AnamneseSection({
           'a_preocupacoes_crencas': 'preocupacoes_crencas',
           'a_reino_miasma': 'reino_miasma',
         };
-
+        
         const stateKey = stateKeyMap[tableName];
         if (stateKey && anamneseData) {
           // Atualizar a seção específica com os dados completos da API
@@ -604,48 +625,23 @@ function AnamneseSection({
     }
   };
 
-  useEffect(() => {
-    fetchAnamneseData();
-    fetchSinteseAnalitica();
-  }, [consultaId]);
-
-  // Buscar dados do cadastro de anamnese quando tiver patientId
-  useEffect(() => {
-    if (patientId) {
-      fetchCadastroAnamnese();
-    }
-  }, [patientId]);
-
-  // Listener para recarregar dados de anamnese quando a IA processar
-  useEffect(() => {
-    const handleAnamneseRefresh = () => {
-      fetchAnamneseData();
-    };
-
-    window.addEventListener('force-anamnese-refresh', handleAnamneseRefresh);
-
-    return () => {
-      window.removeEventListener('force-anamnese-refresh', handleAnamneseRefresh);
-    };
-  }, []);
-
   const fetchAnamneseData = async () => {
     try {
       setLoadingDetails(true);
       setError(null);
-
+      
       // Buscar dados de todas as tabelas de anamnese
       console.log('🔍 Buscando anamnese para consulta_id:', consultaId);
       const response = await fetch(`/api/anamnese/${consultaId}`);
-
+      
       console.log('📡 Status da resposta:', response.status);
-
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
         console.error('❌ Erro da API:', errorData);
         throw new Error(errorData.error || 'Erro ao carregar dados da anamnese');
       }
-
+      
       const data = await response.json();
       console.log('✅ Dados da anamnese recebidos:', data);
       console.log('🔍 Estrutura dos dados:', {
@@ -668,7 +664,7 @@ function AnamneseSection({
     try {
       setLoadingSintese(true);
       const response = await fetch(`/api/sintese-analitica/${consultaId}`);
-
+      
       if (!response.ok) {
         // Se não encontrar, retornar null (não é erro)
         if (response.status === 404) {
@@ -677,7 +673,7 @@ function AnamneseSection({
         }
         throw new Error('Erro ao buscar síntese analítica');
       }
-
+      
       const data = await response.json();
       setSinteseAnalitica(data);
     } catch (err) {
@@ -688,16 +684,41 @@ function AnamneseSection({
     }
   };
 
+  useEffect(() => {
+    fetchAnamneseData();
+    fetchSinteseAnalitica();
+  }, [consultaId]);
+
+  // Buscar dados do cadastro de anamnese quando tiver patientId
+  useEffect(() => {
+    if (patientId) {
+      fetchCadastroAnamnese();
+    }
+  }, [patientId]);
+
+  // Listener para recarregar dados de anamnese quando a IA processar
+  useEffect(() => {
+    const handleAnamneseRefresh = () => {
+      fetchAnamneseData();
+    };
+
+    window.addEventListener('force-anamnese-refresh', handleAnamneseRefresh);
+    
+    return () => {
+      window.removeEventListener('force-anamnese-refresh', handleAnamneseRefresh);
+    };
+  }, []);
+
   // Função para buscar dados do cadastro de anamnese (a_cadastro_anamnese)
   const fetchCadastroAnamnese = async () => {
     if (!patientId) return;
-
+    
     try {
       setLoadingCadastro(true);
       console.log('🔍 Buscando cadastro anamnese para paciente_id:', patientId);
-
+      
       const response = await fetch(`/api/cadastro-anamnese/${patientId}`);
-
+      
       if (!response.ok) {
         if (response.status === 404) {
           setCadastroAnamnese(null);
@@ -705,7 +726,7 @@ function AnamneseSection({
         }
         throw new Error('Erro ao buscar cadastro de anamnese');
       }
-
+      
       const data = await response.json();
       console.log('✅ Dados do cadastro anamnese recebidos:', data);
       setCadastroAnamnese(data);
@@ -720,7 +741,7 @@ function AnamneseSection({
   // Função para salvar campo do cadastro de anamnese
   const handleSaveCadastroField = async (fieldName: string, newValue: string) => {
     if (!patientId) return;
-
+    
     try {
       const response = await fetch(`/api/cadastro-anamnese/${patientId}`, {
         method: 'PATCH',
@@ -750,21 +771,10 @@ function AnamneseSection({
     }
   };
 
-  // Mostrar loading apenas no primeiro carregamento
-  if (loading && !error) {
-    console.log('🔍 AnamneseSection - Mostrando loading...');
-    return (
-      <div className="anamnese-loading">
-        <div className="loading-spinner"></div>
-        <p>Carregando anamnese...</p>
-      </div>
-    );
-  }
-
   // Extrair dados (podem ser null) - sempre renderizar campos mesmo com erro
-  const {
-    cadastro_prontuario,
-    objetivos_queixas,
+  const { 
+    cadastro_prontuario, 
+    objetivos_queixas, 
     historico_risco,
     observacao_clinica_lab,
     historia_vida,
@@ -775,9 +785,43 @@ function AnamneseSection({
     reino_miasma
   } = anamneseData || {};
 
-  console.log('🔍 AnamneseSection - Renderizando com dados:', {
-    loading,
-    error,
+  // Mapear activeTab para o título da seção
+  const getSectionTitle = (tab: string) => {
+    const map: { [key: string]: string } = {
+      'Dados do Paciente': 'Dados do Paciente',
+      'Objetivos e Queixas': 'Objetivos e Queixas',
+      'Histórico de Risco': 'Histórico de Risco',
+      'Observação Clínica e Laboratorial': 'Observação Clínica e Laboratorial',
+      'História de vida': 'História de Vida',
+      'Setênios e Eventos': 'Setênios e Eventos',
+      'Ambiente e Contexto': 'Ambiente e Contexto',
+      'Sensação e Emoções': 'Sensação e Emoções',
+      'Preocupações e Crenças': 'Preocupações e Crenças',
+      'Reino e Miasma': 'Reino e Miasma'
+    };
+    return map[tab] || tab;
+  };
+
+  const shouldShowSection = (sectionTitle: string): boolean => {
+    if (!activeTab) {
+      return true; // Se não há tab ativa, mostrar todas
+    }
+    return getSectionTitle(activeTab) === sectionTitle;
+  };
+
+  // Mostrar loading apenas no primeiro carregamento
+  if (loading && !error) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando anamnese...</p>
+      </div>
+    );
+  }
+
+  console.log('🔍 AnamneseSection - Renderizando com dados:', { 
+    loading, 
+    error, 
     hasAnamneseData: !!anamneseData,
     anamneseDataKeys: anamneseData ? Object.keys(anamneseData) : []
   });
@@ -797,9 +841,9 @@ function AnamneseSection({
       {/* Síntese Analítica - Resumo da Anamnese */}
       {sinteseAnalitica && (
         <CollapsibleSection title="Síntese Analítica do Paciente (Resumo da Anamnese)" defaultOpen={true}>
-          <div className="anamnese-subsection" style={{
-            background: '#f8fafc',
-            padding: '20px',
+          <div className="anamnese-subsection" style={{ 
+            background: '#f8fafc', 
+            padding: '20px', 
             borderRadius: '8px',
             border: '1px solid #e2e8f0',
             marginBottom: '20px'
@@ -810,7 +854,7 @@ function AnamneseSection({
                 <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.sintese}</p>
               </div>
             )}
-
+            
             {sinteseAnalitica.tres_linhas && (
               <div style={{ marginBottom: '16px' }}>
                 <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Três Linhas</h4>
@@ -926,7 +970,8 @@ function AnamneseSection({
       )}
 
       {/* Dados do Paciente - Cadastro Anamnese */}
-      <CollapsibleSection title="Dados do Paciente" defaultOpen={false}>
+      {shouldShowSection('Dados do Paciente') && (
+      <CollapsibleSection title="Dados do Paciente" defaultOpen={true}>
         {loadingCadastro ? (
           <div className="anamnese-loading" style={{ padding: '20px', textAlign: 'center' }}>
             <div className="loading-spinner"></div>
@@ -934,534 +979,545 @@ function AnamneseSection({
           </div>
         ) : cadastroAnamnese ? (
           <>
-            <div className="anamnese-subsection">
-              <h4>Identificação</h4>
+          <div className="anamnese-subsection">
+            <h4>Identificação</h4>
               <CadastroDataField label="Nome Completo" value={cadastroAnamnese?.nome_completo} fieldName="nome_completo" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              <CadastroDataField label="CPF" value={cadastroAnamnese?.cpf} fieldName="cpf" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              <CadastroDataField label="Email" value={cadastroAnamnese?.email} fieldName="email" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              <CadastroDataField label="Gênero" value={cadastroAnamnese?.genero} fieldName="genero" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Data de Nascimento" value={cadastroAnamnese?.data_nascimento} fieldName="data_nascimento" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="CPF" value={cadastroAnamnese?.cpf} fieldName="cpf" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Estado Civil" value={cadastroAnamnese?.estado_civil} fieldName="estado_civil" onSave={handleSaveCadastroField} readOnly={readOnly} />
+              <CadastroDataField label="Email" value={cadastroAnamnese?.email} fieldName="email" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Profissão" value={cadastroAnamnese?.profissao} fieldName="profissao" onSave={handleSaveCadastroField} readOnly={readOnly} />
-            </div>
+              <CadastroDataField label="Gênero" value={cadastroAnamnese?.genero} fieldName="genero" onSave={handleSaveCadastroField} readOnly={readOnly} />
+          </div>
 
-            <div className="anamnese-subsection">
+          <div className="anamnese-subsection">
               <h4>Dados Físicos</h4>
               <CadastroDataField label="Altura" value={cadastroAnamnese?.altura} fieldName="altura" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Peso Atual" value={cadastroAnamnese?.peso_atual} fieldName="peso_atual" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Peso Antigo" value={cadastroAnamnese?.peso_antigo} fieldName="peso_antigo" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Peso Desejado" value={cadastroAnamnese?.peso_desejado} fieldName="peso_desejado" onSave={handleSaveCadastroField} readOnly={readOnly} />
-            </div>
+          </div>
 
-            <div className="anamnese-subsection">
+          <div className="anamnese-subsection">
               <h4>Objetivos e Atividade Física</h4>
               <CadastroDataField label="Objetivo Principal" value={cadastroAnamnese?.objetivo_principal} fieldName="objetivo_principal" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Pratica Atividade Física" value={cadastroAnamnese?.patrica_atividade_fisica} fieldName="patrica_atividade_fisica" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Frequência que Deseja Treinar" value={cadastroAnamnese?.frequencia_deseja_treinar} fieldName="frequencia_deseja_treinar" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Restrição de Movimento" value={cadastroAnamnese?.restricao_movimento} fieldName="restricao_movimento" onSave={handleSaveCadastroField} readOnly={readOnly} />
-            </div>
+          </div>
 
-            <div className="anamnese-subsection">
+          <div className="anamnese-subsection">
               <h4>Informações Adicionais</h4>
               <CadastroDataField label="Informações Importantes" value={cadastroAnamnese?.informacoes_importantes} fieldName="informacoes_importantes" onSave={handleSaveCadastroField} readOnly={readOnly} />
               <CadastroDataField label="Necessidade Energética Diária" value={cadastroAnamnese?.NecessidadeEnergeticaDiaria} fieldName="NecessidadeEnergeticaDiaria" onSave={handleSaveCadastroField} readOnly={readOnly} />
-            </div>
+          </div>
           </>
         ) : (
           <div className="anamnese-subsection" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
             <p>Nenhum dado de cadastro de anamnese encontrado para este paciente.</p>
           </div>
         )}
-      </CollapsibleSection>
+        </CollapsibleSection>
+      )}
 
       {/* Objetivos e Queixas */}
-      <CollapsibleSection title="Objetivos e Queixas">
-        <div className="anamnese-subsection">
-          <h4>Saúde Geral Percebida</h4>
-          <DataField label="Como Descreve a Saúde" value={objetivos_queixas?.saude_geral_percebida_como_descreve_saude} fieldPath="a_objetivos_queixas.saude_geral_percebida_como_descreve_saude" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Como Define Bem-Estar" value={objetivos_queixas?.saude_geral_percebida_como_define_bem_estar} fieldPath="a_objetivos_queixas.saude_geral_percebida_como_define_bem_estar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Avaliação da Saúde Emocional/Mental" value={objetivos_queixas?.saude_geral_percebida_avaliacao_saude_emocional_mental} fieldPath="a_objetivos_queixas.saude_geral_percebida_avaliacao_saude_emocional_mental" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Objetivos e Queixas') && (
+      <CollapsibleSection title="Objetivos e Queixas" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Saúde Geral Percebida</h4>
+            <DataField label="Como Descreve a Saúde" value={objetivos_queixas?.saude_geral_percebida_como_descreve_saude} fieldPath="a_objetivos_queixas.saude_geral_percebida_como_descreve_saude" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Como Define Bem-Estar" value={objetivos_queixas?.saude_geral_percebida_como_define_bem_estar} fieldPath="a_objetivos_queixas.saude_geral_percebida_como_define_bem_estar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Avaliação da Saúde Emocional/Mental" value={objetivos_queixas?.saude_geral_percebida_avaliacao_saude_emocional_mental} fieldPath="a_objetivos_queixas.saude_geral_percebida_avaliacao_saude_emocional_mental" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Queixas</h4>
-          <DataField label="Queixa Principal" value={objetivos_queixas?.queixa_principal} fieldPath="a_objetivos_queixas.queixa_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Sub-queixas" value={objetivos_queixas?.sub_queixas} fieldPath="a_objetivos_queixas.sub_queixas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Queixas</h4>
+            <DataField label="Queixa Principal" value={objetivos_queixas?.queixa_principal} fieldPath="a_objetivos_queixas.queixa_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Sub-queixas" value={objetivos_queixas?.sub_queixas} fieldPath="a_objetivos_queixas.sub_queixas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Impacto das Queixas na Vida</h4>
-          <DataField label="Como Afeta a Vida Diária" value={objetivos_queixas?.impacto_queixas_vida_como_afeta_vida_diaria} fieldPath="a_objetivos_queixas.impacto_queixas_vida_como_afeta_vida_diaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Limitações Causadas" value={objetivos_queixas?.impacto_queixas_vida_limitacoes_causadas} fieldPath="a_objetivos_queixas.impacto_queixas_vida_limitacoes_causadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Áreas Impactadas" value={objetivos_queixas?.impacto_queixas_vida_areas_impactadas} fieldPath="a_objetivos_queixas.impacto_queixas_vida_areas_impactadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Impacto das Queixas na Vida</h4>
+            <DataField label="Como Afeta a Vida Diária" value={objetivos_queixas?.impacto_queixas_vida_como_afeta_vida_diaria} fieldPath="a_objetivos_queixas.impacto_queixas_vida_como_afeta_vida_diaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Limitações Causadas" value={objetivos_queixas?.impacto_queixas_vida_limitacoes_causadas} fieldPath="a_objetivos_queixas.impacto_queixas_vida_limitacoes_causadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Áreas Impactadas" value={objetivos_queixas?.impacto_queixas_vida_areas_impactadas} fieldPath="a_objetivos_queixas.impacto_queixas_vida_areas_impactadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Objetivos e Expectativas</h4>
-          <DataField label="Problemas Deseja Resolver" value={objetivos_queixas?.problemas_deseja_resolver} fieldPath="a_objetivos_queixas.problemas_deseja_resolver" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Expectativa Específica" value={objetivos_queixas?.expectativas_tratamento_expectativa_especifica} fieldPath="a_objetivos_queixas.expectativas_tratamento_expectativa_especifica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Já Buscou Tratamentos Similares" value={objetivos_queixas?.expectativas_tratamento_ja_buscou_tratamentos_similares} fieldPath="a_objetivos_queixas.expectativas_tratamento_ja_buscou_tratamentos_similares" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tratamentos Anteriores" value={objetivos_queixas?.expectativas_tratamento_quais_tratamentos_anteriores} fieldPath="a_objetivos_queixas.expectativas_tratamento_quais_tratamentos_anteriores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Objetivos e Expectativas</h4>
+            <DataField label="Problemas Deseja Resolver" value={objetivos_queixas?.problemas_deseja_resolver} fieldPath="a_objetivos_queixas.problemas_deseja_resolver" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Expectativa Específica" value={objetivos_queixas?.expectativas_tratamento_expectativa_especifica} fieldPath="a_objetivos_queixas.expectativas_tratamento_expectativa_especifica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Já Buscou Tratamentos Similares" value={objetivos_queixas?.expectativas_tratamento_ja_buscou_tratamentos_similares} fieldPath="a_objetivos_queixas.expectativas_tratamento_ja_buscou_tratamentos_similares" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tratamentos Anteriores" value={objetivos_queixas?.expectativas_tratamento_quais_tratamentos_anteriores} fieldPath="a_objetivos_queixas.expectativas_tratamento_quais_tratamentos_anteriores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Compreensão sobre a Causa</h4>
-          <DataField label="Compreensão do Paciente" value={objetivos_queixas?.compreensao_sobre_causa_compreensao_paciente} fieldPath="a_objetivos_queixas.compreensao_sobre_causa_compreensao_paciente" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Fatores Externos Influenciando" value={objetivos_queixas?.compreensao_sobre_causa_fatores_externos_influenciando} fieldPath="a_objetivos_queixas.compreensao_sobre_causa_fatores_externos_influenciando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Compreensão sobre a Causa</h4>
+            <DataField label="Compreensão do Paciente" value={objetivos_queixas?.compreensao_sobre_causa_compreensao_paciente} fieldPath="a_objetivos_queixas.compreensao_sobre_causa_compreensao_paciente" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Fatores Externos Influenciando" value={objetivos_queixas?.compreensao_sobre_causa_fatores_externos_influenciando} fieldPath="a_objetivos_queixas.compreensao_sobre_causa_fatores_externos_influenciando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Projeto de Vida</h4>
-          <DataField label="Corporal" value={objetivos_queixas?.projeto_de_vida_corporal} fieldPath="a_objetivos_queixas.projeto_de_vida_corporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Espiritual" value={objetivos_queixas?.projeto_de_vida_espiritual} fieldPath="a_objetivos_queixas.projeto_de_vida_espiritual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Familiar" value={objetivos_queixas?.projeto_de_vida_familiar} fieldPath="a_objetivos_queixas.projeto_de_vida_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Profissional" value={objetivos_queixas?.projeto_de_vida_profissional} fieldPath="a_objetivos_queixas.projeto_de_vida_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Sonhos" value={objetivos_queixas?.projeto_de_vida_sonhos} fieldPath="a_objetivos_queixas.projeto_de_vida_sonhos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Projeto de Vida</h4>
+            <DataField label="Corporal" value={objetivos_queixas?.projeto_de_vida_corporal} fieldPath="a_objetivos_queixas.projeto_de_vida_corporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Espiritual" value={objetivos_queixas?.projeto_de_vida_espiritual} fieldPath="a_objetivos_queixas.projeto_de_vida_espiritual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Familiar" value={objetivos_queixas?.projeto_de_vida_familiar} fieldPath="a_objetivos_queixas.projeto_de_vida_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Profissional" value={objetivos_queixas?.projeto_de_vida_profissional} fieldPath="a_objetivos_queixas.projeto_de_vida_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Sonhos" value={objetivos_queixas?.projeto_de_vida_sonhos} fieldPath="a_objetivos_queixas.projeto_de_vida_sonhos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Motivação e Mudança</h4>
-          <DataField label="Nível de Motivação" value={objetivos_queixas?.nivel_motivacao} fieldPath="a_objetivos_queixas.nivel_motivacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Prontidão para Mudança" value={objetivos_queixas?.prontidao_para_mudanca} fieldPath="a_objetivos_queixas.prontidao_para_mudanca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Mudanças Considera Necessárias" value={objetivos_queixas?.mudancas_considera_necessarias} fieldPath="a_objetivos_queixas.mudancas_considera_necessarias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Motivação e Mudança</h4>
+            <DataField label="Nível de Motivação" value={objetivos_queixas?.nivel_motivacao} fieldPath="a_objetivos_queixas.nivel_motivacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Prontidão para Mudança" value={objetivos_queixas?.prontidao_para_mudanca} fieldPath="a_objetivos_queixas.prontidao_para_mudanca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Mudanças Considera Necessárias" value={objetivos_queixas?.mudancas_considera_necessarias} fieldPath="a_objetivos_queixas.mudancas_considera_necessarias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Histórico de Risco */}
-      <CollapsibleSection title="Histórico de Risco">
-        <div className="anamnese-subsection">
-          <h4>Doenças Atuais e Passadas</h4>
-          <DataField label="Doenças Atuais Confirmadas" value={historico_risco?.doencas_atuais_confirmadas} fieldPath="a_historico_risco.doencas_atuais_confirmadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Doenças na Infância/Adolescência" value={historico_risco?.doencas_infancia_adolescencia} fieldPath="a_historico_risco.doencas_infancia_adolescencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Histórico de Risco') && (
+      <CollapsibleSection title="Histórico de Risco" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Doenças Atuais e Passadas</h4>
+            <DataField label="Doenças Atuais Confirmadas" value={historico_risco?.doencas_atuais_confirmadas} fieldPath="a_historico_risco.doencas_atuais_confirmadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Doenças na Infância/Adolescência" value={historico_risco?.doencas_infancia_adolescencia} fieldPath="a_historico_risco.doencas_infancia_adolescencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Antecedentes Familiares</h4>
-          <DataField label="Pai" value={historico_risco?.antecedentes_familiares_pai} fieldPath="a_historico_risco.antecedentes_familiares_pai" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Mãe" value={historico_risco?.antecedentes_familiares_mae} fieldPath="a_historico_risco.antecedentes_familiares_mae" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Irmãos" value={historico_risco?.antecedentes_familiares_irmaos} fieldPath="a_historico_risco.antecedentes_familiares_irmaos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Avós Paternos" value={historico_risco?.antecedentes_familiares_avos_paternos} fieldPath="a_historico_risco.antecedentes_familiares_avos_paternos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Avós Maternos" value={historico_risco?.antecedentes_familiares_avos_maternos} fieldPath="a_historico_risco.antecedentes_familiares_avos_maternos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Causas de Morte dos Avós" value={historico_risco?.antecedentes_familiares_causas_morte_avos} fieldPath="a_historico_risco.antecedentes_familiares_causas_morte_avos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Antecedentes Familiares</h4>
+            <DataField label="Pai" value={historico_risco?.antecedentes_familiares_pai} fieldPath="a_historico_risco.antecedentes_familiares_pai" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Mãe" value={historico_risco?.antecedentes_familiares_mae} fieldPath="a_historico_risco.antecedentes_familiares_mae" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Irmãos" value={historico_risco?.antecedentes_familiares_irmaos} fieldPath="a_historico_risco.antecedentes_familiares_irmaos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Avós Paternos" value={historico_risco?.antecedentes_familiares_avos_paternos} fieldPath="a_historico_risco.antecedentes_familiares_avos_paternos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Avós Maternos" value={historico_risco?.antecedentes_familiares_avos_maternos} fieldPath="a_historico_risco.antecedentes_familiares_avos_maternos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Causas de Morte dos Avós" value={historico_risco?.antecedentes_familiares_causas_morte_avos} fieldPath="a_historico_risco.antecedentes_familiares_causas_morte_avos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Condições e Tratamentos</h4>
-          <DataField label="Condições Genéticas Conhecidas" value={historico_risco?.condicoes_geneticas_conhecidas} fieldPath="a_historico_risco.condicoes_geneticas_conhecidas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Cirurgias/Procedimentos" value={historico_risco?.cirurgias_procedimentos} fieldPath="a_historico_risco.cirurgias_procedimentos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Medicações Atuais" value={historico_risco?.medicacoes_atuais} fieldPath="a_historico_risco.medicacoes_atuais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Medicações Contínuas" value={historico_risco?.medicacoes_continuas} fieldPath="a_historico_risco.medicacoes_continuas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Já Usou Corticoides" value={historico_risco?.ja_usou_corticoides} fieldPath="a_historico_risco.ja_usou_corticoides" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Condições e Tratamentos</h4>
+            <DataField label="Condições Genéticas Conhecidas" value={historico_risco?.condicoes_geneticas_conhecidas} fieldPath="a_historico_risco.condicoes_geneticas_conhecidas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Cirurgias/Procedimentos" value={historico_risco?.cirurgias_procedimentos} fieldPath="a_historico_risco.cirurgias_procedimentos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Medicações Atuais" value={historico_risco?.medicacoes_atuais} fieldPath="a_historico_risco.medicacoes_atuais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Medicações Contínuas" value={historico_risco?.medicacoes_continuas} fieldPath="a_historico_risco.medicacoes_continuas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Já Usou Corticoides" value={historico_risco?.ja_usou_corticoides} fieldPath="a_historico_risco.ja_usou_corticoides" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Alergias e Exposições</h4>
-          <DataField label="Alergias/Intolerâncias Conhecidas" value={historico_risco?.alergias_intolerancias_conhecidas} fieldPath="a_historico_risco.alergias_intolerancias_conhecidas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Alergias/Intolerâncias Suspeitas" value={historico_risco?.alergias_intolerancias_suspeitas} fieldPath="a_historico_risco.alergias_intolerancias_suspeitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Exposição Tóxica" value={historico_risco?.exposicao_toxica} fieldPath="a_historico_risco.exposicao_toxica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Alergias e Exposições</h4>
+            <DataField label="Alergias/Intolerâncias Conhecidas" value={historico_risco?.alergias_intolerancias_conhecidas} fieldPath="a_historico_risco.alergias_intolerancias_conhecidas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Alergias/Intolerâncias Suspeitas" value={historico_risco?.alergias_intolerancias_suspeitas} fieldPath="a_historico_risco.alergias_intolerancias_suspeitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Exposição Tóxica" value={historico_risco?.exposicao_toxica} fieldPath="a_historico_risco.exposicao_toxica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Histórico de Peso</h4>
-          <DataField label="Variação ao Longo da Vida" value={historico_risco?.historico_peso_variacao_ao_longo_vida} fieldPath="a_historico_risco.historico_peso_variacao_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Peso Máximo Atingido" value={historico_risco?.historico_peso_peso_maximo_atingido} fieldPath="a_historico_risco.historico_peso_peso_maximo_atingido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Peso Mínimo Atingido" value={historico_risco?.historico_peso_peso_minimo_atingido} fieldPath="a_historico_risco.historico_peso_peso_minimo_atingido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Histórico de Peso</h4>
+            <DataField label="Variação ao Longo da Vida" value={historico_risco?.historico_peso_variacao_ao_longo_vida} fieldPath="a_historico_risco.historico_peso_variacao_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Peso Máximo Atingido" value={historico_risco?.historico_peso_peso_maximo_atingido} fieldPath="a_historico_risco.historico_peso_peso_maximo_atingido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Peso Mínimo Atingido" value={historico_risco?.historico_peso_peso_minimo_atingido} fieldPath="a_historico_risco.historico_peso_peso_minimo_atingido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Tratamentos Anteriores</h4>
-          <DataField label="Tentativas de Tratamento Anteriores" value={historico_risco?.tentativas_tratamento_anteriores} fieldPath="a_historico_risco.tentativas_tratamento_anteriores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Tratamentos Anteriores</h4>
+            <DataField label="Tentativas de Tratamento Anteriores" value={historico_risco?.tentativas_tratamento_anteriores} fieldPath="a_historico_risco.tentativas_tratamento_anteriores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Observação Clínica e Laboratorial */}
-      <CollapsibleSection title="Observação Clínica e Laboratorial">
-        <div className="anamnese-subsection">
-          <h4>Sintomas e Padrões</h4>
-          <DataField label="Quando os Sintomas Começaram" value={observacao_clinica_lab?.quando_sintomas_comecaram} fieldPath="a_observacao_clinica_lab.quando_sintomas_comecaram" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Padrão Temporal" value={observacao_clinica_lab?.ha_algum_padrao_temporal} fieldPath="a_observacao_clinica_lab.ha_algum_padrao_temporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Eventos que Agravaram" value={observacao_clinica_lab?.eventos_que_agravaram} fieldPath="a_observacao_clinica_lab.eventos_que_agravaram" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Intensidade de Dor/Desconforto" value={observacao_clinica_lab?.intensidade_dor_desconforto} fieldPath="a_observacao_clinica_lab.intensidade_dor_desconforto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Nível de Energia Diária" value={observacao_clinica_lab?.nivel_energia_diaria} fieldPath="a_observacao_clinica_lab.nivel_energia_diaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Observação Clínica e Laboratorial') && (
+      <CollapsibleSection title="Observação Clínica e Laboratorial" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Sintomas e Padrões</h4>
+            <DataField label="Quando os Sintomas Começaram" value={observacao_clinica_lab?.quando_sintomas_comecaram} fieldPath="a_observacao_clinica_lab.quando_sintomas_comecaram" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Padrão Temporal" value={observacao_clinica_lab?.ha_algum_padrao_temporal} fieldPath="a_observacao_clinica_lab.ha_algum_padrao_temporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Eventos que Agravaram" value={observacao_clinica_lab?.eventos_que_agravaram} fieldPath="a_observacao_clinica_lab.eventos_que_agravaram" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Intensidade de Dor/Desconforto" value={observacao_clinica_lab?.intensidade_dor_desconforto} fieldPath="a_observacao_clinica_lab.intensidade_dor_desconforto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Nível de Energia Diária" value={observacao_clinica_lab?.nivel_energia_diaria} fieldPath="a_observacao_clinica_lab.nivel_energia_diaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Sistema Gastrointestinal</h4>
-          <DataField label="Intestino" value={observacao_clinica_lab?.sistema_gastrointestinal_intestino} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_intestino" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Hábito Intestinal" value={observacao_clinica_lab?.sistema_gastrointestinal_habito_intestinal} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_habito_intestinal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_disbiose} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_disbiose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Língua" value={observacao_clinica_lab?.sistema_gastrointestinal_lingua} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_lingua" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Digestão" value={observacao_clinica_lab?.sistema_gastrointestinal_digestao} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_digestao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Gases" value={observacao_clinica_lab?.sistema_gastrointestinal_gases} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_gases" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Suspeita de Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_suspeita_disbiose} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_suspeita_disbiose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Sistema Gastrointestinal</h4>
+            <DataField label="Intestino" value={observacao_clinica_lab?.sistema_gastrointestinal_intestino} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_intestino" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Hábito Intestinal" value={observacao_clinica_lab?.sistema_gastrointestinal_habito_intestinal} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_habito_intestinal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_disbiose} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_disbiose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Língua" value={observacao_clinica_lab?.sistema_gastrointestinal_lingua} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_lingua" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Digestão" value={observacao_clinica_lab?.sistema_gastrointestinal_digestao} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_digestao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Gases" value={observacao_clinica_lab?.sistema_gastrointestinal_gases} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_gases" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Suspeita de Disbiose" value={observacao_clinica_lab?.sistema_gastrointestinal_suspeita_disbiose} fieldPath="a_observacao_clinica_lab.sistema_gastrointestinal_suspeita_disbiose" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Sistema Musculoesquelético</h4>
-          <DataField label="Dores" value={observacao_clinica_lab?.sistema_musculoesqueletico_dores} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_dores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Localização" value={observacao_clinica_lab?.sistema_musculoesqueletico_localizacao} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_localizacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Postura" value={observacao_clinica_lab?.sistema_musculoesqueletico_postura} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_postura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tônus Muscular" value={observacao_clinica_lab?.sistema_musculoesqueletico_tono_muscular} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_tono_muscular" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Mobilidade" value={observacao_clinica_lab?.sistema_musculoesqueletico_mobilidade} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_mobilidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Sistema Musculoesquelético</h4>
+            <DataField label="Dores" value={observacao_clinica_lab?.sistema_musculoesqueletico_dores} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_dores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Localização" value={observacao_clinica_lab?.sistema_musculoesqueletico_localizacao} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_localizacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Postura" value={observacao_clinica_lab?.sistema_musculoesqueletico_postura} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_postura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tônus Muscular" value={observacao_clinica_lab?.sistema_musculoesqueletico_tono_muscular} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_tono_muscular" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Mobilidade" value={observacao_clinica_lab?.sistema_musculoesqueletico_mobilidade} fieldPath="a_observacao_clinica_lab.sistema_musculoesqueletico_mobilidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Pele e Fâneros</h4>
-          <DataField label="Pele" value={observacao_clinica_lab?.pele_faneros_pele} fieldPath="a_observacao_clinica_lab.pele_faneros_pele" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Cabelo" value={observacao_clinica_lab?.pele_faneros_cabelo} fieldPath="a_observacao_clinica_lab.pele_faneros_cabelo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Unhas" value={observacao_clinica_lab?.pele_faneros_unhas} fieldPath="a_observacao_clinica_lab.pele_faneros_unhas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Hidratação" value={observacao_clinica_lab?.pele_faneros_hidratacao} fieldPath="a_observacao_clinica_lab.pele_faneros_hidratacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Ingestão de Água (ml/dia)" value={observacao_clinica_lab?.pele_faneros_ingestao_agua_ml_dia} fieldPath="a_observacao_clinica_lab.pele_faneros_ingestao_agua_ml_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Pele e Fâneros</h4>
+            <DataField label="Pele" value={observacao_clinica_lab?.pele_faneros_pele} fieldPath="a_observacao_clinica_lab.pele_faneros_pele" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Cabelo" value={observacao_clinica_lab?.pele_faneros_cabelo} fieldPath="a_observacao_clinica_lab.pele_faneros_cabelo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Unhas" value={observacao_clinica_lab?.pele_faneros_unhas} fieldPath="a_observacao_clinica_lab.pele_faneros_unhas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Hidratação" value={observacao_clinica_lab?.pele_faneros_hidratacao} fieldPath="a_observacao_clinica_lab.pele_faneros_hidratacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Ingestão de Água (ml/dia)" value={observacao_clinica_lab?.pele_faneros_ingestao_agua_ml_dia} fieldPath="a_observacao_clinica_lab.pele_faneros_ingestao_agua_ml_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Sistema Neurológico/Mental</h4>
-          <DataField label="Memória" value={observacao_clinica_lab?.sistema_neurologico_mental_memoria} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_memoria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Concentração" value={observacao_clinica_lab?.sistema_neurologico_mental_concentracao} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_concentracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Qualidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_qualidade} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_qualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Latência do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_latencia} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_latencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Manutenção do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_manutencao} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Profundidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_profundidade} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_profundidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Duração do Sono (horas)" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_duracao_horas} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_duracao_horas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Despertar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_despertar} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_despertar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Acorda Quantas Vezes" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_quantas_vezes} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_quantas_vezes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Acorda para Urinar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_para_urinar} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_para_urinar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Energia" value={observacao_clinica_lab?.sistema_neurologico_mental_energia} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_energia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Sistema Neurológico/Mental</h4>
+            <DataField label="Memória" value={observacao_clinica_lab?.sistema_neurologico_mental_memoria} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_memoria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Concentração" value={observacao_clinica_lab?.sistema_neurologico_mental_concentracao} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_concentracao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Qualidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_qualidade} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_qualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Latência do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_latencia} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_latencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Manutenção do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_manutencao} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_manutencao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Profundidade do Sono" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_profundidade} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_profundidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Duração do Sono (horas)" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_duracao_horas} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_duracao_horas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Despertar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_despertar} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_despertar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Acorda Quantas Vezes" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_quantas_vezes} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_quantas_vezes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Acorda para Urinar" value={observacao_clinica_lab?.sistema_neurologico_mental_sono_acorda_para_urinar} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_sono_acorda_para_urinar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Energia" value={observacao_clinica_lab?.sistema_neurologico_mental_energia} fieldPath="a_observacao_clinica_lab.sistema_neurologico_mental_energia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Sistema Endócrino</h4>
-          <h5>Tireoide</h5>
-          <DataField label="TSH" value={observacao_clinica_lab?.sistema_endocrino_tireoide_tsh} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_tsh" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Anti-TPO" value={observacao_clinica_lab?.sistema_endocrino_tireoide_anti_tpo} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_anti_tpo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="T3 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t3_livre} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_t3_livre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="T4 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t4_livre} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_t4_livre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Suspeita" value={observacao_clinica_lab?.sistema_endocrino_tireoide_suspeita} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_suspeita" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          <div className="anamnese-subsection">
+            <h4>Sistema Endócrino</h4>
+            <h5>Tireoide</h5>
+            <DataField label="TSH" value={observacao_clinica_lab?.sistema_endocrino_tireoide_tsh} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_tsh" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Anti-TPO" value={observacao_clinica_lab?.sistema_endocrino_tireoide_anti_tpo} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_anti_tpo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="T3 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t3_livre} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_t3_livre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="T4 Livre" value={observacao_clinica_lab?.sistema_endocrino_tireoide_t4_livre} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_t4_livre" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Suspeita" value={observacao_clinica_lab?.sistema_endocrino_tireoide_suspeita} fieldPath="a_observacao_clinica_lab.sistema_endocrino_tireoide_suspeita" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            
+            <h5>Insulina</h5>
+            <DataField label="Valor" value={observacao_clinica_lab?.sistema_endocrino_insulina_valor} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_valor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Glicemia" value={observacao_clinica_lab?.sistema_endocrino_insulina_glicemia} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_glicemia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Hemoglobina Glicada" value={observacao_clinica_lab?.sistema_endocrino_insulina_hemoglobina_glicada} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_hemoglobina_glicada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="HOMA-IR" value={observacao_clinica_lab?.sistema_endocrino_insulina_homa_ir} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_homa_ir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Diagnóstico" value={observacao_clinica_lab?.sistema_endocrino_insulina_diagnostico} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_diagnostico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            
+            <h5>Outros Hormônios</h5>
+            <DataField label="Cortisol" value={observacao_clinica_lab?.sistema_endocrino_cortisol} fieldPath="a_observacao_clinica_lab.sistema_endocrino_cortisol" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Estrogênio" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_estrogeno} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_estrogeno" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Progesterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_progesterona} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_progesterona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Testosterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_testosterona} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_testosterona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Impacto" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_impacto} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-          <h5>Insulina</h5>
-          <DataField label="Valor" value={observacao_clinica_lab?.sistema_endocrino_insulina_valor} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_valor" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Glicemia" value={observacao_clinica_lab?.sistema_endocrino_insulina_glicemia} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_glicemia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Hemoglobina Glicada" value={observacao_clinica_lab?.sistema_endocrino_insulina_hemoglobina_glicada} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_hemoglobina_glicada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="HOMA-IR" value={observacao_clinica_lab?.sistema_endocrino_insulina_homa_ir} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_homa_ir" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Diagnóstico" value={observacao_clinica_lab?.sistema_endocrino_insulina_diagnostico} fieldPath="a_observacao_clinica_lab.sistema_endocrino_insulina_diagnostico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          <div className="anamnese-subsection">
+            <h4>Medidas Antropométricas</h4>
+            <DataField label="Peso Atual" value={observacao_clinica_lab?.medidas_antropometricas_peso_atual} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_peso_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Altura" value={observacao_clinica_lab?.medidas_antropometricas_altura} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_altura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="IMC" value={observacao_clinica_lab?.medidas_antropometricas_imc} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_imc" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Circunferência da Cintura" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_cintura} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_cintura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Circunferência do Quadril" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_quadril} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_quadril" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Circunferência do Pescoço" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_pescoco} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_pescoco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Relação Cintura/Quadril" value={observacao_clinica_lab?.medidas_antropometricas_relacao_cintura_quadril} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_relacao_cintura_quadril" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            
+            <h5>Bioimpedância</h5>
+            <DataField label="Gordura (%)" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_percentual} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_percentual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Massa Muscular" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_massa_muscular} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_massa_muscular" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Água Corporal" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_agua_corporal} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_agua_corporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_visceral} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            
+            <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_gordura_visceral} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Esteatose Hepática" value={observacao_clinica_lab?.medidas_antropometricas_esteatose_hepatica} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_esteatose_hepatica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Pressão Arterial" value={observacao_clinica_lab?.medidas_antropometricas_pressao_arterial} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_pressao_arterial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-          <h5>Outros Hormônios</h5>
-          <DataField label="Cortisol" value={observacao_clinica_lab?.sistema_endocrino_cortisol} fieldPath="a_observacao_clinica_lab.sistema_endocrino_cortisol" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Estrogênio" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_estrogeno} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_estrogeno" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Progesterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_progesterona} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_progesterona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Testosterona" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_testosterona} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_testosterona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Impacto" value={observacao_clinica_lab?.sistema_endocrino_hormonios_sexuais_impacto} fieldPath="a_observacao_clinica_lab.sistema_endocrino_hormonios_sexuais_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Sinais Vitais Relatados</h4>
+            <DataField label="Disposição ao Acordar" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_acordar} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Disposição ao Longo do Dia" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_longo_dia} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_longo_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Libido" value={observacao_clinica_lab?.sinais_vitais_relatados_libido} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_libido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Regulação Térmica" value={observacao_clinica_lab?.sinais_vitais_relatados_regulacao_termica} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_regulacao_termica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Medidas Antropométricas</h4>
-          <DataField label="Peso Atual" value={observacao_clinica_lab?.medidas_antropometricas_peso_atual} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_peso_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Altura" value={observacao_clinica_lab?.medidas_antropometricas_altura} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_altura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="IMC" value={observacao_clinica_lab?.medidas_antropometricas_imc} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_imc" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Circunferência da Cintura" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_cintura} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_cintura" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Circunferência do Quadril" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_quadril} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_quadril" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Circunferência do Pescoço" value={observacao_clinica_lab?.medidas_antropometricas_circunferencias_pescoco} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_circunferencias_pescoco" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Relação Cintura/Quadril" value={observacao_clinica_lab?.medidas_antropometricas_relacao_cintura_quadril} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_relacao_cintura_quadril" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-
-          <h5>Bioimpedância</h5>
-          <DataField label="Gordura (%)" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_percentual} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_percentual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Massa Muscular" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_massa_muscular} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_massa_muscular" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Água Corporal" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_agua_corporal} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_agua_corporal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_bioimpedancia_gordura_visceral} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_bioimpedancia_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-
-          <DataField label="Gordura Visceral" value={observacao_clinica_lab?.medidas_antropometricas_gordura_visceral} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_gordura_visceral" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Esteatose Hepática" value={observacao_clinica_lab?.medidas_antropometricas_esteatose_hepatica} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_esteatose_hepatica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Pressão Arterial" value={observacao_clinica_lab?.medidas_antropometricas_pressao_arterial} fieldPath="a_observacao_clinica_lab.medidas_antropometricas_pressao_arterial" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Sinais Vitais Relatados</h4>
-          <DataField label="Disposição ao Acordar" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_acordar} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_acordar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Disposição ao Longo do Dia" value={observacao_clinica_lab?.sinais_vitais_relatados_disposicao_ao_longo_dia} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_disposicao_ao_longo_dia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Libido" value={observacao_clinica_lab?.sinais_vitais_relatados_libido} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_libido" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Regulação Térmica" value={observacao_clinica_lab?.sinais_vitais_relatados_regulacao_termica} fieldPath="a_observacao_clinica_lab.sinais_vitais_relatados_regulacao_termica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-
-        <div className="anamnese-subsection">
-          <h4>Hábitos Alimentares</h4>
-          <DataField label="Recordatório 24h" value={observacao_clinica_lab?.habitos_alimentares_recordatorio_24h} fieldPath="a_observacao_clinica_lab.habitos_alimentares_recordatorio_24h" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Frequência de Ultraprocessados" value={observacao_clinica_lab?.habitos_alimentares_frequencia_ultraprocessados} fieldPath="a_observacao_clinica_lab.habitos_alimentares_frequencia_ultraprocessados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Horários das Refeições" value={observacao_clinica_lab?.habitos_alimentares_horarios_refeicoes} fieldPath="a_observacao_clinica_lab.habitos_alimentares_horarios_refeicoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Come Assistindo TV/Trabalhando" value={observacao_clinica_lab?.habitos_alimentares_come_assistindo_tv_trabalhando} fieldPath="a_observacao_clinica_lab.habitos_alimentares_come_assistindo_tv_trabalhando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Hábitos Alimentares</h4>
+            <DataField label="Recordatório 24h" value={observacao_clinica_lab?.habitos_alimentares_recordatorio_24h} fieldPath="a_observacao_clinica_lab.habitos_alimentares_recordatorio_24h" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Frequência de Ultraprocessados" value={observacao_clinica_lab?.habitos_alimentares_frequencia_ultraprocessados} fieldPath="a_observacao_clinica_lab.habitos_alimentares_frequencia_ultraprocessados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Horários das Refeições" value={observacao_clinica_lab?.habitos_alimentares_horarios_refeicoes} fieldPath="a_observacao_clinica_lab.habitos_alimentares_horarios_refeicoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Come Assistindo TV/Trabalhando" value={observacao_clinica_lab?.habitos_alimentares_come_assistindo_tv_trabalhando} fieldPath="a_observacao_clinica_lab.habitos_alimentares_come_assistindo_tv_trabalhando" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* História de Vida */}
-      <CollapsibleSection title="História de Vida">
-        <div className="anamnese-subsection">
-          <h4>Narrativa e Eventos</h4>
-          <DataField label="Síntese da Narrativa" value={historia_vida?.narrativa_sintese} fieldPath="a_historia_vida.narrativa_sintese" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Eventos de Vida Marcantes" value={historia_vida?.eventos_vida_marcantes} fieldPath="a_historia_vida.eventos_vida_marcantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Episódios de Estresse Extremo/Trauma" value={historia_vida?.episodios_estresse_extremo_trauma} fieldPath="a_historia_vida.episodios_estresse_extremo_trauma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('História de Vida') && (
+        <CollapsibleSection title="História de vida" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Narrativa e Eventos</h4>
+            <DataField label="Síntese da Narrativa" value={historia_vida?.narrativa_sintese} fieldPath="a_historia_vida.narrativa_sintese" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Eventos de Vida Marcantes" value={historia_vida?.eventos_vida_marcantes} fieldPath="a_historia_vida.eventos_vida_marcantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Episódios de Estresse Extremo/Trauma" value={historia_vida?.episodios_estresse_extremo_trauma} fieldPath="a_historia_vida.episodios_estresse_extremo_trauma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Trilha do Conflito</h4>
-          <DataField label="Concepção/Gestação" value={historia_vida?.trilha_do_conflito_concepcao_gestacao} fieldPath="a_historia_vida.trilha_do_conflito_concepcao_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="0-7 anos" value={historia_vida?.trilha_do_conflito_0_7_anos} fieldPath="a_historia_vida.trilha_do_conflito_0_7_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="7-14 anos" value={historia_vida?.trilha_do_conflito_7_14_anos} fieldPath="a_historia_vida.trilha_do_conflito_7_14_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="14-21 anos" value={historia_vida?.trilha_do_conflito_14_21_anos} fieldPath="a_historia_vida.trilha_do_conflito_14_21_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="21-28 anos" value={historia_vida?.trilha_do_conflito_21_28_anos} fieldPath="a_historia_vida.trilha_do_conflito_21_28_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="28+ anos" value={historia_vida?.trilha_do_conflito_28_mais_anos} fieldPath="a_historia_vida.trilha_do_conflito_28_mais_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Trilha do Conflito</h4>
+            <DataField label="Concepção/Gestação" value={historia_vida?.trilha_do_conflito_concepcao_gestacao} fieldPath="a_historia_vida.trilha_do_conflito_concepcao_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="0-7 anos" value={historia_vida?.trilha_do_conflito_0_7_anos} fieldPath="a_historia_vida.trilha_do_conflito_0_7_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="7-14 anos" value={historia_vida?.trilha_do_conflito_7_14_anos} fieldPath="a_historia_vida.trilha_do_conflito_7_14_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="14-21 anos" value={historia_vida?.trilha_do_conflito_14_21_anos} fieldPath="a_historia_vida.trilha_do_conflito_14_21_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="21-28 anos" value={historia_vida?.trilha_do_conflito_21_28_anos} fieldPath="a_historia_vida.trilha_do_conflito_21_28_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="28+ anos" value={historia_vida?.trilha_do_conflito_28_mais_anos} fieldPath="a_historia_vida.trilha_do_conflito_28_mais_anos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Padrões e Traumas</h4>
-          <DataField label="Pontos Traumáticos" value={historia_vida?.pontos_traumaticos} fieldPath="a_historia_vida.pontos_traumaticos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Padrões Repetitivos" value={historia_vida?.padroes_repetitivos} fieldPath="a_historia_vida.padroes_repetitivos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Saúde da Mãe na Gestação" value={historia_vida?.saude_mae_gestacao} fieldPath="a_historia_vida.saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Traços/Comportamentos Repetitivos" value={historia_vida?.tracos_comportamentos_repetitivos_ao_longo_vida} fieldPath="a_historia_vida.tracos_comportamentos_repetitivos_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Padrões e Traumas</h4>
+            <DataField label="Pontos Traumáticos" value={historia_vida?.pontos_traumaticos} fieldPath="a_historia_vida.pontos_traumaticos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Padrões Repetitivos" value={historia_vida?.padroes_repetitivos} fieldPath="a_historia_vida.padroes_repetitivos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Saúde da Mãe na Gestação" value={historia_vida?.saude_mae_gestacao} fieldPath="a_historia_vida.saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Traços/Comportamentos Repetitivos" value={historia_vida?.tracos_comportamentos_repetitivos_ao_longo_vida} fieldPath="a_historia_vida.tracos_comportamentos_repetitivos_ao_longo_vida" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Superação e Identidade</h4>
-          <DataField label="Experiência de Virada" value={historia_vida?.experiencia_considera_virada} fieldPath="a_historia_vida.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Identifica com Superação ou Defesa" value={historia_vida?.identifica_com_superacao_ou_defesa} fieldPath="a_historia_vida.identifica_com_superacao_ou_defesa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Conexão com Identidade e Propósito" value={historia_vida?.conexao_identidade_proposito} fieldPath="a_historia_vida.conexao_identidade_proposito" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Algo da Infância que Lembra com Emoção Intensa" value={historia_vida?.algo_infancia_lembra_com_emocao_intensa} fieldPath="a_historia_vida.algo_infancia_lembra_com_emocao_intensa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Superação e Identidade</h4>
+            <DataField label="Experiência de Virada" value={historia_vida?.experiencia_considera_virada} fieldPath="a_historia_vida.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Identifica com Superação ou Defesa" value={historia_vida?.identifica_com_superacao_ou_defesa} fieldPath="a_historia_vida.identifica_com_superacao_ou_defesa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Conexão com Identidade e Propósito" value={historia_vida?.conexao_identidade_proposito} fieldPath="a_historia_vida.conexao_identidade_proposito" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Algo da Infância que Lembra com Emoção Intensa" value={historia_vida?.algo_infancia_lembra_com_emocao_intensa} fieldPath="a_historia_vida.algo_infancia_lembra_com_emocao_intensa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-      </CollapsibleSection>
+        </CollapsibleSection>
+      )}
 
       {/* Setênios e Eventos */}
-      <CollapsibleSection title="Setênios e Eventos">
-        <div className="anamnese-subsection">
-          <h4>Concepção e Gestação</h4>
-          <DataField label="Planejamento" value={setenios_eventos?.concepcao_gestacao_planejamento} fieldPath="a_setenios_eventos.concepcao_gestacao_planejamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Ambiente Gestacional" value={setenios_eventos?.concepcao_gestacao_ambiente_gestacional} fieldPath="a_setenios_eventos.concepcao_gestacao_ambiente_gestacional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Saúde da Mãe" value={setenios_eventos?.concepcao_gestacao_saude_mae_gestacao} fieldPath="a_setenios_eventos.concepcao_gestacao_saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tipo de Parto" value={setenios_eventos?.concepcao_gestacao_parto} fieldPath="a_setenios_eventos.concepcao_gestacao_parto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Houve Trauma de Parto" value={setenios_eventos?.concepcao_gestacao_houve_trauma_parto} fieldPath="a_setenios_eventos.concepcao_gestacao_houve_trauma_parto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Foi Desejada/Planejada" value={setenios_eventos?.concepcao_gestacao_foi_desejada_planejada} fieldPath="a_setenios_eventos.concepcao_gestacao_foi_desejada_planejada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Impacto" value={setenios_eventos?.concepcao_gestacao_impacto} fieldPath="a_setenios_eventos.concepcao_gestacao_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Setênios e Eventos') && (
+      <CollapsibleSection title="Setênios e Eventos" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Concepção e Gestação</h4>
+            <DataField label="Planejamento" value={setenios_eventos?.concepcao_gestacao_planejamento} fieldPath="a_setenios_eventos.concepcao_gestacao_planejamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Ambiente Gestacional" value={setenios_eventos?.concepcao_gestacao_ambiente_gestacional} fieldPath="a_setenios_eventos.concepcao_gestacao_ambiente_gestacional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Saúde da Mãe" value={setenios_eventos?.concepcao_gestacao_saude_mae_gestacao} fieldPath="a_setenios_eventos.concepcao_gestacao_saude_mae_gestacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tipo de Parto" value={setenios_eventos?.concepcao_gestacao_parto} fieldPath="a_setenios_eventos.concepcao_gestacao_parto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Houve Trauma de Parto" value={setenios_eventos?.concepcao_gestacao_houve_trauma_parto} fieldPath="a_setenios_eventos.concepcao_gestacao_houve_trauma_parto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Foi Desejada/Planejada" value={setenios_eventos?.concepcao_gestacao_foi_desejada_planejada} fieldPath="a_setenios_eventos.concepcao_gestacao_foi_desejada_planejada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Impacto" value={setenios_eventos?.concepcao_gestacao_impacto} fieldPath="a_setenios_eventos.concepcao_gestacao_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Primeiro Setênio (0-7 anos)</h4>
-          <DataField label="Ambiente" value={setenios_eventos?.primeiro_setenio_0_7_ambiente} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_ambiente" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Figuras Parentais - Pai" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_pai} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_figuras_parentais_pai" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Figuras Parentais - Mãe" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_mae} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_figuras_parentais_mae" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Aprendizados" value={setenios_eventos?.primeiro_setenio_0_7_aprendizados} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_aprendizados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Trauma Central" value={setenios_eventos?.primeiro_setenio_0_7_trauma_central} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_trauma_central" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Primeiro Setênio (0-7 anos)</h4>
+            <DataField label="Ambiente" value={setenios_eventos?.primeiro_setenio_0_7_ambiente} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_ambiente" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Figuras Parentais - Pai" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_pai} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_figuras_parentais_pai" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Figuras Parentais - Mãe" value={setenios_eventos?.primeiro_setenio_0_7_figuras_parentais_mae} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_figuras_parentais_mae" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Aprendizados" value={setenios_eventos?.primeiro_setenio_0_7_aprendizados} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_aprendizados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Trauma Central" value={setenios_eventos?.primeiro_setenio_0_7_trauma_central} fieldPath="a_setenios_eventos.primeiro_setenio_0_7_trauma_central" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Segundo Setênio (7-14 anos)</h4>
-          <DataField label="Eventos" value={setenios_eventos?.segundo_setenio_7_14_eventos} fieldPath="a_setenios_eventos.segundo_setenio_7_14_eventos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Desenvolvimento" value={setenios_eventos?.segundo_setenio_7_14_desenvolvimento} fieldPath="a_setenios_eventos.segundo_setenio_7_14_desenvolvimento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Corpo Físico" value={setenios_eventos?.segundo_setenio_7_14_corpo_fisico} fieldPath="a_setenios_eventos.segundo_setenio_7_14_corpo_fisico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Impacto" value={setenios_eventos?.segundo_setenio_7_14_impacto} fieldPath="a_setenios_eventos.segundo_setenio_7_14_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Segundo Setênio (7-14 anos)</h4>
+            <DataField label="Eventos" value={setenios_eventos?.segundo_setenio_7_14_eventos} fieldPath="a_setenios_eventos.segundo_setenio_7_14_eventos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Desenvolvimento" value={setenios_eventos?.segundo_setenio_7_14_desenvolvimento} fieldPath="a_setenios_eventos.segundo_setenio_7_14_desenvolvimento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Corpo Físico" value={setenios_eventos?.segundo_setenio_7_14_corpo_fisico} fieldPath="a_setenios_eventos.segundo_setenio_7_14_corpo_fisico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Impacto" value={setenios_eventos?.segundo_setenio_7_14_impacto} fieldPath="a_setenios_eventos.segundo_setenio_7_14_impacto" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Terceiro Setênio (14-21 anos)</h4>
-          <DataField label="Escolhas" value={setenios_eventos?.terceiro_setenio_14_21_escolhas} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_escolhas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Motivação" value={setenios_eventos?.terceiro_setenio_14_21_motivacao} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_motivacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Cumeeira da Casa" value={setenios_eventos?.terceiro_setenio_14_21_cumeeira_da_casa} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_cumeeira_da_casa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Terceiro Setênio (14-21 anos)</h4>
+            <DataField label="Escolhas" value={setenios_eventos?.terceiro_setenio_14_21_escolhas} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_escolhas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Motivação" value={setenios_eventos?.terceiro_setenio_14_21_motivacao} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_motivacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Cumeeira da Casa" value={setenios_eventos?.terceiro_setenio_14_21_cumeeira_da_casa} fieldPath="a_setenios_eventos.terceiro_setenio_14_21_cumeeira_da_casa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Quarto Setênio (21-28 anos)</h4>
-          <DataField label="Eventos Significativos" value={setenios_eventos?.quarto_setenio_21_28_eventos_significativos} fieldPath="a_setenios_eventos.quarto_setenio_21_28_eventos_significativos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Formação Profissional" value={setenios_eventos?.quarto_setenio_21_28_formacao_profissional} fieldPath="a_setenios_eventos.quarto_setenio_21_28_formacao_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Quarto Setênio (21-28 anos)</h4>
+            <DataField label="Eventos Significativos" value={setenios_eventos?.quarto_setenio_21_28_eventos_significativos} fieldPath="a_setenios_eventos.quarto_setenio_21_28_eventos_significativos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Formação Profissional" value={setenios_eventos?.quarto_setenio_21_28_formacao_profissional} fieldPath="a_setenios_eventos.quarto_setenio_21_28_formacao_profissional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Decênios (28-40+ anos)</h4>
-          <DataField label="Climatério/Menopausa" value={setenios_eventos?.decenios_28_40_mais_climaterio_menopausa} fieldPath="a_setenios_eventos.decenios_28_40_mais_climaterio_menopausa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Pausas Hormonais" value={setenios_eventos?.decenios_28_40_mais_pausas_hormonais} fieldPath="a_setenios_eventos.decenios_28_40_mais_pausas_hormonais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Acumulação" value={setenios_eventos?.decenios_28_40_mais_acumulacao} fieldPath="a_setenios_eventos.decenios_28_40_mais_acumulacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Estado Atual" value={setenios_eventos?.decenios_28_40_mais_estado_atual} fieldPath="a_setenios_eventos.decenios_28_40_mais_estado_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Episódios de Estresse Extremo" value={setenios_eventos?.decenios_28_40_mais_episodios_estresse_extremo} fieldPath="a_setenios_eventos.decenios_28_40_mais_episodios_estresse_extremo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Decênios (28-40+ anos)</h4>
+            <DataField label="Climatério/Menopausa" value={setenios_eventos?.decenios_28_40_mais_climaterio_menopausa} fieldPath="a_setenios_eventos.decenios_28_40_mais_climaterio_menopausa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Pausas Hormonais" value={setenios_eventos?.decenios_28_40_mais_pausas_hormonais} fieldPath="a_setenios_eventos.decenios_28_40_mais_pausas_hormonais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Acumulação" value={setenios_eventos?.decenios_28_40_mais_acumulacao} fieldPath="a_setenios_eventos.decenios_28_40_mais_acumulacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Estado Atual" value={setenios_eventos?.decenios_28_40_mais_estado_atual} fieldPath="a_setenios_eventos.decenios_28_40_mais_estado_atual" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Episódios de Estresse Extremo" value={setenios_eventos?.decenios_28_40_mais_episodios_estresse_extremo} fieldPath="a_setenios_eventos.decenios_28_40_mais_episodios_estresse_extremo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Observações Gerais</h4>
-          <DataField label="Eventos Críticos Identificados" value={setenios_eventos?.eventos_criticos_identificados} fieldPath="a_setenios_eventos.eventos_criticos_identificados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Experiência de Virada" value={setenios_eventos?.experiencia_considera_virada} fieldPath="a_setenios_eventos.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Diferenças Sazonais/Climáticas nos Sintomas" value={setenios_eventos?.diferencas_sazonais_climaticas_sintomas} fieldPath="a_setenios_eventos.diferencas_sazonais_climaticas_sintomas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Observações Gerais</h4>
+            <DataField label="Eventos Críticos Identificados" value={setenios_eventos?.eventos_criticos_identificados} fieldPath="a_setenios_eventos.eventos_criticos_identificados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Experiência de Virada" value={setenios_eventos?.experiencia_considera_virada} fieldPath="a_setenios_eventos.experiencia_considera_virada" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Diferenças Sazonais/Climáticas nos Sintomas" value={setenios_eventos?.diferencas_sazonais_climaticas_sintomas} fieldPath="a_setenios_eventos.diferencas_sazonais_climaticas_sintomas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Ambiente e Contexto */}
-      <CollapsibleSection title="Ambiente e Contexto">
-        <div className="anamnese-subsection">
-          <h4>Contexto Familiar</h4>
-          <DataField label="Estado Civil" value={ambiente_contexto?.contexto_familiar_estado_civil} fieldPath="a_ambiente_contexto.contexto_familiar_estado_civil" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Filhos" value={ambiente_contexto?.contexto_familiar_filhos} fieldPath="a_ambiente_contexto.contexto_familiar_filhos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Dinâmica Familiar" value={ambiente_contexto?.contexto_familiar_dinamica_familiar} fieldPath="a_ambiente_contexto.contexto_familiar_dinamica_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Suporte Familiar" value={ambiente_contexto?.contexto_familiar_suporte_familiar} fieldPath="a_ambiente_contexto.contexto_familiar_suporte_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Relacionamento Conjugal" value={ambiente_contexto?.contexto_familiar_relacionamento_conjugal} fieldPath="a_ambiente_contexto.contexto_familiar_relacionamento_conjugal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Divisão de Tarefas Domésticas" value={ambiente_contexto?.contexto_familiar_divisao_tarefas_domesticas} fieldPath="a_ambiente_contexto.contexto_familiar_divisao_tarefas_domesticas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Vida Sexual Ativa" value={ambiente_contexto?.contexto_familiar_vida_sexual_ativa} fieldPath="a_ambiente_contexto.contexto_familiar_vida_sexual_ativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Diálogo sobre Sobrecarga" value={ambiente_contexto?.contexto_familiar_dialogo_sobre_sobrecarga} fieldPath="a_ambiente_contexto.contexto_familiar_dialogo_sobre_sobrecarga" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Ambiente e Contexto') && (
+      <CollapsibleSection title="Ambiente e Contexto" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Contexto Familiar</h4>
+            <DataField label="Estado Civil" value={ambiente_contexto?.contexto_familiar_estado_civil} fieldPath="a_ambiente_contexto.contexto_familiar_estado_civil" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Filhos" value={ambiente_contexto?.contexto_familiar_filhos} fieldPath="a_ambiente_contexto.contexto_familiar_filhos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Dinâmica Familiar" value={ambiente_contexto?.contexto_familiar_dinamica_familiar} fieldPath="a_ambiente_contexto.contexto_familiar_dinamica_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Suporte Familiar" value={ambiente_contexto?.contexto_familiar_suporte_familiar} fieldPath="a_ambiente_contexto.contexto_familiar_suporte_familiar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Relacionamento Conjugal" value={ambiente_contexto?.contexto_familiar_relacionamento_conjugal} fieldPath="a_ambiente_contexto.contexto_familiar_relacionamento_conjugal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Divisão de Tarefas Domésticas" value={ambiente_contexto?.contexto_familiar_divisao_tarefas_domesticas} fieldPath="a_ambiente_contexto.contexto_familiar_divisao_tarefas_domesticas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Vida Sexual Ativa" value={ambiente_contexto?.contexto_familiar_vida_sexual_ativa} fieldPath="a_ambiente_contexto.contexto_familiar_vida_sexual_ativa" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Diálogo sobre Sobrecarga" value={ambiente_contexto?.contexto_familiar_dialogo_sobre_sobrecarga} fieldPath="a_ambiente_contexto.contexto_familiar_dialogo_sobre_sobrecarga" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Contexto Profissional</h4>
-          <DataField label="Área" value={ambiente_contexto?.contexto_profissional_area} fieldPath="a_ambiente_contexto.contexto_profissional_area" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Carga Horária" value={ambiente_contexto?.contexto_profissional_carga_horaria} fieldPath="a_ambiente_contexto.contexto_profissional_carga_horaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Nível de Estresse" value={ambiente_contexto?.contexto_profissional_nivel_estresse} fieldPath="a_ambiente_contexto.contexto_profissional_nivel_estresse" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Satisfação" value={ambiente_contexto?.contexto_profissional_satisfacao} fieldPath="a_ambiente_contexto.contexto_profissional_satisfacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Contexto Profissional</h4>
+            <DataField label="Área" value={ambiente_contexto?.contexto_profissional_area} fieldPath="a_ambiente_contexto.contexto_profissional_area" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Carga Horária" value={ambiente_contexto?.contexto_profissional_carga_horaria} fieldPath="a_ambiente_contexto.contexto_profissional_carga_horaria" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Nível de Estresse" value={ambiente_contexto?.contexto_profissional_nivel_estresse} fieldPath="a_ambiente_contexto.contexto_profissional_nivel_estresse" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Satisfação" value={ambiente_contexto?.contexto_profissional_satisfacao} fieldPath="a_ambiente_contexto.contexto_profissional_satisfacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Ambiente Físico</h4>
-          <DataField label="Sedentarismo" value={ambiente_contexto?.ambiente_fisico_sedentarismo} fieldPath="a_ambiente_contexto.ambiente_fisico_sedentarismo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Exposição ao Sol" value={ambiente_contexto?.ambiente_fisico_exposicao_sol} fieldPath="a_ambiente_contexto.ambiente_fisico_exposicao_sol" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Pratica Atividade Física" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_pratica} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_pratica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tipo de Atividade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tipo} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Frequência" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_frequencia} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Intensidade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_intensidade} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_intensidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tem Acompanhamento Profissional" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Ambiente Físico</h4>
+            <DataField label="Sedentarismo" value={ambiente_contexto?.ambiente_fisico_sedentarismo} fieldPath="a_ambiente_contexto.ambiente_fisico_sedentarismo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Exposição ao Sol" value={ambiente_contexto?.ambiente_fisico_exposicao_sol} fieldPath="a_ambiente_contexto.ambiente_fisico_exposicao_sol" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Pratica Atividade Física" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_pratica} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_pratica" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tipo de Atividade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tipo} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_tipo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Frequência" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_frequencia} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_frequencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Intensidade" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_intensidade} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_intensidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tem Acompanhamento Profissional" value={ambiente_contexto?.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona} fieldPath="a_ambiente_contexto.ambiente_fisico_atividade_fisica_tem_acompanhamento_profissiona" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Hábitos de Vida</h4>
-          <DataField label="Sono" value={ambiente_contexto?.habitos_vida_sono} fieldPath="a_ambiente_contexto.habitos_vida_sono" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Alimentação" value={ambiente_contexto?.habitos_vida_alimentacao} fieldPath="a_ambiente_contexto.habitos_vida_alimentacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Lazer" value={ambiente_contexto?.habitos_vida_lazer} fieldPath="a_ambiente_contexto.habitos_vida_lazer" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Espiritualidade" value={ambiente_contexto?.habitos_vida_espiritualidade} fieldPath="a_ambiente_contexto.habitos_vida_espiritualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Hábitos de Vida</h4>
+            <DataField label="Sono" value={ambiente_contexto?.habitos_vida_sono} fieldPath="a_ambiente_contexto.habitos_vida_sono" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Alimentação" value={ambiente_contexto?.habitos_vida_alimentacao} fieldPath="a_ambiente_contexto.habitos_vida_alimentacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Lazer" value={ambiente_contexto?.habitos_vida_lazer} fieldPath="a_ambiente_contexto.habitos_vida_lazer" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Espiritualidade" value={ambiente_contexto?.habitos_vida_espiritualidade} fieldPath="a_ambiente_contexto.habitos_vida_espiritualidade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Suporte Social</h4>
-          <DataField label="Tem Rede de Apoio" value={ambiente_contexto?.suporte_social_tem_rede_apoio} fieldPath="a_ambiente_contexto.suporte_social_tem_rede_apoio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Participa de Grupos Sociais" value={ambiente_contexto?.suporte_social_participa_grupos_sociais} fieldPath="a_ambiente_contexto.suporte_social_participa_grupos_sociais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Tem com Quem Desabafar" value={ambiente_contexto?.suporte_social_tem_com_quem_desabafar} fieldPath="a_ambiente_contexto.suporte_social_tem_com_quem_desabafar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Suporte Social</h4>
+            <DataField label="Tem Rede de Apoio" value={ambiente_contexto?.suporte_social_tem_rede_apoio} fieldPath="a_ambiente_contexto.suporte_social_tem_rede_apoio" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Participa de Grupos Sociais" value={ambiente_contexto?.suporte_social_participa_grupos_sociais} fieldPath="a_ambiente_contexto.suporte_social_participa_grupos_sociais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Tem com Quem Desabafar" value={ambiente_contexto?.suporte_social_tem_com_quem_desabafar} fieldPath="a_ambiente_contexto.suporte_social_tem_com_quem_desabafar" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Fatores de Risco</h4>
-          <DataField label="Fatores Estressores" value={ambiente_contexto?.fatores_estressores} fieldPath="a_ambiente_contexto.fatores_estressores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Fatores Externos à Saúde" value={ambiente_contexto?.fatores_externos_saude} fieldPath="a_ambiente_contexto.fatores_externos_saude" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Fatores de Risco</h4>
+            <DataField label="Fatores Estressores" value={ambiente_contexto?.fatores_estressores} fieldPath="a_ambiente_contexto.fatores_estressores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Fatores Externos à Saúde" value={ambiente_contexto?.fatores_externos_saude} fieldPath="a_ambiente_contexto.fatores_externos_saude" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Sensação e Emoções */}
-      <CollapsibleSection title="Sensação e Emoções">
-        <div className="anamnese-subsection">
-          <h4>Emoções e Sensações</h4>
-          <DataField label="Emoções Predominantes" value={sensacao_emocoes?.emocoes_predominantes} fieldPath="a_sensacao_emocoes.emocoes_predominantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Sensações Corporais" value={sensacao_emocoes?.sensacoes_corporais} fieldPath="a_sensacao_emocoes.sensacoes_corporais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Palavras-chave Emocionais" value={sensacao_emocoes?.palavras_chave_emocionais} fieldPath="a_sensacao_emocoes.palavras_chave_emocionais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Intensidade Emocional" value={sensacao_emocoes?.intensidade_emocional} fieldPath="a_sensacao_emocoes.intensidade_emocional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Sensação e Emoções') && (
+      <CollapsibleSection title="Sensação e Emoções" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Emoções e Sensações</h4>
+            <DataField label="Emoções Predominantes" value={sensacao_emocoes?.emocoes_predominantes} fieldPath="a_sensacao_emocoes.emocoes_predominantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Sensações Corporais" value={sensacao_emocoes?.sensacoes_corporais} fieldPath="a_sensacao_emocoes.sensacoes_corporais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Palavras-chave Emocionais" value={sensacao_emocoes?.palavras_chave_emocionais} fieldPath="a_sensacao_emocoes.palavras_chave_emocionais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Intensidade Emocional" value={sensacao_emocoes?.intensidade_emocional} fieldPath="a_sensacao_emocoes.intensidade_emocional" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Gatilhos Emocionais</h4>
-          <DataField label="Consegue Identificar Gatilhos" value={sensacao_emocoes?.consegue_identificar_gatilhos_emocionais} fieldPath="a_sensacao_emocoes.consegue_identificar_gatilhos_emocionais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Gatilhos Identificados" value={sensacao_emocoes?.gatilhos_identificados} fieldPath="a_sensacao_emocoes.gatilhos_identificados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Gatilhos Emocionais</h4>
+            <DataField label="Consegue Identificar Gatilhos" value={sensacao_emocoes?.consegue_identificar_gatilhos_emocionais} fieldPath="a_sensacao_emocoes.consegue_identificar_gatilhos_emocionais" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Gatilhos Identificados" value={sensacao_emocoes?.gatilhos_identificados} fieldPath="a_sensacao_emocoes.gatilhos_identificados" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Regulação Emocional</h4>
-          <DataField label="Capacidade de Regulação" value={sensacao_emocoes?.regulacao_emocional_capacidade_regulacao} fieldPath="a_sensacao_emocoes.regulacao_emocional_capacidade_regulacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Forma de Expressão" value={sensacao_emocoes?.regulacao_emocional_forma_expressao} fieldPath="a_sensacao_emocoes.regulacao_emocional_forma_expressao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Como Gerencia Estresse/Ansiedade" value={sensacao_emocoes?.regulacao_emocional_como_gerencia_estresse_ansiedade} fieldPath="a_sensacao_emocoes.regulacao_emocional_como_gerencia_estresse_ansiedade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Memória Afetiva" value={sensacao_emocoes?.memoria_afetiva} fieldPath="a_sensacao_emocoes.memoria_afetiva" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Regulação Emocional</h4>
+            <DataField label="Capacidade de Regulação" value={sensacao_emocoes?.regulacao_emocional_capacidade_regulacao} fieldPath="a_sensacao_emocoes.regulacao_emocional_capacidade_regulacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Forma de Expressão" value={sensacao_emocoes?.regulacao_emocional_forma_expressao} fieldPath="a_sensacao_emocoes.regulacao_emocional_forma_expressao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Como Gerencia Estresse/Ansiedade" value={sensacao_emocoes?.regulacao_emocional_como_gerencia_estresse_ansiedade} fieldPath="a_sensacao_emocoes.regulacao_emocional_como_gerencia_estresse_ansiedade" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Memória Afetiva" value={sensacao_emocoes?.memoria_afetiva} fieldPath="a_sensacao_emocoes.memoria_afetiva" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Sensações Específicas do Reino</h4>
-          <DataField label="Usa Palavras Como" value={sensacao_emocoes?.sensacoes_especificas_reino_usa_palavras_como} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_usa_palavras_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Descreve Sensações Como" value={sensacao_emocoes?.sensacoes_especificas_reino_descreve_sensacoes_como} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Padrões de Discurso" value={sensacao_emocoes?.sensacoes_especificas_reino_padroes_discurso} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_padroes_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Sensações Específicas do Reino</h4>
+            <DataField label="Usa Palavras Como" value={sensacao_emocoes?.sensacoes_especificas_reino_usa_palavras_como} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_usa_palavras_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Descreve Sensações Como" value={sensacao_emocoes?.sensacoes_especificas_reino_descreve_sensacoes_como} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Padrões de Discurso" value={sensacao_emocoes?.sensacoes_especificas_reino_padroes_discurso} fieldPath="a_sensacao_emocoes.sensacoes_especificas_reino_padroes_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Conexão Corpo-Mente</h4>
-          <DataField label="Percebe Manifestações Corporais das Emoções" value={sensacao_emocoes?.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes} fieldPath="a_sensacao_emocoes.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Exemplos" value={sensacao_emocoes?.conexao_corpo_mente_exemplos} fieldPath="a_sensacao_emocoes.conexao_corpo_mente_exemplos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Conexão Corpo-Mente</h4>
+            <DataField label="Percebe Manifestações Corporais das Emoções" value={sensacao_emocoes?.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes} fieldPath="a_sensacao_emocoes.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Exemplos" value={sensacao_emocoes?.conexao_corpo_mente_exemplos} fieldPath="a_sensacao_emocoes.conexao_corpo_mente_exemplos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Preocupações e Crenças */}
-      <CollapsibleSection title="Preocupações e Crenças">
-        <div className="anamnese-subsection">
-          <h4>Percepção do Problema</h4>
-          <DataField label="Como Percebe o Problema" value={preocupacoes_crencas?.como_percebe_problema} fieldPath="a_preocupacoes_crencas.como_percebe_problema" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Compreensão sobre Causa dos Sintomas" value={preocupacoes_crencas?.compreensao_sobre_causa_sintomas} fieldPath="a_preocupacoes_crencas.compreensao_sobre_causa_sintomas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Preocupações e Crenças') && (
+      <CollapsibleSection title="Preocupações e Crenças" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Percepção do Problema</h4>
+            <DataField label="Como Percebe o Problema" value={preocupacoes_crencas?.como_percebe_problema} fieldPath="a_preocupacoes_crencas.como_percebe_problema" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Compreensão sobre Causa dos Sintomas" value={preocupacoes_crencas?.compreensao_sobre_causa_sintomas} fieldPath="a_preocupacoes_crencas.compreensao_sobre_causa_sintomas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Crenças e Preocupações</h4>
-          <DataField label="Crenças Limitantes" value={preocupacoes_crencas?.crencas_limitantes} fieldPath="a_preocupacoes_crencas.crencas_limitantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Preocupações Explícitas" value={preocupacoes_crencas?.preocupacoes_explicitas} fieldPath="a_preocupacoes_crencas.preocupacoes_explicitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Preocupações Implícitas" value={preocupacoes_crencas?.preocupacoes_implicitas} fieldPath="a_preocupacoes_crencas.preocupacoes_implicitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Ganhos Secundários" value={preocupacoes_crencas?.ganhos_secundarios} fieldPath="a_preocupacoes_crencas.ganhos_secundarios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Resistências Possíveis" value={preocupacoes_crencas?.resistencias_possiveis} fieldPath="a_preocupacoes_crencas.resistencias_possiveis" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Crenças e Preocupações</h4>
+            <DataField label="Crenças Limitantes" value={preocupacoes_crencas?.crencas_limitantes} fieldPath="a_preocupacoes_crencas.crencas_limitantes" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Preocupações Explícitas" value={preocupacoes_crencas?.preocupacoes_explicitas} fieldPath="a_preocupacoes_crencas.preocupacoes_explicitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Preocupações Implícitas" value={preocupacoes_crencas?.preocupacoes_implicitas} fieldPath="a_preocupacoes_crencas.preocupacoes_implicitas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Ganhos Secundários" value={preocupacoes_crencas?.ganhos_secundarios} fieldPath="a_preocupacoes_crencas.ganhos_secundarios" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Resistências Possíveis" value={preocupacoes_crencas?.resistencias_possiveis} fieldPath="a_preocupacoes_crencas.resistencias_possiveis" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Expectativas e Insight</h4>
-          <DataField label="Condições Genéticas na Família" value={preocupacoes_crencas?.condicoes_geneticas_familia} fieldPath="a_preocupacoes_crencas.condicoes_geneticas_familia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Expectativas Irrealistas" value={preocupacoes_crencas?.expectativas_irrealistas} fieldPath="a_preocupacoes_crencas.expectativas_irrealistas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Nível de Insight/Autoconsciência" value={preocupacoes_crencas?.nivel_insight_autoconsciencia} fieldPath="a_preocupacoes_crencas.nivel_insight_autoconsciencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Abertura para Mudança" value={preocupacoes_crencas?.abertura_para_mudanca} fieldPath="a_preocupacoes_crencas.abertura_para_mudanca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Expectativas e Insight</h4>
+            <DataField label="Condições Genéticas na Família" value={preocupacoes_crencas?.condicoes_geneticas_familia} fieldPath="a_preocupacoes_crencas.condicoes_geneticas_familia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Expectativas Irrealistas" value={preocupacoes_crencas?.expectativas_irrealistas} fieldPath="a_preocupacoes_crencas.expectativas_irrealistas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Nível de Insight/Autoconsciência" value={preocupacoes_crencas?.nivel_insight_autoconsciencia} fieldPath="a_preocupacoes_crencas.nivel_insight_autoconsciencia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Abertura para Mudança" value={preocupacoes_crencas?.abertura_para_mudanca} fieldPath="a_preocupacoes_crencas.abertura_para_mudanca" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Barreiras e Desafios</h4>
-          <DataField label="Barreiras Percebidas ao Tratamento" value={preocupacoes_crencas?.barreiras_percebidas_tratamento} fieldPath="a_preocupacoes_crencas.barreiras_percebidas_tratamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Aspectos do Plano que Parecem Desafiadores" value={preocupacoes_crencas?.aspectos_plano_parecem_desafiadores} fieldPath="a_preocupacoes_crencas.aspectos_plano_parecem_desafiadores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
+          <div className="anamnese-subsection">
+            <h4>Barreiras e Desafios</h4>
+            <DataField label="Barreiras Percebidas ao Tratamento" value={preocupacoes_crencas?.barreiras_percebidas_tratamento} fieldPath="a_preocupacoes_crencas.barreiras_percebidas_tratamento" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Aspectos do Plano que Parecem Desafiadores" value={preocupacoes_crencas?.aspectos_plano_parecem_desafiadores} fieldPath="a_preocupacoes_crencas.aspectos_plano_parecem_desafiadores" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Reino e Miasma */}
-      <CollapsibleSection title="Reino e Miasma">
-        <div className="anamnese-subsection">
-          <h4>Reino Predominante</h4>
-          <DataField label="Reino Predominante" value={reino_miasma?.reino_predominante} fieldPath="a_reino_miasma.reino_predominante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Justificativa do Reino" value={reino_miasma?.justificativa_reino} fieldPath="a_reino_miasma.justificativa_reino" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} fieldPath="a_reino_miasma.caracteristicas_identificadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+      {shouldShowSection('Reino e Miasma') && (
+        <CollapsibleSection title="Reino e Miasma" defaultOpen={true}>
+          <div className="anamnese-subsection">
+            <h4>Reino Predominante</h4>
+            <DataField label="Reino Predominante" value={reino_miasma?.reino_predominante} fieldPath="a_reino_miasma.reino_predominante" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Justificativa do Reino" value={reino_miasma?.justificativa_reino} fieldPath="a_reino_miasma.justificativa_reino" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Características Identificadas" value={reino_miasma?.caracteristicas_identificadas} fieldPath="a_reino_miasma.caracteristicas_identificadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Miasma</h4>
-          <DataField label="Miasma Principal" value={reino_miasma?.miasma_principal} fieldPath="a_reino_miasma.miasma_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Justificativa do Miasma" value={reino_miasma?.justificativa_miasma} fieldPath="a_reino_miasma.justificativa_miasma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Análise Miasma - Energia" value={reino_miasma?.analise_miasma_energia} fieldPath="a_reino_miasma.analise_miasma_energia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Análise Miasma - Luta" value={reino_miasma?.analise_miasma_luta} fieldPath="a_reino_miasma.analise_miasma_luta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Miasma</h4>
+            <DataField label="Miasma Principal" value={reino_miasma?.miasma_principal} fieldPath="a_reino_miasma.miasma_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Justificativa do Miasma" value={reino_miasma?.justificativa_miasma} fieldPath="a_reino_miasma.justificativa_miasma" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Análise Miasma - Energia" value={reino_miasma?.analise_miasma_energia} fieldPath="a_reino_miasma.analise_miasma_energia" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Análise Miasma - Luta" value={reino_miasma?.analise_miasma_luta} fieldPath="a_reino_miasma.analise_miasma_luta" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Análise Detalhada - Reino Animal</h4>
-          <DataField label="Palavras Usadas" value={reino_miasma?.analise_detalhada_reino_animal_palavras_usadas} fieldPath="a_reino_miasma.analise_detalhada_reino_animal_palavras_usadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Descreve Sensações Como" value={reino_miasma?.analise_detalhada_reino_animal_descreve_sensacoes_como} fieldPath="a_reino_miasma.analise_detalhada_reino_animal_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Análise Detalhada - Reino Animal</h4>
+            <DataField label="Palavras Usadas" value={reino_miasma?.analise_detalhada_reino_animal_palavras_usadas} fieldPath="a_reino_miasma.analise_detalhada_reino_animal_palavras_usadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Descreve Sensações Como" value={reino_miasma?.analise_detalhada_reino_animal_descreve_sensacoes_como} fieldPath="a_reino_miasma.analise_detalhada_reino_animal_descreve_sensacoes_como" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Implicações Terapêuticas</h4>
-          <DataField label="Comunicação" value={reino_miasma?.implicacoes_terapeuticas_comunicacao} fieldPath="a_reino_miasma.implicacoes_terapeuticas_comunicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Abordagem" value={reino_miasma?.implicacoes_terapeuticas_abordagem} fieldPath="a_reino_miasma.implicacoes_terapeuticas_abordagem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-          <DataField label="Outras Terapias Alinhadas" value={reino_miasma?.implicacoes_terapeuticas_outras_terapias_alinhadas} fieldPath="a_reino_miasma.implicacoes_terapeuticas_outras_terapias_alinhadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
+          <div className="anamnese-subsection">
+            <h4>Implicações Terapêuticas</h4>
+            <DataField label="Comunicação" value={reino_miasma?.implicacoes_terapeuticas_comunicacao} fieldPath="a_reino_miasma.implicacoes_terapeuticas_comunicacao" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Abordagem" value={reino_miasma?.implicacoes_terapeuticas_abordagem} fieldPath="a_reino_miasma.implicacoes_terapeuticas_abordagem" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+            <DataField label="Outras Terapias Alinhadas" value={reino_miasma?.implicacoes_terapeuticas_outras_terapias_alinhadas} fieldPath="a_reino_miasma.implicacoes_terapeuticas_outras_terapias_alinhadas" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
 
-        <div className="anamnese-subsection">
-          <h4>Observações Comportamentais</h4>
-          <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} fieldPath="a_reino_miasma.padrao_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Seção de Upload de Exames - Apenas para VALIDATION + ANAMNESE */}
-      <ExamesUploadSection
-        consultaId={consultaId}
-        consultaStatus={consultaStatus || ''}
-        consultaEtapa={consultaEtapa || ''}
-        disabled={readOnly}
-      />
+          <div className="anamnese-subsection">
+            <h4>Observações Comportamentais</h4>
+            <DataField label="Padrão de Discurso" value={reino_miasma?.padrao_discurso} fieldPath="a_reino_miasma.padrao_discurso" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} readOnly={readOnly} />
+          </div>
+        </CollapsibleSection>
+      )}
     </div>
   );
 }
 
 // Componente da seção de Diagnóstico
-function DiagnosticoSection({
+function DiagnosticoSection({ 
   consultaId,
   selectedField,
   chatMessages,
@@ -1495,7 +1551,7 @@ function DiagnosticoSection({
     };
 
     window.addEventListener('diagnostico-data-refresh', handleRefresh);
-
+    
     return () => {
       window.removeEventListener('diagnostico-data-refresh', handleRefresh);
     };
@@ -1535,33 +1591,33 @@ function DiagnosticoSection({
       const response = await fetch(`/api/diagnostico/${consultaId}/update-field`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldPath,
+        body: JSON.stringify({ 
+          fieldPath, 
           value: newValue
         }),
       });
 
       if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-
+      
       // Depois, notificar o webhook (opcional, para processamento adicional)
       try {
         const webhookEndpoints = getWebhookEndpoints();
-
+        
         await fetch('/api/ai-edit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify({ 
             webhookUrl: webhookEndpoints.edicaoDiagnostico,
             origem: 'MANUAL',
-            fieldPath,
+            fieldPath, 
             texto: newValue,
-            consultaId
+            consultaId 
           }),
         });
       } catch (webhookError) {
         console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
       }
-
+      
       // Recarregar dados após salvar
       await loadDiagnosticoData();
     } catch (error) {
@@ -2122,7 +2178,7 @@ interface PadraoItem {
 }
 
 // Componente da seção de Solução Livro da Vida
-function MentalidadeSection({
+function MentalidadeSection({ 
   consultaId,
   selectedField,
   chatMessages,
@@ -2142,7 +2198,7 @@ function MentalidadeSection({
   onChatInputChange: (value: string) => void;
 }) {
   const { showError } = useNotifications();
-
+  
   // Estados para carregamento dinâmico
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -2160,7 +2216,7 @@ function MentalidadeSection({
     };
 
     window.addEventListener('mentalidade-data-refresh', handleRefresh);
-
+    
     return () => {
       window.removeEventListener('mentalidade-data-refresh', handleRefresh);
     };
@@ -2170,21 +2226,21 @@ function MentalidadeSection({
     try {
       setLoadingDetails(true);
       setError(null);
-
+      
       console.log('🔍 [FRONTEND-LTV] Carregando dados de mentalidade para consulta:', consultaId);
-
+      
       const response = await fetch(`/api/solucao-mentalidade/${consultaId}`);
-
+      
       console.log('📡 [FRONTEND-LTV] Response status:', response.status);
-
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
         throw new Error(errorData.error || 'Erro ao carregar dados de mentalidade');
       }
-
+      
       const data = await response.json();
       console.log('✅ [FRONTEND-LTV] Dados recebidos:', data);
-
+      
       if (data.mentalidade_data) {
         setLivroVidaData({
           resumo_executivo: data.mentalidade_data.resumo_executivo || '',
@@ -2331,17 +2387,17 @@ function MentalidadeSection({
 
   // Dados parseados dos padrões 03-08 do exemplo fornecido
   const padrao03Data = parsePadrao("{\"padrao\": \"Autocrítica Severa e Perfeccionismo\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 3, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"carreira\", \"relacionamentos\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente reforçado pela convivência com uma mãe crítica, insatisfeita e controladora, e por um ambiente familiar onde o amor parecia condicional ao desempenho. Originalmente, a autocrítica e o perfeccionismo serviram para evitar críticas externas e conquistar aceitação. Tornaram-se limitantes ao gerar paralisia, procrastinação e sofrimento emocional intenso.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Procrastinação Autoprotetora\", \"Bloqueio à Autocompaixão\"], \"explicacao\": \"A autocrítica e o perfeccionismo são consequências diretas da crença de insuficiência e do hiperalerta, pois buscam garantir segurança por meio do controle absoluto. Eles alimentam a procrastinação (medo de errar paralisa) e bloqueiam a autocompaixão (autoexigência impede acolhimento). Relacionam-se com o medo de fracasso, pois o erro é visto como ameaça existencial.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Medo de Fracasso e Desesperança\"]}, \"manifestacoes_atuais\": [\"Diálogo interno brutal: 'Você é um fracasso', 'Nunca faz o suficiente'\", \"Revisão obsessiva de tarefas, nunca satisfeito com o resultado\", \"Dificuldade de iniciar projetos por medo de não atingir o ideal\", \"Desqualificação de conquistas ('Foi só sorte, qualquer um faria melhor')\", \"Sentimento de culpa e vergonha ao descansar ou se permitir prazer\", \"Comparação constante com outros, sempre se sentindo abaixo\"], \"orientacoes_transformacao\": [{\"nome\": \"Identificação e Registro da Voz Crítica\", \"passo\": 1, \"como_fazer\": \"Durante 7 dias, sempre que notar autocrítica, escreva a frase exata e o contexto. Exemplo: 'Após errar em tarefa X, pensei: sou incompetente'. Mapeie padrões e horários mais frequentes.\", \"o_que_fazer\": \"Observar e anotar frases autocríticas recorrentes ao longo do dia.\", \"porque_funciona\": \"O registro consciente da voz crítica cria distanciamento e reduz a fusão com o crítico interno, base do trabalho de IFS e CFT.\"}, {\"nome\": \"Diálogo com o Crítico Interno (Cadeira Vazia/IFS)\", \"passo\": 2, \"como_fazer\": \"Sente-se em frente a uma cadeira vazia e imagine que nela está seu crítico interno. Pergunte: 'O que você está tentando proteger em mim?'. Depois, troque de lugar e responda como o crítico. Em seguida, acolha essa parte e proponha uma nova forma de proteção baseada em encorajamento, não ataque.\", \"o_que_fazer\": \"Dialogar ativamente com a parte autocrítica, buscando entender sua intenção e oferecer uma alternativa compassiva.\", \"porque_funciona\": \"O diálogo interno, validado por IFS e Gestalt, permite integrar partes internas e transformar o crítico em aliado, promovendo autocompaixão e redução do perfeccionismo.\"}, {\"nome\": \"Experimentos Comportamentais de 'Bom o Suficiente'\", \"passo\": 3, \"como_fazer\": \"Escolha uma tarefa simples (ex: responder e-mails, arrumar a cama) e faça-a com o objetivo de terminar, não de perfeição. Observe o desconforto e registre o que aconteceu: houve consequências negativas reais? Repita com tarefas progressivamente mais desafiadoras.\", \"o_que_fazer\": \"Executar tarefas intencionalmente sem buscar perfeição, aceitando erros como parte do processo.\", \"porque_funciona\": \"A exposição comportamental, central na TCC, prova ao cérebro que o erro não é fatal, reduzindo o medo de fracasso e flexibilizando padrões rígidos.\"}]}");
-
+  
   const padrao04Data = parsePadrao("{\"padrao\": \"Procrastinação Autoprotetora\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 4, \"areas_impacto\": [\"carreira\", \"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"propósito\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Adolescência e Vida Adulta Jovem (14-26 anos)\", \"contexto_provavel\": \"Provavelmente reforçada pela pressão excessiva para desempenho e pelo medo de fracassar ou decepcionar figuras parentais. A procrastinação surgiu como defesa para evitar a dor do fracasso e a autocrítica. Tornou-se limitante ao bloquear a iniciativa e reforçar a sensação de incapacidade e estagnação.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Medo de Fracasso e Desesperança\"], \"explicacao\": \"A procrastinação é alimentada pela crença de insuficiência e pelo perfeccionismo, pois o medo de errar paralisa a ação. Ela se torna raiz do medo de fracasso, pois quanto mais se posterga, maior a sensação de impotência e desesperança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Autocrítica Severa e Perfeccionismo\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Dificuldade extrema de iniciar tarefas, especialmente pela manhã\", \"Sensação de paralisia ao pensar em metas grandes\", \"Uso de distrações para evitar enfrentar desafios (celular, redes sociais)\", \"Culpa intensa após adiar tarefas importantes\", \"Sensação de tempo perdido e angústia com o 'contador regressivo'\"], \"orientacoes_transformacao\": [{\"nome\": \"Quebra de Tarefas e Microcompromissos\", \"passo\": 1, \"como_fazer\": \"Pegue uma meta (ex: exercício matinal) e divida em passos micro (ex: apenas levantar, vestir roupa de treino, sair do quarto). Estabeleça o compromisso de realizar apenas o primeiro passo por dia. Após cumprir, decida se continua. Registre cada microvitória.\", \"o_que_fazer\": \"Dividir grandes metas em pequenas ações concretas e assumir compromissos mínimos diários.\", \"porque_funciona\": \"A ação mínima reduz a sobrecarga do perfeccionismo e ativa o circuito de recompensa do cérebro, tornando mais provável a continuidade. O método é validado por TCC, ACT e neurociência motivacional.\"}, {\"nome\": \"Ação Comprometida Mesmo com Desconforto (ACT)\", \"passo\": 2, \"como_fazer\": \"Antes de uma tarefa, pergunte: 'Isso está alinhado com quem desejo ser?'. Se sim, dê o primeiro passo, mesmo que pequeno, e observe o desconforto sem tentar eliminá-lo. Anote após: 'O que aprendi ao agir mesmo inseguro?'.\", \"o_que_fazer\": \"Agir apesar da dúvida ou desconforto, focando nos valores pessoais e não no resultado imediato.\", \"porque_funciona\": \"A ACT ensina que a ação orientada por valores, mesmo com medo ou desconforto, amplia a autoconfiança e reduz o domínio da procrastinação sobre a vida.\"}]}");
-
+  
   const padrao05Data = parsePadrao("{\"padrao\": \"Medo de Fracasso e Desesperança\", \"categorias\": [\"crença_limitante\", \"padrão_mental_negativo\"], \"prioridade\": 5, \"areas_impacto\": [\"autoestima\", \"carreira\", \"propósito\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância, Adolescência e Vida Adulta Jovem (5-26 anos)\", \"contexto_provavel\": \"Pode ter se consolidado após experiências repetidas de crítica, frustração de expectativas e internalização da narrativa familiar de que falhar é inaceitável. Inicialmente, serviu como proteção para evitar novas decepções. Tornou-se limitante ao bloquear a iniciativa e gerar sensação de impotência crônica.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O medo de fracasso é alimentado pela crença de insuficiência e reforçado pela procrastinação. Relaciona-se com a autocrítica e o perfeccionismo, pois cada erro é visto como confirmação da inadequação. Não é raiz de outros padrões, mas perpetua o ciclo de estagnação.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Procrastinação Autoprotetora\"], \"relacionado_com\": [\"Autocrítica Severa e Perfeccionismo\"]}, \"manifestacoes_atuais\": [\"Ansiedade intensa diante de metas e avaliações\", \"Evitação de desafios por antecipar decepção\", \"Desesperança sobre a possibilidade de mudança\", \"Sensação de que qualquer insucesso é fracasso total\", \"Dificuldade de celebrar avanços, foco no que falta\"], \"orientacoes_transformacao\": [{\"nome\": \"Ressignificação do Fracasso e Exposição Gradual\", \"passo\": 1, \"como_fazer\": \"Escolha tarefas onde o risco de erro é baixo e execute-as sem buscar perfeição. Ao errar, registre o que realmente aconteceu versus o que temia. Dialogue internamente: 'O que posso aprender com isso?'. Repita o processo, aumentando gradualmente a complexidade das tarefas.\", \"o_que_fazer\": \"Redefinir fracasso como parte do processo de crescimento e se expor gradualmente a pequenas falhas seguras.\", \"porque_funciona\": \"A exposição gradual e a ressignificação do erro (TCC, PNL) reduzem o medo paralisante e ensinam o cérebro que falhar não é catastrófico, ampliando a zona de conforto e a resiliência.\"}]}");
-
+  
   const padrao06Data = parsePadrao("{\"padrao\": \"Bloqueio à Autocompaixão\", \"categorias\": [\"padrão_emocional\"], \"prioridade\": 6, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"relacionamentos\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente desenvolvido em ambiente onde a autocrítica era modelo e o autocuidado visto como fraqueza ou preguiça. Originalmente, serviu para tentar evitar críticas externas e buscar aprovação. Tornou-se limitante ao bloquear o acesso ao acolhimento interno e dificultar o enfrentamento de desafios.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O bloqueio à autocompaixão é alimentado pela autocrítica e pelo estado de alerta, pois o autocuidado é visto como ameaça à sobrevivência. Relaciona-se com a crença de insuficiência, pois dificulta a aceitação de imperfeições e vulnerabilidades.\", \"alimentado_por\": [\"Autocrítica Severa e Perfeccionismo\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"]}, \"manifestacoes_atuais\": [\"Dificuldade de se perdoar por erros e falhas\", \"Incapacidade de acolher emoções difíceis sem julgamento\", \"Sensação de que autocuidado é 'fraqueza'\", \"Autoexigência rígida mesmo em momentos de sofrimento\", \"Resistência a receber apoio ou carinho de outros\"], \"orientacoes_transformacao\": [{\"nome\": \"Prática Estruturada de Autocompaixão\", \"passo\": 1, \"como_fazer\": \"Use áudios de práticas de autocompaixão (Kristin Neff) ou escreva cartas para si mesmo em momentos de sofrimento, usando frases como: 'Está tudo bem não ser perfeito', 'Todos erram, inclusive eu'. Repita diariamente, especialmente após situações de autocrítica.\", \"o_que_fazer\": \"Dedicar diariamente 10 minutos para exercícios guiados de autocompaixão.\", \"porque_funciona\": \"A prática regular de autocompaixão ativa redes cerebrais de autocuidado e reduz a ativação do sistema de ameaça, promovendo maior resiliência emocional e flexibilidade diante de desafios.\"}]}");
-
+  
   const padrao07Data = parsePadrao("{\"padrao\": \"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"categorias\": [\"crença_limitante\"], \"prioridade\": 7, \"areas_impacto\": [\"autoestima\", \"identidade\", \"carreira\", \"propósito\", \"bem_estar_emocional\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente internalizado a partir do modelo familiar onde o valor era condicionado ao desempenho, especialmente na figura paterna como provedor. Serviu para criar uma ilusão de controle e evitar rejeição. Tornou-se limitante ao gerar ansiedade crônica, medo de relaxar e dependência do reconhecimento externo.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Desconexão de Propósito e Prazer\"], \"explicacao\": \"A crença de segurança condicional reforça a necessidade de desempenho para sentir-se seguro, alimentando a desconexão de propósito e prazer, pois bloqueia a motivação intrínseca. É alimentada pela crença de insuficiência, pois só ao 'provar' valor sente-se digno de segurança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Sensação de que só merece descanso após atingir metas altas\", \"Ansiedade intensa quando não está produzindo ou performando\", \"Vincula autoestima a resultados externos\", \"Dificuldade de relaxar ou se permitir lazer sem culpa\"], \"orientacoes_transformacao\": [{\"nome\": \"Redefinição de Valor Pessoal e Segurança\", \"passo\": 1, \"como_fazer\": \"Liste 5 momentos em que recebeu carinho, respeito ou apoio apenas por ser quem é, não por resultados. Releia essas situações diariamente e escreva como se sentiu. Reforce a ideia: 'Meu valor não depende do que faço, mas de quem sou'.\", \"o_que_fazer\": \"Refletir e escrever sobre situações em que se sentiu seguro ou valorizado sem depender de desempenho.\", \"porque_funciona\": \"A repetição de experiências de valor incondicional reforça novas redes neurais de autoestima e reduz a dependência do reconhecimento externo, promovendo motivação autêntica.\"}]}");
-
+  
   const padrao08Data = parsePadrao("{\"padrao\": \"Desconexão de Propósito e Prazer\", \"categorias\": [\"bloqueio_desenvolvimento_espiritual\", \"padrão_emocional\"], \"prioridade\": 8, \"areas_impacto\": [\"propósito\", \"desenvolvimento_espiritual\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Vida Adulta Jovem (21-26 anos)\", \"contexto_provavel\": \"Possivelmente emergiu como consequência do ciclo de autocrítica, hiperalerta e segurança condicional, bloqueando o acesso ao prazer e ao sentido existencial autêntico. Inicialmente, serviu como defesa contra frustrações profundas. Tornou-se limitante ao gerar vazio existencial, desânimo e dificuldade de se engajar com a vida de forma plena.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"A desconexão de propósito e prazer é alimentada pela crença de valor condicional e insuficiência, que esvaziam a motivação intrínseca e bloqueiam o acesso ao prazer. Relaciona-se com a procrastinação, pois o vazio existencial dificulta o engajamento em ações significativas.\", \"alimentado_por\": [\"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": [\"Procrastinação Autoprotetora\"]}, \"manifestacoes_atuais\": [\"Sensação de vazio e falta de sentido mesmo com metas claras\", \"Dificuldade de sentir prazer mesmo em atividades antes prazerosas\", \"Desânimo persistente e falta de motivação autêntica\", \"Busca por sentido apenas no desempenho e conquistas externas\"], \"orientacoes_transformacao\": [{\"nome\": \"Exploração de Propósito Autêntico (Ikigai/Logoterapia)\", \"passo\": 1, \"como_fazer\": \"Responda por escrito: (1) O que me dá alegria genuína, mesmo sem reconhecimento? (2) O que eu faria se não precisasse provar nada a ninguém? (3) Como posso contribuir para o mundo com meus dons únicos? Faça um mapa Ikigai (o que amo, sei fazer, o mundo precisa, posso ser pago) e reflita sobre ações possíveis.\", \"o_que_fazer\": \"Dedicar tempo semanal para investigar valores, paixões e contribuições além do desempenho.\", \"porque_funciona\": \"A investigação ativa do propósito (Logoterapia, Ikigai) reconecta a motivação intrínseca, amplia o sentido existencial e reduz o vazio gerado por padrões de desempenho condicional.\"}, {\"nome\": \"Práticas de Gratidão e Mindfulness Prazeroso\", \"passo\": 2, \"como_fazer\": \"Todos os dias, registre 3 experiências prazerosas ou motivos de gratidão, por menores que sejam. Pratique mindfulness durante essas experiências, focando nas sensações corporais prazerosas sem julgamento ou cobrança de resultado.\", \"o_que_fazer\": \"Cultivar diariamente a atenção ao prazer e à gratidão para reabilitar o sistema de recompensa natural.\", \"porque_funciona\": \"A prática de gratidão e mindfulness prazeroso ativa as redes cerebrais de recompensa e prazer, recondicionando o cérebro a buscar e valorizar pequenas alegrias, base para reconstrução do sentido de vida.\"}]}");
-
+  
   // @ts-ignore - mockData will be replaced by dynamic data from API
   const [livroVidaData, setLivroVidaData] = useState<{
     resumo_executivo: string;
@@ -2371,6 +2427,7 @@ function MentalidadeSection({
     padrao_10: null
   });
 
+  // Estados para edição (mantidos temporariamente para compatibilidade com renderEditableField)
   const [editingField, setEditingField] = useState<{
     type: 'resumo' | 'higiene_sono' | 'padrao';
     padraoNum?: number;
@@ -2378,7 +2435,54 @@ function MentalidadeSection({
   } | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Função para obter valor de campo aninhado
+  // Função para salvar campo editado
+  const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
+    try {
+      // Atualizar no Supabase
+      const response = await fetch(`/api/solucao-mentalidade/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fieldPath,
+          value: newValue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar campo no Supabase');
+      }
+
+      // Recarregar dados após salvar
+      await loadMentalidadeData();
+    } catch (error) {
+      console.error('❌ Erro ao salvar campo:', error);
+      showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
+      throw error;
+    }
+  };
+
+  // Função para editar com IA
+  const handleAIEdit = (fieldPath: string, label: string) => {
+    if (onFieldSelect) {
+      onFieldSelect(fieldPath, label);
+    }
+  };
+
+  // Função auxiliar para formatar valor para DataField
+  const formatValueForDataField = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) {
+      return value.filter(item => item !== null && item !== undefined).join('\n');
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+  };
+
+  // Função auxiliar para obter valor de campo aninhado (mantida para compatibilidade durante refatoração)
   const getNestedValue = (obj: any, path: string): any => {
     if (path.includes('.')) {
       const parts = path.split('.');
@@ -2409,19 +2513,19 @@ function MentalidadeSection({
       setEditValue(livroVidaData.resumo_executivo);
     } else if (type === 'higiene_sono' && fieldPath) {
       const value = getNestedValue(livroVidaData.higiene_sono, fieldPath);
-      setEditValue(value === null || value === undefined ? '' :
-        typeof value === 'string' ? value :
-          Array.isArray(value) ? value.join('\n') :
-            JSON.stringify(value, null, 2));
+      setEditValue(value === null || value === undefined ? '' : 
+                  typeof value === 'string' ? value : 
+                  Array.isArray(value) ? value.join('\n') : 
+                  JSON.stringify(value, null, 2));
     } else if (padraoNum && fieldPath) {
       const padrao = livroVidaData[`padrao_${String(padraoNum).padStart(2, '0')}` as keyof typeof livroVidaData] as PadraoItem | null;
       if (padrao) {
         const value = getNestedValue(padrao, fieldPath);
-        setEditValue(value === null || value === undefined ? '' :
-          typeof value === 'string' ? value :
-            typeof value === 'number' ? value.toString() :
-              Array.isArray(value) ? value.join('\n') :
-                JSON.stringify(value, null, 2));
+        setEditValue(value === null || value === undefined ? '' : 
+                    typeof value === 'string' ? value : 
+                    typeof value === 'number' ? value.toString() :
+                    Array.isArray(value) ? value.join('\n') : 
+                    JSON.stringify(value, null, 2));
       }
     }
   };
@@ -2473,7 +2577,7 @@ function MentalidadeSection({
       const newData = { ...livroVidaData };
       let fieldName = '';
       let valueToSave: any = editValue;
-
+      
       if (editingField.type === 'resumo') {
         fieldName = 'resumo_executivo';
         valueToSave = editValue;
@@ -2482,13 +2586,13 @@ function MentalidadeSection({
         fieldName = 'higiene_sono';
         const fieldPath = editingField.fieldPath;
         let finalValue: any = editValue;
-
+        
         // Verificar se o campo original era array
         const originalValue = getNestedValue(newData.higiene_sono, fieldPath);
         if (Array.isArray(originalValue)) {
           finalValue = editValue.split('\n').filter(line => line.trim());
         }
-
+        
         setNestedValue(newData.higiene_sono, fieldPath, finalValue);
         valueToSave = newData.higiene_sono;
       } else if (editingField.padraoNum && editingField.fieldPath) {
@@ -2496,11 +2600,11 @@ function MentalidadeSection({
         fieldName = `padrao_${String(padraoNum).padStart(2, '0')}`;
         const padraoKey = fieldName as keyof typeof newData;
         const padrao = { ...(newData[padraoKey] as PadraoItem) };
-
+        
         if (padrao) {
           const fieldPath = editingField.fieldPath;
           let finalValue: any = editValue;
-
+          
           // Verificar se o campo original era array
           const originalValue = getNestedValue(padrao, fieldPath);
           if (Array.isArray(originalValue)) {
@@ -2508,21 +2612,21 @@ function MentalidadeSection({
           } else if (typeof originalValue === 'number') {
             finalValue = parseFloat(editValue) || 0;
           }
-
-          setNestedValue(padrao, fieldPath, finalValue);
-          (newData as any)[padraoKey] = padrao;
-          valueToSave = padrao;
+          
+        setNestedValue(padrao, fieldPath, finalValue);
+        (newData as any)[padraoKey] = padrao;
+        valueToSave = padrao;
         }
       }
-
+      
       // Atualizar estado local primeiro (UX responsivo)
       setLivroVidaData(newData);
       setEditingField(null);
       setEditValue('');
-
+      
       // Salvar no banco de dados
       console.log('💾 [FRONTEND-LTV] Salvando campo:', { fieldName, valueToSave });
-
+      
       const response = await fetch(`/api/solucao-mentalidade/${consultaId}/update-field`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2538,11 +2642,11 @@ function MentalidadeSection({
       }
 
       console.log('✅ [FRONTEND-LTV] Campo salvo com sucesso no banco');
-
+      
     } catch (error) {
       console.error('❌ [FRONTEND-LTV] Erro ao salvar campo:', error);
       showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
-
+      
       // Recarregar dados para sincronizar com o banco
       await loadMentalidadeData();
     } finally {
@@ -2564,9 +2668,9 @@ function MentalidadeSection({
     padraoNum?: number,
     fieldPath?: string
   ) => {
-    const isEditing = editingField?.type === type &&
-      editingField?.padraoNum === padraoNum &&
-      editingField?.fieldPath === fieldPath;
+    const isEditing = editingField?.type === type && 
+                     editingField?.padraoNum === padraoNum && 
+                     editingField?.fieldPath === fieldPath;
 
     // Função auxiliar para verificar se o valor é vazio/null
     const isEmptyValue = (val: any): boolean => {
@@ -2586,8 +2690,8 @@ function MentalidadeSection({
       displayValue = JSON.stringify(value, null, 2);
     } else {
       const stringValue = String(value);
-      displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '')
-        ? 'Não informado'
+      displayValue = (stringValue.toLowerCase() === 'null' || stringValue.trim() === '') 
+        ? 'Não informado' 
         : stringValue;
     }
 
@@ -2599,9 +2703,9 @@ function MentalidadeSection({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             disabled={loadingDetails}
-            style={{
-              width: '100%',
-              minHeight: '100px',
+            style={{ 
+              width: '100%', 
+              minHeight: '100px', 
               padding: '10px',
               fontSize: '14px',
               border: '1px solid #ddd',
@@ -2671,9 +2775,9 @@ function MentalidadeSection({
       <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         <div style={{ flex: 1 }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>{label}</label>
-          <div style={{
-            padding: '10px',
-            background: '#f9f9f9',
+          <div style={{ 
+            padding: '10px', 
+            background: '#f9f9f9', 
             borderRadius: '4px',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word'
@@ -2715,40 +2819,120 @@ function MentalidadeSection({
     );
   };
 
-  // Função para renderizar seção de Higiene e Sono
+  // Função para renderizar seção de Higiene e Sono usando DataField
   const renderHigieneSono = () => {
     const higieneSono = livroVidaData.higiene_sono;
-
+    
     return (
       <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
-        <div style={{ padding: '15px' }}>
-          <h4 style={{ marginTop: '0', marginBottom: '15px' }}>Horários Recomendados</h4>
-          {renderEditableField("Horário de Dormir Recomendado", higieneSono.horario_dormir_recomendado, 'higiene_sono', undefined, 'horario_dormir_recomendado')}
-          {renderEditableField("Horário de Acordar Recomendado", higieneSono.horario_acordar_recomendado, 'higiene_sono', undefined, 'horario_acordar_recomendado')}
-          {renderEditableField("Duração Alvo", higieneSono.duracao_alvo, 'higiene_sono', undefined, 'duracao_alvo')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Janelas de Sono</h4>
-          {renderEditableField("Janela de Sono - Semana", higieneSono.janela_sono_semana, 'higiene_sono', undefined, 'janela_sono_semana')}
-          {renderEditableField("Janela de Sono - Fins de Semana", higieneSono.janela_sono_fds, 'higiene_sono', undefined, 'janela_sono_fds')}
-          {renderEditableField("Consistência de Horário", higieneSono.consistencia_horario, 'higiene_sono', undefined, 'consistencia_horario')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Rotina Pré-Sono</h4>
-          {renderEditableField("Rotina Pré-Sono", higieneSono.rotina_pre_sono, 'higiene_sono', undefined, 'rotina_pre_sono')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Gatilhos a Evitar</h4>
-          {renderEditableField("Gatilhos a Evitar", higieneSono.gatilhos_evitar, 'higiene_sono', undefined, 'gatilhos_evitar')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Progressão e Ajustes</h4>
-          {renderEditableField("Progressão de Ajuste", higieneSono.progressao_ajuste, 'higiene_sono', undefined, 'progressao_ajuste')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Observações Clínicas</h4>
-          {renderEditableField("Observações Clínicas", higieneSono.observacoes_clinicas, 'higiene_sono', undefined, 'observacoes_clinicas')}
+        <div className="anamnese-subsection">
+          <h4>Horários Recomendados</h4>
+          <DataField 
+            label="Horário de Dormir Recomendado" 
+            value={formatValueForDataField(higieneSono.horario_dormir_recomendado)} 
+            fieldPath="mentalidade_data.higiene_sono.horario_dormir_recomendado" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Horário de Acordar Recomendado" 
+            value={formatValueForDataField(higieneSono.horario_acordar_recomendado)} 
+            fieldPath="mentalidade_data.higiene_sono.horario_acordar_recomendado" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Duração Alvo" 
+            value={formatValueForDataField(higieneSono.duracao_alvo)} 
+            fieldPath="mentalidade_data.higiene_sono.duracao_alvo" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Janelas de Sono</h4>
+          <DataField 
+            label="Janela de Sono - Semana" 
+            value={formatValueForDataField(higieneSono.janela_sono_semana)} 
+            fieldPath="mentalidade_data.higiene_sono.janela_sono_semana" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Janela de Sono - Fins de Semana" 
+            value={formatValueForDataField(higieneSono.janela_sono_fds)} 
+            fieldPath="mentalidade_data.higiene_sono.janela_sono_fds" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Consistência de Horário" 
+            value={formatValueForDataField(higieneSono.consistencia_horario)} 
+            fieldPath="mentalidade_data.higiene_sono.consistencia_horario" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Rotina Pré-Sono</h4>
+          <DataField 
+            label="Rotina Pré-Sono" 
+            value={formatValueForDataField(higieneSono.rotina_pre_sono)} 
+            fieldPath="mentalidade_data.higiene_sono.rotina_pre_sono" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Gatilhos a Evitar</h4>
+          <DataField 
+            label="Gatilhos a Evitar" 
+            value={formatValueForDataField(higieneSono.gatilhos_evitar)} 
+            fieldPath="mentalidade_data.higiene_sono.gatilhos_evitar" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Progressão e Ajustes</h4>
+          <DataField 
+            label="Progressão de Ajuste" 
+            value={formatValueForDataField(higieneSono.progressao_ajuste)} 
+            fieldPath="mentalidade_data.higiene_sono.progressao_ajuste" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Observações Clínicas</h4>
+          <DataField 
+            label="Observações Clínicas" 
+            value={formatValueForDataField(higieneSono.observacoes_clinicas)} 
+            fieldPath="mentalidade_data.higiene_sono.observacoes_clinicas" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
         </div>
       </CollapsibleSection>
     );
   };
 
-  // Função para renderizar um padrão
+  // Função para renderizar um padrão usando DataField
   const renderPadrao = (padrao: PadraoItem | null, numero: number) => {
     if (!padrao) {
       return (
@@ -2758,36 +2942,160 @@ function MentalidadeSection({
       );
     }
 
+    const padraoKey = `padrao_${String(numero).padStart(2, '0')}`;
+    const baseFieldPath = `mentalidade_data.${padraoKey}`;
+
     return (
       <CollapsibleSection title={`Padrão ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
-        <div style={{ padding: '15px' }}>
-          {renderEditableField("Padrão", padrao.padrao, 'padrao', numero, 'padrao')}
-          {renderEditableField("Categorias", padrao.categorias, 'padrao', numero, 'categorias')}
-          {renderEditableField("Prioridade", padrao.prioridade.toString(), 'padrao', numero, 'prioridade')}
-          {renderEditableField("Áreas de Impacto", padrao.areas_impacto, 'padrao', numero, 'areas_impacto')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Origem Estimada</h4>
-          {renderEditableField("Período", padrao.origem_estimada.periodo, 'padrao', numero, 'origem_estimada.periodo')}
-          {renderEditableField("Contexto Provável", padrao.origem_estimada.contexto_provavel, 'padrao', numero, 'origem_estimada.contexto_provavel')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Conexões com Outros Padrões</h4>
-          {renderEditableField("Raiz de", padrao.conexoes_padroes.raiz_de, 'padrao', numero, 'conexoes_padroes.raiz_de')}
-          {renderEditableField("Explicação", padrao.conexoes_padroes.explicacao, 'padrao', numero, 'conexoes_padroes.explicacao')}
-          {renderEditableField("Alimentado por", padrao.conexoes_padroes.alimentado_por, 'padrao', numero, 'conexoes_padroes.alimentado_por')}
-          {renderEditableField("Relacionado com", padrao.conexoes_padroes.relacionado_com, 'padrao', numero, 'conexoes_padroes.relacionado_com')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Manifestações Atuais</h4>
-          {renderEditableField("Manifestações", padrao.manifestacoes_atuais, 'padrao', numero, 'manifestacoes_atuais')}
-
-          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Orientações de Transformação</h4>
-          {padrao.orientacoes_transformacao.map((orientacao, idx) => (
-            <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
+        <div className="anamnese-subsection">
+          <h4>Informações Básicas</h4>
+          <DataField 
+            label="Padrão" 
+            value={formatValueForDataField(padrao.padrao)} 
+            fieldPath={`${baseFieldPath}.padrao`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Categorias" 
+            value={formatValueForDataField(padrao.categorias)} 
+            fieldPath={`${baseFieldPath}.categorias`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Prioridade" 
+            value={formatValueForDataField(padrao.prioridade)} 
+            fieldPath={`${baseFieldPath}.prioridade`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Áreas de Impacto" 
+            value={formatValueForDataField(padrao.areas_impacto)} 
+            fieldPath={`${baseFieldPath}.areas_impacto`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Origem Estimada</h4>
+          <DataField 
+            label="Período" 
+            value={formatValueForDataField(padrao.origem_estimada?.periodo)} 
+            fieldPath={`${baseFieldPath}.origem_estimada.periodo`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Contexto Provável" 
+            value={formatValueForDataField(padrao.origem_estimada?.contexto_provavel)} 
+            fieldPath={`${baseFieldPath}.origem_estimada.contexto_provavel`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Conexões com Outros Padrões</h4>
+          <DataField 
+            label="Raiz de" 
+            value={formatValueForDataField(padrao.conexoes_padroes?.raiz_de)} 
+            fieldPath={`${baseFieldPath}.conexoes_padroes.raiz_de`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Explicação" 
+            value={formatValueForDataField(padrao.conexoes_padroes?.explicacao)} 
+            fieldPath={`${baseFieldPath}.conexoes_padroes.explicacao`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Alimentado por" 
+            value={formatValueForDataField(padrao.conexoes_padroes?.alimentado_por)} 
+            fieldPath={`${baseFieldPath}.conexoes_padroes.alimentado_por`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+          <DataField 
+            label="Relacionado com" 
+            value={formatValueForDataField(padrao.conexoes_padroes?.relacionado_com)} 
+            fieldPath={`${baseFieldPath}.conexoes_padroes.relacionado_com`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Manifestações Atuais</h4>
+          <DataField 
+            label="Manifestações" 
+            value={formatValueForDataField(padrao.manifestacoes_atuais)} 
+            fieldPath={`${baseFieldPath}.manifestacoes_atuais`} 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
+        </div>
+        
+        <div className="anamnese-subsection">
+          <h4>Orientações de Transformação</h4>
+          {padrao.orientacoes_transformacao?.map((orientacao, idx) => (
+            <div key={idx} className="anamnese-subsection" style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
               <h5 style={{ marginBottom: '10px' }}>{orientacao.nome} (Passo {orientacao.passo})</h5>
-              {renderEditableField("Nome", orientacao.nome, 'padrao', numero, `orientacoes_transformacao.${idx}.nome`)}
-              {renderEditableField("Passo", orientacao.passo.toString(), 'padrao', numero, `orientacoes_transformacao.${idx}.passo`)}
-              {renderEditableField("Como Fazer", orientacao.como_fazer, 'padrao', numero, `orientacoes_transformacao.${idx}.como_fazer`)}
-              {renderEditableField("O Que Fazer", orientacao.o_que_fazer, 'padrao', numero, `orientacoes_transformacao.${idx}.o_que_fazer`)}
-              {renderEditableField("Por Que Funciona", orientacao.porque_funciona, 'padrao', numero, `orientacoes_transformacao.${idx}.porque_funciona`)}
+              <DataField 
+                label="Nome" 
+                value={formatValueForDataField(orientacao.nome)} 
+                fieldPath={`${baseFieldPath}.orientacoes_transformacao.${idx}.nome`} 
+                consultaId={consultaId} 
+                onSave={handleSaveField} 
+                onAIEdit={handleAIEdit} 
+              />
+              <DataField 
+                label="Passo" 
+                value={formatValueForDataField(orientacao.passo)} 
+                fieldPath={`${baseFieldPath}.orientacoes_transformacao.${idx}.passo`} 
+                consultaId={consultaId} 
+                onSave={handleSaveField} 
+                onAIEdit={handleAIEdit} 
+              />
+              <DataField 
+                label="Como Fazer" 
+                value={formatValueForDataField(orientacao.como_fazer)} 
+                fieldPath={`${baseFieldPath}.orientacoes_transformacao.${idx}.como_fazer`} 
+                consultaId={consultaId} 
+                onSave={handleSaveField} 
+                onAIEdit={handleAIEdit} 
+              />
+              <DataField 
+                label="O Que Fazer" 
+                value={formatValueForDataField(orientacao.o_que_fazer)} 
+                fieldPath={`${baseFieldPath}.orientacoes_transformacao.${idx}.o_que_fazer`} 
+                consultaId={consultaId} 
+                onSave={handleSaveField} 
+                onAIEdit={handleAIEdit} 
+              />
+              <DataField 
+                label="Por Que Funciona" 
+                value={formatValueForDataField(orientacao.porque_funciona)} 
+                fieldPath={`${baseFieldPath}.orientacoes_transformacao.${idx}.porque_funciona`} 
+                consultaId={consultaId} 
+                onSave={handleSaveField} 
+                onAIEdit={handleAIEdit} 
+              />
             </div>
           ))}
         </div>
@@ -2810,7 +3118,7 @@ function MentalidadeSection({
     return (
       <div className="anamnese-error">
         <p style={{ color: '#f44336' }}>❌ {error}</p>
-        <button
+        <button 
           onClick={loadMentalidadeData}
           style={{
             marginTop: '10px',
@@ -2828,12 +3136,28 @@ function MentalidadeSection({
     );
   }
 
+  if (!livroVidaData) {
+    return (
+      <div className="anamnese-loading">
+        <div className="loading-spinner"></div>
+        <p>Carregando dados do Livro da Vida...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="anamnese-sections">
       {/* Resumo Executivo */}
       <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
-        <div style={{ padding: '15px' }}>
-          {renderEditableField("Resumo Executivo", livroVidaData.resumo_executivo, 'resumo')}
+        <div className="anamnese-subsection">
+          <DataField 
+            label="Resumo Executivo" 
+            value={livroVidaData.resumo_executivo} 
+            fieldPath="mentalidade_data.resumo_executivo" 
+            consultaId={consultaId} 
+            onSave={handleSaveField} 
+            onAIEdit={handleAIEdit} 
+          />
         </div>
       </CollapsibleSection>
 
@@ -2866,13 +3190,13 @@ interface SuplementacaoItem {
   termino: string;
 }
 
-function SuplemementacaoSection({
+function SuplemementacaoSection({ 
   consultaId
 }: {
   consultaId: string;
 }) {
   const { showError } = useNotifications();
-
+  
   const [suplementacaoData, setSuplementacaoData] = useState<{
     suplementos: SuplementacaoItem[];
     fitoterapicos: SuplementacaoItem[];
@@ -2884,13 +3208,6 @@ function SuplemementacaoSection({
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [editingItem, setEditingItem] = useState<{
-    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach';
-    index: number;
-    field: keyof SuplementacaoItem;
-  } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
   // Carregar dados ao montar o componente
   useEffect(() => {
@@ -2904,7 +3221,7 @@ function SuplemementacaoSection({
     };
 
     window.addEventListener('suplementacao-data-refresh', handleRefresh);
-
+    
     return () => {
       window.removeEventListener('suplementacao-data-refresh', handleRefresh);
     };
@@ -2914,19 +3231,19 @@ function SuplemementacaoSection({
     try {
       setLoadingDetails(true);
       setError(null);
-
+      
       console.log('🔍 Carregando dados de suplementação para consulta:', consultaId);
-
+      
       const response = await fetch(`/api/solucao-suplementacao/${consultaId}`);
-
+      
       console.log('📡 Response status:', response.status, response.statusText);
-
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
         console.error('❌ Erro na resposta:', errorData);
         throw new Error(errorData.error || 'Erro ao carregar dados de suplementação');
       }
-
+      
       const data = await response.json();
       console.log('✅ Dados de suplementação recebidos:', data);
       console.log('📊 Estrutura suplementacao_data:', {
@@ -2936,7 +3253,7 @@ function SuplemementacaoSection({
         homeopatia: data.suplementacao_data?.homeopatia?.length || 0,
         florais_bach: data.suplementacao_data?.florais_bach?.length || 0
       });
-
+      
       setSuplementacaoData(data.suplementacao_data);
       setLoading(false);
     } catch (err) {
@@ -2948,75 +3265,6 @@ function SuplemementacaoSection({
     }
   };
 
-  // Função para iniciar edição
-  const handleStartEdit = (
-    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
-    index: number,
-    field: keyof SuplementacaoItem
-  ) => {
-    if (!suplementacaoData) return;
-    setEditingItem({ category, index, field });
-    setEditValue(suplementacaoData[category][index][field]);
-  };
-
-  // Função para salvar edição
-  const handleSaveEdit = async () => {
-    if (!editingItem || !suplementacaoData) return;
-
-    try {
-      setIsSaving(true);
-
-      // Atualizar localmente primeiro
-      const newData = { ...suplementacaoData };
-      newData[editingItem.category][editingItem.index][editingItem.field] = editValue;
-      setSuplementacaoData(newData);
-
-      // Salvar no banco de dados
-      console.log('💾 Salvando campo:', {
-        category: editingItem.category,
-        index: editingItem.index,
-        field: editingItem.field,
-        value: editValue
-      });
-
-      const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: editingItem.category,
-          index: editingItem.index,
-          field: editingItem.field,
-          value: editValue
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro ao salvar' }));
-        throw new Error(errorData.error || 'Erro ao salvar alteração');
-      }
-
-      console.log('✅ Campo salvo com sucesso');
-
-      // Limpar estado de edição
-      setEditingItem(null);
-      setEditValue('');
-
-    } catch (error) {
-      console.error('❌ Erro ao salvar campo:', error);
-      showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
-
-      // Recarregar dados para sincronizar com o banco
-      await loadSuplementacaoData();
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Função para cancelar edição
-  const handleCancelEdit = () => {
-    setEditingItem(null);
-    setEditValue('');
-  };
 
   // Mostrar loading no primeiro carregamento
   if (loading && !error) {
@@ -3033,7 +3281,7 @@ function SuplemementacaoSection({
     return (
       <div className="anamnese-error">
         <p style={{ color: '#f44336' }}>❌ {error}</p>
-        <button
+        <button 
           onClick={loadSuplementacaoData}
           style={{
             marginTop: '10px',
@@ -3062,90 +3310,22 @@ function SuplemementacaoSection({
     );
   }
 
-  // Função para renderizar célula editável
-  const renderEditableCell = (
-    category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
-    index: number,
-    field: keyof SuplementacaoItem,
-    value: string
-  ) => {
-    const isEditing = editingItem?.category === category &&
-      editingItem?.index === index &&
-      editingItem?.field === field;
-
-    if (isEditing) {
-      return (
-        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-          <textarea
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            disabled={isSaving}
-            style={{
-              flex: 1,
-              minHeight: '60px',
-              padding: '5px',
-              fontSize: '14px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              opacity: isSaving ? 0.6 : 1
-            }}
-          />
-          <button
-            onClick={handleSaveEdit}
-            disabled={isSaving}
-            style={{
-              padding: '5px 10px',
-              background: isSaving ? '#ccc' : '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isSaving ? 'not-allowed' : 'pointer'
-            }}
-            title={isSaving ? 'Salvando...' : 'Salvar'}
-          >
-            {isSaving ? '...' : <Save className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={handleCancelEdit}
-            disabled={isSaving}
-            style={{
-              padding: '5px 10px',
-              background: isSaving ? '#ccc' : '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isSaving ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <span style={{ flex: 1 }}>{value || '-'}</span>
-        <button
-          onClick={() => handleStartEdit(category, index, field)}
-          disabled={loadingDetails || isSaving}
-          style={{
-            padding: '5px',
-            background: 'transparent',
-            border: 'none',
-            cursor: (loadingDetails || isSaving) ? 'not-allowed' : 'pointer',
-            color: '#666',
-            opacity: (loadingDetails || isSaving) ? 0.5 : 1
-          }}
-          title="Editar"
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-      </div>
-    );
+  const handleAIEdit = (fieldPath: string, label: string) => {
+    console.log('Edição com IA:', fieldPath, label);
   };
 
-  // Função para renderizar tabela de categoria
+  const formatValueForDataField = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) {
+      return value.filter(item => item !== null && item !== undefined).join('\n');
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+  };
+
+  // Função para renderizar categoria usando DataField
   const renderCategoryTable = (
     title: string,
     category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach',
@@ -3154,50 +3334,155 @@ function SuplemementacaoSection({
     if (items.length === 0) {
       return (
         <CollapsibleSection title={title} defaultOpen={true}>
-          <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhum item cadastrado</p>
+          <p style={{ color: '#666', fontStyle: 'italic', padding: '20px' }}>Nenhum item cadastrado</p>
         </CollapsibleSection>
       );
     }
 
     return (
       <CollapsibleSection title={title} defaultOpen={true}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-            <thead>
-              <tr style={{ background: '#f5f5f5' }}>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Nome</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Objetivo</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Dosagem</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Horário</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Início</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Término</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                    {renderEditableCell(category, index, 'nome', item.nome)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top', maxWidth: '300px' }}>
-                    {renderEditableCell(category, index, 'objetivo', item.objetivo)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                    {renderEditableCell(category, index, 'dosagem', item.dosagem)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                    {renderEditableCell(category, index, 'horario', item.horario)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                    {renderEditableCell(category, index, 'inicio', item.inicio)}
-                  </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                    {renderEditableCell(category, index, 'termino', item.termino)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="anamnese-subsection">
+          {items.map((item, index) => (
+            <div key={index} style={{ marginBottom: '16px' }}>
+              <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                Item {index + 1}
+              </h4>
+              <div className="anamnese-subsection">
+                <DataField 
+                  label="Nome" 
+                  value={formatValueForDataField(item.nome)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.nome`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'nome',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+                <DataField 
+                  label="Objetivo" 
+                  value={formatValueForDataField(item.objetivo)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.objetivo`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'objetivo',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+                <DataField 
+                  label="Dosagem" 
+                  value={formatValueForDataField(item.dosagem)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.dosagem`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'dosagem',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+                <DataField 
+                  label="Horário" 
+                  value={formatValueForDataField(item.horario)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.horario`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'horario',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+                <DataField 
+                  label="Início" 
+                  value={formatValueForDataField(item.inicio)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.inicio`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'inicio',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+                <DataField 
+                  label="Término" 
+                  value={formatValueForDataField(item.termino)} 
+                  fieldPath={`suplementacao_data.${category}.${index}.termino`} 
+                  consultaId={consultaId} 
+                  onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                    const response = await fetch(`/api/solucao-suplementacao/${consultaId}/update-field`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        category,
+                        index,
+                        field: 'termino',
+                        value: newValue
+                      }),
+                    });
+                    if (response.ok) {
+                      await loadSuplementacaoData();
+                    }
+                  }} 
+                  onAIEdit={handleAIEdit} 
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </CollapsibleSection>
     );
@@ -3214,23 +3499,16 @@ function SuplemementacaoSection({
 }
 
 // Componente da seção de Solução Alimentação
-function AlimentacaoSection({
+function AlimentacaoSection({ 
   consultaId
 }: {
   consultaId: string;
 }) {
   const { showError } = useNotifications();
-
+  
   const [alimentacaoData, setAlimentacaoData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [editingItem, setEditingItem] = useState<{ refeicao: string, index: number } | null>(null);
-  const [editForm, setEditForm] = useState({
-    alimento: '',
-    tipo: '',
-    gramatura: '',
-    kcal: ''
-  });
 
   useEffect(() => {
     loadAlimentacaoData();
@@ -3243,7 +3521,7 @@ function AlimentacaoSection({
     };
 
     window.addEventListener('alimentacao-data-refresh', handleRefresh);
-
+    
     return () => {
       window.removeEventListener('alimentacao-data-refresh', handleRefresh);
     };
@@ -3253,11 +3531,11 @@ function AlimentacaoSection({
     try {
       setLoadingDetails(true);
       console.log('🔍 [FRONTEND] Carregando dados de alimentação para consulta:', consultaId);
-
+      
       const response = await fetch(`/api/alimentacao/${consultaId}`);
-
+      
       console.log('📡 [FRONTEND] Response status:', response.status);
-
+      
       if (response.ok) {
         const data = await response.json();
         console.log('✅ [FRONTEND] Dados recebidos:', data);
@@ -3267,7 +3545,7 @@ function AlimentacaoSection({
           cafe_da_tarde: data.alimentacao_data?.cafe_da_tarde?.length || 0,
           jantar: data.alimentacao_data?.jantar?.length || 0
         });
-
+        
         setAlimentacaoData(data.alimentacao_data);
       } else {
         console.error('❌ [FRONTEND] Erro na resposta:', response.statusText);
@@ -3286,25 +3564,25 @@ function AlimentacaoSection({
       const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldPath,
+        body: JSON.stringify({ 
+          fieldPath, 
           value: newValue
         }),
       });
 
       if (!response.ok) throw new Error('Erro ao atualizar campo no Supabase');
-
+      
       // Depois, notificar o webhook
       try {
         const webhookEndpoints = getWebhookEndpoints();
         const webhookHeaders = getWebhookHeaders();
-
+        
         await fetch(webhookEndpoints.edicaoSolucao, {
           method: 'POST',
           headers: webhookHeaders,
-          body: JSON.stringify({
+          body: JSON.stringify({ 
             origem: 'MANUAL',
-            fieldPath,
+            fieldPath, 
             texto: newValue,
             consultaId,
             solucao_etapa: 'ALIMENTACAO'
@@ -3313,7 +3591,7 @@ function AlimentacaoSection({
       } catch (webhookError) {
         console.warn('Aviso: Webhook não pôde ser notificado, mas dados foram salvos:', webhookError);
       }
-
+      
       // Recarregar dados após salvar
       await loadAlimentacaoData();
     } catch (error) {
@@ -3322,54 +3600,22 @@ function AlimentacaoSection({
     }
   };
 
-  const handleEditItem = (refeicao: string, index: number, item: any) => {
-    setEditingItem({ refeicao, index });
-    setEditForm({
-      alimento: item.alimento || '',
-      tipo: item.tipo || '',
-      gramatura: item.gramatura || '',
-      kcal: item.kcal || ''
-    });
+  const handleAIEdit = (fieldPath: string, label: string) => {
+    // Esta função será implementada se necessário para edição com IA
+    console.log('Edição com IA:', fieldPath, label);
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-
-    try {
-      // Salvar dados na tabela s_gramaturas_alimentares
-      const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          refeicao: editingItem.refeicao,
-          index: editingItem.index,
-          alimento: editForm.alimento,
-          tipo: editForm.tipo,
-          gramatura: editForm.gramatura,
-          kcal: editForm.kcal
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao salvar dados');
-      }
-
-      // Fechar modal
-      setEditingItem(null);
-      setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
-
-      // Recarregar dados
-      await loadAlimentacaoData();
-    } catch (error) {
-      console.error('Erro ao salvar edição:', error);
-      showError('Erro ao salvar edição. Tente novamente.', 'Erro');
+  const formatValueForDataField = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) {
+      return value.filter(item => item !== null && item !== undefined).join('\n');
     }
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
   };
 
-  const handleCancelEdit = () => {
-    setEditingItem(null);
-    setEditForm({ alimento: '', tipo: '', gramatura: '', kcal: '' });
-  };
 
   console.log('🔍 [FRONTEND] AlimentacaoSection - Estado atual:', {
     loading,
@@ -3408,132 +3654,715 @@ function AlimentacaoSection({
       console.log('⚠️ [FRONTEND] alimentacaoData não existe');
       return [];
     }
-
+    
     // Retornar os dados diretamente da propriedade da refeição
     const dados = alimentacaoData[refeicaoKey as keyof typeof alimentacaoData] || [];
-
+    
     console.log(`📋 [FRONTEND] Dados para ${refeicaoKey}:`, dados.length, 'itens');
-
+    
     return Array.isArray(dados) ? dados : [];
   };
 
   return (
     <div className="anamnese-sections">
-      <div className="alimentacao-container">
-        <h2 className="alimentacao-title">Alimentação</h2>
-
-        {/* Grid de refeições */}
-        <div className="refeicoes-grid">
-          {refeicoes.map((refeicao) => {
-            const items = getRefeicaoData(refeicao.key);
-
-            return (
-              <div key={refeicao.key} className="refeicao-section">
-                <h3 className="refeicao-title">{refeicao.label}</h3>
-                <div className="refeicao-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Alimento</th>
-                        <th>Tipo</th>
-                        <th>Gramatura</th>
-                        <th>Kcal</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.length > 0 ? (
-                        items.map((item: any, index: number) => (
-                          <tr key={item.id}>
-                            <td>{item.alimento}</td>
-                            <td>{item.tipo || '-'}</td>
-                            <td>{item.gramatura}</td>
-                            <td>{item.kcal}</td>
-                            <td>
-                              <button
-                                onClick={() => handleEditItem(refeicao.key, index, item)}
-                                className="edit-button"
-                                title="Editar item"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="empty-row">
-                            Nenhum item adicionado
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+      {refeicoes.map((refeicao) => {
+        const items = getRefeicaoData(refeicao.key);
+        
+        return (
+          <CollapsibleSection key={refeicao.key} title={refeicao.label} defaultOpen={true}>
+            {items.length === 0 ? (
+              <p style={{ color: '#666', fontStyle: 'italic', padding: '20px' }}>
+                Nenhum item adicionado
+              </p>
+            ) : (
+              <div className="anamnese-subsection">
+                {items.map((item: any, index: number) => (
+                  <div key={item.id || index} style={{ marginBottom: '16px' }}>
+                    <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                      Item {index + 1}
+                    </h4>
+                    <div className="anamnese-subsection">
+                      <DataField 
+                        label="Alimento" 
+                        value={formatValueForDataField(item.alimento)} 
+                        fieldPath={`alimentacao_data.${refeicao.key}.${index}.alimento`} 
+                        consultaId={consultaId} 
+                        onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                          // Atualizar item específico
+                          const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              refeicao: refeicao.key,
+                              index: index,
+                              alimento: newValue,
+                              tipo: item.tipo,
+                              gramatura: item.gramatura,
+                              kcal: item.kcal
+                            }),
+                          });
+                          if (response.ok) {
+                            await loadAlimentacaoData();
+                          }
+                        }} 
+                        onAIEdit={handleAIEdit} 
+                      />
+                      <DataField 
+                        label="Tipo" 
+                        value={formatValueForDataField(item.tipo)} 
+                        fieldPath={`alimentacao_data.${refeicao.key}.${index}.tipo`} 
+                        consultaId={consultaId} 
+                        onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                          const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              refeicao: refeicao.key,
+                              index: index,
+                              alimento: item.alimento,
+                              tipo: newValue,
+                              gramatura: item.gramatura,
+                              kcal: item.kcal
+                            }),
+                          });
+                          if (response.ok) {
+                            await loadAlimentacaoData();
+                          }
+                        }} 
+                        onAIEdit={handleAIEdit} 
+                      />
+                      <DataField 
+                        label="Gramatura" 
+                        value={formatValueForDataField(item.gramatura)} 
+                        fieldPath={`alimentacao_data.${refeicao.key}.${index}.gramatura`} 
+                        consultaId={consultaId} 
+                        onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                          const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              refeicao: refeicao.key,
+                              index: index,
+                              alimento: item.alimento,
+                              tipo: item.tipo,
+                              gramatura: newValue,
+                              kcal: item.kcal
+                            }),
+                          });
+                          if (response.ok) {
+                            await loadAlimentacaoData();
+                          }
+                        }} 
+                        onAIEdit={handleAIEdit} 
+                      />
+                      <DataField 
+                        label="Kcal" 
+                        value={formatValueForDataField(item.kcal)} 
+                        fieldPath={`alimentacao_data.${refeicao.key}.${index}.kcal`} 
+                        consultaId={consultaId} 
+                        onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                          const response = await fetch(`/api/alimentacao/${consultaId}/update-field`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              refeicao: refeicao.key,
+                              index: index,
+                              alimento: item.alimento,
+                              tipo: item.tipo,
+                              gramatura: item.gramatura,
+                              kcal: newValue
+                            }),
+                          });
+                          if (response.ok) {
+                            await loadAlimentacaoData();
+                          }
+                        }} 
+                        onAIEdit={handleAIEdit} 
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </CollapsibleSection>
+        );
+      })}
+    </div>
+  );
+}
+
+// Componente da seção de Exames com dados do paciente
+function ExamesSection({
+  consultaDetails,
+  consultaId,
+  onBack
+}: {
+  consultaDetails: Consultation;
+  consultaId: string;
+  onBack: () => void;
+}) {
+  const formatDateOnly = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatTime = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}min`;
+    }
+    return `${minutes} min`;
+  };
+
+  const mapConsultationType = (type: string) => {
+    return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+  };
+
+  // Avatar do paciente
+  const patientsData = Array.isArray(consultaDetails.patients) 
+    ? consultaDetails.patients[0] 
+    : consultaDetails.patients;
+  const patientAvatar = patientsData?.profile_pic || null;
+  const patientInitials = (consultaDetails.patient_name || 'P')
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="consultation-details-overview-container">
+      {/* Header com botão voltar */}
+      <div className="consultation-details-overview-header">
+        <button 
+          className="back-button"
+          onClick={onBack}
+          style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar
+        </button>
+        <h1 className="consultation-details-overview-title">Exames</h1>
       </div>
 
-      {/* Modal de edição */}
-      {editingItem && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Editar Item - {refeicoes.find(r => r.key === editingItem.refeicao)?.label}</h3>
-            <div className="edit-form">
-              <div className="form-group">
-                <label>Alimento:</label>
-                <input
-                  type="text"
-                  value={editForm.alimento}
-                  onChange={(e) => setEditForm({ ...editForm, alimento: e.target.value })}
-                />
+      {/* Cards de informações da consulta no topo */}
+      <div className="consultation-details-cards-row">
+        {/* Card Paciente */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-avatar">
+            {patientAvatar ? (
+              <Image
+                src={patientAvatar}
+                alt={consultaDetails.patient_name}
+                width={60}
+                height={60}
+                style={{ borderRadius: '50%', objectFit: 'cover' }}
+                unoptimized
+              />
+            ) : (
+              <div className="consultation-details-avatar-placeholder">
+                {patientInitials}
               </div>
-              <div className="form-group">
-                <label>Tipo:</label>
-                <select
-                  value={editForm.tipo}
-                  onChange={(e) => setEditForm({ ...editForm, tipo: e.target.value })}
-                >
-                  <option value="">Selecione o tipo</option>
-                  <option value="Proteína">Proteína</option>
-                  <option value="Carboidrato">Carboidrato</option>
-                  <option value="Gordura">Gordura</option>
-                  <option value="Fibra">Fibra</option>
-                  <option value="Vitamina">Vitamina</option>
-                  <option value="Mineral">Mineral</option>
-                  <option value="Outro">Outro</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Gramatura:</label>
-                <input
-                  type="text"
-                  value={editForm.gramatura}
-                  onChange={(e) => setEditForm({ ...editForm, gramatura: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Kcal:</label>
-                <input
-                  type="text"
-                  value={editForm.kcal}
-                  onChange={(e) => setEditForm({ ...editForm, kcal: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button onClick={handleCancelEdit} className="btn-cancel">
-                Cancelar
-              </button>
-              <button onClick={handleSaveEdit} className="btn-save">
-                Salvar
-              </button>
+            )}
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Paciente</div>
+            <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+            {patientsData?.phone && (
+              <div className="consultation-details-card-phone">{patientsData.phone}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Card Data/Hora */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <Calendar size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Data / Hora</div>
+            <div className="consultation-details-card-value">
+              {consultaDetails.consulta_inicio 
+                ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                : formatDateOnly(consultaDetails.created_at)}
             </div>
           </div>
         </div>
-      )}
+
+        {/* Card Tipo */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <FileText size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Tipo</div>
+            <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+          </div>
+        </div>
+
+        {/* Card Duração */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <Clock size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Duração</div>
+            <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+          </div>
+        </div>
+
+        {/* Card Status */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <User size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Status</div>
+            <div className="consultation-details-card-value">
+              {(() => {
+                const statusMap: { [key: string]: string } = {
+                  'AGENDAMENTO': 'Agendamento',
+                  'EM_ANDAMENTO': 'Em Andamento',
+                  'PROCESSING': 'Processamento',
+                  'VALIDATION': 'Validação',
+                  'FINALIZADA': 'Finalizada',
+                  'CANCELADA': 'Cancelada',
+                  'RECORDING': 'Gravando'
+                };
+                return statusMap[consultaDetails.status] || consultaDetails.status;
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Seção de Exames */}
+      <div style={{ marginTop: '32px' }}>
+        <ExamesUploadSection 
+          consultaId={consultaId} 
+          patientId={consultaDetails.patient_id}
+          consultaStatus={consultaDetails.status}
+          consultaEtapa={consultaDetails.etapa}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Componente da tela intermediária de detalhes da consulta
+function ConsultationDetailsOverview({
+  consultaDetails,
+  patientId,
+  onNavigateToSection,
+  onBack
+}: {
+  consultaDetails: Consultation;
+  patientId?: string;
+  onNavigateToSection: (section: 'ANAMNESE' | 'SOLUCOES' | 'EXAMES') => void;
+  onBack: () => void;
+}) {
+  const [patientData, setPatientData] = useState<any>(null);
+  const [loadingPatientData, setLoadingPatientData] = useState(false);
+
+  // Função para calcular idade
+  const calculateAge = (birthDate?: string) => {
+    if (!birthDate) return null;
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      // Verificar se a data é válida
+      if (isNaN(birth.getTime())) {
+        console.warn('⚠️ Data de nascimento inválida:', birthDate);
+        return null;
+      }
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      // Verificar se a idade é válida (não negativa e não muito grande)
+      if (age < 0 || age > 150) {
+        console.warn('⚠️ Idade calculada inválida:', age, 'para data:', birthDate);
+        return null;
+      }
+      
+      return age;
+    } catch (error) {
+      console.error('❌ Erro ao calcular idade:', error, 'para data:', birthDate);
+      return null;
+    }
+  };
+
+  // Buscar dados do paciente
+  useEffect(() => {
+    const fetchPatientData = async () => {
+      if (!patientId) {
+        console.log('⚠️ ConsultationDetailsOverview: patientId não fornecido');
+        return;
+      }
+      
+      try {
+        setLoadingPatientData(true);
+        console.log('🔍 ConsultationDetailsOverview: Buscando dados do paciente:', patientId);
+        const response = await fetch(`/api/cadastro-anamnese/${patientId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ ConsultationDetailsOverview: Dados do paciente recebidos:', data);
+          console.log('✅ ConsultationDetailsOverview: data_nascimento:', data?.data_nascimento);
+          console.log('✅ ConsultationDetailsOverview: tipo_sanguineo:', data?.tipo_sanguineo);
+          console.log('✅ ConsultationDetailsOverview: tipo_sangue:', data?.tipo_sangue);
+          setPatientData(data);
+        } else {
+          console.warn('⚠️ ConsultationDetailsOverview: Erro ao buscar dados do paciente:', response.status);
+          setPatientData(null);
+        }
+      } catch (error) {
+        console.error('❌ ConsultationDetailsOverview: Erro ao buscar dados do paciente:', error);
+        setPatientData(null);
+      } finally {
+        setLoadingPatientData(false);
+      }
+    };
+
+    fetchPatientData();
+  }, [patientId]);
+
+  const formatDateOnly = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatTime = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}min`;
+    }
+    return `${minutes} min`;
+  };
+
+  const mapConsultationType = (type: string) => {
+    return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+  };
+
+  const getPatientAge = () => {
+    if (patientData?.data_nascimento) {
+      const age = calculateAge(patientData.data_nascimento);
+      // Verificar se a idade é válida (não é NaN)
+      if (age !== null && !isNaN(age) && age >= 0) {
+        return age;
+      }
+    }
+    // Tentar buscar de outras fontes ou retornar null para mostrar card vazio
+    return null;
+  };
+
+  const getPatientWeight = () => {
+    return patientData?.peso_atual || null;
+  };
+
+  const getPatientHeight = () => {
+    const altura = patientData?.altura;
+    if (!altura) return null;
+    // Se altura já está formatada (contém "m"), retornar como está
+    if (typeof altura === 'string' && altura.includes('m')) {
+      return altura;
+    }
+    // Se for número, formatar
+    if (typeof altura === 'number') {
+      return `${altura.toString().replace('.', ',')} m`;
+    }
+    // Se for string numérica, formatar
+    if (typeof altura === 'string') {
+      const num = parseFloat(altura);
+      if (!isNaN(num)) {
+        return `${num.toString().replace('.', ',')} m`;
+      }
+    }
+    return altura;
+  };
+
+  const getPatientBloodType = () => {
+    return patientData?.tipo_sanguineo || patientData?.tipo_sangue || null;
+  };
+
+  const patientAge = getPatientAge();
+  const patientWeight = getPatientWeight();
+  const patientHeight = getPatientHeight();
+  const patientBloodType = getPatientBloodType();
+
+  // Avatar do paciente - verificar se patients é array ou objeto
+  const patientsData = Array.isArray(consultaDetails.patients) 
+    ? consultaDetails.patients[0] 
+    : consultaDetails.patients;
+  console.log('🔍 ConsultationDetailsOverview: patientsData:', patientsData);
+  const patientAvatar = patientsData?.profile_pic || null;
+  console.log('🔍 ConsultationDetailsOverview: patientAvatar:', patientAvatar);
+  const patientInitials = (consultaDetails.patient_name || 'P')
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="consultation-details-overview-container">
+      {/* Header com botão voltar */}
+      <div className="consultation-details-overview-header">
+        <button 
+          className="back-button"
+          onClick={onBack}
+          style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar
+        </button>
+        <h1 className="consultation-details-overview-title">Detalhes da Consulta</h1>
+      </div>
+
+      {/* Cards de informações da consulta no topo */}
+      <div className="consultation-details-cards-row">
+        {/* Card Paciente */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-avatar">
+            {patientAvatar ? (
+              <Image
+                src={patientAvatar}
+                alt={consultaDetails.patient_name}
+                width={60}
+                height={60}
+                style={{ borderRadius: '50%', objectFit: 'cover' }}
+                unoptimized
+              />
+            ) : (
+              <div className="consultation-details-avatar-placeholder">
+                {patientInitials}
+              </div>
+            )}
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Paciente</div>
+            <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+            {patientsData?.phone && (
+              <div className="consultation-details-card-phone">{patientsData.phone}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Card Data/Hora */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <Calendar size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Data / Hora</div>
+            <div className="consultation-details-card-value">
+              {consultaDetails.consulta_inicio 
+                ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                : formatDateOnly(consultaDetails.created_at)}
+            </div>
+          </div>
+        </div>
+
+        {/* Card Tipo */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <FileText size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Tipo</div>
+            <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+          </div>
+        </div>
+
+        {/* Card Duração */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <Clock size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Duração</div>
+            <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+          </div>
+        </div>
+
+        {/* Card Status */}
+        <div className="consultation-details-info-card">
+          <div className="consultation-details-card-icon-wrapper">
+            <User size={20} />
+          </div>
+          <div className="consultation-details-card-content">
+            <div className="consultation-details-card-label">Status</div>
+            <div className="consultation-details-card-value">
+              {(() => {
+                const statusMap: { [key: string]: string } = {
+                  'AGENDAMENTO': 'Agendamento',
+                  'EM_ANDAMENTO': 'Em Andamento',
+                  'PROCESSING': 'Processamento',
+                  'VALIDATION': 'Validação',
+                  'FINALIZADA': 'Finalizada',
+                  'CANCELADA': 'Cancelada',
+                  'RECORDING': 'Gravando'
+                };
+                return statusMap[consultaDetails.status] || consultaDetails.status;
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cards de detalhes do paciente e ações */}
+      <div className="consultation-details-main-content">
+        {/* Card esquerdo - Detalhes do Paciente */}
+        <div className="consultation-details-patient-card">
+          <div className="consultation-details-patient-avatar-large">
+            {patientAvatar ? (
+              <Image
+                src={patientAvatar}
+                alt={consultaDetails.patient_name}
+                width={155}
+                height={155}
+                style={{ borderRadius: '50%', objectFit: 'cover' }}
+                unoptimized
+              />
+            ) : (
+              <div className="consultation-details-avatar-placeholder-large">
+                {patientInitials}
+              </div>
+            )}
+          </div>
+
+          {loadingPatientData ? (
+            <div className="consultation-details-loading">Carregando dados do paciente...</div>
+          ) : (
+            <div className="consultation-details-patient-data-grid">
+              {/* Idade */}
+              <div className="consultation-details-patient-data-item">
+                <div className="consultation-details-data-icon">
+                  <Clock size={24} />
+                </div>
+                <div className="consultation-details-data-content">
+                  <div className="consultation-details-data-label">Idade</div>
+                  <div className="consultation-details-data-value">
+                    {patientAge !== null ? `${patientAge} anos` : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Peso */}
+              <div className="consultation-details-patient-data-item">
+                <div className="consultation-details-data-icon">
+                  <Scale size={24} />
+                </div>
+                <div className="consultation-details-data-content">
+                  <div className="consultation-details-data-label">Peso</div>
+                  <div className="consultation-details-data-value">
+                    {patientWeight ? `${patientWeight} kg` : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Altura */}
+              <div className="consultation-details-patient-data-item">
+                <div className="consultation-details-data-icon">
+                  <Ruler size={24} />
+                </div>
+                <div className="consultation-details-data-content">
+                  <div className="consultation-details-data-label">Altura</div>
+                  <div className="consultation-details-data-value">
+                    {patientHeight || 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tipo Sanguíneo */}
+              <div className="consultation-details-patient-data-item">
+                <div className="consultation-details-data-icon">
+                  <Droplet size={24} />
+                </div>
+                <div className="consultation-details-data-content">
+                  <div className="consultation-details-data-label">Tipo sanguíneo</div>
+                  <div className="consultation-details-data-value">
+                    {patientBloodType || 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card direito - Ações */}
+        <div className="consultation-details-actions-card">
+          <div className="consultation-details-actions-icon">
+            <FolderOpen size={84} style={{ color: '#1B4266' }} />
+          </div>
+          
+          <div className="consultation-details-actions-buttons">
+            {/* Botão Anamnese */}
+            <button
+              className="consultation-details-action-button consultation-details-action-button-primary"
+              onClick={() => onNavigateToSection('ANAMNESE')}
+            >
+              <Plus size={18} />
+              <span>Anamnese</span>
+              <ArrowRight size={18} />
+            </button>
+
+            {/* Botão Soluções */}
+            <button
+              className="consultation-details-action-button consultation-details-action-button-primary"
+              onClick={() => onNavigateToSection('SOLUCOES')}
+            >
+              <Plus size={18} />
+              <span>Soluções</span>
+              <ArrowRight size={18} />
+            </button>
+
+            {/* Botão Exames */}
+            <button
+              className="consultation-details-action-button consultation-details-action-button-outline"
+              onClick={() => onNavigateToSection('EXAMES')}
+            >
+              <Plus size={18} />
+              <span>Exames</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -3542,6 +4371,7 @@ function ConsultasPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const consultaId = searchParams.get('consulta_id');
+  const sectionParam = searchParams.get('section');
   const { showError, showSuccess, showWarning } = useNotifications();
 
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -3557,19 +4387,21 @@ function ConsultasPageContent() {
   const [dateFilterType, setDateFilterType] = useState<'day' | 'week' | 'month' | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const isInitialMount = useRef(true);
-
+  
   // Estados para visualização de detalhes
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showSolutionsViewer, setShowSolutionsViewer] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<'ANAMNESE' | 'SOLUCOES' | 'EXAMES' | null>(null);
+  const [forceShowSolutionSelection, setForceShowSolutionSelection] = useState(false);
 
   // Função para voltar para a tela de seleção de soluções
   const handleBackToSolutionSelection = async () => {
     if (!consultaId) return;
-
+    
     try {
       setIsSaving(true);
-
+      
       // Limpa a solucao_etapa para mostrar a tela de seleção de soluções
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -3597,22 +4429,22 @@ function ConsultasPageContent() {
 
   // Função helper para renderizar o botão "Ver Todas as Soluções"
   const renderViewSolutionsButton = () => (
-    <button
+    <button 
       className="view-solutions-button"
       onClick={handleBackToSolutionSelection}
       disabled={isSaving}
-      style={{
-        marginLeft: 'auto',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '10px 16px',
-        background: isSaving ? '#9ca3af' : '#3b82f6',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        cursor: isSaving ? 'not-allowed' : 'pointer',
-        fontSize: '14px',
+      style={{ 
+        marginLeft: 'auto', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        padding: '10px 16px', 
+        background: isSaving ? '#9ca3af' : '#3b82f6', 
+        color: 'white', 
+        border: 'none', 
+        borderRadius: '8px', 
+        cursor: isSaving ? 'not-allowed' : 'pointer', 
+        fontSize: '14px', 
         fontWeight: '500',
         transition: 'all 0.2s ease'
       }}
@@ -3637,18 +4469,10 @@ function ConsultasPageContent() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [chatInput, setChatInput] = useState('');
-
-  // Estados para histórico de alterações (audit logs)
-  interface AuditHistoryItem {
-    id: string;
-    created_at: string;
-    medico_solicitation: string | null;
-    value_before: any;
-    value_after: any;
-    user_name: string | null;
-  }
-  const [auditHistory, setAuditHistory] = useState<AuditHistoryItem[]>([]);
-  const [loadingAuditHistory, setLoadingAuditHistory] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  
+  // Estado para controlar a tab ativa na Anamnese
+  const [activeAnamneseTab, setActiveAnamneseTab] = useState<string>('Dados do Paciente');
 
   // Estado para salvar alterações
   const [isSaving, setIsSaving] = useState(false);
@@ -3656,11 +4480,11 @@ function ConsultasPageContent() {
   // Estados para ATIVIDADE_FISICA
   const [atividadeFisicaData, setAtividadeFisicaData] = useState<ExercicioFisico[]>([]);
   const [loadingAtividadeFisica, setLoadingAtividadeFisica] = useState(false);
-  const [editingExercicio, setEditingExercicio] = useState<{ id: number, field: string } | null>(null);
-
+  const [editingExercicio, setEditingExercicio] = useState<{id: number, field: string} | null>(null);
+  
   // Estado para autocomplete de exercícios
-  const [exercicioSuggestions, setExercicioSuggestions] = useState<Array<{ id: number, atividade: string, grupo_muscular: string }>>([]);
-
+  const [exercicioSuggestions, setExercicioSuggestions] = useState<Array<{id: number, atividade: string, grupo_muscular: string}>>([]);
+  
   // Estado para alterações pendentes (não salvas)
   const [pendingChanges, setPendingChanges] = useState<Record<number, Partial<ExercicioFisico>>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -3685,46 +4509,11 @@ function ConsultasPageContent() {
   const [advanceAction, setAdvanceAction] = useState<(() => Promise<void>) | null>(null);
   const [advanceMessage, setAdvanceMessage] = useState<string>('');
 
-  // Função para carregar histórico de alterações do audit_logs
-  const loadAuditHistory = async (fieldPath: string) => {
-    console.log('🔍 [DEBUG] loadAuditHistory chamado com:', { consultaId, fieldPath });
-
-    if (!consultaId) {
-      console.log('🔍 [DEBUG] consultaId é null, retornando');
-      return;
-    }
-
-    try {
-      setLoadingAuditHistory(true);
-      const url = `/api/audit-logs/${consultaId}?fieldPath=${encodeURIComponent(fieldPath)}`;
-      console.log('🔍 [DEBUG] Fazendo fetch para:', url);
-
-      const response = await fetch(url);
-      console.log('🔍 [DEBUG] Response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📜 [DEBUG] Dados recebidos:', data);
-        setAuditHistory(data.logs || []);
-        console.log('📜 Histórico de alterações carregado:', data.logs?.length || 0, 'registros');
-      } else {
-        const errorData = await response.text();
-        console.error('❌ [DEBUG] Erro na resposta:', response.status, errorData);
-        setAuditHistory([]);
-      }
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao carregar histórico de alterações:', error);
-      setAuditHistory([]);
-    } finally {
-      setLoadingAuditHistory(false);
-    }
-  };
-
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
     setSelectedField({ fieldPath, label });
     setChatMessages([]); // Limpa o chat anterior
-    loadAuditHistory(fieldPath); // Carrega histórico de alterações
+    setShowAIChat(true); // Abre o chat automaticamente quando um campo é selecionado
   };
 
   // Função para enviar mensagem para IA
@@ -3746,44 +4535,44 @@ function ConsultasPageContent() {
     try {
       // Determinar qual endpoint usar baseado no fieldPath
       const isDiagnostico = selectedField.fieldPath.startsWith('diagnostico_principal') ||
-        selectedField.fieldPath.startsWith('estado_geral') ||
-        selectedField.fieldPath.startsWith('estado_mental') ||
-        selectedField.fieldPath.startsWith('estado_fisiologico') ||
-        selectedField.fieldPath.startsWith('integracao_diagnostica') ||
-        selectedField.fieldPath.startsWith('habitos_vida');
-
+                           selectedField.fieldPath.startsWith('estado_geral') ||
+                           selectedField.fieldPath.startsWith('estado_mental') ||
+                           selectedField.fieldPath.startsWith('estado_fisiologico') ||
+                           selectedField.fieldPath.startsWith('integracao_diagnostica') ||
+                           selectedField.fieldPath.startsWith('habitos_vida');
+      
       const isSolucaoMentalidade = selectedField.fieldPath.startsWith('mentalidade_data');
       const isSolucaoSuplemementacao = selectedField.fieldPath.startsWith('suplementacao_data');
-
+      
       const webhookEndpoints = getWebhookEndpoints();
       const webhookHeaders = getWebhookHeaders();
-
+      
       // Usar webhook específico para Livro da Vida (Mentalidade)
       const webhookUrl = isSolucaoMentalidade
         ? webhookEndpoints.edicaoLivroDaVida
         : isSolucaoSuplemementacao
-          ? webhookEndpoints.edicaoSolucao
-          : isDiagnostico
-            ? webhookEndpoints.edicaoDiagnostico
-            : webhookEndpoints.edicaoAnamnese;
-
+        ? webhookEndpoints.edicaoSolucao
+        : isDiagnostico 
+        ? webhookEndpoints.edicaoDiagnostico
+        : webhookEndpoints.edicaoAnamnese;
+      
       const requestBody: any = {
         origem: 'IA',
         fieldPath: selectedField.fieldPath,
         texto: messageText,
         consultaId,
       };
-
+      
       // Adicionar solucao_etapa se for etapa de solução
       if (isSolucaoMentalidade) {
         requestBody.solucao_etapa = 'MENTALIDADE';
       } else if (isSolucaoSuplemementacao) {
         requestBody.solucao_etapa = 'SUPLEMENTACAO';
       }
-
+      
       console.log('🚀 Enviando para webhook:', requestBody);
       console.log('🔗 URL:', webhookUrl);
-
+      
       // Faz requisição para nossa API interna (que chama o webhook)
       console.log('📤 Fazendo requisição para /api/ai-edit...');
       const response = await fetch('/api/ai-edit', {
@@ -3796,14 +4585,14 @@ function ConsultasPageContent() {
           webhookUrl: webhookUrl
         }),
       });
-
+      
       console.log('📥 Resposta recebida da API interna:', response.status);
 
       console.log('Status da resposta:', response.status);
       console.log('Response OK?', response.ok);
-
+      
       const data = await response.json();
-
+      
       if (!response.ok) {
         console.error('Response not OK:', response.status, response.statusText);
         // Se for erro 500, pode ser problema no webhook, mas ainda mostramos a resposta
@@ -3812,11 +4601,11 @@ function ConsultasPageContent() {
         }
         throw new Error('Erro ao comunicar com a IA');
       }
-
+      
       // A API retorna { success: true, result: "string_json" }
       // Precisamos extrair o result e fazer parse
       let webhookResponse = data.result || data;
-
+      
       // Tentar parsear se for string JSON
       let parsedData;
       if (typeof webhookResponse === 'string') {
@@ -3829,10 +4618,10 @@ function ConsultasPageContent() {
       } else {
         parsedData = webhookResponse;
       }
-
+      
       // Pega a resposta da IA - lidando com diferentes formatos
       let aiResponse = 'Não foi possível obter resposta da IA';
-
+      
       if (Array.isArray(parsedData) && parsedData.length > 0) {
         // Formato esperado: [{"response": "texto"}]
         const firstItem = parsedData[0];
@@ -3864,7 +4653,7 @@ function ConsultasPageContent() {
         // Se ainda é string, usar diretamente
         aiResponse = parsedData;
       }
-
+      
       //console.log('🎯 Campo usado para resposta:', usedField);
       //console.log('💬 Resposta final da IA:', aiResponse);
 
@@ -3876,18 +4665,18 @@ function ConsultasPageContent() {
       };
 
       setChatMessages(prev => [...prev, assistantMessage]);
-
+      
       // Recarregar dados após processamento da IA (com delay para dar tempo do processamento)
       setTimeout(async () => {
         try {
           // Se for um campo de diagnóstico, recarregar dados de diagnóstico
           const isDiagnostico = selectedField.fieldPath.startsWith('diagnostico_principal') ||
-            selectedField.fieldPath.startsWith('estado_geral') ||
-            selectedField.fieldPath.startsWith('estado_mental') ||
-            selectedField.fieldPath.startsWith('estado_fisiologico') ||
-            selectedField.fieldPath.startsWith('integracao_diagnostica') ||
-            selectedField.fieldPath.startsWith('habitos_vida');
-
+                               selectedField.fieldPath.startsWith('estado_geral') ||
+                               selectedField.fieldPath.startsWith('estado_mental') ||
+                               selectedField.fieldPath.startsWith('estado_fisiologico') ||
+                               selectedField.fieldPath.startsWith('integracao_diagnostica') ||
+                               selectedField.fieldPath.startsWith('habitos_vida');
+          
           if (isDiagnostico) {
             // Trigger refresh of diagnostico data by updating a state that triggers useEffect
             window.dispatchEvent(new CustomEvent('diagnostico-data-refresh'));
@@ -3900,17 +4689,17 @@ function ConsultasPageContent() {
           console.warn('Erro ao recarregar dados após IA:', refreshError);
         }
       }, 2000); // 2 segundos de delay
-
+      
     } catch (error) {
       console.error('Erro ao enviar mensagem para IA:', error);
-
+      
       // Adiciona mensagem de erro
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
         timestamp: new Date(),
       };
-
+      
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -3927,7 +4716,7 @@ function ConsultasPageContent() {
         await loadConsultations(showLoading);
       }
     };
-
+    
     executeLoad();
   }, [currentPage, consultaId, dashboardLoaded, cssLoaded]);
 
@@ -3959,21 +4748,21 @@ function ConsultasPageContent() {
       const sidebar = document.querySelector('.sidebar');
       const header = document.querySelector('.header');
       const mainContent = document.querySelector('.main-content');
-
+      
       if (sidebar && header && mainContent) {
         // Verificar se os elementos têm estilos aplicados
         const sidebarStyles = window.getComputedStyle(sidebar);
         const headerStyles = window.getComputedStyle(header);
-
+        
         const sidebarHasStyles = sidebarStyles.width !== 'auto' && sidebarStyles.width !== '0px';
         const headerHasStyles = headerStyles.height !== 'auto' && headerStyles.height !== '0px';
-
+        
         if (sidebarHasStyles && headerHasStyles) {
           setDashboardLoaded(true);
           return true;
         }
       }
-
+      
       return false;
     };
 
@@ -4013,12 +4802,12 @@ function ConsultasPageContent() {
       testElement.style.position = 'absolute';
       testElement.style.top = '-9999px';
       document.body.appendChild(testElement);
-
+      
       const computedStyle = window.getComputedStyle(testElement);
       const hasStyles = computedStyle.padding !== '' || computedStyle.margin !== '';
-
+      
       document.body.removeChild(testElement);
-
+      
       if (hasStyles) {
         setCssLoaded(true);
       }
@@ -4026,14 +4815,14 @@ function ConsultasPageContent() {
 
     // Verificar imediatamente
     checkCssLoaded();
-
+    
     // Fallback rápido: marcar como carregado após 500ms
     const fallbackTimer = setTimeout(() => {
       if (!cssLoaded) {
         setCssLoaded(true);
       }
     }, 500);
-
+    
     return () => {
       clearTimeout(fallbackTimer);
     };
@@ -4048,7 +4837,7 @@ function ConsultasPageContent() {
       setError(null);
       const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
       const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
-
+      
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
         // Comparar IDs e status para detectar mudanças
@@ -4057,9 +4846,9 @@ function ConsultasPageContent() {
             const newConsultation = response.consultations[index];
             if (!newConsultation) return true;
             return oldConsultation.id !== newConsultation.id ||
-              oldConsultation.status !== newConsultation.status ||
-              oldConsultation.etapa !== newConsultation.etapa ||
-              oldConsultation.updated_at !== newConsultation.updated_at;
+                   oldConsultation.status !== newConsultation.status ||
+                   oldConsultation.etapa !== newConsultation.etapa ||
+                   oldConsultation.updated_at !== newConsultation.updated_at;
           });
 
         if (hasChanges) {
@@ -4067,7 +4856,7 @@ function ConsultasPageContent() {
         }
         return prev;
       });
-
+      
       setTotalPages(response.pagination.totalPages);
       setTotalConsultations(response.pagination.total);
     } catch (err) {
@@ -4090,7 +4879,7 @@ function ConsultasPageContent() {
     if (consultaId) return;
 
     // Verificar se há consultas em processamento na lista atual
-    const hasProcessingConsultations = consultations.some(c =>
+    const hasProcessingConsultations = consultations.some(c => 
       ['PROCESSING', 'RECORDING'].includes(c.status)
     );
 
@@ -4116,15 +4905,36 @@ function ConsultasPageContent() {
       fetchConsultaDetails(consultaId);
       // Resetar o estado do visualizador de soluções quando mudar de consulta
       setShowSolutionsViewer(false);
+      // Se houver parâmetro section=anamnese na URL, abrir diretamente a seção de anamnese
+      if (sectionParam === 'anamnese') {
+        setSelectedSection('ANAMNESE');
+      } else {
+        // Resetar selectedSection quando mudar de consulta (a menos que tenha section param)
+        setSelectedSection(null);
+      }
     } else {
       setConsultaDetails(null);
+      setSelectedSection(null);
     }
-  }, [consultaId]);
+  }, [consultaId, sectionParam]);
+
+  // Efeito para definir selectedSection automaticamente apenas quando houver parâmetro section=anamnese na URL
+  // Não deve definir automaticamente baseado no status da consulta - deve mostrar a tela de overview primeiro
+  useEffect(() => {
+    if (!consultaDetails) return;
+    
+    // Apenas definir selectedSection como 'ANAMNESE' se houver o parâmetro section=anamnese na URL
+    // Isso permite que o usuário clique no botão "Acessar Anamnese" e vá direto para a anamnese
+    // Mas quando abre a consulta normalmente, mostra a tela de overview primeiro
+    if (sectionParam === 'anamnese' && selectedSection !== 'ANAMNESE') {
+      setSelectedSection('ANAMNESE');
+    }
+  }, [consultaDetails, selectedSection, sectionParam]);
 
   // Polling automático para atualizar status da consulta (SEMPRE ativo quando há consulta aberta)
   // Ref para controlar se devemos parar o polling (ex: erro 401)
   const pollingActiveRef = useRef(true);
-
+  
   useEffect(() => {
     if (!consultaId) return;
 
@@ -4134,7 +4944,7 @@ function ConsultasPageContent() {
     // Determinar intervalo baseado no status atual
     const getPollingInterval = (currentStatus: string | null) => {
       if (!currentStatus) return 5000; // Default: 5 segundos
-
+      
       // Status que mudam frequentemente: polling mais rápido
       if (['PROCESSING', 'RECORDING'].includes(currentStatus)) {
         return 3000; // 3 segundos
@@ -4163,7 +4973,7 @@ function ConsultasPageContent() {
         const response = await fetch(`/api/consultations/${consultaId}?t=${Date.now()}`, {
           cache: 'no-store'
         });
-
+        
         // ✅ CORREÇÃO: Se erro 401 (não autenticado), parar polling imediatamente
         if (response.status === 401) {
           console.warn('⚠️ Sessão expirada - parando polling de consultas');
@@ -4180,11 +4990,11 @@ function ConsultasPageContent() {
           clearInterval(intervalId);
           return;
         }
-
+        
         if (response.ok) {
           const data = await response.json();
           const newConsultation = data.consultation;
-
+          
           if (!newConsultation) {
             return;
           }
@@ -4244,7 +5054,7 @@ function ConsultasPageContent() {
     };
 
     window.addEventListener('anamnese-data-refresh', handleAnamneseRefresh);
-
+    
     return () => {
       window.removeEventListener('anamnese-data-refresh', handleAnamneseRefresh);
     };
@@ -4252,14 +5062,14 @@ function ConsultasPageContent() {
 
   const loadAtividadeFisicaData = async () => {
     if (!consultaId) return;
-
+    
     try {
       setLoadingAtividadeFisica(true);
       console.log('🔍 DEBUG [REFERENCIA] Iniciando carregamento de dados de atividade física para consulta:', consultaId);
-
+      
       const response = await fetch(`/api/atividade-fisica/${consultaId}`);
       console.log('🔍 DEBUG [REFERENCIA] Resposta da API:', response.status, response.statusText);
-
+      
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 DEBUG [REFERENCIA] Dados recebidos da API:', data);
@@ -4301,16 +5111,16 @@ function ConsultasPageContent() {
   // Função para atualizar exercício LOCALMENTE (sem salvar no banco)
   const handleUpdateExercicioLocal = (id: number, field: string, newValue: string) => {
     // Atualizar o estado local
-    setAtividadeFisicaData(prev => prev.map(ex =>
+    setAtividadeFisicaData(prev => prev.map(ex => 
       ex.id === id ? { ...ex, [field]: newValue } : ex
     ));
-
+    
     // Registrar a alteração pendente
     setPendingChanges(prev => ({
       ...prev,
       [id]: { ...prev[id], [field]: newValue }
     }));
-
+    
     setHasUnsavedChanges(true);
     setEditingExercicio(null);
   };
@@ -4321,37 +5131,37 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Salvar cada alteração pendente
       for (const [exercicioId, changes] of Object.entries(pendingChanges)) {
         for (const [field, value] of Object.entries(changes)) {
-          const response = await fetch(`/api/atividade-fisica/${consultaId}/update-field`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+      const response = await fetch(`/api/atividade-fisica/${consultaId}/update-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
               id: Number(exercicioId),
-              field,
+          field, 
               value
-            }),
-          });
+        }),
+      });
 
           if (!response.ok) throw new Error(`Erro ao atualizar ${field}`);
         }
       }
-
+      
       // Notificar webhook via proxy (evita CORS)
       try {
         await fetch('/api/webhook-proxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify({ 
             endpoint: 'edicaoSolucao',
             payload: {
-              origem: 'MANUAL',
+            origem: 'MANUAL',
               fieldPath: 's_exercicios_fisicos',
               texto: 'Múltiplas alterações salvas',
-              consultaId,
-              solucao_etapa: 'ATIVIDADE_FISICA'
+            consultaId,
+            solucao_etapa: 'ATIVIDADE_FISICA'
             }
           }),
         });
@@ -4362,10 +5172,10 @@ function ConsultasPageContent() {
       // Limpar alterações pendentes
       setPendingChanges({});
       setHasUnsavedChanges(false);
-
+      
       // Mostrar sucesso (você pode adicionar um toast aqui)
       //alert('Alterações salvas com sucesso!');
-
+      
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       // Usar sistema de notificações ao invés de alert
@@ -4384,28 +5194,48 @@ function ConsultasPageContent() {
   // Função para selecionar solução
   const handleSelectSolucao = async (solucaoEtapa: 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA') => {
     if (!consultaId) return;
-
+    
     try {
       setIsSaving(true);
-
+      
+      console.log('🔍 [handleSelectSolucao] Iniciando seleção de solução:', solucaoEtapa);
+      
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          solucao_etapa: solucaoEtapa
+          solucao_etapa: solucaoEtapa,
+          etapa: 'SOLUCAO',
+          status: 'VALID_SOLUCAO'
         }),
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [handleSelectSolucao] Erro na resposta:', response.status, errorText);
         throw new Error('Erro ao atualizar consulta');
       }
 
+      console.log('✅ [handleSelectSolucao] Consulta atualizada com sucesso');
+
+      // Resetar estados que podem interferir
+      setForceShowSolutionSelection(false);
+      // NÃO resetar selectedSection aqui - deixar null para que renderConsultationContent determine o que mostrar
+      // Mas garantir que não vá para a tela intermediária quando há solução selecionada
+      setSelectedSection(null);
+      
+      // Aguardar um pouco antes de recarregar para garantir que o banco foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // Recarregar detalhes da consulta
+      console.log('🔄 [handleSelectSolucao] Recarregando detalhes da consulta...');
       await fetchConsultaDetails(consultaId);
+      
+      console.log('✅ [handleSelectSolucao] Detalhes recarregados');
     } catch (error) {
-      console.error('Erro ao selecionar solução:', error);
+      console.error('❌ [handleSelectSolucao] Erro ao selecionar solução:', error);
       showError('Erro ao selecionar solução. Tente novamente.', 'Erro');
     } finally {
       setIsSaving(false);
@@ -4417,7 +5247,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Limpa a solucao_etapa para mostrar a tela de seleção
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4435,7 +5265,7 @@ function ConsultasPageContent() {
 
       // Recarregar detalhes da consulta
       await fetchConsultaDetails(consultaId);
-
+      
     } catch (error) {
       console.error('Erro ao salvar e continuar:', error);
     } finally {
@@ -4452,42 +5282,49 @@ function ConsultasPageContent() {
       //console.log('🔍 Carregando detalhes da consulta:', id);
       const response = await fetch(`/api/consultations/${id}`);
       //console.log('📡 Response status:', response.status);
-
+      
       if (!response.ok) {
         throw new Error('Erro ao carregar detalhes da consulta');
       }
-
+      
       const data = await response.json();
       const newConsultation = data.consultation;
-
+      
       // Logs para debug de consulta_inicio e consulta_fim
       console.log('📅 Dados da consulta recebidos:', {
         consulta_inicio: newConsultation?.consulta_inicio,
         consulta_fim: newConsultation?.consulta_fim,
         created_at: newConsultation?.created_at,
-        todas_as_colunas_consulta: Object.keys(newConsultation || {}).filter(k =>
-          k.toLowerCase().includes('consulta') ||
-          k.toLowerCase().includes('inicio') ||
+        todas_as_colunas_consulta: Object.keys(newConsultation || {}).filter(k => 
+          k.toLowerCase().includes('consulta') || 
+          k.toLowerCase().includes('inicio') || 
           k.toLowerCase().includes('fim') ||
           k.toLowerCase().includes('start') ||
           k.toLowerCase().includes('end')
         )
       });
       console.log('📅 Objeto completo da consulta (verificar consulta_fim):', newConsultation);
-
+      
+      // Log específico para debug de soluções
+      console.log('🔍 [fetchConsultaDetails] Dados recebidos:', {
+        status: newConsultation?.status,
+        etapa: newConsultation?.etapa,
+        solucao_etapa: newConsultation?.solucao_etapa
+      });
+      
       // Sempre atualizar para garantir que mudanças no banco sejam refletidas
       // A comparação anterior estava impedindo atualizações quando o status mudava no banco
       setConsultaDetails(prev => {
         if (!prev) {
           return newConsultation;
         }
-
+        
         // Comparar campos importantes para log
         const statusChanged = prev.status !== newConsultation.status;
         const etapaChanged = prev.etapa !== newConsultation.etapa;
         const solucaoEtapaChanged = prev.solucao_etapa !== newConsultation.solucao_etapa;
         const updatedAtChanged = prev.updated_at !== newConsultation.updated_at;
-
+        
         if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
           console.log(`📝 Dados da consulta atualizados:`, {
             status: `${prev.status} → ${newConsultation.status}`,
@@ -4496,7 +5333,7 @@ function ConsultasPageContent() {
             updated_at: `${prev.updated_at} → ${newConsultation.updated_at}`
           });
         }
-
+        
         // Sempre retornar novo objeto para garantir atualização
         return newConsultation;
       });
@@ -4520,17 +5357,17 @@ function ConsultasPageContent() {
   // Função para editar consulta
   const handleEditConsultation = (e: React.MouseEvent, consultation: Consultation) => {
     e.stopPropagation(); // Previne a abertura da consulta
-
+    
     // Se for agendamento, abre o modal de edição
     if (consultation.status === 'AGENDAMENTO') {
       // Determinar data/hora do agendamento
-      const dateTime = consultation.consulta_inicio
-        ? new Date(consultation.consulta_inicio)
+      const dateTime = consultation.consulta_inicio 
+        ? new Date(consultation.consulta_inicio) 
         : new Date(consultation.created_at);
-
+      
       const dateStr = dateTime.toISOString().split('T')[0];
       const timeStr = dateTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
+      
       setEditAgendamentoForm({
         date: dateStr,
         time: timeStr,
@@ -4554,7 +5391,7 @@ function ConsultasPageContent() {
   // Função para salvar edição de agendamento
   const handleSaveAgendamentoEdit = async () => {
     if (!editingAgendamento) return;
-
+    
     setIsSavingAgendamento(true);
     try {
       // Criar datetime combinando data e hora
@@ -4625,7 +5462,7 @@ function ConsultasPageContent() {
       // Atualiza a lista removendo a consulta excluída
       setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
       setTotalConsultations(prev => prev - 1);
-
+      
       // Fecha o modal
       setShowDeleteModal(false);
       setConsultationToDelete(null);
@@ -4646,7 +5483,7 @@ function ConsultasPageContent() {
   // Função para entrar em uma consulta agendada
   const handleEnterConsultation = (e: React.MouseEvent, consultation: Consultation) => {
     e.stopPropagation(); // Previne a abertura da consulta
-
+    
     // Redirecionar para a página de nova consulta com os dados do agendamento
     // Isso permite que a consulta seja iniciada com Socket.IO e WebRTC
     router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient_name)}&consultation_type=${consultation.consultation_type}`);
@@ -4658,7 +5495,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Atualiza a etapa da consulta para DIAGNOSTICO SENDO PROCESSADO
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4679,11 +5516,11 @@ function ConsultasPageContent() {
       try {
         const webhookEndpoints = getWebhookEndpoints();
         const webhookHeaders = getWebhookHeaders();
-
+        
         await fetch(webhookEndpoints.diagnosticoPrincipal, {
           method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({
+        headers: webhookHeaders,
+        body: JSON.stringify({
             consultaId: consultaDetails.id,
             medicoId: consultaDetails.doctor_id,
             pacienteId: consultaDetails.patient_id
@@ -4734,7 +5571,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Atualiza a etapa da consulta para SOLUCAO sem definir solucao_etapa (mostra tela de seleção)
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4756,11 +5593,11 @@ function ConsultasPageContent() {
       try {
         const webhookEndpoints = getWebhookEndpoints();
         const webhookHeaders = getWebhookHeaders();
-
+        
         await fetch(webhookEndpoints.triggerSolucao, {
           method: 'POST',
-          headers: webhookHeaders,
-          body: JSON.stringify({
+        headers: webhookHeaders,
+        body: JSON.stringify({
             consultaId: consultaDetails.id,
             medicoId: consultaDetails.doctor_id,
             pacienteId: consultaDetails.patient_id
@@ -4788,7 +5625,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Atualiza a solucao_etapa para ALIMENTACAO (NOTA: Pulando para SUPLEMENTACAO)
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4803,7 +5640,7 @@ function ConsultasPageContent() {
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
-
+        
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
     } catch (error) {
@@ -4820,7 +5657,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Atualiza a solucao_etapa para SUPLEMENTACAO
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4835,7 +5672,7 @@ function ConsultasPageContent() {
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
-
+        
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
     } catch (error) {
@@ -4852,7 +5689,7 @@ function ConsultasPageContent() {
 
     try {
       setIsSaving(true);
-
+      
       // Atualiza a solucao_etapa para ATIVIDADE_FISICA
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -4882,19 +5719,21 @@ function ConsultasPageContent() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffTime = dateOnly.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
+    
+    if (diffDays === 0) {
       return 'Hoje, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 2) {
+    } else if (diffDays === -1) {
       return 'Ontem, ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     } else {
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit' 
       });
     }
   };
@@ -4947,7 +5786,7 @@ function ConsultasPageContent() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
+    
     if (hours > 0) {
       return `${hours}h ${minutes}m ${secs}s`;
     } else if (minutes > 0) {
@@ -5009,8 +5848,8 @@ function ConsultasPageContent() {
     if (profilePic) {
       return (
         <div className="patient-avatar">
-          <img
-            src={profilePic}
+          <img 
+            src={profilePic} 
             alt={name}
             className="avatar-image"
             onError={(e) => {
@@ -5022,8 +5861,8 @@ function ConsultasPageContent() {
                 parent.innerHTML = '';
                 // Aplicar todas as classes CSS necessárias
                 parent.className = 'avatar-placeholder';
-                // Aplicar estilo de fundo correto (marrom em vez de azul)
-                parent.style.background = 'linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%)';
+                // Aplicar estilo de fundo correto
+                parent.style.background = '#1B4266';
                 parent.style.width = '48px';
                 parent.style.height = '48px';
                 parent.style.borderRadius = '50%';
@@ -5035,7 +5874,7 @@ function ConsultasPageContent() {
                 parent.style.color = 'white';
                 parent.style.flexShrink = '0';
                 parent.style.position = 'relative';
-                parent.style.boxShadow = '0 4px 12px rgba(230, 195, 167, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)';
+                parent.style.boxShadow = '0 4px 12px rgba(27, 66, 102, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)';
                 parent.style.transition = 'all 0.3s ease';
                 parent.style.isolation = 'isolate';
                 // Adicionar o texto
@@ -5046,11 +5885,11 @@ function ConsultasPageContent() {
         </div>
       );
     }
-
+    
     return (
-      <div
-        className="avatar-placeholder"
-        style={{ background: 'linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%)' }}
+      <div 
+        className="avatar-placeholder" 
+        style={{ background: '#1B4266' }}
       >
         {initials}
       </div>
@@ -5060,10 +5899,10 @@ function ConsultasPageContent() {
   // Renderizar loading único - aguardar apenas dashboard, CSS e loadingDetails
   if (!dashboardLoaded || !cssLoaded || loadingDetails) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
         height: '100vh',
         background: '#f9fafb',
         color: '#1f2937',
@@ -5074,7 +5913,7 @@ function ConsultasPageContent() {
             width: '40px',
             height: '40px',
             border: '4px solid #e5e7eb',
-            borderTop: '4px solid #d4a574',
+            borderTop: '4px solid #1B4266',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
@@ -5108,14 +5947,14 @@ function ConsultasPageContent() {
           <AlertCircle className="error-icon" />
           <h3>{consultaId ? 'Erro ao carregar detalhes' : 'Erro ao carregar consultas'}</h3>
           <p>{error}</p>
-          <button
+          <button 
             className="retry-button"
             onClick={() => consultaId ? fetchConsultaDetails(consultaId) : loadConsultations(true)}
           >
             Tentar novamente
           </button>
           {consultaId && (
-            <button
+            <button 
               className="back-button"
               onClick={handleBackToList}
               style={{ marginTop: '10px' }}
@@ -5146,7 +5985,7 @@ function ConsultasPageContent() {
       // Definir mensagens baseadas na etapa
       let titulo = 'Processando Consulta';
       let descricao = 'As informações da consulta estão sendo processadas';
-
+      
       if (consultaDetails.etapa === 'DIAGNOSTICO') {
         titulo = 'Processando Diagnóstico';
         descricao = 'As informações do diagnóstico estão sendo processadas';
@@ -5155,13 +5994,13 @@ function ConsultasPageContent() {
         titulo = 'Processando Solução';
         descricao = 'As informações da solução estão sendo processadas';
       }
-
+      
       return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
           padding: '80px 20px',
           background: 'white',
           borderRadius: '16px',
@@ -5187,10 +6026,10 @@ function ConsultasPageContent() {
               Processamento Concluído
             </h2>
             <p className="completion-message">
-              A consulta foi processada com sucesso. <br />
+              A consulta foi processada com sucesso. <br/>
               A tela de visualização completa será implementada em breve.
             </p>
-            <button
+            <button 
               onClick={handleBackToList}
               className="btn-completion-back"
             >
@@ -5215,27 +6054,34 @@ function ConsultasPageContent() {
 
     // STATUS = VALID_SOLUCAO
     if (consultaDetails.status === 'VALID_SOLUCAO') {
+      console.log('🔍 [renderConsultationContent] STATUS = VALID_SOLUCAO, solucao_etapa:', consultaDetails.solucao_etapa);
+      
       // Se for MENTALIDADE, retornar a tela de edição completa
       if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
+        console.log('✅ [renderConsultationContent] Retornando SOLUCAO_MENTALIDADE');
         return 'SOLUCAO_MENTALIDADE';
       }
-
+      
       // Se for SUPLEMENTACAO, retornar a tela de edição completa
       if (consultaDetails.solucao_etapa === 'SUPLEMENTACAO') {
+        console.log('✅ [renderConsultationContent] Retornando SOLUCAO_SUPLEMENTACAO');
         return 'SOLUCAO_SUPLEMENTACAO';
       }
-
+      
       // Se for ALIMENTACAO, retornar a tela de edição completa
       if (consultaDetails.solucao_etapa === 'ALIMENTACAO') {
+        console.log('✅ [renderConsultationContent] Retornando SOLUCAO_ALIMENTACAO');
         return 'SOLUCAO_ALIMENTACAO';
       }
-
+      
       // Se for ATIVIDADE_FISICA, retornar a tela de edição completa
       if (consultaDetails.solucao_etapa === 'ATIVIDADE_FISICA') {
+        console.log('✅ [renderConsultationContent] Retornando SOLUCAO_ATIVIDADE_FISICA');
         return 'SOLUCAO_ATIVIDADE_FISICA';
       }
 
       // Se não tiver solucao_etapa definida, mostrar tela de seleção
+      console.log('⚠️ [renderConsultationContent] solucao_etapa não definida, retornando SELECT_SOLUCAO');
       return 'SELECT_SOLUCAO';
     }
 
@@ -5260,22 +6106,22 @@ function ConsultasPageContent() {
         if (!consultaDetails.solucao_etapa) {
           return 'SELECT_SOLUCAO';
         }
-
+        
         // Se for MENTALIDADE, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'MENTALIDADE') {
           return 'SOLUCAO_MENTALIDADE';
         }
-
+        
         // Se for SUPLEMENTACAO, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'SUPLEMENTACAO') {
           return 'SOLUCAO_SUPLEMENTACAO';
         }
-
+        
         // Se for ALIMENTACAO, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'ALIMENTACAO') {
           return 'SOLUCAO_ALIMENTACAO';
         }
-
+        
         // Se for ATIVIDADE_FISICA, retornar a tela de edição completa
         if (consultaDetails.solucao_etapa === 'ATIVIDADE_FISICA') {
           console.log('🔍 DEBUG [REFERENCIA] Solução etapa é ATIVIDADE_FISICA, retornando SOLUCAO_ATIVIDADE_FISICA');
@@ -5290,7 +6136,9 @@ function ConsultasPageContent() {
   };
 
   // Renderizar detalhes da consulta
+  console.log('🎯 [RENDER CHECK] consultaId:', consultaId, 'consultaDetails:', consultaDetails ? 'existe' : 'null');
   if (consultaId && consultaDetails) {
+    console.log('✅ [RENDER CHECK] Entrando no bloco de renderização, status:', consultaDetails.status, 'solucao_etapa:', consultaDetails.solucao_etapa);
     // Se showSolutionsViewer for true, renderiza o visualizador de soluções
     if (showSolutionsViewer) {
       return (
@@ -5305,7 +6153,7 @@ function ConsultasPageContent() {
               'suplementacao': 'SUPLEMENTACAO',
               'exercicios': 'ATIVIDADE_FISICA'
             };
-
+            
             const etapa = solutionMapping[solutionType] as 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA' | undefined;
             if (etapa) {
               // Atualizar a consulta com a etapa selecionada
@@ -5318,16 +6166,18 @@ function ConsultasPageContent() {
       );
     }
 
-    const contentType = renderConsultationContent();
-
-    // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
-    if (typeof contentType === 'string' && contentType === 'SELECT_SOLUCAO') {
+    // Se forceShowSolutionSelection for true, renderizar a tela de seleção de soluções diretamente
+    if (forceShowSolutionSelection) {
+      // Renderizar a tela de seleção de soluções diretamente, sem depender do renderConsultationContent
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
-              onClick={handleBackToList}
+              onClick={() => {
+                setForceShowSolutionSelection(false);
+                setSelectedSection(null);
+              }}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -5371,7 +6221,16 @@ function ConsultasPageContent() {
               {/* Livro da Vida */}
               <div
                 className="solucao-card"
-                onClick={() => handleSelectSolucao('MENTALIDADE')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em MENTALIDADE');
+                  handleSelectSolucao('MENTALIDADE');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 style={{
                   background: 'white',
                   borderRadius: '12px',
@@ -5384,7 +6243,8 @@ function ConsultasPageContent() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!isSaving) {
@@ -5430,7 +6290,16 @@ function ConsultasPageContent() {
               {/* Alimentação */}
               <div
                 className="solucao-card"
-                onClick={() => handleSelectSolucao('ALIMENTACAO')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em ALIMENTACAO');
+                  handleSelectSolucao('ALIMENTACAO');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 style={{
                   background: 'white',
                   borderRadius: '12px',
@@ -5443,7 +6312,789 @@ function ConsultasPageContent() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#10b981';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(16, 185, 129, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
+                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
+                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Alimentação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Plano Nutricional Personalizado</p>
+              </div>
+
+              {/* Suplementação */}
+              <div
+                className="solucao-card"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em SUPLEMENTACAO');
+                  handleSelectSolucao('SUPLEMENTACAO');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#8b5cf6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(139, 92, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
+                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
+                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Suplementação</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Protocolo de Suplementos</p>
+              </div>
+
+              {/* Atividade Física */}
+              <div
+                className="solucao-card"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em ATIVIDADE_FISICA');
+                  handleSelectSolucao('ATIVIDADE_FISICA');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#f59e0b';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(245, 158, 11, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6.5 6.5h11l-1 7h-9l1-7z"></path>
+                    <path d="M9.5 6.5V4.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2"></path>
+                    <path d="M12 13.5v5"></path>
+                    <path d="M8 16.5h8"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Atividade Física</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Programa de Exercícios</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Se selectedSection for null e não há solução selecionada, mostrar a tela intermediária
+    // Se há uma solução selecionada (solucao_etapa), renderConsultationContent vai determinar qual tela mostrar
+    // A tela intermediária (overview) só aparece quando não há solução selecionada E selectedSection é null
+    if (selectedSection === null && !forceShowSolutionSelection && !consultaDetails.solucao_etapa) {
+      return (
+        <ConsultationDetailsOverview
+          consultaDetails={consultaDetails}
+          patientId={consultaDetails.patient_id}
+          onNavigateToSection={(section) => {
+            if (section === 'ANAMNESE') {
+              // Para anamnese, setar selectedSection para 'ANAMNESE'
+              setSelectedSection('ANAMNESE');
+            } else if (section === 'SOLUCOES') {
+              // Para soluções, forçar a renderização da tela de seleção de soluções imediatamente
+              setForceShowSolutionSelection(true);
+              setSelectedSection(null);
+              setShowSolutionsViewer(false);
+              // Atualizar a consulta em background para garantir que solucao_etapa seja null
+              // Mas não esperar por isso para renderizar a tela
+              if (consultaId) {
+                fetch(`/api/consultations/${consultaId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ solucao_etapa: null })
+                }).then(() => {
+                  fetchConsultaDetails(consultaId, true); // silent = true para não mostrar loading
+                }).catch((error) => {
+                  console.error('Erro ao atualizar solucao_etapa:', error);
+                });
+              }
+            } else if (section === 'EXAMES') {
+              setSelectedSection('EXAMES');
+            }
+          }}
+          onBack={handleBackToList}
+        />
+      );
+    }
+
+    // Se selectedSection for 'ANAMNESE', renderizar a seção de anamnese diretamente
+    if (selectedSection === 'ANAMNESE') {
+      // Funções auxiliares para formatação
+      const formatDateOnly = (dateString: string | undefined) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      };
+
+      const formatTime = (dateString: string | undefined) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      const formatDuration = (seconds?: number) => {
+        if (!seconds) return 'N/A';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (hours > 0) {
+          return `${hours}h ${minutes}min`;
+        }
+        return `${minutes} min`;
+      };
+
+      const mapConsultationType = (type: string) => {
+        return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+      };
+
+      // Avatar do paciente
+      const patientsData = Array.isArray(consultaDetails.patients) 
+        ? consultaDetails.patients[0] 
+        : consultaDetails.patients;
+      const patientAvatar = patientsData?.profile_pic || null;
+      const patientInitials = (consultaDetails.patient_name || 'P')
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      // Renderizar a tela de anamnese completa com botão flutuante e sidebar de chat
+      return (
+        <div className="consultas-container consultas-details-container anamnese-page-container">
+          <div className="consultation-details-overview-header">
+            <button 
+              className="back-button"
+              onClick={() => {
+                setSelectedSection(null);
+                // Remover o parâmetro section da URL se existir
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('section');
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultation-details-overview-title">Detalhes da Consulta - Anamnese</h1>
+          </div>
+
+          {/* Cards de Informação no Topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-avatar">
+                {patientAvatar ? (
+                  <Image
+                    src={patientAvatar}
+                    alt={consultaDetails.patient_name}
+                    width={60}
+                    height={60}
+                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="consultation-details-avatar-placeholder">
+                    {patientInitials}
+                  </div>
+                )}
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+                {patientsData?.phone && (
+                  <div className="consultation-details-card-phone">{patientsData.phone}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+              </div>
+            </div>
+
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              </div>
+            </div>
+
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  <StatusBadge status={mapBackendStatus(consultaDetails.status)} />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Barra de Tabs */}
+          <div className="anamnese-tabs-container">
+            <div className="anamnese-tabs">
+              {[
+                'Dados do Paciente',
+                'Objetivos e Queixas',
+                'Histórico de Risco',
+                'Observação Clínica e Laboratorial',
+                'História de vida',
+                'Setênios e Eventos',
+                'Ambiente e Contexto',
+                'Sensação e Emoções',
+                'Preocupações e Crenças',
+                'Reino e Miasma'
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  className={`anamnese-tab ${activeAnamneseTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveAnamneseTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Conteúdo da Anamnese */}
+          <div className="anamnese-content-wrapper">
+            <AnamneseSection 
+              consultaId={consultaId}
+              patientId={consultaDetails?.patient_id}
+              selectedField={selectedField}
+              chatMessages={chatMessages}
+              isTyping={isTyping}
+              chatInput={chatInput}
+              onFieldSelect={handleFieldSelect}
+              onSendMessage={handleSendAIMessage}
+              onChatInputChange={setChatInput}
+              readOnly={false}
+              consultaStatus={consultaDetails?.status}
+              consultaEtapa={consultaDetails?.etapa}
+              activeTab={activeAnamneseTab}
+            />
+          </div>
+
+          {/* Botões de Navegação Inferiores */}
+          <div className="anamnese-navigation-buttons">
+            {activeAnamneseTab !== 'Dados do Paciente' && (
+              <button
+                className="anamnese-nav-button prev"
+                onClick={() => {
+                  const tabs = [
+                    'Dados do Paciente',
+                    'Objetivos e Queixas',
+                    'Histórico de Risco',
+                    'Observação Clínica e Laboratorial',
+                    'História de vida',
+                    'Setênios e Eventos',
+                    'Ambiente e Contexto',
+                    'Sensação e Emoções',
+                    'Preocupações e Crenças',
+                    'Reino e Miasma'
+                  ];
+                  const currentIndex = tabs.indexOf(activeAnamneseTab);
+                  if (currentIndex > 0) {
+                    setActiveAnamneseTab(tabs[currentIndex - 1]);
+                  }
+                }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {(() => {
+                  const tabs = [
+                    'Dados do Paciente',
+                    'Objetivos e Queixas',
+                    'Histórico de Risco',
+                    'Observação Clínica e Laboratorial',
+                    'História de vida',
+                    'Setênios e Eventos',
+                    'Ambiente e Contexto',
+                    'Sensação e Emoções',
+                    'Preocupações e Crenças',
+                    'Reino e Miasma'
+                  ];
+                  const currentIndex = tabs.indexOf(activeAnamneseTab);
+                  return currentIndex > 0 ? tabs[currentIndex - 1] : '';
+                })()}
+              </button>
+            )}
+            {activeAnamneseTab !== 'Reino e Miasma' && (
+              <button
+                className="anamnese-nav-button next"
+                onClick={() => {
+                  const tabs = [
+                    'Dados do Paciente',
+                    'Objetivos e Queixas',
+                    'Histórico de Risco',
+                    'Observação Clínica e Laboratorial',
+                    'História de vida',
+                    'Setênios e Eventos',
+                    'Ambiente e Contexto',
+                    'Sensação e Emoções',
+                    'Preocupações e Crenças',
+                    'Reino e Miasma'
+                  ];
+                  const currentIndex = tabs.indexOf(activeAnamneseTab);
+                  if (currentIndex < tabs.length - 1) {
+                    setActiveAnamneseTab(tabs[currentIndex + 1]);
+                  }
+                }}
+              >
+                {(() => {
+                  const tabs = [
+                    'Dados do Paciente',
+                    'Objetivos e Queixas',
+                    'Histórico de Risco',
+                    'Observação Clínica e Laboratorial',
+                    'História de vida',
+                    'Setênios e Eventos',
+                    'Ambiente e Contexto',
+                    'Sensação e Emoções',
+                    'Preocupações e Crenças',
+                    'Reino e Miasma'
+                  ];
+                  const currentIndex = tabs.indexOf(activeAnamneseTab);
+                  return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
+                })()}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Botão Flutuante de IA */}
+          <button
+            className="ai-float-button"
+            onClick={() => setShowAIChat(!showAIChat)}
+            title="Abrir Assistente de IA"
+          >
+            <Sparkles className="w-6 h-6" />
+          </button>
+
+          {/* Sidebar de Chat com IA */}
+          <div className={`ai-chat-sidebar ${showAIChat ? 'open' : ''}`}>
+            <div className="chat-container">
+              <div className="chat-header">
+                <div>
+                  <h3>Chat com IA - Assistente de Diagnóstico</h3>
+                  {selectedField && (
+                    <p className="chat-field-indicator">
+                      <Sparkles className="w-4 h-4 inline mr-1" />
+                      Editando: <strong>{selectedField.label}</strong>
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="chat-close-button"
+                  onClick={() => setShowAIChat(false)}
+                  title="Fechar chat"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="chat-messages">
+                {!selectedField ? (
+                  <div className="chat-welcome">
+                    <Sparkles className="w-8 h-8" style={{ color: '#1B4266', marginBottom: '12px' }} />
+                    <p>Selecione um campo da anamnese para editar com IA</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`chat-message ${msg.role}`}>
+                      <div className="message-content">{msg.content}</div>
+                      <div className="message-time">
+                        {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isTyping && (
+                  <div className="chat-message assistant">
+                    <div className="message-content typing-indicator">
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {selectedField && (
+                <div className="chat-input-container">
+                  <textarea
+                    className="chat-input"
+                    placeholder="Descreva como deseja editar este campo..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendAIMessage();
+                      }
+                    }}
+                    rows={3}
+                  />
+                  <button 
+                    className="chat-send-button"
+                    onClick={handleSendAIMessage}
+                    disabled={!chatInput.trim() || isTyping}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Enviar
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Overlay para fechar o sidebar ao clicar fora */}
+          {showAIChat && (
+            <div className="ai-chat-overlay" onClick={() => setShowAIChat(false)}></div>
+          )}
+        </div>
+      );
+    }
+    
+    // Se selectedSection for 'EXAMES', renderizar a seção de exames
+    if (selectedSection === 'EXAMES') {
+      return (
+        <ExamesSection
+          consultaDetails={consultaDetails}
+          consultaId={consultaId}
+          onBack={() => setSelectedSection(null)}
+        />
+      );
+    }
+    
+    console.log('🔄 [RENDER] Chamando renderConsultationContent()...');
+    const contentType = renderConsultationContent();
+    console.log('✅ [RENDER] renderConsultationContent retornou:', contentType);
+    
+    // Se renderConsultationContent retornar 'ANAMNESE', definir selectedSection como 'ANAMNESE'
+    // e retornar null para que o componente re-renderize com a nova tela
+    if (contentType === 'ANAMNESE' && selectedSection !== 'ANAMNESE') {
+      // Usar useEffect para evitar problemas de renderização
+      // Mas como estamos dentro do render, vamos usar um efeito via requestAnimationFrame
+      if (typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          setSelectedSection('ANAMNESE');
+        });
+      }
+      // Retornar um loading temporário enquanto o estado é atualizado
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <div className="loading-spinner"></div>
+        </div>
+      );
+    }
+
+    // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
+    if (typeof contentType === 'string' && contentType === 'SELECT_SOLUCAO') {
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultas-title">Selecionar Solução</h1>
+          </div>
+
+          <div style={{
+            padding: '40px 20px',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              <h2 style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: '#1f2937',
+                marginBottom: '12px'
+              }}>
+                Escolha uma das soluções para continuar:
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                color: '#6b7280',
+                margin: 0
+              }}>
+                Selecione a solução que deseja implementar para este paciente.
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px',
+              marginTop: '40px'
+            }}>
+              {/* Livro da Vida */}
+              <div
+                className="solucao-card"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em MENTALIDADE');
+                  handleSelectSolucao('MENTALIDADE');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.15)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSaving) {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
+                  }
+                }}
+              >
+                <div className="solucao-icon" style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                  </svg>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>Livro da Vida</h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0
+                }}>Transformação Mental e Emocional</p>
+              </div>
+
+              {/* Alimentação */}
+              <div
+                className="solucao-card"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em ALIMENTACAO');
+                  handleSelectSolucao('ALIMENTACAO');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                  border: '2px solid #e5e7eb',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSaving ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!isSaving) {
@@ -5491,7 +7142,16 @@ function ConsultasPageContent() {
               {/* Suplementação */}
               <div
                 className="solucao-card"
-                onClick={() => handleSelectSolucao('SUPLEMENTACAO')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em SUPLEMENTACAO');
+                  handleSelectSolucao('SUPLEMENTACAO');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 style={{
                   background: 'white',
                   borderRadius: '12px',
@@ -5504,7 +7164,8 @@ function ConsultasPageContent() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!isSaving) {
@@ -5552,7 +7213,16 @@ function ConsultasPageContent() {
               {/* Atividade Física */}
               <div
                 className="solucao-card"
-                onClick={() => handleSelectSolucao('ATIVIDADE_FISICA')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSaving) return;
+                  console.log('🖱️ [SOLUCAO CARD] Clicou em ATIVIDADE_FISICA');
+                  handleSelectSolucao('ATIVIDADE_FISICA');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 style={{
                   background: 'white',
                   borderRadius: '12px',
@@ -5565,7 +7235,8 @@ function ConsultasPageContent() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (!isSaving) {
@@ -5621,372 +7292,9 @@ function ConsultasPageContent() {
       //console.log('🔍 Renderizando tela de DIAGNOSTICO para consulta:', consultaId);
       return (
         <>
-          <div className="consultas-container consultas-details-container">
-            <div className="consultas-header">
-              <button
-                className="back-button"
-                onClick={handleBackToList}
-                style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Voltar
-              </button>
-              <h1 className="consultas-title">Diagnóstico</h1>
-            </div>
-
-            {/* Informações da Consulta - Card no Topo */}
-            <div className="consultation-info-card">
-              <div className="consultation-info-grid">
-                <div className="info-block">
-                  <div className="info-icon-wrapper">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Paciente</span>
-                    <span className="info-value">{consultaDetails.patient_name}</span>
-                  </div>
-                </div>
-
-                <div className="info-block">
-                  <div className="info-icon-wrapper">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Data/Hora Início</span>
-                    <span className="info-value">
-                      {consultaDetails.consulta_inicio
-                        ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
-                        : formatFullDate(consultaDetails.created_at)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="info-block">
-                  <div className="info-icon-wrapper">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Data/Hora Fim</span>
-                    <span className="info-value">
-                      {(() => {
-                        console.log('🔍 Renderizando Data/Hora Fim:', {
-                          consulta_fim: consultaDetails.consulta_fim,
-                          existe: !!consultaDetails.consulta_fim
-                        });
-                        return consultaDetails.consulta_fim
-                          ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
-                          : 'N/A';
-                      })()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="info-block">
-                  <div className="info-icon-wrapper">
-                    {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                      <User className="w-5 h-5" />
-                    ) : (
-                      <Video className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Tipo</span>
-                    <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-                  </div>
-                </div>
-
-                <div className="info-block">
-                  <div className="info-icon-wrapper">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Duração</span>
-                    <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-                  </div>
-                </div>
-
-                <div className="info-block">
-                  <div className="info-icon-wrapper status-icon">
-                    <AlertCircle className="w-5 h-5" />
-                  </div>
-                  <div className="info-content">
-                    <span className="info-label">Status</span>
-                    <StatusBadge
-                      status={mapBackendStatus(consultaDetails.status)}
-                      size="md"
-                      showIcon={true}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Seção de Anamnese (Consulta) - Movida para o topo para melhor visibilidade */}
-            <div className="anamnese-container" style={{
-              marginTop: '24px',
-              marginBottom: '32px',
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div className="anamnese-header" style={{
-                padding: '20px 24px',
-                borderBottom: '2px solid #d4a574',
-                background: 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 100%)'
-              }}>
-                <h2 style={{
-                  margin: 0,
-                  color: '#806D5D',
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <FileText className="w-6 h-6" style={{ color: '#d4a574' }} />
-                  Anamnese da Consulta
-                </h2>
-                <p style={{
-                  margin: '8px 0 0 0',
-                  color: '#6b7280',
-                  fontSize: '14px',
-                  fontWeight: '400'
-                }}>
-                  Informações coletadas durante a consulta
-                </p>
-              </div>
-              <div className="anamnese-content" style={{ padding: '24px' }}>
-                <AnamneseSection
-                  consultaId={consultaId}
-                  selectedField={null}
-                  chatMessages={[]}
-                  isTyping={false}
-                  chatInput=""
-                  onFieldSelect={() => { }}
-                  onSendMessage={() => { }}
-                  onChatInputChange={() => { }}
-                  readOnly={true}
-                  renderViewSolutionsButton={renderViewSolutionsButton}
-                />
-              </div>
-            </div>
-
-            <div className="details-two-column-layout">
-              {/* Coluna Esquerda - Chat com IA */}
-              <div className="chat-column">
-                <div className="chat-container">
-                  <div className="chat-header">
-                    <h3>Chat com IA - Assistente de Diagnóstico</h3>
-                    {selectedField && (
-                      <p className="chat-field-indicator">
-                        <Sparkles className="w-4 h-4 inline mr-1" />
-                        Editando: <strong>{selectedField.label}</strong>
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="chat-messages">
-                    {!selectedField ? (
-                      <div className="chat-empty-state">
-                        <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500 text-center">
-                          Selecione um campo do diagnóstico clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
-                        </p>
-                      </div>
-                    ) : chatMessages.length === 0 ? (
-                      <div className="chat-empty-state">
-                        <p className="text-gray-500 text-center">
-                          Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {chatMessages.map((message, index) => (
-                          <div
-                            key={index}
-                            className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
-                          >
-                            <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
-                              {message.role === 'user' ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-                            </div>
-                            <div className="message-content">
-                              <p>{message.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {isTyping && (
-                          <div className="message ai-message">
-                            <div className="message-avatar ai-avatar">
-                              <Sparkles className="w-5 h-5" />
-                            </div>
-                            <div className="message-content">
-                              <div className="typing-indicator">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  <div className="chat-input-area">
-                    <input
-                      type="text"
-                      className="chat-input"
-                      placeholder="Digite sua mensagem..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
-                      disabled={!selectedField || isTyping}
-                    />
-                    <button
-                      className="chat-send-button"
-                      onClick={handleSendAIMessage}
-                      disabled={!selectedField || !chatInput.trim() || isTyping}
-                    >
-                      <FileText className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Coluna Direita - Diagnóstico + Anamnese (somente leitura) */}
-              <div className="anamnese-column">
-                <div className="anamnese-container">
-                  <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2>Diagnóstico Integrativo</h2>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        requestAdvanceConfirmation(
-                          handleSaveDiagnosticoAndContinue,
-                          'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
-                        );
-                      }}
-                      disabled={isSaving}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 20px',
-                        background: isSaving ? '#9ca3af' : '#10b981',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: isSaving ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSaving) {
-                          e.currentTarget.style.background = '#059669';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSaving) {
-                          e.currentTarget.style.background = '#10b981';
-                        }
-                      }}
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="loading-spinner-small"></div>
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRight className="w-4 h-4" />
-                          Avançar
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="anamnese-content">
-                    <DiagnosticoSection
-                      consultaId={consultaId}
-                      selectedField={selectedField}
-                      chatMessages={chatMessages}
-                      isTyping={isTyping}
-                      chatInput={chatInput}
-                      onFieldSelect={handleFieldSelect}
-                      onSendMessage={handleSendAIMessage}
-                      onChatInputChange={setChatInput}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          {showAdvanceModal && (
-            <div className="modal-overlay" onClick={cancelAdvance}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                <div className="modal-header">
-                  <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
-                    <ArrowRight className="w-6 h-6" />
-                  </div>
-                  <h3 className="modal-title">Avançar para Próxima Etapa</h3>
-                </div>
-
-                <div className="modal-body">
-                  <p className="modal-text" style={{ marginBottom: '15px' }}>
-                    {advanceMessage}
-                  </p>
-                </div>
-
-                <div className="modal-footer">
-                  <button
-                    className="modal-button cancel-button"
-                    onClick={cancelAdvance}
-                    disabled={isSaving}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    className="modal-button"
-                    onClick={confirmAdvance}
-                    disabled={isSaving}
-                    style={{
-                      background: '#10b981',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="w-4 h-4" />
-                        Avançar
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      );
-    }
-
-    // Se for SOLUCAO_MENTALIDADE, renderiza a tela de Livro da Vida
-    if (contentType === 'SOLUCAO_MENTALIDADE') {
-      return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
               onClick={handleBackToList}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -5994,8 +7302,7 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title">Solução - Livro da Vida</h1>
-            {renderViewSolutionsButton && renderViewSolutionsButton()}
+            <h1 className="consultas-title">Diagnóstico</h1>
           </div>
 
           {/* Informações da Consulta - Card no Topo */}
@@ -6018,7 +7325,7 @@ function ConsultasPageContent() {
                 <div className="info-content">
                   <span className="info-label">Data/Hora Início</span>
                   <span className="info-value">
-                    {consultaDetails.consulta_inicio
+                    {consultaDetails.consulta_inicio 
                       ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
                       : formatFullDate(consultaDetails.created_at)}
                   </span>
@@ -6037,7 +7344,7 @@ function ConsultasPageContent() {
                         consulta_fim: consultaDetails.consulta_fim,
                         existe: !!consultaDetails.consulta_fim
                       });
-                      return consultaDetails.consulta_fim
+                      return consultaDetails.consulta_fim 
                         ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
                         : 'N/A';
                     })()}
@@ -6075,9 +7382,64 @@ function ConsultasPageContent() {
                 </div>
                 <div className="info-content">
                   <span className="info-label">Status</span>
-                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
+                  <StatusBadge 
+                    status={mapBackendStatus(consultaDetails.status)}
+                    size="md"
+                    showIcon={true}
+                  />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Seção de Anamnese (Consulta) - Movida para o topo para melhor visibilidade */}
+          <div className="anamnese-container" style={{ 
+            marginTop: '24px', 
+            marginBottom: '32px',
+            background: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div className="anamnese-header" style={{ 
+              padding: '20px 24px',
+              borderBottom: '2px solid #1B4266',
+              background: 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 100%)'
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                color: '#1B4266',
+                fontSize: '20px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <FileText className="w-6 h-6" style={{ color: '#1B4266' }} />
+                Anamnese da Consulta
+              </h2>
+              <p style={{ 
+                margin: '8px 0 0 0',
+                color: '#6b7280',
+                fontSize: '14px',
+                fontWeight: '400'
+              }}>
+                Informações coletadas durante a consulta
+              </p>
+            </div>
+            <div className="anamnese-content" style={{ padding: '24px' }}>
+              <AnamneseSection 
+                consultaId={consultaId}
+                selectedField={null}
+                chatMessages={[]}
+                isTyping={false}
+                chatInput=""
+                onFieldSelect={() => {}}
+                onSendMessage={() => {}}
+                onChatInputChange={() => {}}
+                readOnly={true}
+                renderViewSolutionsButton={renderViewSolutionsButton}
+              />
             </div>
           </div>
 
@@ -6086,7 +7448,7 @@ function ConsultasPageContent() {
             <div className="chat-column">
               <div className="chat-container">
                 <div className="chat-header">
-                  <h3>Chat com IA - Assistente de Solução Livro da Vida</h3>
+                  <h3>Chat com IA - Assistente de Diagnóstico</h3>
                   {selectedField && (
                     <p className="chat-field-indicator">
                       <Sparkles className="w-4 h-4 inline mr-1" />
@@ -6094,13 +7456,13 @@ function ConsultasPageContent() {
                     </p>
                   )}
                 </div>
-
+                
                 <div className="chat-messages">
                   {!selectedField ? (
                     <div className="chat-empty-state">
                       <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 text-center">
-                        Selecione um campo do protocolo de Livro da Vida clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
+                        Selecione um campo do diagnóstico clicando no ícone <Sparkles className="w-4 h-4 inline" /> para começar a editar com IA
                       </p>
                     </div>
                   ) : chatMessages.length === 0 ? (
@@ -6112,8 +7474,8 @@ function ConsultasPageContent() {
                   ) : (
                     <>
                       {chatMessages.map((message, index) => (
-                        <div
-                          key={index}
+                        <div 
+                          key={index} 
                           className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
                         >
                           <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
@@ -6143,7 +7505,7 @@ function ConsultasPageContent() {
                 </div>
 
                 <div className="chat-input-area">
-                  <input
+                  <input 
                     type="text"
                     className="chat-input"
                     placeholder="Digite sua mensagem..."
@@ -6152,7 +7514,7 @@ function ConsultasPageContent() {
                     onKeyPress={(e) => e.key === 'Enter' && handleSendAIMessage()}
                     disabled={!selectedField || isTyping}
                   />
-                  <button
+                  <button 
                     className="chat-send-button"
                     onClick={handleSendAIMessage}
                     disabled={!selectedField || !chatInput.trim() || isTyping}
@@ -6163,13 +7525,21 @@ function ConsultasPageContent() {
               </div>
             </div>
 
-            {/* Coluna Direita - Livro da Vida */}
+            {/* Coluna Direita - Diagnóstico + Anamnese (somente leitura) */}
             <div className="anamnese-column">
               <div className="anamnese-container">
                 <div className="anamnese-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2>Protocolo de Livro da Vida</h2>
+                  <h2>Diagnóstico Integrativo</h2>
                   <button
-                    onClick={handleSaveMentalidadeAndContinue}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      requestAdvanceConfirmation(
+                        handleSaveDiagnosticoAndContinue,
+                        'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
+                      );
+                    }}
                     disabled={isSaving}
                     style={{
                       display: 'flex',
@@ -6203,15 +7573,15 @@ function ConsultasPageContent() {
                       </>
                     ) : (
                       <>
-                        <Save className="w-4 h-4" />
-                        Salvar e Avançar para Suplementação
+                        <ArrowRight className="w-4 h-4" />
+                        Avançar
                       </>
                     )}
                   </button>
                 </div>
 
                 <div className="anamnese-content">
-                  <MentalidadeSection
+                  <DiagnosticoSection 
                     consultaId={consultaId}
                     selectedField={selectedField}
                     chatMessages={chatMessages}
@@ -6226,6 +7596,313 @@ function ConsultasPageContent() {
             </div>
           </div>
         </div>
+        {showAdvanceModal && (
+          <div className="modal-overlay" onClick={cancelAdvance}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+                <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+              </div>
+              
+              <div className="modal-body">
+                <p className="modal-text" style={{ marginBottom: '15px' }}>
+                  {advanceMessage}
+                </p>
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="modal-button cancel-button"
+                  onClick={cancelAdvance}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-button"
+                  onClick={confirmAdvance}
+                  disabled={isSaving}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="loading-spinner-small"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      Avançar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
+      );
+    }
+
+    // Se for SOLUCAO_MENTALIDADE, renderiza a tela de Livro da Vida
+    if (contentType === 'SOLUCAO_MENTALIDADE') {
+      // Funções auxiliares para formatação (mesmas da Anamnese)
+      const formatDateOnly = (dateString: string | undefined) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      };
+
+      const formatTime = (dateString: string | undefined) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      const formatDuration = (seconds?: number) => {
+        if (!seconds) return 'N/A';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (hours > 0) {
+          return `${hours}h ${minutes}min`;
+        }
+        return `${minutes} min`;
+      };
+
+      const mapConsultationType = (type: string) => {
+        return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+      };
+
+      const getStatusText = (status: string) => {
+        switch (status) {
+          case 'CREATED': return 'Criada';
+          case 'RECORDING': return 'Gravando';
+          case 'PROCESSING': return 'Processando';
+          case 'VALIDATION': return 'Validação';
+          case 'VALID_SOLUCAO': return 'Validação Solução';
+          case 'COMPLETED': return 'Concluída';
+          case 'ERROR': return 'Erro';
+          case 'CANCELLED': return 'Cancelada';
+          default: return status;
+        }
+      };
+
+      // Avatar do paciente
+      const patientsData = Array.isArray(consultaDetails.patients) 
+        ? consultaDetails.patients[0] 
+        : consultaDetails.patients;
+      const patientAvatar = patientsData?.profile_pic || null;
+      const patientInitials = (consultaDetails.patient_name || 'P')
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      return (
+        <div className="consultas-container consultas-details-container anamnese-page-container">
+          <div className="consultation-details-overview-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToSolutionSelection}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultation-details-overview-title">Detalhes da Consulta - Livro da Vida</h1>
+          </div>
+
+          {/* Cards de Informação no Topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-avatar">
+                {patientAvatar ? (
+                  <Image
+                    src={patientAvatar}
+                    alt={consultaDetails.patient_name}
+                    width={60}
+                    height={60}
+                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="consultation-details-avatar-placeholder">
+                    {patientInitials}
+                  </div>
+                )}
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+                {patientsData?.phone && (
+                  <div className="consultation-details-card-phone">{patientsData.phone}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+              </div>
+            </div>
+
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              </div>
+            </div>
+
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  <span className={`status-badge status-success status-badge-md status-badge-default`} style={{ '--status-bg': '#d1fae5', '--status-text': '#065f46', '--status-border': '#10b981' } as React.CSSProperties}>
+                    <FileText className="status-icon" size={14} />
+                    <span className="status-text">{getStatusText(consultaDetails.status)}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Conteúdo principal */}
+          <div className="anamnese-content-wrapper">
+            <div className="anamnese-sections">
+              <MentalidadeSection 
+                consultaId={consultaId}
+                selectedField={selectedField}
+                chatMessages={chatMessages}
+                isTyping={isTyping}
+                chatInput={chatInput}
+                onFieldSelect={handleFieldSelect}
+                onSendMessage={handleSendAIMessage}
+                onChatInputChange={setChatInput}
+              />
+            </div>
+          </div>
+
+          {/* Botão Flutuante de IA */}
+          <button
+            className="ai-float-button"
+            onClick={() => setShowAIChat(!showAIChat)}
+            title="Abrir Assistente de IA"
+          >
+            <Sparkles className="w-6 h-6" />
+          </button>
+
+          {/* Sidebar de Chat com IA */}
+          <div className={`ai-chat-sidebar ${showAIChat ? 'open' : ''}`}>
+            <div className="chat-container">
+              <div className="chat-header">
+                <div>
+                  <h3>Chat com IA - Assistente de Livro da Vida</h3>
+                  {selectedField && (
+                    <p className="chat-field-indicator">
+                      <Sparkles className="w-4 h-4 inline mr-1" />
+                      Editando: <strong>{selectedField.label}</strong>
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="chat-close-button"
+                  onClick={() => setShowAIChat(false)}
+                  title="Fechar chat"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="chat-messages">
+                {!selectedField ? (
+                  <div className="chat-welcome">
+                    <Sparkles className="w-8 h-8" style={{ color: '#1B4266', marginBottom: '12px' }} />
+                    <p>Selecione um campo do Livro da Vida para editar com IA</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`chat-message ${msg.role}`}>
+                      <div className="message-content">{msg.content}</div>
+                      <div className="message-time">
+                        {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isTyping && (
+                  <div className="chat-message assistant">
+                    <div className="message-content typing-indicator">
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="chat-input-container">
+                <input
+                  type="text"
+                  className="chat-input"
+                  placeholder="Digite sua mensagem..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAIMessage()}
+                  disabled={!selectedField || isTyping}
+                />
+                <button
+                  className="chat-send-button"
+                  onClick={handleSendAIMessage}
+                  disabled={!selectedField || !chatInput.trim() || isTyping}
+                >
+                  <FileText className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       );
     }
 
@@ -6234,9 +7911,9 @@ function ConsultasPageContent() {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
-              onClick={handleBackToList}
+              onClick={handleBackToSolutionSelection}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -6246,84 +7923,77 @@ function ConsultasPageContent() {
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
-          {/* Informações da Consulta - Card no Topo */}
-          <div className="consultation-info-card">
-            <div className="consultation-info-grid">
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Paciente</span>
-                  <span className="info-value">{consultaDetails.patient_name}</span>
+          {/* Cards de informações da consulta no topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+              </div>
+            </div>
+
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
                 </div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora Início</span>
-                  <span className="info-value">
-                    {consultaDetails.consulta_inicio
-                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
-                      : formatFullDate(consultaDetails.created_at)}
-                  </span>
-                </div>
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
               </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora Fim</span>
-                  <span className="info-value">
-                    {(() => {
-                      console.log('🔍 Renderizando Data/Hora Fim:', {
-                        consulta_fim: consultaDetails.consulta_fim,
-                        existe: !!consultaDetails.consulta_fim
-                      });
-                      return consultaDetails.consulta_fim
-                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
-                        : 'N/A';
-                    })()}
-                  </span>
-                </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                    <User className="w-5 h-5" />
-                  ) : (
-                    <Video className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Tipo</span>
-                  <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-                </div>
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
               </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Duração</span>
-                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-                </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper status-icon">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Status</span>
-                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  {(() => {
+                    const statusMap: { [key: string]: string } = {
+                      'AGENDAMENTO': 'Agendamento',
+                      'EM_ANDAMENTO': 'Em Andamento',
+                      'PROCESSING': 'Processamento',
+                      'VALIDATION': 'Validação',
+                      'FINALIZADA': 'Finalizada',
+                      'CANCELADA': 'Cancelada',
+                      'RECORDING': 'Gravando',
+                      'VALID_SOLUCAO': 'Solução Válida'
+                    };
+                    return statusMap[consultaDetails.status] || consultaDetails.status;
+                  })()}
                 </div>
               </div>
             </div>
@@ -6335,7 +8005,7 @@ function ConsultasPageContent() {
             </div>
 
             <div className="anamnese-content">
-              <SuplemementacaoSection
+              <SuplemementacaoSection 
                 consultaId={consultaId}
               />
             </div>
@@ -6351,301 +8021,257 @@ function ConsultasPageContent() {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
-              onClick={handleBackToList}
+              onClick={handleBackToSolutionSelection}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               <ArrowLeft className="w-5 h-5" />
-              Voltar para lista
+              Voltar
             </button>
-            <div className="consultation-info">
-              <h1>Atividades Físicas</h1>
-            </div>
+            <h1 className="consultas-title">Solução - Atividade Física</h1>
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
-          <div className="consultation-content">
-            {loadingAtividadeFisica ? (
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p>Carregando exercícios físicos...</p>
+          {/* Cards de informações da consulta no topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
               </div>
-            ) : (
-              <div className="atividade-fisica-container">
-                {(() => {
-                  console.log('🔍 DEBUG [REFERENCIA] Renderizando atividade física - dados:', atividadeFisicaData.length, 'exercícios');
-                  return null;
-                })()}
-                {atividadeFisicaData.length === 0 ? (
-                  <div className="no-data">
-                    <FileText className="w-16 h-16" style={{ color: '#6366f1', marginBottom: '20px' }} />
-                    <h3>Nenhum exercício encontrado</h3>
-                    <p>Não há exercícios físicos cadastrados para este paciente.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Agrupar exercícios por nome_treino */}
-                    {Object.entries(
-                      atividadeFisicaData.reduce((acc, exercicio) => {
-                        const treino = exercicio.nome_treino || 'Treino Sem Nome';
-                        if (!acc[treino]) {
-                          acc[treino] = [];
-                        }
-                        acc[treino].push(exercicio);
-                        return acc;
-                      }, {} as Record<string, ExercicioFisico[]>)
-                    ).map(([nomeTreino, exercicios]: [string, ExercicioFisico[]]) => (
-                      <div key={nomeTreino} className="treino-section">
-                        <h2 className="treino-title">{nomeTreino}</h2>
-                        <div className="exercicios-table-container">
-                          <table className="exercicios-table">
-                            <thead>
-                              <tr>
-                                <th>Nome do Exercício</th>
-                                <th>Séries</th>
-                                <th>Repetições</th>
-                                <th>Descanso</th>
-                                <th>Observações</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {exercicios.map((exercicio: ExercicioFisico) => (
-                                <tr key={exercicio.id}>
-                                  <td>
-                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'nome_exercicio' ? (
-                                      <div className="exercicio-autocomplete-wrapper">
-                                        <input
-                                          type="text"
-                                          id={`exercicio-input-${exercicio.id}`}
-                                          defaultValue={exercicio.nome_exercicio || ''}
-                                          onChange={(e) => searchExercicios(e.target.value)}
-                                          onBlur={() => {
-                                            setTimeout(() => {
-                                              setExercicioSuggestions([]);
-                                              setEditingExercicio(null);
-                                            }, 300);
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              handleSaveExercicio(exercicio.id, 'nome_exercicio', e.currentTarget.value);
-                                              setExercicioSuggestions([]);
-                                              setEditingExercicio(null);
-                                            }
-                                            if (e.key === 'Escape') {
-                                              setExercicioSuggestions([]);
-                                              setEditingExercicio(null);
-                                            }
-                                          }}
-                                          autoFocus
-                                          className="edit-input"
-                                          placeholder="Digite 2+ letras..."
-                                        />
-                                        {exercicioSuggestions.length > 0 && (() => {
-                                          const input = document.getElementById(`exercicio-input-${exercicio.id}`);
-                                          const rect = input?.getBoundingClientRect();
-                                          return (
-                                            <div
-                                              className="exercicio-suggestions-dropdown"
-                                              style={{
-                                                top: rect ? rect.bottom + 4 : 'auto',
-                                                left: rect ? rect.left : 'auto',
-                                                width: rect ? rect.width : 'auto'
-                                              }}
-                                            >
-                                              {exercicioSuggestions.map((suggestion) => (
-                                                <div
-                                                  key={suggestion.id}
-                                                  className="exercicio-suggestion-item"
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    handleSaveExercicio(exercicio.id, 'nome_exercicio', suggestion.atividade);
-                                                    setExercicioSuggestions([]);
-                                                    setEditingExercicio(null);
-                                                  }}
-                                                >
-                                                  <div className="exercicio-suggestion-name">
-                                                    {suggestion.atividade}
-                                                  </div>
-                                                  {suggestion.grupo_muscular && (
-                                                    <div className="exercicio-suggestion-grupo">
-                                                      {suggestion.grupo_muscular}
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          );
-                                        })()}
-                                      </div>
-                                    ) : (
-                                      <span
-                                        className="editable-field"
-                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'nome_exercicio' })}
-                                      >
-                                        {exercicio.nome_exercicio || '-'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'series' ? (
-                                      <input
-                                        type="text"
-                                        defaultValue={exercicio.series || ''}
-                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'series', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleSaveExercicio(exercicio.id, 'series', e.currentTarget.value);
-                                          }
-                                          if (e.key === 'Escape') {
-                                            setEditingExercicio(null);
-                                          }
-                                        }}
-                                        autoFocus
-                                        className="edit-input"
-                                      />
-                                    ) : (
-                                      <span
-                                        className="editable-field"
-                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'series' })}
-                                      >
-                                        {exercicio.series || '-'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'repeticoes' ? (
-                                      <input
-                                        type="text"
-                                        defaultValue={exercicio.repeticoes || ''}
-                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'repeticoes', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleSaveExercicio(exercicio.id, 'repeticoes', e.currentTarget.value);
-                                          }
-                                          if (e.key === 'Escape') {
-                                            setEditingExercicio(null);
-                                          }
-                                        }}
-                                        autoFocus
-                                        className="edit-input"
-                                      />
-                                    ) : (
-                                      <span
-                                        className="editable-field"
-                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'repeticoes' })}
-                                      >
-                                        {exercicio.repeticoes || '-'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'descanso' ? (
-                                      <input
-                                        type="text"
-                                        defaultValue={exercicio.descanso || ''}
-                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'descanso', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleSaveExercicio(exercicio.id, 'descanso', e.currentTarget.value);
-                                          }
-                                          if (e.key === 'Escape') {
-                                            setEditingExercicio(null);
-                                          }
-                                        }}
-                                        autoFocus
-                                        className="edit-input"
-                                      />
-                                    ) : (
-                                      <span
-                                        className="editable-field"
-                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'descanso' })}
-                                      >
-                                        {exercicio.descanso || '-'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {editingExercicio?.id === exercicio.id && editingExercicio?.field === 'observacoes' ? (
-                                      <input
-                                        type="text"
-                                        defaultValue={exercicio.observacoes || ''}
-                                        onBlur={(e) => handleSaveExercicio(exercicio.id, 'observacoes', e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleSaveExercicio(exercicio.id, 'observacoes', e.currentTarget.value);
-                                          }
-                                          if (e.key === 'Escape') {
-                                            setEditingExercicio(null);
-                                          }
-                                        }}
-                                        autoFocus
-                                        className="edit-input"
-                                      />
-                                    ) : (
-                                      <span
-                                        className="editable-field"
-                                        onClick={() => setEditingExercicio({ id: exercicio.id, field: 'observacoes' })}
-                                      >
-                                        {exercicio.observacoes || '-'}
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))}
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+              </div>
+            </div>
 
-                    {/* Botão Salvar Alterações */}
-                    <div style={{
-                      marginTop: '32px',
-                      padding: '24px',
-                      background: hasUnsavedChanges ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'transparent',
-                      borderRadius: '12px',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: '16px',
-                      border: hasUnsavedChanges ? '2px solid #f59e0b' : 'none'
-                    }}>
-                      {hasUnsavedChanges && (
-                        <span style={{ color: '#92400e', fontWeight: 500 }}>
-                          Você tem alterações não salvas
-                        </span>
-                      )}
-                      <button
-                        onClick={handleSaveAllChanges}
-                        disabled={!hasUnsavedChanges || isSaving}
-                        style={{
-                          padding: '14px 32px',
-                          background: hasUnsavedChanges
-                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                            : 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontSize: '16px',
-                          fontWeight: 600,
-                          cursor: hasUnsavedChanges && !isSaving ? 'pointer' : 'not-allowed',
-                          boxShadow: hasUnsavedChanges ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none',
-                          transition: 'all 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}
-                      >
-                        <Save size={20} />
-                        {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-                      </button>
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+              </div>
+            </div>
+
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              </div>
+            </div>
+
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  {(() => {
+                    const statusMap: { [key: string]: string } = {
+                      'AGENDAMENTO': 'Agendamento',
+                      'EM_ANDAMENTO': 'Em Andamento',
+                      'PROCESSING': 'Processamento',
+                      'VALIDATION': 'Validação',
+                      'FINALIZADA': 'Finalizada',
+                      'CANCELADA': 'Cancelada',
+                      'RECORDING': 'Gravando',
+                      'VALID_SOLUCAO': 'Solução Válida'
+                    };
+                    return statusMap[consultaDetails.status] || consultaDetails.status;
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="anamnese-container">
+            <div className="anamnese-header">
+              <h2>Protocolo de Atividade Física</h2>
+            </div>
+
+            <div className="anamnese-content">
+              {loadingAtividadeFisica ? (
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p>Carregando exercícios físicos...</p>
+                </div>
+              ) : (
+                <div className="atividade-fisica-container">
+                  <div className="anamnese-sections">
+                  {atividadeFisicaData.length === 0 ? (
+                    <div className="no-data" style={{ padding: '40px', width: '100%' }}>
+                      <FileText className="w-16 h-16" style={{ color: '#6366f1', marginBottom: '20px' }} />
+                      <h3>Nenhum exercício encontrado</h3>
+                      <p>Não há exercícios físicos cadastrados para este paciente.</p>
                     </div>
-
-                  </>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <>
+                      {/* Agrupar exercícios por nome_treino */}
+                      {Object.entries(
+                        atividadeFisicaData.reduce((acc, exercicio) => {
+                          const treino = exercicio.nome_treino || 'Treino Sem Nome';
+                          if (!acc[treino]) {
+                            acc[treino] = [];
+                          }
+                          acc[treino].push(exercicio);
+                          return acc;
+                        }, {} as Record<string, ExercicioFisico[]>)
+                      ).map(([nomeTreino, exercicios]: [string, ExercicioFisico[]]) => (
+                        <CollapsibleSection key={nomeTreino} title={nomeTreino} defaultOpen={true}>
+                          <div className="anamnese-subsection">
+                            {exercicios.map((exercicio: ExercicioFisico) => (
+                              <div key={exercicio.id} style={{ marginBottom: '16px' }}>
+                                <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                                  {exercicio.nome_exercicio || 'Exercício Sem Nome'}
+                                </h4>
+                                <div className="anamnese-subsection">
+                                  <DataField 
+                                    label="Nome do Exercício" 
+                                    value={exercicio.nome_exercicio || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.nome_exercicio`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'nome_exercicio', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Tipo de Treino" 
+                                    value={exercicio.tipo_treino || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.tipo_treino`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'tipo_treino', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Grupo Muscular" 
+                                    value={exercicio.grupo_muscular || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.grupo_muscular`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'grupo_muscular', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Séries" 
+                                    value={exercicio.series || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.series`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'series', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Repetições" 
+                                    value={exercicio.repeticoes || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.repeticoes`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'repeticoes', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Descanso" 
+                                    value={exercicio.descanso || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.descanso`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'descanso', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Treino Atual" 
+                                    value={exercicio.treino_atual ? String(exercicio.treino_atual) : ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.treino_atual`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'treino_atual', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Próximo Treino" 
+                                    value={exercicio.proximo_treino ? String(exercicio.proximo_treino) : ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.proximo_treino`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'proximo_treino', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Último Treino" 
+                                    value={exercicio.ultimo_treino ? 'Sim' : 'Não'} 
+                                    fieldPath={`exercicios.${exercicio.id}.ultimo_treino`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'ultimo_treino', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Alertas Importantes" 
+                                    value={exercicio.alertas_importantes || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.alertas_importantes`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'alertas_importantes', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                  <DataField 
+                                    label="Observações" 
+                                    value={exercicio.observacoes || ''} 
+                                    fieldPath={`exercicios.${exercicio.id}.observacoes`} 
+                                    consultaId={consultaId} 
+                                    onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
+                                      await handleSaveExercicio(exercicio.id, 'observacoes', newValue);
+                                    }} 
+                                    onAIEdit={() => {}} 
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleSection>
+                      ))}
+                    </>
+                  )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -6656,9 +8282,9 @@ function ConsultasPageContent() {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
-              onClick={handleBackToList}
+              onClick={handleBackToSolutionSelection}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -6668,84 +8294,77 @@ function ConsultasPageContent() {
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
-          {/* Informações da Consulta - Card no Topo */}
-          <div className="consultation-info-card">
-            <div className="consultation-info-grid">
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Paciente</span>
-                  <span className="info-value">{consultaDetails.patient_name}</span>
+          {/* Cards de informações da consulta no topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+              </div>
+            </div>
+
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
                 </div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora Início</span>
-                  <span className="info-value">
-                    {consultaDetails.consulta_inicio
-                      ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
-                      : formatFullDate(consultaDetails.created_at)}
-                  </span>
-                </div>
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
               </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Data/Hora Fim</span>
-                  <span className="info-value">
-                    {(() => {
-                      console.log('🔍 Renderizando Data/Hora Fim:', {
-                        consulta_fim: consultaDetails.consulta_fim,
-                        existe: !!consultaDetails.consulta_fim
-                      });
-                      return consultaDetails.consulta_fim
-                        ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
-                        : 'N/A';
-                    })()}
-                  </span>
-                </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                    <User className="w-5 h-5" />
-                  ) : (
-                    <Video className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Tipo</span>
-                  <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-                </div>
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
               </div>
-
-              <div className="info-block">
-                <div className="info-icon-wrapper">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Duração</span>
-                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-                </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
               </div>
+            </div>
 
-              <div className="info-block">
-                <div className="info-icon-wrapper status-icon">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="info-content">
-                  <span className="info-label">Status</span>
-                  <span className="info-value">{getStatusText(consultaDetails.status)}</span>
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  {(() => {
+                    const statusMap: { [key: string]: string } = {
+                      'AGENDAMENTO': 'Agendamento',
+                      'EM_ANDAMENTO': 'Em Andamento',
+                      'PROCESSING': 'Processamento',
+                      'VALIDATION': 'Validação',
+                      'FINALIZADA': 'Finalizada',
+                      'CANCELADA': 'Cancelada',
+                      'RECORDING': 'Gravando',
+                      'VALID_SOLUCAO': 'Solução Válida'
+                    };
+                    return statusMap[consultaDetails.status] || consultaDetails.status;
+                  })()}
                 </div>
               </div>
             </div>
@@ -6800,7 +8419,7 @@ function ConsultasPageContent() {
                 </div>
 
                 <div className="anamnese-content">
-                  <AlimentacaoSection
+                  <AlimentacaoSection 
                     consultaId={consultaId}
                   />
                 </div>
@@ -6811,12 +8430,26 @@ function ConsultasPageContent() {
       );
     }
 
+    // Quando renderConsultationContent retorna 'ANAMNESE' mas selectedSection é null,
+    // devemos mostrar a tela de overview (não a tela antiga de anamnese)
+    // A tela de overview já foi renderizada acima quando selectedSection === null
+    // Então não precisamos fazer nada aqui quando contentType === 'ANAMNESE' && selectedSection === null
+
+    // Se renderConsultationContent retornou 'ANAMNESE' mas selectedSection é null,
+    // devemos mostrar a tela de overview (que já foi renderizada acima)
+    // Não renderizar a tela antiga quando selectedSection é null
+    if (contentType === 'ANAMNESE' && selectedSection === null) {
+      // A tela de overview já foi renderizada na condição acima
+      // Retornar null para evitar renderizar a tela antiga
+      return null;
+    }
+
     // Se for um modal (não ANAMNESE, não DIAGNOSTICO, não SOLUCAO_MENTALIDADE, não SOLUCAO_SUPLEMENTACAO, não SOLUCAO_ALIMENTACAO, não SOLUCAO_ATIVIDADE_FISICA e não SELECT_SOLUCAO), renderiza só o modal
     if (typeof contentType !== 'string' || (contentType !== 'ANAMNESE' && contentType !== 'DIAGNOSTICO' && contentType !== 'SOLUCAO_MENTALIDADE' && contentType !== 'SOLUCAO_SUPLEMENTACAO' && contentType !== 'SOLUCAO_ALIMENTACAO' && contentType !== 'SOLUCAO_ATIVIDADE_FISICA' && contentType !== 'SELECT_SOLUCAO')) {
       return (
         <div className="consultas-container consultas-details-container">
           <div className="consultas-header">
-            <button
+            <button 
               className="back-button"
               onClick={handleBackToList}
               style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -6826,19 +8459,26 @@ function ConsultasPageContent() {
             </button>
             <h1 className="consultas-title">Detalhes da Consulta</h1>
           </div>
-
+          
           {typeof contentType !== 'string' ? contentType : null}
         </div>
       );
     }
 
-    // Renderiza a tela de ANAMNESE completa
+    // Renderiza a tela de ANAMNESE completa (TELA ANTIGA - só será renderizada se selectedSection === 'ANAMNESE' mas a nova tela não foi selecionada)
+    // Esta tela antiga não deve mais ser usada - a nova tela será renderizada quando selectedSection === 'ANAMNESE'
     return (
       <div className="consultas-container consultas-details-container">
         <div className="consultas-header">
-          <button
+          <button 
             className="back-button"
-            onClick={handleBackToList}
+            onClick={() => {
+              if (selectedSection === 'ANAMNESE') {
+                setSelectedSection(null);
+              } else {
+                handleBackToList();
+              }
+            }}
             style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -6847,92 +8487,80 @@ function ConsultasPageContent() {
           <h1 className="consultas-title">Detalhes da Consulta</h1>
         </div>
 
-        {/* Informações da Consulta - Card no Topo */}
-        <div className="consultation-info-card">
-          <div className="consultation-info-grid">
-            <div className="info-block">
-              <div className="info-icon-wrapper">
-                <User className="w-5 h-5" />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Paciente</span>
-                <span className="info-value">{consultaDetails.patient_name}</span>
-              </div>
+        {/* Cards de informações da consulta no topo */}
+        <div className="consultation-details-cards-row">
+          {/* Card Paciente */}
+          <div className="consultation-details-info-card">
+            <div className="consultation-details-card-icon-wrapper">
+              <User size={20} />
             </div>
-
-            <div className="info-block">
-              <div className="info-icon-wrapper">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Data/Hora Início</span>
-                <span className="info-value">
-                  {consultaDetails.consulta_inicio
-                    ? `${formatDateOnly(consultaDetails.consulta_inicio)} ${formatTime(consultaDetails.consulta_inicio)}`
-                    : formatFullDate(consultaDetails.created_at)}
-                </span>
-              </div>
+            <div className="consultation-details-card-content">
+              <div className="consultation-details-card-label">Paciente</div>
+              <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
             </div>
+          </div>
 
-            <div className="info-block">
-              <div className="info-icon-wrapper">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Data/Hora Fim</span>
-                <span className="info-value">
-                  {(() => {
-                    console.log('🔍 Renderizando Data/Hora Fim (Anamnese):', {
-                      consulta_fim: consultaDetails.consulta_fim,
-                      existe: !!consultaDetails.consulta_fim
-                    });
-                    return consultaDetails.consulta_fim
-                      ? `${formatDateOnly(consultaDetails.consulta_fim)} ${formatTime(consultaDetails.consulta_fim)}`
-                      : 'N/A';
-                  })()}
-                </span>
-              </div>
+          {/* Card Data/Hora */}
+          <div className="consultation-details-info-card">
+            <div className="consultation-details-card-icon-wrapper">
+              <Calendar size={20} />
             </div>
-
-            <div className="info-block">
-              <div className="info-icon-wrapper">
-                {consultaDetails.consultation_type === 'PRESENCIAL' ? (
-                  <User className="w-5 h-5" />
-                ) : (
-                  <Video className="w-5 h-5" />
-                )}
-              </div>
-              <div className="info-content">
-                <span className="info-label">Tipo</span>
-                <span className="info-value">{mapConsultationType(consultaDetails.consultation_type)}</span>
-              </div>
-            </div>
-
-            <div className="info-block">
-              <div className="info-icon-wrapper">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Duração</span>
-                <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
-              </div>
-            </div>
-
-            <div className="info-block">
-              <div className="info-icon-wrapper status-icon">
-                <AlertCircle className="w-5 h-5" />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Status</span>
-                <StatusBadge
-                  status={mapBackendStatus(consultaDetails.status)}
-                  size="md"
-                  showIcon={true}
-                />
+            <div className="consultation-details-card-content">
+              <div className="consultation-details-card-label">Data / Hora</div>
+              <div className="consultation-details-card-value">
+                {consultaDetails.consulta_inicio 
+                  ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                  : formatDateOnly(consultaDetails.created_at)}
               </div>
             </div>
           </div>
 
+          {/* Card Tipo */}
+          <div className="consultation-details-info-card">
+            <div className="consultation-details-card-icon-wrapper">
+              <FileText size={20} />
+            </div>
+            <div className="consultation-details-card-content">
+              <div className="consultation-details-card-label">Tipo</div>
+              <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+            </div>
+          </div>
+
+          {/* Card Duração */}
+          <div className="consultation-details-info-card">
+            <div className="consultation-details-card-icon-wrapper">
+              <Clock size={20} />
+            </div>
+            <div className="consultation-details-card-content">
+              <div className="consultation-details-card-label">Duração</div>
+              <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+            </div>
+          </div>
+
+          {/* Card Status */}
+          <div className="consultation-details-info-card">
+            <div className="consultation-details-card-icon-wrapper">
+              <User size={20} />
+            </div>
+            <div className="consultation-details-card-content">
+              <div className="consultation-details-card-label">Status</div>
+              <div className="consultation-details-card-value">
+                {(() => {
+                  const statusMap: { [key: string]: string } = {
+                    'AGENDAMENTO': 'Agendamento',
+                    'EM_ANDAMENTO': 'Em Andamento',
+                    'PROCESSING': 'Processamento',
+                    'VALIDATION': 'Validação',
+                    'FINALIZADA': 'Finalizada',
+                    'CANCELADA': 'Cancelada',
+                    'RECORDING': 'Gravando',
+                    'VALID_SOLUCAO': 'Solução Válida'
+                  };
+                  return statusMap[consultaDetails.status] || consultaDetails.status;
+                })()}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="details-two-column-layout">
@@ -6948,7 +8576,7 @@ function ConsultasPageContent() {
                   </p>
                 )}
               </div>
-
+              
               <div className="chat-messages">
                 {!selectedField ? (
                   <div className="chat-empty-state">
@@ -6958,70 +8586,16 @@ function ConsultasPageContent() {
                     </p>
                   </div>
                 ) : chatMessages.length === 0 ? (
-                  <div className="chat-history-container">
-                    {loadingAuditHistory ? (
-                      <div className="chat-empty-state">
-                        <div className="loading-spinner"></div>
-                        <p className="text-gray-500 text-center">Carregando histórico...</p>
-                      </div>
-                    ) : auditHistory.length === 0 ? (
-                      <div className="chat-empty-state">
-                        <p className="text-gray-500 text-center">
-                          Nenhuma alteração anterior registrada para <strong>{selectedField.label}</strong>
-                        </p>
-                        <p className="text-gray-400 text-center text-sm mt-2">
-                          Digite uma mensagem para começar a editar com IA
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="audit-history-header">
-                          <Clock className="w-4 h-4" />
-                          <span>Histórico de Alterações ({auditHistory.length})</span>
-                        </div>
-                        <div className="audit-history-list">
-                          {auditHistory.map((item, index) => (
-                            <div key={item.id} className="audit-history-item">
-                              <div className="audit-history-date">
-                                📅 {new Date(item.created_at).toLocaleDateString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </div>
-                              {item.medico_solicitation && (
-                                <div className="audit-history-solicitation">
-                                  📝 {item.medico_solicitation}
-                                </div>
-                              )}
-                              <div className="audit-history-changes">
-                                <div className="audit-history-before">
-                                  <span className="audit-label">🔴 Antes:</span>
-                                  <span className="audit-value">{item.value_before ?? 'Não definido'}</span>
-                                </div>
-                                <div className="audit-history-after">
-                                  <span className="audit-label">🟢 Depois:</span>
-                                  <span className="audit-value">{item.value_after ?? 'Não definido'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="audit-history-footer">
-                          <p className="text-gray-400 text-center text-sm">
-                            Digite uma mensagem para continuar editando
-                          </p>
-                        </div>
-                      </>
-                    )}
+                  <div className="chat-empty-state">
+                    <p className="text-gray-500 text-center">
+                      Digite uma mensagem para começar a conversa sobre <strong>{selectedField.label}</strong>
+                    </p>
                   </div>
                 ) : (
                   <>
                     {chatMessages.map((message, index) => (
-                      <div
-                        key={index}
+                      <div 
+                        key={index} 
                         className={message.role === 'user' ? 'message user-message' : 'message ai-message'}
                       >
                         <div className={message.role === 'user' ? 'message-avatar user-avatar' : 'message-avatar ai-avatar'}>
@@ -7032,7 +8606,7 @@ function ConsultasPageContent() {
                         </div>
                       </div>
                     ))}
-
+                    
                     {isTyping && (
                       <div className="message ai-message">
                         <div className="message-avatar ai-avatar">
@@ -7052,9 +8626,9 @@ function ConsultasPageContent() {
               </div>
 
               <div className="chat-input-area">
-                <input
-                  type="text"
-                  placeholder={selectedField ? "Digite sua mensagem..." : "Selecione um campo para começar"}
+                <input 
+                  type="text" 
+                  placeholder={selectedField ? "Digite sua mensagem..." : "Selecione um campo para começar"} 
                   className="chat-input"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -7066,8 +8640,8 @@ function ConsultasPageContent() {
                   }}
                   disabled={!selectedField || isTyping}
                 />
-                <button
-                  className="chat-send-button"
+                <button 
+                  className="chat-send-button" 
                   onClick={handleSendAIMessage}
                   disabled={!selectedField || !chatInput.trim() || isTyping}
                 >
@@ -7133,7 +8707,7 @@ function ConsultasPageContent() {
               </div>
 
               <div className="anamnese-content">
-                <AnamneseSection
+                <AnamneseSection 
                   consultaId={consultaId}
                   patientId={consultaDetails?.patient_id}
                   selectedField={selectedField}
@@ -7160,22 +8734,22 @@ function ConsultasPageContent() {
                 </div>
                 <h3 className="modal-title">Avançar para Próxima Etapa</h3>
               </div>
-
+              
               <div className="modal-body">
                 <p className="modal-text" style={{ marginBottom: '15px' }}>
                   {advanceMessage}
                 </p>
               </div>
-
+              
               <div className="modal-footer">
-                <button
+                <button 
                   className="modal-button cancel-button"
                   onClick={cancelAdvance}
                   disabled={isSaving}
                 >
                   Cancelar
                 </button>
-                <button
+                <button 
                   className="modal-button"
                   onClick={confirmAdvance}
                   disabled={isSaving}
@@ -7213,17 +8787,17 @@ function ConsultasPageContent() {
       <div className="consultas-header">
         <div className="consultas-header-content">
           <div>
-            <h1 className="consultas-title">Lista de Consultas</h1>
-            <div className="consultas-stats">
+            <h1 className="consultas-title">Lista de Consulta</h1>
+            <div className="consultas-stats-badge">
               <span>{totalConsultations} consultas encontradas</span>
             </div>
           </div>
-          <button
+          <button 
             className="btn-new-consultation"
             onClick={() => router.push('/consulta/nova')}
           >
             <Plus className="btn-icon" />
-            Nova Consulta
+            Nova consulta
           </button>
         </div>
       </div>
@@ -7269,8 +8843,8 @@ function ConsultasPageContent() {
               transition: 'all 0.2s ease'
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = '#d4a574';
-              e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+              e.target.style.borderColor = '#1B4266';
+              e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
             }}
             onBlur={(e) => {
               e.target.style.borderColor = '#e5e7eb';
@@ -7278,7 +8852,7 @@ function ConsultasPageContent() {
             }}
           />
         </div>
-
+        
         <select
           value={statusFilter}
           onChange={(e) => {
@@ -7297,8 +8871,8 @@ function ConsultasPageContent() {
             transition: 'all 0.2s ease'
           }}
           onFocus={(e) => {
-            e.target.style.borderColor = '#d4a574';
-            e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+            e.target.style.borderColor = '#1B4266';
+            e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
           }}
           onBlur={(e) => {
             e.target.style.borderColor = '#e5e7eb';
@@ -7346,8 +8920,8 @@ function ConsultasPageContent() {
               transition: 'all 0.2s ease'
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = '#d4a574';
-              e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+              e.target.style.borderColor = '#1B4266';
+              e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
             }}
             onBlur={(e) => {
               e.target.style.borderColor = '#e5e7eb';
@@ -7377,8 +8951,8 @@ function ConsultasPageContent() {
                 transition: 'all 0.2s ease'
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#d4a574';
-                e.target.style.boxShadow = '0 0 0 3px rgba(212, 165, 116, 0.1)';
+                e.target.style.borderColor = '#1B4266';
+                e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#e5e7eb';
@@ -7426,9 +9000,13 @@ function ConsultasPageContent() {
           {/* Header da tabela */}
           <div className="table-header">
             <div className="header-cell patient-header">Paciente</div>
-            <div className="header-cell date-header">Data Consulta</div>
-            <div className="header-cell type-header">Tipo de Consulta</div>
+            <div className="table-header-divider"></div>
+            <div className="header-cell date-header">Data</div>
+            <div className="table-header-divider"></div>
+            <div className="header-cell type-header">Tipo</div>
+            <div className="table-header-divider"></div>
             <div className="header-cell status-header">Status</div>
+            <div className="table-header-divider"></div>
             <div className="header-cell actions-header">Ações</div>
           </div>
 
@@ -7442,13 +9020,13 @@ function ConsultasPageContent() {
               </div>
             ) : (
               consultations.map((consultation) => (
-                <div
-                  key={consultation.id}
+                <div 
+                  key={consultation.id} 
                   className="table-row"
                   onClick={() => handleConsultationClick(consultation)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <div
+                  <div 
                     className="table-cell patient-cell"
                     style={{
                       textAlign: 'left',
@@ -7457,7 +9035,7 @@ function ConsultasPageContent() {
                       justifyContent: 'flex-start'
                     }}
                   >
-                    <div
+                    <div 
                       className="patient-info"
                       style={{
                         display: 'flex',
@@ -7469,7 +9047,7 @@ function ConsultasPageContent() {
                       }}
                     >
                       {generateAvatar(consultation.patient_name, consultation.patients?.profile_pic)}
-                      <div
+                      <div 
                         className="patient-details"
                         style={{
                           display: 'flex',
@@ -7479,11 +9057,11 @@ function ConsultasPageContent() {
                           textAlign: 'left'
                         }}
                       >
-                        <div
+                        <div 
                           className="patient-name"
                           style={{
                             textAlign: 'left',
-                            alignSelf: 'flex-start',
+                            alignSelf: 'center',
                             width: '100%'
                           }}
                         >
@@ -7492,27 +9070,27 @@ function ConsultasPageContent() {
                       </div>
                     </div>
                   </div>
-
+                  <div className="table-row-divider"></div>
                   <div className="table-cell date-cell">
                     {formatDate(consultation.created_at)}
                   </div>
-
+                  <div className="table-row-divider"></div>
                   <div className="table-cell type-cell">
                     <div className="consultation-type">
                       {getTypeIcon(consultation.consultation_type)}
                       <span>{mapConsultationType(consultation.consultation_type)}</span>
                     </div>
                   </div>
-
+                  <div className="table-row-divider"></div>
                   <div className="table-cell status-cell">
-                    <StatusBadge
+                    <StatusBadge 
                       status={mapBackendStatus(consultation.status)}
                       size="md"
                       showIcon={true}
                       variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' || consultation.status === 'VALIDATION' ? 'outlined' : 'default'}
                     />
                   </div>
-
+                  <div className="table-row-divider"></div>
                   <div className="table-cell actions-cell">
                     <div className="action-buttons">
                       {/* Botão Entrar na Consulta (apenas para agendamentos) */}
@@ -7541,7 +9119,7 @@ function ConsultasPageContent() {
                       </button>
                     </div>
                   </div>
-
+                  
                 </div>
               ))
             )}
@@ -7552,18 +9130,18 @@ function ConsultasPageContent() {
       {/* Paginação */}
       {totalPages > 1 && (
         <div className="pagination-container">
-          <button
+          <button 
             className="pagination-arrow"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
           >
             ‹
           </button>
-
+          
           {/* Primeira página */}
           {currentPage > 3 && (
             <>
-              <button
+              <button 
                 className="pagination-number"
                 onClick={() => setCurrentPage(1)}
               >
@@ -7572,14 +9150,14 @@ function ConsultasPageContent() {
               {currentPage > 4 && <span className="pagination-dots">...</span>}
             </>
           )}
-
+          
           {/* Páginas ao redor da atual */}
           {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
             const pageNum = Math.max(1, Math.min(totalPages - 2, currentPage - 1)) + i;
             if (pageNum > totalPages) return null;
-
+            
             return (
-              <button
+              <button 
                 key={pageNum}
                 className={`pagination-number ${pageNum === currentPage ? 'active' : ''}`}
                 onClick={() => setCurrentPage(pageNum)}
@@ -7588,12 +9166,12 @@ function ConsultasPageContent() {
               </button>
             );
           })}
-
+          
           {/* Última página */}
           {currentPage < totalPages - 2 && (
             <>
               {currentPage < totalPages - 3 && <span className="pagination-dots">...</span>}
-              <button
+              <button 
                 className="pagination-number"
                 onClick={() => setCurrentPage(totalPages)}
               >
@@ -7601,8 +9179,8 @@ function ConsultasPageContent() {
               </button>
             </>
           )}
-
-          <button
+          
+          <button 
             className="pagination-arrow"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
@@ -7622,7 +9200,7 @@ function ConsultasPageContent() {
               </div>
               <h3 className="modal-title">Excluir Consulta</h3>
             </div>
-
+            
             <div className="modal-body">
               <p className="modal-text">
                 Tem certeza que deseja excluir a consulta de <strong>{consultationToDelete.patient_name}</strong>?
@@ -7631,16 +9209,16 @@ function ConsultasPageContent() {
                 Esta ação irá remover a consulta do sistema e do Google Calendar (se sincronizado). Esta ação não pode ser desfeita.
               </p>
             </div>
-
+            
             <div className="modal-footer">
-              <button
+              <button 
                 className="modal-button cancel-button"
                 onClick={cancelDeleteConsultation}
                 disabled={isDeleting}
               >
                 Cancelar
               </button>
-              <button
+              <button 
                 className="modal-button delete-button"
                 onClick={confirmDeleteConsultation}
                 disabled={isDeleting}
@@ -7672,7 +9250,7 @@ function ConsultasPageContent() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
+            
             <div className="modal-body">
               {/* Paciente (readonly) */}
               <div className="form-group">
@@ -7738,7 +9316,7 @@ function ConsultasPageContent() {
             </div>
 
             <div className="modal-footer modal-footer-between">
-              <button
+              <button 
                 className="modal-button delete-button"
                 onClick={() => {
                   handleCloseEditAgendamentoModal();
@@ -7751,14 +9329,14 @@ function ConsultasPageContent() {
                 Excluir
               </button>
               <div className="modal-footer-right">
-                <button
+                <button 
                   className="modal-button cancel-button"
                   onClick={handleCloseEditAgendamentoModal}
                   disabled={isSavingAgendamento}
                 >
                   Cancelar
                 </button>
-                <button
+                <button 
                   className="modal-button save-button"
                   onClick={handleSaveAgendamentoEdit}
                   disabled={isSavingAgendamento || !editAgendamentoForm.date || !editAgendamentoForm.time}
@@ -7791,22 +9369,22 @@ function ConsultasPageContent() {
               </div>
               <h3 className="modal-title">Avançar para Próxima Etapa</h3>
             </div>
-
+            
             <div className="modal-body">
               <p className="modal-text" style={{ marginBottom: '15px' }}>
                 {advanceMessage}
               </p>
             </div>
-
+            
             <div className="modal-footer">
-              <button
+              <button 
                 className="modal-button cancel-button"
                 onClick={cancelAdvance}
                 disabled={isSaving}
               >
                 Cancelar
               </button>
-              <button
+              <button 
                 className="modal-button"
                 onClick={confirmAdvance}
                 disabled={isSaving}
@@ -7862,5 +9440,7 @@ export default function ConsultasPage() {
     </Suspense>
   );
 }
+
+
 
 

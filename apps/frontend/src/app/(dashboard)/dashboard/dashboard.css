@@ -1,16 +1,19 @@
 /* Dashboard EXATO da imagem */
 .dashboard-exact {
-  background: var(--dashboard-bg, #f7f2ec);
-  min-height: calc(100vh - 80px);
+  background: var(--dashboard-bg, #EBF3F6);
+  min-height: calc(100vh - 80px) !important;
+  height: 100% !important;
   margin: -2rem;
   padding: 2rem;
   position: relative;
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 /* Light Mode - Cards brancos com texto preto */
 .dashboard-exact {
-  --dashboard-bg: #f7f2ec;
+  --dashboard-bg: #EBF3F6;
   --dashboard-title-color: #1a1a1a;
   --card-bg: #ffffff;
   --card-text: #1a1a1a;
@@ -38,34 +41,34 @@
   --status-text: #1a1a1a;
 }
 
-/* Dark Mode */
+/* Dark Mode - Mantendo o mesmo background claro mesmo no dark mode por enquanto */
 .dark .dashboard-exact {
-  --dashboard-bg: #0a0a0a;
-  --dashboard-title-color: #ffffff;
-  --card-bg: #1a1a1a;
-  --card-text: #ffffff;
-  --card-border: rgba(255, 255, 255, 0.08);
-  --section-border: rgba(255, 255, 255, 0.12);
-  --table-row-bg: #2a2a2a;
-  --table-text: #ffffff;
-  --table-header: #cccccc;
-  --select-bg: #2a2a2a;
-  --select-text: #ffffff;
-  --legend-color: #cccccc;
-  --label-color: #cccccc;
-  --divider-color: rgba(255,255,255,0.1);
-  --progress-bg: #3a3a3a;
-  --pie-center: #2a2a2a;
-  --kpi-bg: #000000;
-  --kpi-text: #ffffff;
-  --kpi-number: #ffffff;
-  --chart-bg: #1a1a1a;
-  --chart-text: #ffffff;
-  --calendar-bg: #1a1a1a;
-  --calendar-text: #ffffff;
-  --calendar-border: #3a3a3a;
-  --status-bg: #1a1a1a;
-  --status-text: #ffffff;
+  --dashboard-bg: #EBF3F6;
+  --dashboard-title-color: #1a1a1a;
+  --card-bg: #ffffff;
+  --card-text: #1a1a1a;
+  --card-border: rgba(0, 0, 0, 0.1);
+  --section-border: rgba(0, 0, 0, 0.15);
+  --table-row-bg: #f8f9fa;
+  --table-text: #1a1a1a;
+  --table-header: #666666;
+  --select-bg: #ffffff;
+  --select-text: #1a1a1a;
+  --legend-color: #666666;
+  --label-color: #666666;
+  --divider-color: rgba(0,0,0,0.1);
+  --progress-bg: #e5e7eb;
+  --pie-center: #ffffff;
+  --kpi-bg: #ffffff;
+  --kpi-text: #1a1a1a;
+  --kpi-number: #1a1a1a;
+  --chart-bg: #ffffff;
+  --chart-text: #1a1a1a;
+  --calendar-bg: #ffffff;
+  --calendar-text: #1a1a1a;
+  --calendar-border: #e5e7eb;
+  --status-bg: #ffffff;
+  --status-text: #1a1a1a;
 }
 
 /* Layout limpo sem duplicações */
@@ -79,9 +82,9 @@
 
 /* Saudação do dashboard */
 .dashboard-greeting-section {
-  margin-bottom: 0; /* Remove espaço extra - usa o gap do main-content */
-  margin-left: 0;
-  padding-left: 0;
+  margin-bottom: 24px !important; /* Espaçamento abaixo da saudação */
+  margin-top: 0 !important;
+  width: 100% !important; /* Ocupa toda largura */
 }
 
 .dashboard-title {
@@ -97,133 +100,231 @@
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
-/* Layout principal: conteúdo + painel direito */
-.dashboard-layout {
-  display: grid;
-  grid-template-columns: 1fr 300px; /* Painel direito um pouco menor */
-  gap: 20px; /* Gap menor */
-  align-items: start; /* Alinha no topo */
+/* Grid Container - 12 colunas */
+.dashboard-grid-container {
+  display: grid !important;
+  grid-template-columns: repeat(12, 1fr) !important;
+  gap: 24px !important; /* gap-6 equivalente (1.5rem = 24px) */
+  width: 100% !important;
 }
 
-/* Main Content */
-.main-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px; /* Gap adequado entre seções */
+/* Classes para col-span - Desktop (lg+) */
+.dashboard-col-span-3 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
 }
 
-/* KPI Cards com espaçamento */
-.kpi-row {
-  display: flex;
-  gap: 12px; /* Gap menor entre KPIs */
-  margin-bottom: 18px; /* Menos espaço abaixo */
+.dashboard-col-span-4 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
 }
+
+.dashboard-col-span-5 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
+}
+
+.dashboard-col-span-6 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
+}
+
+.dashboard-col-span-7 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
+}
+
+.dashboard-col-span-2 {
+  grid-column: span 12 / span 12 !important; /* Mobile: full width */
+}
+
+/* Desktop (lg+) - 1024px+ */
+@media (min-width: 1024px) {
+  .dashboard-col-span-3 {
+    grid-column: span 3 / span 3 !important;
+  }
+
+  .dashboard-col-span-4 {
+    grid-column: span 4 / span 4 !important;
+  }
+
+  .dashboard-col-span-5 {
+    grid-column: span 5 / span 5 !important;
+  }
+
+  .dashboard-col-span-6 {
+    grid-column: span 6 / span 6 !important;
+  }
+
+  .dashboard-col-span-7 {
+    grid-column: span 7 / span 7 !important;
+  }
+
+  .dashboard-col-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+}
+
+/* Altura consistente para Row 2 */
+.dashboard-row-2-height {
+  min-height: 340px !important;
+}
+
+/* Row span para ocupar 2 linhas */
+.dashboard-row-span-2 {
+  grid-row: span 2 / span 2 !important;
+}
+
+/* KPI Cards - Mantém estilos existentes */
 
 .kpi {
   position: relative;
-  padding: 20px; /* Padding menor */
-  border-radius: 24px; /* Border radius menor */
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06); /* Sombra mais sutil */
-  color: var(--kpi-text, #111);
-  background: var(--kpi-bg, transparent);
-  flex: 1;
+  padding: 24px;
+  border-radius: 3px; /* Border radius menor conforme Figma */
+  box-shadow: none !important; /* Removido sombra dos cards KPI */
+  color: var(--kpi-text, #323232);
+  background: transparent !important; /* Background transparente para que a imagem SVG seja visível */
   z-index: 1;
   overflow: visible;
-  min-height: 100px; /* Altura menor */
+  height: 140px !important; /* Altura reduzida para a imagem aparecer */
+  min-height: 140px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start !important; /* Alinha informações à esquerda */
+  text-align: left !important; /* Texto alinhado à esquerda */
+  justify-content: center !important; /* Centraliza verticalmente o conteúdo */
 }
 
+/* Cards com imagens SVG */
 .kpi--cyan { 
-  background-image: url('/card-cyan.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: transparent !important;
+  background-image: url('/card01-home.svg') !important;
+  background-size: cover !important; /* Cobre todo o card */
+  background-position: center right !important; /* Posiciona à direita */
+  background-repeat: no-repeat !important;
   z-index: 1;
 }
 
 .kpi--amber { 
-  background-image: url('/card-amber.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: transparent !important;
+  background-image: url('/card02-home.svg') !important;
+  background-size: cover !important; /* Cobre todo o card */
+  background-position: center right !important; /* Posiciona à direita */
+  background-repeat: no-repeat !important;
   z-index: 1;
 }
 
 .kpi--lilac { 
-  background-image: url('/card-lilac.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: transparent !important;
+  background-image: url('/card03-home.svg') !important;
+  background-size: cover !important; /* Cobre todo o card */
+  background-position: center right !important; /* Posiciona à direita */
+  background-repeat: no-repeat !important;
   z-index: 1;
 }
 
-/* Dark mode - KPI cards cinza */
+.kpi--status {
+  background-color: #ffffff;
+  background-image: none;
+  z-index: 1;
+}
+
+.kpi--status {
+  background-color: #ffffff;
+  background-image: none;
+  z-index: 1;
+}
+
+/* Se não tiver imagem, usar fundo branco */
+.kpi:not([style*="background-image"]):not(.kpi--cyan):not(.kpi--amber):not(.kpi--lilac) {
+  background-color: #ffffff;
+}
+
+/* Garantir que cards com SVG não tenham background */
+.kpi--cyan,
+.kpi--amber,
+.kpi--lilac {
+  background-color: transparent !important;
+}
+
+/* Dark mode - KPI cards com background transparente mesmo no dark */
 .dark .kpi--cyan,
 .dark .kpi--amber,
 .dark .kpi--lilac {
-  background-image: none !important;
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: transparent !important;
+  background-image: url('/card01-home.svg');
+  color: #323232 !important;
+}
+
+.dark .kpi--amber {
+  background-image: url('/card02-home.svg');
+}
+
+.dark .kpi--lilac {
+  background-image: url('/card03-home.svg');
 }
 
 /* As imagens já contêm o efeito "dentes" */
 
 .kpi .title {
-  font-size: 16px;
+  font-size: 14px !important; /* Reduzido de 16px para 14px */
   font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--kpi-text, #111) !important;
+  margin-bottom: 4px !important; /* Reduzido de 8px para 4px para subir o conteúdo */
+  color: var(--kpi-text, #323232) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  line-height: 1.5;
 }
 
 .kpi .value {
-  font-size: 36px;
+  font-size: 36px !important;
   font-weight: 700;
-  color: var(--kpi-number, #111) !important;
+  color: var(--kpi-number, #323232) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  line-height: 1.2;
+  margin-top: 0 !important; /* Remove margin-top para centralizar verticalmente */
 }
 
-/* Cards Escuros com efeito 3D */
+.kpi .variation {
+  font-size: 14px;
+  font-weight: 600;
+  color: #10B981; /* Verde para variação positiva */
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi .subtitle {
+  font-size: 10px !important;
+  color: #6B7280;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+
+/* Cards Brancos com sombra sutil - Design limpo */
 .card-dark {
-  background: var(--card-bg, #121316);
-  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
-  border-radius: 20px; /* Border radius menor */
-  padding: 18px; /* Padding menor */
-  color: var(--card-text, #fff);
-  box-shadow: 
-    0 6px 24px rgba(0,0,0,0.12), /* Sombra mais sutil */
-    0 2px 8px rgba(0,0,0,0.08),
-    inset 0 1px 2px rgba(255,255,255,0.05);
-  transform-style: preserve-3d;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: var(--card-bg, #ffffff);
+  border: none;
+  border-radius: 3px; /* Border radius menor conforme Figma */
+  padding: 20px;
+  color: var(--card-text, #323232);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25); /* Sombra conforme Figma */
+  transition: box-shadow 0.2s ease;
 }
 
 .card-dark:hover {
-  transform: translateY(-2px) rotateX(2deg);
-  box-shadow: 
-    0 12px 32px rgba(0,0,0,0.18),
-    0 4px 12px rgba(0,0,0,0.12),
-    inset 0 1px 2px rgba(255,255,255,0.08);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Dark Mode - Cards brancos */
+/* Dark Mode - Cards brancos mesmo no dark */
 .dark .card-dark {
-  background: var(--card-bg);
-  color: var(--card-text);
-  box-shadow: 
-    0 6px 24px rgba(0,0,0,0.25),
-    0 2px 8px rgba(0,0,0,0.15),
-    inset 0 1px 2px rgba(255,255,255,0.8);
+  background: #ffffff;
+  color: #323232;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
 .dark .card-dark:hover {
-  box-shadow: 
-    0 12px 32px rgba(0,0,0,0.35),
-    0 4px 12px rgba(0,0,0,0.20),
-    inset 0 1px 2px rgba(255,255,255,0.9);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Card específico do gráfico com padding reduzido */
@@ -231,29 +332,53 @@
   padding: 12px; /* Padding reduzido de 18px para 12px */
 }
 
-/* Card do gráfico semanal */
+/* Card do gráfico semanal - Aumentado */
 .weekly-chart {
   position: relative;
   z-index: 1;
-  overflow: hidden;
-  min-height: 250px;
+  overflow: visible;
+  min-height: 350px; /* Aumentado de 250px para 350px */
   display: flex;
   flex-direction: column;
+  height: 100%; /* Ocupa toda altura disponível */
 }
 
 .weekly-chart .card-title {
   position: relative;
   z-index: 2;
-  margin-bottom: 5px;
-  font-size: 16px;
+  margin-bottom: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--card-text, #fff);
+  color: #1B4266;
   flex-shrink: 0;
 }
 
-/* Card de Consultas com espaçamento menor */
+/* Container do gráfico semanal SVG */
+.weekly-bar-chart-container {
+  width: 100%;
+  height: 280px;
+  padding: 10px 20px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weekly-bar-chart-container svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* Card de Consultas com espaçamento menor - Estendido até o final */
 .consultations-table.card-dark {
-  padding: 14px; /* Padding ainda menor para consultas */
+  padding: 20px !important; /* Padding para espaçamento interno */
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100% !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25) !important;
 }
 
 .card-header {
@@ -263,14 +388,144 @@
   margin-bottom: 20px;
 }
 
-/* Header do card de consultas com menos espaço */
-.consultations-table .card-header {
-  margin-bottom: 12px; /* Menos espaço abaixo do header */
+/* Header do card de Consultas - Design do Figma */
+.consultations-header {
+  display: grid;
+  grid-template-columns: 100px 180px 2px 90px 2px 80px 2px 80px 2px 1fr;
+  align-items: center;
+  height: 44px;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  padding: 0;
+  margin-bottom: 8px;
+  position: relative;
 }
 
-/* Container da tabela com menos espaço */
-.consultations-table .table-container {
-  margin-top: 0; /* Remove margem superior */
+.consultations-header-active {
+  background: #1B4266;
+  color: #ffffff;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 3px 0 0 3px;
+  padding: 0 12px;
+  text-align: center;
+}
+
+.consultations-header-item {
+  color: #000000;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  padding: 0 8px;
+}
+
+.consultations-header-item.consultations-header-patient {
+  text-align: left;
+  padding-left: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.consultations-header-divider {
+  width: 2px;
+  height: 34px;
+  background: #F2F2F2;
+  border-radius: 66px;
+}
+
+/* Lista de consultas */
+.consultations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Linha de consulta - Design do Figma */
+.consultation-row {
+  display: grid;
+  grid-template-columns: 280px 2px 90px 2px 80px 2px 80px 2px 1fr;
+  align-items: center;
+  min-height: 80px;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  position: relative;
+}
+
+
+.consultation-patient-col {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.consultation-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #D9D9D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #323232;
+  flex-shrink: 0;
+}
+
+.consultation-patient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.consultation-medico-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323232;
+  line-height: 1.2;
+}
+
+.consultation-type {
+  font-size: 12px;
+  font-weight: 400;
+  color: #323232;
+  line-height: 1.2;
+}
+
+.consultation-id-col,
+.consultation-time-col,
+.consultation-duration-col,
+.consultation-room-col {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323232;
+  text-align: center;
+  padding: 0 8px;
+}
+
+.consultation-divider {
+  width: 2px;
+  height: 50px;
+  background: #F2F2F2;
+  border-radius: 66px;
+  align-self: center;
+}
+
+.consultations-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6B7280;
+  font-size: 14px;
 }
 
 .card-title {
@@ -292,12 +547,26 @@
 
 .year-select,
 .month-select {
-  background: var(--select-bg, #1f2024);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--select-text, #fff);
-  padding: 8px 12px;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 0.946px solid #E3E7E8;
+  color: #000000;
+  padding: 0 16px;
+  padding-right: 36px;
+  height: 25px;
+  border-radius: 6.62px;
   font-size: 14px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='5' viewBox='0 0 10 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L5 5L10 0H0Z' fill='black'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 10px 5px;
+}
+
+.year-select:focus,
+.month-select:focus {
+  outline: none;
+  border-color: #1B4266;
 }
 
 .btn-download,
@@ -317,21 +586,22 @@
 
 .view-btn {
   background: transparent;
-  color: #ffd84d;
-  border: 1px solid rgba(255,216,77,0.3);
+  color: #1B4266;
+  border: 1px solid rgba(27, 66, 102, 0.3);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
 
-/* Data Row - Gráfico + Calendário */
-.data-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px; /* Gap menor */
-  margin-bottom: 18px; /* Menos espaço abaixo */
+.view-btn:hover {
+  background: rgba(27, 66, 102, 0.05);
+  border-color: rgba(27, 66, 102, 0.5);
 }
+
+/* Data Row - Removido, agora usando grid de 12 colunas */
 
 /* Chart Content */
 .chart-content {
@@ -373,18 +643,11 @@
 }
 
 .legend-line.presencial {
-  background: #8b5cf6;
+  background: #9770F5;
 }
 
 .legend-line.telemedicina {
-  background: #3b82f6;
-  background-image: repeating-linear-gradient(
-    90deg,
-    #3b82f6 0px,
-    #3b82f6 8px,
-    transparent 8px,
-    transparent 12px
-  );
+  background: #4387F5;
 }
 
 .chart-area {
@@ -392,47 +655,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 0; /* Padding reduzido */
-  min-height: 180px; /* Altura reduzida para 180px */
-  max-height: 180px; /* Altura máxima para controlar o tamanho */
-  perspective: 1500px; /* Perspectiva 3D aumentada */
-  perspective-origin: center center;
-}
-
-.chart-area svg {
-  transform-style: preserve-3d;
-  transform: translateZ(0px); /* Gráfico reto, sem rotação */
-  filter: 
-    drop-shadow(0 8px 16px rgba(0,0,0,0.3))
-    drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-
-.chart-area svg:hover {
-  transform: translateZ(5px) scale(1.02); /* Apenas elevação e escala no hover */
-  filter: 
-    drop-shadow(0 12px 24px rgba(0,0,0,0.4))
-    drop-shadow(0 6px 12px rgba(0,0,0,0.3));
-}
-
-/* Efeito de plano de fundo 3D para o gráfico - RETO */
-.chart-area::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 90%;
-  height: 80%;
-  background: linear-gradient(135deg, 
-    rgba(255,255,255,0.02) 0%, 
-    rgba(255,255,255,0.01) 50%, 
-    rgba(0,0,0,0.05) 100%
-  );
-  transform: translate(-50%, -50%) translateZ(-10px); /* Plano reto atrás do gráfico */
-  border-radius: 12px;
-  z-index: -1;
-  opacity: 0.5;
+  padding: 0;
+  min-height: 250px;
+  max-height: 250px;
 }
 
 /* Estilos específicos para elementos 3D do SVG */
@@ -487,20 +712,17 @@
 /* Estilos para o componente Chart3D */
 .chart-3d-container {
   width: 100%;
-  height: 180px; /* Reduzido para 180px - tamanho mais compacto */
+  height: 250px;
   position: relative;
-  border-radius: 12px;
-  overflow: hidden; /* Corrigir overflow para evitar sobreposição */
-  max-height: 180px; /* Garantir altura máxima */
-  padding: 2px; /* Pequeno padding para evitar cortes nas bordas */
+  background: transparent;
+  overflow: visible;
 }
 
 .chart-3d-container > div {
-  border-radius: 12px;
   background: transparent !important;
 }
 
-/* Ajustes para o Plotly dentro do tema escuro */
+/* Ajustes para o Plotly */
 .chart-3d-container .plotly-graph-div {
   background: transparent !important;
 }
@@ -511,6 +733,7 @@
 
 .chart-3d-container .main-svg {
   background: transparent !important;
+  overflow: visible !important;
 }
 
 /* Estilos para o Chart3D Fallback */
@@ -559,37 +782,60 @@
 
 /* Calendário */
 .calendar-content {
-  padding: 16px;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-calendar {
   width: 100%;
+  overflow: hidden;
 }
 
 /* Ajustes específicos para o calendário no dashboard */
+.calendar-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-card .calendar-container {
+  width: 100%;
+  overflow: hidden;
+}
+
 .calendar-card .calendar-month-title {
-  font-size: 15px;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.calendar-card .calendar-header-controls {
+  margin-bottom: 12px;
 }
 
 .calendar-card .calendar-cell {
-  height: 32px;
+  width: 36px;
+  height: 36px;
+}
+
+.calendar-card .calendar-day-name {
+  width: 36px;
+  font-size: 12px;
 }
 
 .calendar-card .calendar-cell-number {
   font-size: 13px;
 }
 
-.calendar-card .calendar-nav-btn {
-  width: 28px;
-  height: 28px;
+.calendar-card .calendar-days-header {
+  margin-bottom: 8px;
 }
 
-/* Bottom Row - Atendimentos + Consultas */
-.bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 16px; /* Gap menor */
+.calendar-card .calendar-body {
+  gap: 6px;
 }
+
+/* Bottom Row - Removido, agora usando grid de 12 colunas */
 
 /* Gráfico de Barras 3D CSS - VERSÃO SIMPLIFICADA */
 .bar-chart-3d-css {
@@ -766,16 +1012,17 @@
   }
 }
 
-/* Gráfico de Barras Semanal - 3D */
+/* Gráfico de Barras Semanal - 3D - Aumentado */
 .bar-chart-weekly {
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  height: 240px; /* Altura maior para as barras */
-  padding: 20px 16px 30px; /* Menos padding inferior */
+  height: 320px; /* Aumentado de 240px para 320px */
+  padding: 20px 16px 30px;
   gap: 8px;
   position: relative;
   perspective: 1000px; /* Adiciona perspectiva 3D */
+  flex: 1; /* Ocupa todo o espaço disponível */
 }
 
 .bar-group {
@@ -881,6 +1128,8 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 8px; /* Menos espaço entre linhas */
+  display: table; /* Garantir que seja uma tabela */
+  table-layout: auto;
 }
 
 .table thead th {
@@ -892,23 +1141,23 @@
 }
 
 .table tbody tr {
-  background: var(--table-row-bg, #0f1013);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  background: var(--table-row-bg, #f8f9fa);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .table tbody td {
-  padding: 12px 14px; /* Menos padding nas células */
-  font-size: 14px; /* Fonte menor */
-  color: var(--table-text, #fff);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--table-text, #323232);
 }
 
 .table tbody td:first-child {
-  border-radius: 16px 0 0 16px;
+  border-radius: 8px 0 0 8px;
 }
 
 .table tbody td:last-child {
-  border-radius: 0 16px 16px 0;
+  border-radius: 0 8px 8px 0;
 }
 
 .status {
@@ -938,22 +1187,37 @@
 .right-panel {
   display: flex;
   flex-direction: column;
-  width: 320px; /* Largura ligeiramente maior para o novo componente */
+  width: 300px; /* Largura ajustada */
   height: 100%; /* Altura total disponível */
-  gap: 16px; /* Gap entre componentes */
+  gap: 0; /* Remove gap entre componentes */
+  align-self: stretch; /* Estica para ocupar toda altura do grid */
+  padding-top: 0 !important; /* Remove padding superior para alinhar com o topo */
+  align-items: flex-start !important; /* Alinha no início */
+}
+
+.right-panel .card-dark {
+  margin: 0 !important; /* Remove margens do card */
+  padding: 20px !important; /* Mantém padding interno padrão */
+  border: none !important; /* Remove bordas sólidas */
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25) !important; /* Mantém sombra padrão */
+}
+
+.right-panel .status-card.card-dark {
+  padding-top: 0 !important; /* Remove padding superior para alinhar com o topo dos KPIs */
+  margin-top: 0 !important; /* Remove margem superior */
 }
 
 .unified-card {
-  background: var(--card-bg, #121316);
-  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
-  border-radius: 18px;
+  background: var(--card-bg, #ffffff);
+  border: none;
+  border-radius: 3px;
   padding: 20px;
-  color: var(--card-text, #fff);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  color: var(--card-text, #323232);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0; /* Remove gap automático - usa divisores */
+  gap: 0;
 }
 
 /* Seções do card unificado */
@@ -1170,23 +1434,23 @@
 
 .duration-label {
   font-size: 14px;
-  color: var(--label-color, #aaa);
+  color: var(--label-color, #666666);
   margin-bottom: 4px;
 }
 
 .dark .duration-label {
-  color: var(--label-color);
+  color: #666666;
 }
 
 .duration-value {
   font-size: 24px;
   font-weight: 700;
-  color: var(--card-text, #fff);
+  color: var(--card-text, #323232);
   margin-bottom: 8px;
 }
 
 .dark .duration-value {
-  color: var(--card-text);
+  color: #323232;
 }
 
 .progress-bar {

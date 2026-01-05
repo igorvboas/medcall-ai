@@ -21,6 +21,22 @@ export async function POST(request: NextRequest, { params }: { params: { consult
     const { supabase, user } = authResult;
     console.log('✅ Usuário autenticado:', user.id);
 
+    // Buscar médico na tabela medicos
+    const doctorAuthId = user.id;
+    const { data: medico, error: medicoError } = await supabase
+      .from('medicos')
+      .select('id, name')
+      .eq('user_auth', doctorAuthId)
+      .single();
+
+    if (medicoError || !medico) {
+      console.error('❌ Médico não encontrado:', medicoError);
+      return NextResponse.json(
+        { error: 'Médico não encontrado no sistema' },
+        { status: 404 }
+      );
+    }
+
     // Obter consulta_id dos parâmetros da URL
     const consultaId = params.consulta_id;
     
@@ -44,10 +60,10 @@ export async function POST(request: NextRequest, { params }: { params: { consult
 
     console.log(`🔍 DEBUG [REFERENCIA] Processando ${files.length} arquivos para consulta ${consultaId}`);
 
-    // 1. Buscar consulta pelo ID
+    // 1. Buscar consulta pelo ID (antes de processar arquivos)
     const { data: consulta, error: consultaError } = await supabase
       .from('consultations')
-      .select('id, doctor_id, patient_id, status, etapa')
+      .select('id, doctor_id, patient_id, patient_name, status, etapa')
       .eq('id', consultaId)
       .single();
 
@@ -203,7 +219,10 @@ export async function POST(request: NextRequest, { params }: { params: { consult
           user_email: user.email || '',
           user_name: medico.name,
           consultaId,
-          consultation: consulta,
+          consultation: {
+            patient_id: consulta.patient_id?.toString(),
+            patient_name: consulta.patient_name
+          },
           tableName: 'a_observacao_clinica_lab',
           fieldName: 'links_exames',
           fieldPath: 'a_observacao_clinica_lab.links_exames',
@@ -215,18 +234,18 @@ export async function POST(request: NextRequest, { params }: { params: { consult
       }
       
       // Reverter status da consulta baseado na etapa
-      const { data: consulta } = await supabase
+      const { data: consultaAtualizada } = await supabase
         .from('consultations')
         .select('etapa')
         .eq('id', consultaId)
         .single();
       
       let statusToRevert = 'VALIDATION';
-      if (consulta?.etapa === 'ANAMNESE') {
+      if (consultaAtualizada?.etapa === 'ANAMNESE') {
         statusToRevert = 'VALID_ANAMNESE';
-      } else if (consulta?.etapa === 'DIAGNOSTICO') {
+      } else if (consultaAtualizada?.etapa === 'DIAGNOSTICO') {
         statusToRevert = 'VALID_DIAGNOSTICO';
-      } else if (consulta?.etapa === 'SOLUCAO') {
+      } else if (consultaAtualizada?.etapa === 'SOLUCAO') {
         statusToRevert = 'VALID_SOLUCAO';
       }
       
@@ -258,7 +277,10 @@ export async function POST(request: NextRequest, { params }: { params: { consult
         user_email: user.email || '',
         user_name: medico.name,
         consultaId,
-        consultation: consulta,
+        consultation: {
+          patient_id: consulta.patient_id?.toString(),
+          patient_name: consulta.patient_name
+        },
         tableName: 'a_observacao_clinica_lab',
         fieldName: 'links_exames',
         fieldPath: 'a_observacao_clinica_lab.links_exames',

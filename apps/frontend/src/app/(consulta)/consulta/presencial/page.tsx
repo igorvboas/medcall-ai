@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
+import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { DualMicrophoneControl } from '@/components/presencial/DualMicrophoneControl';
 import { PresencialTranscription } from '@/components/presencial/PresencialTranscription';
 import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
@@ -203,9 +204,11 @@ function PresencialConsultationContent() {
     return (
       <div className="presencial-page">
         <div className="error-card">
-          <h2>❌ Consulta não encontrada</h2>
+          <XCircle className="error-icon" size={48} />
+          <h2>Consulta não encontrada</h2>
           <p>ID da consulta não fornecido</p>
           <button onClick={() => router.push('/consultas')} className="btn btn-primary">
+            <ArrowLeft size={18} />
             Voltar para Consultas
           </button>
         </div>
@@ -222,7 +225,8 @@ function PresencialConsultationContent() {
 
       {error && (
         <div className="error-banner">
-          ⚠️ {error}
+          <AlertTriangle size={20} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -258,7 +262,10 @@ function PresencialConsultationContent() {
             <div className="status-bar">
               <div className="status-item">
                 <span className="status-label">Status:</span>
-                <span className="status-value recording">🔴 Gravando</span>
+                <span className="status-value recording">
+                  <Radio className="recording-icon" size={16} />
+                  Gravando
+                </span>
               </div>
 
               <div className="status-item">
@@ -269,7 +276,17 @@ function PresencialConsultationContent() {
               <div className="status-item">
                 <span className="status-label">Conexão:</span>
                 <span className={`status-value ${socketConnected ? 'connected' : 'disconnected'}`}>
-                  {socketConnected ? '✅ Conectado' : '❌ Desconectado'}
+                  {socketConnected ? (
+                    <>
+                      <CheckCircle className="status-icon" size={16} />
+                      Conectado
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="status-icon" size={16} />
+                      Desconectado
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -307,34 +324,40 @@ function PresencialConsultationContent() {
       <style jsx>{`
         .presencial-page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #EBF3F6;
           padding: 40px 20px;
         }
         
         .page-header {
           text-align: center;
-          color: white;
+          color: #1B4266;
           margin-bottom: 40px;
         }
         
         .page-header h1 {
           font-size: 32px;
           margin: 0 0 8px 0;
+          font-weight: 700;
+          color: #1B4266;
         }
         
         .page-header p {
           font-size: 18px;
-          opacity: 0.9;
+          color: #5B5B5B;
+          font-weight: 500;
         }
         
         .error-banner {
           background: #fee2e2;
           color: #b91c1c;
           padding: 16px 20px;
-          border-radius: 8px;
+          border-radius: 12px;
           margin-bottom: 24px;
-          text-align: center;
+          display: flex;
+          align-items: center;
+          gap: 12px;
           font-weight: 500;
+          border-left: 4px solid #dc2626;
         }
         
         .error-card {
@@ -344,10 +367,23 @@ function PresencialConsultationContent() {
           text-align: center;
           max-width: 500px;
           margin: 0 auto;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        
+        .error-icon {
+          color: #dc2626;
+        }
+        
+        .error-card h2 {
+          margin: 0;
         }
         
         .setup-container {
-          max-width: 800px;
+          max-width: 900px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
@@ -362,7 +398,7 @@ function PresencialConsultationContent() {
         
         .consultation-container {
           display: grid;
-          grid-template-columns: 400px 1fr;
+          grid-template-columns: 420px 1fr;
           gap: 24px;
           max-width: 1400px;
           margin: 0 auto;
@@ -376,18 +412,26 @@ function PresencialConsultationContent() {
         
         .status-bar {
           background: white;
-          padding: 20px;
+          padding: 24px;
           border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 16px;
+          border: 1px solid #E5E7EB;
         }
         
         .status-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #F3F4F6;
+        }
+        
+        .status-item:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
         }
         
         .status-label {
@@ -402,6 +446,20 @@ function PresencialConsultationContent() {
           color: #111827;
         }
         
+        .status-value {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        
+        .status-icon {
+          flex-shrink: 0;
+        }
+        
+        .recording-icon {
+          color: #dc2626;
+        }
+        
         .status-value.recording {
           color: #dc2626;
         }
@@ -410,22 +468,35 @@ function PresencialConsultationContent() {
           color: #10b981;
         }
         
+        .status-value.connected .status-icon {
+          color: #10b981;
+        }
+        
         .status-value.disconnected {
           color: #ef4444;
         }
         
+        .status-value.disconnected .status-icon {
+          color: #ef4444;
+        }
+        
         .transcription-panel {
-          height: 600px;
+          height: calc(100vh - 200px);
+          min-height: 600px;
         }
         
         .btn {
-          padding: 12px 24px;
+          padding: 14px 28px;
           border: none;
-          border-radius: 8px;
+          border-radius: 9px;
           font-size: 16px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         
         .btn-lg {
@@ -435,40 +506,52 @@ function PresencialConsultationContent() {
         }
         
         .btn-primary {
-          background: #3b82f6;
+          background: #1B4266;
           color: white;
+          box-shadow: 0 2px 4px rgba(27, 66, 102, 0.2);
         }
         
         .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
+          background: #153350;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(27, 66, 102, 0.3);
         }
         
         .btn-secondary {
-          background: #6b7280;
-          color: white;
+          background: white;
+          color: #1B4266;
+          border: 2px solid #1B4266;
         }
         
         .btn-secondary:hover {
-          background: #4b5563;
+          background: #F3F4F6;
         }
         
         .btn-danger {
           background: #dc2626;
           color: white;
+          box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
         }
         
         .btn-danger:hover {
           background: #b91c1c;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
         }
         
         .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+          transform: none !important;
         }
         
         @media (max-width: 1024px) {
           .consultation-container {
             grid-template-columns: 1fr;
+          }
+          
+          .transcription-panel {
+            height: 500px;
           }
         }
       `}</style>

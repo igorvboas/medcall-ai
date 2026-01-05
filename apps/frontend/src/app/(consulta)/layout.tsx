@@ -18,6 +18,6 @@ export default function AppLayout({
     return children;
   }
   
-  // Para todas as outras páginas, usar o layout padrão com sidebar e header
+  // Para todas as outras páginas (incluindo /consulta/online), usar o layout padrão com sidebar e header
   return <Layout>{children}</Layout>;
 }

@@ -63,16 +63,28 @@ export async function GET(request: NextRequest) {
       .eq('status', 'COMPLETED')
       .gte('created_at', inicioMes.toISOString());
 
-    // Duração média das consultas
+    // Duração média das consultas (geral e por tipo)
     const { data: consultasComDuracao } = await supabase
       .from('consultations')
-      .select('duration')
+      .select('duration, consultation_type')
       .eq('doctor_id', medico.id)
       .eq('status', 'COMPLETED')
       .not('duration', 'is', null);
 
     const duracaoMedia = consultasComDuracao && consultasComDuracao.length > 0
       ? consultasComDuracao.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasComDuracao.length
+      : 0;
+
+    // Calcular duração média por tipo
+    const consultasPresencial = consultasComDuracao?.filter(c => c.consultation_type === 'PRESENCIAL') || [];
+    const consultasTelemedicina = consultasComDuracao?.filter(c => c.consultation_type === 'TELEMEDICINA') || [];
+    
+    const duracaoMediaPresencial = consultasPresencial.length > 0
+      ? consultasPresencial.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasPresencial.length
+      : 0;
+    
+    const duracaoMediaTelemedicina = consultasTelemedicina.length > 0
+      ? consultasTelemedicina.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasTelemedicina.length
       : 0;
 
     // Consultas por status
@@ -106,10 +118,16 @@ export async function GET(request: NextRequest) {
         consultation_type,
         status,
         duration,
+        duracao,
         created_at,
+        consulta_inicio,
+        consulta_fim,
         patients:patient_id (
           name,
           email
+        ),
+        medicos:doctor_id (
+          name
         )
       `)
       .eq('doctor_id', medico.id)
@@ -267,6 +285,8 @@ export async function GET(request: NextRequest) {
         consultasHoje: consultasHoje || 0,
         consultasConcluidasMes: consultasConcluidasMes || 0,
         duracaoMediaSegundos: Math.round(duracaoMedia),
+        duracaoMediaPresencialSegundos: Math.round(duracaoMediaPresencial),
+        duracaoMediaTelemedicinaSegundos: Math.round(duracaoMediaTelemedicina),
         taxaSucesso: Math.round(taxaSucesso * 100) / 100
       },
       distribuicoes: {

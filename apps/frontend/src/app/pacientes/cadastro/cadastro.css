@@ -75,13 +75,13 @@
   .section-icon-wrapper {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+    background: #1B4266;
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+    box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   }
   
   .section-icon {
@@ -187,9 +187,9 @@
   .cadastro-container .form-input:focus,
   .cadastro-container .form-textarea:focus {
     outline: none !important;
-    border-color: #d4a574 !important;
+    border-color: #1B4266 !important;
     background-color: #ffffff !important;
-    box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1) !important;
+    box-shadow: 0 0 0 4px rgba(27, 66, 102, 0.1) !important;
     transform: translateY(-1px) !important;
   }
 
@@ -197,8 +197,8 @@
 .dark .cadastro-container .form-input:focus,
 .dark .cadastro-container .form-textarea:focus {
   background-color: #333333 !important;
-  border-color: #d4a574 !important;
-  box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.2) !important;
+  border-color: #1B4266 !important;
+  box-shadow: 0 0 0 4px rgba(27, 66, 102, 0.2) !important;
 }
   
   .form-input::placeholder,
@@ -309,16 +309,16 @@
   }
   
   .btn-primary {
-    background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+    background: #1B4266;
     color: white;
     border: 2px solid transparent;
-    box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+    box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   }
   
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+    background: #153350;
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+    box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
   }
   
   /* Spinner do botão */

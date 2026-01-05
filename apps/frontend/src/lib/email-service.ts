@@ -227,7 +227,7 @@ export async function sendAnamneseEmail({
           <title>Anamnese Inicial</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <div style="background: linear-gradient(135deg, #1B4266 0%, #153350 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
             <h1 style="color: white; margin: 0; font-size: 28px;">Anamnese Inicial</h1>
           </div>
           
@@ -247,12 +247,12 @@ export async function sendAnamneseEmail({
             <div style="text-align: center; margin: 30px 0;">
               <a 
                 href="${anamneseLink}" 
-                style="display: inline-block; background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);">
+                style="display: inline-block; background: linear-gradient(135deg, #1B4266 0%, #153350 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);">
                 Preencher Anamnese Inicial
               </a>
             </div>
             
-            <div style="background: #f9fafb; border-left: 4px solid #d4a574; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <div style="background: #f9fafb; border-left: 4px solid #1B4266; padding: 15px; margin: 20px 0; border-radius: 4px;">
               <p style="margin: 0; font-size: 14px; color: #6b7280;">
                 <strong>⏱️ Tempo estimado:</strong> 10-15 minutos<br>
                 <strong>📋 Informações necessárias:</strong> Dados pessoais, histórico de saúde, preferências alimentares e atividades físicas

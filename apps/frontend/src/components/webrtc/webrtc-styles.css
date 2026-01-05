@@ -32,7 +32,7 @@
 }
 
 .finish-modal-content h2 {
-  color: #d4a574;
+  color: #1B4266;
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 16px;
@@ -47,7 +47,7 @@
 }
 
 .finish-modal-button {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -56,28 +56,452 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .finish-modal-button:hover {
   background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
 }
 
-/* Estilos para Nova Consulta - Refatorado */
+/* Estilos para Nova Consulta - Design Figma */
 .create-consultation-container {
-  max-width: 1000px;
+  min-height: 100vh;
+  background: #EBF3F6;
+  padding: 20px 20px 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.nova-consulta-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 1327px; /* 409px * 3 + 30px * 2 (gaps) */
+  justify-content: flex-start;
+}
+
+.nova-consulta-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #323232;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.nova-consulta-add-icon {
+  width: 24px;
+  height: 21px;
+  color: #323232;
+}
+
+.consultation-cards-container {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 1327px; /* 409px * 3 + 30px * 2 (gaps) */
+  justify-content: center;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  align-items: stretch;
 }
 
 .consultation-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 40px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 26px 42px 42px 42px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  width: 409px;
+  height: 431px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* Estilos específicos dos cards */
+.card-title-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  margin-bottom: 19px;
+  margin-top: 0;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.card-title-asterisk {
+  color: #FC4E4E;
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+/* Dropdown estilizado conforme Figma */
+.form-select-figma {
+  width: 100%;
+  max-width: 325px;
+  height: 38px;
+  padding: 0 58px 0 16px;
+  background: #F3F3F3;
+  border: 0.946px solid #E3E7E8;
+  border-radius: 6.62px;
+  font-size: 18px;
+  color: #A3A3A3;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='5' viewBox='0 0 10 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L5 5L10 0H0Z' fill='black'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 10px 5px;
+  cursor: pointer;
+  margin-bottom: 23px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.form-select-figma:focus {
+  outline: none;
+  border-color: #1B4266;
+}
+
+.form-select-figma option {
+  color: #A3A3A3;
+  background: #ffffff;
+}
+
+/* Foto do paciente */
+.patient-photo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 35px 0 36px 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.patient-photo {
+  width: 155px;
+  height: 155px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #E5E7EB;
+}
+
+.patient-photo-placeholder {
+  width: 155px;
+  height: 155px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Dropdown Retorno */
+.retorno-select {
+  width: 100%;
+  max-width: 325px;
+  height: 27.48px;
+  padding: 0 36px 0 16px;
+  background: transparent;
+  border: 0.684px solid #E3E7E8;
+  border-radius: 4.79px;
+  font-size: 13px;
+  color: #A3A3A3;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='4' viewBox='0 0 8 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L4 4L8 0H0Z' fill='black'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 8px 4px;
+  cursor: pointer;
+  margin-bottom: 7px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.retorno-select:focus {
+  outline: none;
+  border-color: #1B4266;
+}
+
+/* Texto de ajuda */
+.help-text {
+  font-size: 10px;
+  color: #6C6C6C;
+  line-height: 1.4;
+  margin: 0;
+  width: 100%;
+  max-width: 325px;
+  flex-shrink: 0;
+}
+
+/* Ícone circular para Tipo de Atendimento e Microfone */
+.icon-circle-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 13px 0 20px 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.icon-circle {
+  width: 155px;
+  height: 155px;
+  border-radius: 50%;
+  background: #C3DEF6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-circle svg,
+.icon-circle img.microphone-icon {
+  width: 61px;
+  height: 61px;
+  color: #1B4266;
+}
+
+.icon-circle img.microphone-icon {
+  object-fit: contain;
+  filter: brightness(0) saturate(100%) invert(16%) sepia(44%) saturate(1000%) hue-rotate(175deg) brightness(0.95) contrast(1.1);
+}
+
+/* SVG cam-mic já tem o background incluído, então deve ocupar todo o espaço */
+.icon-circle img.cam-mic-icon {
+  width: 155px;
+  height: 155px;
+  object-fit: contain;
+  filter: none;
+}
+
+.icon-circle.cam-mic-circle {
+  background: transparent;
+  border-radius: 0;
+}
+
+/* Checkbox de consentimento */
+.consent-checkbox-figma {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #F3F3F3;
+  border: 0.946px solid #E3E7E8;
+  border-radius: 6.62px;
+  cursor: pointer;
+  margin-top: auto;
+  width: 100%;
+  max-width: 325px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.consent-checkbox-figma input[type="checkbox"] {
+  width: 18.67px;
+  height: 18px;
+  min-width: 18.67px;
+  margin: 0;
+  cursor: pointer;
+  border: 0.631px solid #B9B9B9;
+  border-radius: 4.42px;
+  background: #FFFFFF;
+  accent-color: #1B4266;
+}
+
+.checkbox-text-figma {
+  font-size: 12px;
+  color: #6C6C6C;
+  line-height: 1.5;
+  user-select: none;
+  margin: 0;
+  flex: 1;
+}
+
+/* Barra de progresso de áudio */
+.audio-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  margin: 0 0 28px 0;
+  width: 100%;
+  max-width: 325px;
+  flex-shrink: 0;
+}
+
+.audio-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: #CFCFCF;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.audio-progress-fill {
+  height: 100%;
+  width: 60%;
+  background: #16E5AD;
+  border-radius: 4px;
+}
+
+.audio-mute-icon {
+  width: 18.78px;
+  height: 19.52px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.audio-mute-icon.muted {
+  opacity: 1;
+}
+
+.audio-mute-icon.active {
+  opacity: 0.5;
+}
+
+/* Botões de ação */
+.action-buttons-container {
+  display: flex;
+  gap: 11px;
+  justify-content: center;
+  margin-top: 41px;
+  width: 100%;
+  max-width: 1327px;
+}
+
+.btn-agendar {
+  width: 254px;
+  height: 51px;
+  background: transparent;
+  border: 1px solid #1B4266;
+  border-radius: 9.84px;
+  color: #1B4266;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7.87px;
+  transition: all 0.2s ease;
+}
+
+.btn-agendar:hover:not(:disabled) {
+  background: rgba(27, 66, 102, 0.05);
+}
+
+.btn-agendar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-criar {
+  width: 254px;
+  height: 51px;
+  background: #1B4266;
+  border: none;
+  border-radius: 9.84px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7.87px;
+  transition: all 0.2s ease;
+}
+
+.btn-criar:hover:not(:disabled) {
+  background: #153A5C;
+  transform: translateY(-1px);
+}
+
+.btn-criar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Botões de tipo de consulta (toggle) */
+.consultation-type-btn {
+  width: auto;
+  min-width: 180px;
+  height: 40px;
+  padding: 0 20px;
+  background: transparent;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.consultation-type-btn:hover:not(:disabled) {
+  border-color: #1B4266;
+  color: #1B4266;
+  background: rgba(27, 66, 102, 0.05);
+}
+
+.consultation-type-btn.active {
+  background: #1B4266;
+  border-color: #1B4266;
+  color: #FFFFFF;
+}
+
+.consultation-type-btn.active:hover:not(:disabled) {
+  background: #153A5C;
+  border-color: #153A5C;
+}
+
+.consultation-type-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  width: 23.62px;
+  height: 23.62px;
+}
+
+.btn-icon-calendar {
+  width: 19.06px;
+  height: 19.06px;
+  object-fit: contain;
+}
+
+.btn-arrow {
+  width: 13.56px;
+  height: 13.56px;
+  object-fit: contain;
 }
 
 .section-title {
@@ -129,9 +553,9 @@
 
 .form-select:focus {
   outline: none;
-  border-color: #d4a574;
+  border-color: #1B4266;
   background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+  box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
 }
 
 .form-select:disabled {
@@ -168,16 +592,16 @@
 }
 
 .type-button.active {
-  color: #d4a574;
+  color: #1B4266;
   background-color: #fef9f3;
-  border-color: #d4a574;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+  border-color: #1B4266;
+  box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
 }
 
 .check-icon {
   width: 20px;
   height: 20px;
-  color: #d4a574;
+  color: #1B4266;
 }
 
 .consent-checkbox {
@@ -202,7 +626,7 @@
   min-width: 20px;
   margin-top: 2px;
   cursor: pointer;
-  accent-color: #d4a574;
+  accent-color: #1B4266;
 }
 
 .checkbox-text {
@@ -218,19 +642,19 @@
   font-size: 16px;
   font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   margin-top: 8px;
 }
 
 .btn-submit:hover:not(:disabled) {
   background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
 }
 
 .btn-submit:disabled {
@@ -253,7 +677,7 @@
   width: 48px;
   height: 48px;
   border: 4px solid #f3f4f6;
-  border-top-color: #d4a574;
+  border-top-color: #1B4266;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -276,10 +700,10 @@
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  background: rgba(212, 165, 116, 0.1);
-  border: 1px solid rgba(212, 165, 116, 0.3);
+  background: rgba(27, 66, 102, 0.1);
+  border: 1px solid rgba(27, 66, 102, 0.3);
   border-radius: 8px;
-  color: #d4a574;
+  color: #1B4266;
   font-size: 14px;
   font-weight: 500;
 }
@@ -287,8 +711,8 @@
 .auto-start-indicator .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(212, 165, 116, 0.2);
-  border-top-color: #d4a574;
+  border: 2px solid rgba(27, 66, 102, 0.2);
+  border-top-color: #1B4266;
 }
 
 /* Estilos para CreateConsultationRoom */
@@ -321,7 +745,7 @@
 .icon {
   font-size: 48px;
   margin-bottom: 20px;
-  color: #d4a574;
+  color: #1B4266;
 }
 
 .form-label {
@@ -345,8 +769,8 @@
 }
 
 .form-control:focus {
-  border-color: #d4a574;
-  box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1);
+  border-color: #1B4266;
+    box-shadow: 0 0 0 4px rgba(27, 66, 102, 0.1);
   outline: none;
   transform: translateY(-1px);
 }
@@ -356,7 +780,7 @@
 }
 
 .btn-create {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   border: none;
   border-radius: 12px;
   padding: 16px;
@@ -367,14 +791,14 @@
   transition: all 0.3s ease;
   color: white;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   letter-spacing: -0.1px;
 }
 
 .btn-create:hover:not(:disabled) {
   background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
 }
 
 .btn-create:disabled {
@@ -438,10 +862,10 @@
 /* Botões com Ícones */
 .btn-copy {
   background: #ffffff;
-  border: 2px solid #d4a574;
+  border: 2px solid #1B4266;
   border-radius: 8px;
   padding: 0.875rem 1.25rem;
-  color: #d4a574;
+  color: #1B4266;
   font-weight: 600;
   font-size: 0.9rem;
   width: 100%;
@@ -466,10 +890,10 @@
 }
 
 .btn-copy:hover {
-  background: #d4a574;
+  background: #1B4266;
   color: white;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .btn-copy:hover::before {
@@ -477,7 +901,7 @@
 }
 
 .btn-enter {
-  background: #d4a574;
+  background: #1B4266;
   border: none;
   border-radius: 8px;
   padding: 0.875rem 1.25rem;
@@ -492,7 +916,7 @@
   gap: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   margin-bottom: 1rem;
 }
 
@@ -507,9 +931,9 @@
 }
 
 .btn-enter:hover {
-  background: #c19660;
+  background: #153350;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 6px 16px rgba(27, 66, 102, 0.4);
 }
 
 .btn-whatsapp {
@@ -584,7 +1008,7 @@
 .loading {
   display: none;
   text-align: center;
-  color: #d4a574;
+  color: #1B4266;
 }
 
 .loading.show {
@@ -660,14 +1084,18 @@
 /* Estilos para ConsultationRoom */
 
 .consultation-room-container {
-  height: 100vh;
-  background: #f8f9fa;
+  height: calc(100vh - 64px); /* Altura total menos o sidebar no topo */
+  max-height: calc(100vh - 64px); /* Garantir que não ultrapasse */
+  background: #EBF3F6;
   color: #2d3748;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: 8px 16px 16px 16px; /* Padding superior reduzido para subir o conteúdo */
 }
+
+/* Removido estilos do menu customizado - usando Header e Sidebar padrões */
 
 .consultation-room-loading {
   display: flex;
@@ -683,45 +1111,16 @@
   width: 40px;
   height: 40px;
   border: 4px solid #e2e8f0;
-  border-top: 4px solid #d4a574;
+  border-top: 4px solid #1B4266;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
 }
 
-.room-header {
-  padding: 1rem 2rem;
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.room-info h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #d4a574;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-
-.room-info p {
-  margin: 0.5rem 0 0 0;
-  color: #4a5568;
-  font-size: 0.9rem;
-}
-
-.room-controls {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
+/* Estilos antigos do room-header removidos - agora está dentro do vídeo */
 
 .btn-call {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: #1B4266;
   border: none;
   border-radius: 12px;
   padding: 12px 24px;
@@ -730,17 +1129,17 @@
   font-size: 15px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .btn-call:hover {
-  background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+  background: #153350;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
 }
 
 .btn-transcription {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: #1B4266;
   border: none;
   border-radius: 12px;
   padding: 12px 24px;
@@ -749,13 +1148,13 @@
   font-size: 15px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .btn-transcription:hover {
-  background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
+  background: #153350;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 8px 20px rgba(27, 66, 102, 0.4);
 }
 
 .btn-end-room {
@@ -876,7 +1275,434 @@
   gap: 16px;
   flex: 1;
   min-height: 0;
-  padding: 12px;
+  max-height: 100%; /* Garantir que não ultrapasse a altura do container */
+  padding: 0;
+  align-items: flex-start; /* Alinha no topo para alinhar com sidebar */
+  overflow: hidden; /* Prevenir que o conteúdo ultrapasse */
+}
+
+/* Sidebar lateral esquerda com botões de ação */
+/* Sidebar lateral esquerda com informações do paciente */
+.doctor-patient-sidebar {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: transparent;
+  padding-right: 16px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+/* Card de informações do paciente */
+.patient-info-card {
+  background: white;
+  border-radius: 3px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.patient-avatar-section {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.patient-avatar-img {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.patient-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.patient-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 2px;
+}
+
+.patient-location {
+  font-size: 11px;
+  color: #000000;
+  margin-bottom: 2px;
+}
+
+.patient-gender-icon {
+  position: absolute;
+  top: 17px;
+  right: 19px;
+  color: #2C2F33;
+}
+
+/* Grid de dados do paciente */
+.patient-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.patient-data-item {
+  background: #DFEDFF;
+  border-radius: 9px;
+  padding: 11px 17px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.data-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3183FF;
+  flex-shrink: 0;
+}
+
+.data-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.data-label {
+  font-size: 12px;
+  color: #6EABF5;
+  font-weight: 500;
+}
+
+.data-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+/* Botões de ação do paciente */
+.patient-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.patient-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  width: 100%;
+}
+
+.action-btn-outline {
+  background: transparent;
+  color: #1B4266;
+  border: 1px solid #1B4266;
+}
+
+.action-btn-outline:hover {
+  background: rgba(27, 66, 102, 0.05);
+}
+
+.action-btn-primary {
+  background: #1B4266;
+  color: white;
+}
+
+.action-btn-primary:hover {
+  background: #153350;
+}
+
+.action-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-finish-consultation {
+  background: #1DB71D;
+  color: white;
+}
+
+.btn-finish-consultation:hover {
+  background: #16a34a;
+}
+
+.btn-finish-consultation:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.patient-sidebar-loading {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.spinner-small {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #1B4266;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.doctor-actions-sidebar {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: transparent;
+  padding-right: 16px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 2px solid #1B4266;
+  background: transparent;
+  color: #1B4266;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.action-btn:hover {
+  background: rgba(27, 66, 102, 0.05);
+  transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-btn span {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.action-btn-finish {
+  margin-top: auto !important;
+  background: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
+}
+
+.action-btn-finish:hover {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+/* Container de vídeos empilhados */
+.video-container-stacked {
+  flex: 1;
+  position: relative;
+  background: transparent;
+  border-radius: 3px;
+  overflow: hidden; /* Mudado de visible para hidden para evitar que ultrapasse */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 0; /* Alinhamento do container do vídeo */
+  max-height: 100%; /* Garantir que não ultrapasse a altura disponível */
+  min-height: 0; /* Permitir que o flex funcione corretamente */
+  /* Garantir que o container respeite a altura disponível */
+  height: 100%;
+}
+
+.video-stack-item {
+  background: #ffffff;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+  min-height: 0;
+  flex: 1; /* Permitir que ocupe o espaço disponível */
+  max-height: 100%; /* Não ultrapassar a altura do container */
+  display: flex;
+  flex-direction: column;
+}
+
+.video-remote-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 100%; /* Garantir que não ultrapasse a altura do container */
+  min-height: 0; /* Removido min-height fixo para permitir flex */
+  background: #1C1C1C;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 3px;
+  /* isolation: isolate removido para permitir que z-index dos controles funcione corretamente */
+  display: flex;
+  flex-direction: column;
+  z-index: 1; /* Garantir contexto de empilhamento correto */
+  /* Garantir que o vídeo não ultrapasse e que os controles fiquem visíveis */
+  box-sizing: border-box;
+}
+
+/* Header acima do vídeo */
+.consultation-header-above-video {
+  padding: 0 16px 6px 16px;
+  margin-bottom: 6px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  flex-shrink: 0;
+  order: -1; /* Garante que fique antes do vídeo */
+  position: relative;
+  z-index: 10;
+  padding-top: 4px; /* Adiciona um pequeno padding superior para não ficar cortado */
+}
+
+.consultation-header-text {
+  font-size: 13px;
+  color: #323232;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.consultation-header-text .status-connected {
+  color: #4caf50;
+}
+
+.consultation-header-text .status-disconnected {
+  color: #ef4444;
+}
+
+.video-local-stack {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 280px;
+  height: 158px;
+  background: #7E7E7E;
+  border-radius: 6px;
+  z-index: 100; /* Z-index menor que os controles para não cobrir */
+  box-shadow: 0 8px 17px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.video-stack-item .video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 1; /* Z-index baixo para ficar abaixo dos controles */
+}
+
+.video-controls-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0;
+  padding: 8px 16px;
+  z-index: 99999 !important; /* Z-index muito alto para garantir que fique acima de tudo */
+  display: flex !important;
+  justify-content: center;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  /* Garantir que os controles fiquem sempre dentro da área visível */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.media-controls-stacked {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-controls-stacked .media-btn {
+  background: rgba(27, 66, 102, 0.8);
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+}
+
+.media-controls-stacked .media-btn:hover {
+  background: rgba(27, 66, 102, 0.95);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.media-controls-stacked .media-btn.active {
+  background: rgba(27, 66, 102, 1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.media-controls-stacked .media-btn.disabled {
+  background: rgba(107, 114, 128, 0.8);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Sidebar direita de transcrição */
+.transcription-sidebar {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
 }
 
 .video-main-container {
@@ -925,10 +1751,10 @@
   right: 24px;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #E6C3A7 0%, #806D5D 100%);
+  background: #1B4266;
   border: none;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -981,6 +1807,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  position: relative;
+  z-index: 1; /* Z-index baixo para ficar abaixo dos controles */
 }
 
 .remote-playback-overlay {
@@ -993,7 +1821,7 @@
   justify-content: center;
   gap: 16px;
   color: #ffffff;
-  z-index: 30;
+  z-index: 50; /* Z-index menor que os controles (99999) para não cobrir */
   text-align: center;
   padding: 24px;
 }
@@ -1030,7 +1858,7 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(212, 165, 116, 0.9);
+  background: rgba(27, 66, 102, 0.9);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
@@ -1054,8 +1882,8 @@
   height: 48px;
   border-radius: 50%;
   border: none;
-  background: rgba(212, 165, 116, 0.2);
-  color: #d4a574;
+  background: rgba(27, 66, 102, 0.2);
+  color: #1B4266;
   font-size: 20px;
   cursor: pointer;
   transition: all 0.3s;
@@ -1065,12 +1893,12 @@
 }
 
 .media-btn:hover {
-  background: rgba(212, 165, 116, 0.3);
+  background: rgba(27, 66, 102, 0.3);
   transform: translateY(-2px);
 }
 
 .media-btn.active {
-  background: #d4a574;
+  background: #1B4266;
   color: white;
 }
 
@@ -1112,7 +1940,7 @@
 
 .suggestions-box h6,
 .transcription-box h6 {
-  color: #d4a574;
+  color: #1B4266;
   margin-bottom: 12px;
   font-size: 15px;
   font-weight: 600;
@@ -1145,7 +1973,7 @@
 }
 
 .transcription-header h6 {
-  color: #d4a574;
+  color: #1B4266;
   margin: 0;
   font-size: 15px;
   font-weight: 600;
@@ -1167,8 +1995,8 @@
 }
 
 .transcription-textarea:focus {
-  border-color: #d4a574;
-  box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.1);
+  border-color: #1B4266;
+  box-shadow: 0 0 0 4px rgba(27, 66, 102, 0.1);
   outline: none;
 }
 
@@ -1346,7 +2174,7 @@
   width: 380px;
   max-height: calc(100vh - 120px);
   background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(212, 165, 116, 0.3);
+  border: 1px solid rgba(27, 66, 102, 0.3);
   border-radius: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -1361,9 +2189,9 @@
   align-items: center;
   gap: 10px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.15) 0%, rgba(212, 165, 116, 0.05) 100%);
-  border-bottom: 1px solid rgba(212, 165, 116, 0.2);
-  color: #d4a574;
+  background: linear-gradient(135deg, rgba(27, 66, 102, 0.15) 0%, rgba(27, 66, 102, 0.05) 100%);
+  border-bottom: 1px solid rgba(27, 66, 102, 0.2);
+  color: #1B4266;
 }
 
 .suggestions-header h3 {
@@ -1376,7 +2204,7 @@
 }
 
 .suggestions-count {
-  background: #d4a574;
+  background: #1B4266;
   color: white;
   padding: 4px 10px;
   border-radius: 12px;
@@ -1389,7 +2217,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid rgba(212, 165, 116, 0.3);
+  border: 1px solid rgba(27, 66, 102, 0.3);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.8);
   color: #6b7280;
@@ -1400,8 +2228,8 @@
 }
 
 .suggestions-toggle-btn:hover {
-  background: rgba(212, 165, 116, 0.1);
-  border-color: rgba(212, 165, 116, 0.5);
+  background: rgba(27, 66, 102, 0.1);
+  border-color: rgba(27, 66, 102, 0.5);
   color: #2d3748;
 }
 
@@ -1444,12 +2272,12 @@
 }
 
 .suggestions-list::-webkit-scrollbar-thumb {
-  background: rgba(212, 165, 116, 0.3);
+  background: rgba(27, 66, 102, 0.3);
   border-radius: 3px;
 }
 
 .suggestions-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 165, 116, 0.5);
+  background: rgba(27, 66, 102, 0.5);
 }
 
 .suggestions-empty {
@@ -1533,8 +2361,8 @@
 }
 
 .suggestion-dismiss:hover {
-  background: rgba(212, 165, 116, 0.1);
-  color: #d4a574;
+  background: rgba(27, 66, 102, 0.1);
+  color: #1B4266;
 }
 
 .suggestion-content {
@@ -1551,9 +2379,9 @@
   font-size: 11px;
   color: #6c757d;
   padding: 6px 10px;
-  background: rgba(212, 165, 116, 0.05);
+  background: rgba(27, 66, 102, 0.05);
   border-radius: 6px;
-  border-left: 2px solid rgba(212, 165, 116, 0.4);
+  border-left: 2px solid rgba(27, 66, 102, 0.4);
 }
 
 .suggestion-actions {
@@ -1578,14 +2406,14 @@
 }
 
 .suggestion-btn-primary {
-  background: linear-gradient(135deg, #d4a574 0%, #b8956a 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   color: white;
 }
 
 .suggestion-btn-primary:hover {
   background: linear-gradient(135deg, #c19660 0%, #a68456 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .suggestion-confidence {
@@ -1671,7 +2499,7 @@
 .dark .form-select:focus,
 .dark .form-control:focus {
   background-color: #333333;
-  border-color: #d4a574;
+  border-color: #1B4266;
 }
 
 .dark .form-select:hover:not(:focus),
@@ -1760,7 +2588,7 @@
 
 .dark .loading-spinner {
   border: 4px solid #2a2a2a;
-  border-top: 4px solid #d4a574;
+  border-top: 4px solid #1B4266;
 }
 
 .dark .room-header {
@@ -1801,7 +2629,7 @@
 }
 
 .dark .transcription-textarea:focus {
-  border-color: #d4a574;
+  border-color: #1B4266;
 }
 
 /* Media Controls */
@@ -1898,23 +2726,23 @@
   gap: 8px;
   margin-top: 12px;
   padding: 8px;
-  background: rgba(212, 165, 116, 0.08);
+  background: rgba(27, 66, 102, 0.08);
   border-radius: 8px;
-  border: 1px solid rgba(212, 165, 116, 0.2);
+  border: 1px solid rgba(27, 66, 102, 0.2);
 }
 
 .connection-status .spinner-small {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(212, 165, 116, 0.2);
-  border-top: 2px solid #d4a574;
+  border: 2px solid rgba(27, 66, 102, 0.2);
+  border-top: 2px solid #1B4266;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
 .connection-status span {
   font-size: 13px;
-  color: #d4a574;
+  color: #1B4266;
   font-weight: 500;
 }
 
@@ -1947,7 +2775,7 @@
 .schedule-time {
   flex: 1;
   padding: 14px 16px;
-  border: 1px solid #d4a574;
+  border: 1px solid #1B4266;
   border-radius: 12px;
   font-size: 15px;
   color: #1f2937;
@@ -1958,8 +2786,8 @@
 .schedule-date:focus,
 .schedule-time:focus {
   outline: none;
-  border-color: #b8956a;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+  border-color: #153350;
+  box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.15);
 }
 
 .schedule-date::-webkit-calendar-picker-indicator,
@@ -1992,5 +2820,395 @@
   .schedule-inputs {
     flex-direction: column;
     gap: 12px;
+  }
+}
+
+/* ============================================
+   ESTILOS PARA TELA "SALA DA CONSULTA"
+   ============================================ */
+
+.sala-consulta-container {
+  min-height: 100vh;
+  background: #EBF3F6;
+  padding: 40px 20px 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1920px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.sala-consulta-header {
+  width: 100%;
+  max-width: 1288px;
+  margin-bottom: 24px;
+}
+
+.sala-consulta-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #323232;
+  margin: 0;
+}
+
+.btn-voltar-consulta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 0.66px solid #939393;
+  border-radius: 3.96px;
+  color: #939393;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 32px;
+  align-self: flex-start;
+  max-width: 1288px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.btn-voltar-consulta:hover {
+  background: rgba(147, 147, 147, 0.1);
+}
+
+.btn-voltar-icon {
+  width: 14.51px;
+  height: 14.51px;
+  filter: brightness(0) saturate(100%) invert(62%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(92%) contrast(89%);
+}
+
+.sala-consulta-main-card {
+  background: #FFFFFF;
+  border-radius: 10.47px;
+  padding: 34px 62px 64px 62px;
+  box-shadow: 0 13.96px 13.96px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 1288px;
+  box-sizing: border-box;
+}
+
+.sala-consulta-patient-info {
+  display: flex;
+  align-items: center;
+  gap: 27px;
+  margin-bottom: 23px;
+}
+
+.sala-consulta-patient-photo {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sala-consulta-patient-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sala-consulta-patient-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #4FA2FF 0%, #65F6B1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.sala-consulta-patient-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.sala-consulta-patient-name-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.sala-consulta-patient-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sala-consulta-patient-phone {
+  font-size: 16px;
+  font-weight: 600;
+  color: #575757;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sala-consulta-patient-badges {
+  display: flex;
+  gap: 13px;
+  flex-shrink: 0;
+}
+
+.sala-consulta-badge-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 0.6px solid #1B4266;
+  border-radius: 4.19px;
+  color: #000000;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: default;
+  pointer-events: none;
+}
+
+.sala-consulta-badge-retorno {
+  /* Estilo específico se necessário */
+}
+
+.sala-consulta-badge-online {
+  /* Estilo específico se necessário */
+}
+
+.sala-consulta-divider {
+  width: 100%;
+  height: 1px;
+  background: #D9D9D9;
+  margin: 23px 0 41px 0;
+}
+
+.sala-consulta-cards-row {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.sala-consulta-card {
+  background: #FFFFFF;
+  border-radius: 3px;
+  padding: 38px 50px 42px 50px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 350px;
+  min-height: 317px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+.sala-consulta-card-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 26px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.sala-consulta-card-icon {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sala-consulta-icon-permissions {
+  /* Ícone de câmera e microfone combinados */
+  margin-bottom: 0;
+  margin-top: 20px;
+  flex-shrink: 0;
+}
+
+.sala-consulta-card-icon-permissions {
+  width: 221px;
+  height: 86px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sala-consulta-icon-login {
+  /* Ícone de login */
+  flex-shrink: 0;
+}
+
+.sala-consulta-card-icon-login {
+  width: 81px;
+  height: 81px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sala-consulta-card-text {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 23px 0;
+  width: 100%;
+  max-width: 251px;
+}
+
+.sala-consulta-card-text-container-permissions {
+  width: 100%;
+  max-width: 251px;
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.sala-consulta-card-text-permissions-main {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 0 0;
+  width: 100%;
+}
+
+.sala-consulta-card-text-permissions-help {
+  font-size: 16px;
+  font-weight: 400;
+  color: #575757;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+  width: 100%;
+}
+
+.sala-consulta-btn-whatsapp {
+  width: 100%;
+  max-width: 265px;
+  padding: 9px 0;
+  background: transparent;
+  border: 0.95px solid #389E57;
+  border-radius: 6.62px;
+  color: #389E57;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.sala-consulta-btn-whatsapp:hover {
+  background: rgba(56, 158, 87, 0.1);
+}
+
+.sala-consulta-btn-copy-link {
+  width: 100%;
+  max-width: 265px;
+  padding: 7px 0;
+  background: transparent;
+  border: 0.95px solid #1B4266;
+  border-radius: 6.62px;
+  color: #1B4266;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.sala-consulta-btn-copy-link:hover {
+  background: rgba(27, 66, 102, 0.1);
+}
+
+.sala-consulta-copy-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.sala-consulta-btn-enter {
+  width: 100%;
+  max-width: 307px;
+  padding: 13px 20px;
+  background: #1B4266;
+  border: none;
+  border-radius: 9.84px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7.87px;
+  margin-top: 13px;
+  transition: all 0.2s ease;
+}
+
+.sala-consulta-btn-enter:hover {
+  background: #153350;
+}
+
+.sala-consulta-btn-enter svg {
+  width: 20px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.sala-consulta-warning-text {
+  font-size: 16px;
+  font-weight: 400;
+  color: #575757;
+  text-align: center;
+  line-height: 1.5;
+  margin: 33px 0 0 0;
+  width: 100%;
+  max-width: 251px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sala-consulta-cards-row {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .sala-consulta-card {
+    max-width: 100%;
+  }
+  
+  .sala-consulta-patient-info {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .sala-consulta-main-card {
+    padding: 24px 20px 40px 20px;
+  }
+  
+  .sala-consulta-patient-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .sala-consulta-patient-badges {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
