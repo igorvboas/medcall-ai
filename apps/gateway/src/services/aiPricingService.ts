@@ -276,19 +276,79 @@ class AIPricingService {
 
   /**
    * Registra uso da Realtime API (transcrição em tempo real)
-   * @param durationMs Duração do áudio em milissegundos
-   * @param consultaId ID da consulta (opcional)
+   * Agora suporta contagem exata de tokens de áudio e texto
    */
-  async logRealtimeUsage(durationMs: number, consultaId?: string): Promise<boolean> {
-    const durationMinutes = durationMs / 60000; // Converter para minutos
-    const price = this.calculatePrice('gpt-4o-mini-realtime-preview', durationMinutes);
+  async logRealtimeUsage(
+    params: {
+      durationMs?: number; // Mantido para compatibilidade ou fallback
+      textInputTokens?: number;
+      textOutputTokens?: number;
+      audioInputTokens?: number;
+      audioOutputTokens?: number;
+    },
+    consultaId?: string
+  ): Promise<boolean> {
+    let price = 0;
+    let totalTokens = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let textIn = 0;
+    let textOut = 0;
+    let audioIn = 0;
+    let audioOut = 0;
+
+    // Se tiver tokens detalhados, usa o cálculo preciso
+    // Sempre calcula com base nos tokens (default 0)
+    if (true) {
+      textIn = params.textInputTokens || 0;
+      textOut = params.textOutputTokens || 0;
+      audioIn = params.audioInputTokens || 0;
+      audioOut = params.audioOutputTokens || 0;
+
+      // Calcular preço exato
+      // Importar função do módulo de pricing (precisamos importar no topo do arquivo)
+      // Como não posso adicionar import aqui, vou usar a lógica inline baseada na função calculateRealtimeCost
+      // Mas o ideal é adicionar o import. Vou assumir que vou adicionar o import `calculateRealtimeCost` no topo depois.
+      // Por enquanto, vou replicar a lógica para garantir que funcione sem erros de import imediato, 
+      // ou melhor, vou adicionar o import no topo em um passo separado.
+
+      // Cálculo manual temporário (replicando logic do calculateRealtimeCost para evitar erro de import se eu não fizer o replace do topo primeiro)
+      // textInput: $2.50/1M, textOutput: $10.00/1M, audioInput: $40.00/1M, audioOutput: $80.00/1M
+      const pricing = {
+        textInput: 2.50,
+        textOutput: 10.00,
+        audioInput: 40.00,
+        audioOutput: 80.00
+      };
+
+      price = (textIn / 1_000_000 * pricing.textInput) +
+        (textOut / 1_000_000 * pricing.textOutput) +
+        (audioIn / 1_000_000 * pricing.audioInput) +
+        (audioOut / 1_000_000 * pricing.audioOutput);
+
+      totalTokens = textIn + textOut + audioIn + audioOut;
+      inputTokens = textIn + audioIn;
+      outputTokens = textOut + audioOut;
+
+    }
+
+    // Fallback removido conforme solicitação. Se não houver tokens, custo será 0.
+    // Opcionalmente, poderíamos logar um warning se totalTokens for 0 e durationMs > 0.
+
+    console.log(`[SUPABASE-AI TOKEN] Registrando uso Realtime API:
+      - Total Tokens: ${totalTokens}
+      - Input (Text/Audio): ${textIn} / ${audioIn}
+      - Output (Text/Audio): ${textOut} / ${audioOut}
+      - Preço: $${price.toFixed(6)}
+      - Consulta ID: ${consultaId || 'N/A'}
+    `);
 
     return this.logUsage({
       consulta_id: consultaId,
       LLM: 'gpt-4o-mini-realtime-preview',
-      token: durationMinutes, // Armazenar em minutos (para compatibilidade)
-      in_tokens_ia: Math.round(durationMs), // Duração em ms como "input"
-      out_tokens_ia: Math.round(durationMs), // Realtime tem output também (resposta de áudio)
+      token: totalTokens,
+      in_tokens_ia: inputTokens,
+      out_tokens_ia: outputTokens,
       price,
       etapa: 'transcricao_realtime',
     });

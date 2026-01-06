@@ -23,7 +23,15 @@ const openAIConnections = new Map();
 const openAIKeepaliveTimers = new Map();
 
 // 📊 Mapa para rastrear tempo de uso da Realtime API: userName -> { startTime, roomId }
-const openAIUsageTracker = new Map<string, { startTime: number; roomId: string }>();
+// 📊 Mapa para rastrear tempo de uso da Realtime API: userName -> { startTime, roomId, tokens... }
+const openAIUsageTracker = new Map<string, {
+  startTime: number;
+  roomId: string;
+  textInputTokens: number;
+  textOutputTokens: number;
+  audioInputTokens: number;
+  audioOutputTokens: number;
+}>();
 
 // ⏱️ Mapa para timeout máximo de conexões OpenAI: userName -> Timeout
 const openAIMaxTimeoutTimers = new Map();
@@ -175,8 +183,9 @@ async function closeOpenAIConnection(userName: string, reason: string = 'descone
           console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
         }
 
-        await aiPricingService.logRealtimeUsage(durationMs, consultaId);
-        console.log(`✅ [AI_PRICING] Uso registrado com sucesso - ${durationMinutes.toFixed(2)} min - consultaId: ${consultaId}`);
+        // 📊 Atualizado: Não logar acumulado no final, pois já estamos logando por interação.
+        console.log(`📊 [AI_PRICING] Conexão encerrada (log individual já realizado a cada interação)`);
+        console.log(`   - Duração Sessão: ${durationMinutes.toFixed(2)} minutos`);
       } catch (error) {
         console.error(`❌ [AI_PRICING] Erro ao registrar uso:`, error);
       }
@@ -1155,7 +1164,11 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         // 📊 Iniciar tracking de uso da Realtime API
         openAIUsageTracker.set(userName, {
           startTime: Date.now(),
-          roomId: roomId
+          roomId: roomId,
+          textInputTokens: 0,
+          textOutputTokens: 0,
+          audioInputTokens: 0,
+          audioOutputTokens: 0
         });
         console.log(`📊 [AI_PRICING] Iniciando tracking Realtime API para ${userName}`);
 
@@ -1196,11 +1209,63 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       openAIWs.on('message', (data) => {
         const message = data.toString();
-        // Log específico para transcrições
+        // Log específico para transcrições e uso
         try {
           const parsed = JSON.parse(message);
+
           if (parsed.type === 'conversation.item.input_audio_transcription.completed') {
             console.log(`[${userName}] 📝 TRANSCRIÇÃO:`, parsed.transcript);
+          }
+
+          // ✅ CÁLCULO DE TOKENS: Capturar evento response.done
+          if (parsed.type === 'response.done' && parsed.response?.usage) {
+            const usage = parsed.response.usage;
+
+            // 1. Atualizar tracking para estatísticas em tempo real (dashboard)
+            const currentUsage = openAIUsageTracker.get(userName);
+            if (currentUsage) {
+              currentUsage.textInputTokens += (usage.input_token_details?.text_tokens || 0);
+              currentUsage.textOutputTokens += (usage.output_token_details?.text_tokens || 0);
+              currentUsage.audioInputTokens += (usage.input_token_details?.audio_tokens || 0);
+              currentUsage.audioOutputTokens += (usage.output_token_details?.audio_tokens || 0);
+            }
+
+            // 2. Registrar no banco IMEDIATAMENTE (solicitação do usuário)
+            const room = rooms.get(roomId);
+
+            // Tentar obter consultationId
+            let consultaId = room?.consultationId || null;
+            if (!consultaId && roomId) {
+              // Tentar buscar do banco se não estiver na memória, 
+              // mas como isso é assíncrono e estamos dentro de um handler síncrono, 
+              // vamos disparar a promise sem await ou usar o que temos.
+              // Para evitar complexidade async aqui dentro do handler de mensagem (que é síncrono/rápido),
+              // vamos usar apenas o que está na memória room.consultationId.
+              // Se não tiver, o log será sem consultaId (null).
+            }
+
+            // Chamar logRealtimeUsage para ESTA interação específica
+            // Precisamos chamar de forma async sem bloquear o loop de eventos
+            (async () => {
+              try {
+                // Se não tem consultaId na memória, tenta buscar rápido antes de logar
+                if (!consultaId && roomId) {
+                  const { db } = await import('../config/database'); // Import inside async block
+                  consultaId = await db.getConsultationIdByRoomId(roomId);
+                  if (consultaId && room) room.consultationId = consultaId;
+                }
+                const { aiPricingService } = await import('../services/aiPricingService'); // Import inside async block
+                await aiPricingService.logRealtimeUsage({
+                  durationMs: 0, // Duração é irrelevante para log por token
+                  textInputTokens: usage.input_token_details?.text_tokens || 0,
+                  textOutputTokens: usage.output_token_details?.text_tokens || 0,
+                  audioInputTokens: usage.input_token_details?.audio_tokens || 0,
+                  audioOutputTokens: usage.output_token_details?.audio_tokens || 0
+                }, consultaId);
+              } catch (err) {
+                console.error('Erro ao logar uso realtime por interação:', err);
+              }
+            })();
           }
         } catch (e) {
           // Ignorar erros de parsing
@@ -1255,8 +1320,20 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             console.warn(`⚠️ [AI_PRICING] Não foi possível obter consultaId para room ${usageData.roomId}`);
           }
 
-          await aiPricingService.logRealtimeUsage(durationMs, consultaId);
-          console.log(`📊 [AI_PRICING] Realtime API encerrada: ${userName} - ${(durationMs / 60000).toFixed(2)} minutos - consultaId: ${consultaId}`);
+          // 📊 Atualizado: Não logar acumulado no final, pois já estamos logando por interação.
+          // Apenas logar informativo no console de encerramento
+          const totalTextIn = usageData.textInputTokens || 0;
+          const totalTextOut = usageData.textOutputTokens || 0;
+          const totalAudioIn = usageData.audioInputTokens || 0;
+          const totalAudioOut = usageData.audioOutputTokens || 0;
+
+          console.log(`📊 [AI_PRICING] Realtime API encerrada para ${userName}`);
+          console.log(`   - Duração Sessão: ${(durationMs / 60000).toFixed(2)} minutos`);
+          console.log(`   - Total Tokens Acumulados (para conferência):`);
+          console.log(`     - Text In/Out: ${totalTextIn} / ${totalTextOut}`);
+          console.log(`     - Audio In/Out: ${totalAudioIn} / ${totalAudioOut}`);
+
+          // NÃO chamamos aiPricingService.logRealtimeUsage aqui para não duplicar cobrança.
 
           openAIUsageTracker.delete(userName);
         }
