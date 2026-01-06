@@ -184,12 +184,12 @@ export function useRecording() {
           const pipHeight = canvas.height * 0.25;
           const pipX = canvas.width - pipWidth - 20;
           const pipY = canvas.height - pipHeight - 20;
-          
+
           // Borda do PIP
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.strokeRect(pipX - 2, pipY - 2, pipWidth + 4, pipHeight + 4);
-          
+
           // Desenhar vídeo local
           ctx.drawImage(localVideo, pipX, pipY, pipWidth, pipHeight);
         }
@@ -244,11 +244,19 @@ export function useRecording() {
     }
 
     const config = configRef.current;
-    
+
     // Garantir que usamos HTTP/HTTPS para upload (não WebSocket)
     let gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
-    // Converter ws:// para http:// e wss:// para https://
+
+    // Converter ws/wss para http/https
     gatewayUrl = gatewayUrl.replace(/^wss:\/\//i, 'https://').replace(/^ws:\/\//i, 'http://');
+
+    // FIX: Se estiver no frontend em HTTPS, garantir que o gateway use HTTPS também
+    // para evitar erro de Mixed Content (bloqueio de http inseguro)
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && gatewayUrl.startsWith('http://')) {
+      console.log('🔒 [RECORDING] Frontend em HTTPS detectado. Forçando upgrade do gateway para HTTPS.');
+      gatewayUrl = gatewayUrl.replace(/^http:\/\//i, 'https://');
+    }
 
     console.log('📤 [RECORDING] Iniciando upload...', {
       blobSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
@@ -263,14 +271,14 @@ export function useRecording() {
       setState(prev => ({ ...prev, isUploading: true }));
 
       const formData = new FormData();
-      const filename = isFinal 
+      const filename = isFinal
         ? `recording_${config.sessionId}_final.webm`
         : `recording_${config.sessionId}_chunk_${chunkIndex.toString().padStart(4, '0')}.webm`;
-      
+
       // Garantir que o blob tenha o mimetype correto
       const blobWithType = new Blob([blob], { type: 'video/webm' });
       formData.append('recording', blobWithType, filename);
-      
+
       console.log('📤 [RECORDING] Blob preparado:', {
         originalType: blob.type,
         newType: blobWithType.type,
@@ -281,7 +289,7 @@ export function useRecording() {
       formData.append('chunkIndex', chunkIndex.toString());
       formData.append('isFinal', isFinal.toString());
       formData.append('timestamp', Date.now().toString());
-      
+
       if (config.consultationId) {
         formData.append('consultationId', config.consultationId);
       }
@@ -304,8 +312,8 @@ export function useRecording() {
       const result = await response.json();
       console.log(`✅ [RECORDING] Upload concluído:`, result);
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         isUploading: false,
         uploadProgress: isFinal ? 100 : prev.uploadProgress + 10,
         recordingUrl: result.url || prev.recordingUrl
@@ -315,17 +323,17 @@ export function useRecording() {
 
     } catch (error) {
       console.error('❌ [RECORDING] Erro no upload:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         isUploading: false,
         error: `Erro no upload: ${error instanceof Error ? error.message : 'Desconhecido'}`
       }));
-      
+
       // Chamar callback de erro se configurado
       if (configRef.current?.onError) {
         configRef.current.onError(`Erro no upload: ${error instanceof Error ? error.message : 'Desconhecido'}`);
       }
-      
+
       return null;
     }
   }, []);
@@ -336,7 +344,7 @@ export function useRecording() {
   const startRecording = useCallback(async (config: RecordingConfig) => {
     try {
       console.log('🎬 [RECORDING] Tentando iniciar gravação...');
-      
+
       // Validações detalhadas
       console.log('🎬 [RECORDING] Config recebida:', {
         sessionId: config.sessionId,
@@ -438,7 +446,7 @@ export function useRecording() {
       ];
 
       console.log('🎥 [RECORDING] Verificando suporte a codecs...');
-      
+
       let selectedMimeType = '';
       for (const mimeType of mimeTypes) {
         const isSupported = MediaRecorder.isTypeSupported(mimeType);
@@ -476,14 +484,14 @@ export function useRecording() {
       // Handler para quando a gravação parar
       mediaRecorder.onstop = async () => {
         console.log('⏹️ [RECORDING] Gravação finalizada');
-        
+
         // Criar blob final com todos os chunks
         const finalBlob = new Blob(chunksRef.current, { type: selectedMimeType });
         console.log(`📼 [RECORDING] Tamanho final: ${(finalBlob.size / 1024 / 1024).toFixed(2)} MB`);
 
         // Upload final
         const url = await uploadChunk(finalBlob, chunkIndexRef.current, true);
-        
+
         if (url && config.onRecordingComplete) {
           config.onRecordingComplete(url);
         }
@@ -503,8 +511,8 @@ export function useRecording() {
       // Handler para erros
       mediaRecorder.onerror = (event: any) => {
         console.error('❌ [RECORDING] Erro no MediaRecorder:', event.error);
-        setState(prev => ({ 
-          ...prev, 
+        setState(prev => ({
+          ...prev,
           isRecording: false,
           error: `Erro na gravação: ${event.error?.message || 'Desconhecido'}`
         }));
@@ -530,10 +538,10 @@ export function useRecording() {
           // Criar blob dos chunks acumulados
           const chunkBlob = new Blob(chunksRef.current, { type: selectedMimeType });
           chunkIndexRef.current++;
-          
+
           // Upload do chunk
           await uploadChunk(chunkBlob, chunkIndexRef.current, false);
-          
+
           // Limpar chunks já enviados (manter para o arquivo final)
           // chunksRef.current = [];
         }

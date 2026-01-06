@@ -55,7 +55,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
   return {
     anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,
     edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
-    transcricao: `${config.baseUrl}/webhook/usi-input-transcricao${suffix}`,
+    transcricao: `${config.baseUrl}/webhook/usi-analise-v2`,
     edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico-v2`,
     diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal-v2`,
     edicaoSolucao: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
