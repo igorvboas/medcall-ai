@@ -1698,7 +1698,7 @@
 
 /* Sidebar direita de transcrição */
 .transcription-sidebar {
-  width: 320px;
+  width: 600px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1707,11 +1707,11 @@
 
 .video-main-container {
   flex: 1;
+  min-width: 400px;
   background: #ffffff;
   border-radius: 12px;
   position: relative;
   overflow: hidden;
-  min-width: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
 }
@@ -1921,11 +1921,12 @@
 .transcription-box {
   background: #ffffff;
   border-radius: 12px;
-  padding: 16px;
+  padding: 20px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 66A0px;
+  max-height: calc(100vh - 150px);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
@@ -1982,16 +1983,17 @@
 
 .transcription-textarea {
   flex: 1;
-  min-height: 0;
+  min-height: 400px;
   resize: none;
   background: #ffffff;
   border: 2px solid #e2e8f0;
   color: #2d3748;
-  font-size: 14px;
-  padding: 16px;
+  font-size: 15px;
+  padding: 20px;
   border-radius: 12px;
   font-family: inherit;
   transition: all 0.3s ease;
+  line-height: 1.7;
 }
 
 .transcription-textarea:focus {
@@ -2494,6 +2496,9 @@
   background-color: #2a2a2a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23FFFFFF' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
 }
 
 .dark .form-select:focus,
@@ -2815,6 +2820,516 @@
   filter: invert(1);
 }
 
+/* Dark mode para Nova Consulta - elementos específicos */
+.dark .nova-consulta-title {
+  color: #FFFFFF !important;
+}
+
+.dark .nova-consulta-add-icon {
+  color: #FFFFFF !important;
+}
+
+.dark .card-title {
+  color: #FFFFFF !important;
+}
+
+.dark .card-title-asterisk {
+  color: #FF6B6B !important;
+}
+
+/* Dark mode form-select-figma */
+.dark .form-select-figma {
+  background-color: #252525 !important;
+  border: 0.946px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='5' viewBox='0 0 10 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L5 5L10 0H0Z' fill='white'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 10px 5px !important;
+}
+
+.dark .form-select-figma:focus {
+  border-color: #2d6293 !important;
+}
+
+.dark .form-select-figma option {
+  background: #252525 !important;
+  color: #FFFFFF !important;
+}
+
+/* Dark mode retorno-select */
+.dark .retorno-select {
+  background-color: #252525 !important;
+  border: 0.684px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='4' viewBox='0 0 8 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L4 4L8 0H0Z' fill='white'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 8px 4px !important;
+}
+
+.dark .retorno-select:focus {
+  border-color: #2d6293 !important;
+}
+
+/* Dark mode help-text */
+.dark .help-text {
+  color: #CCCCCC !important;
+}
+
+/* Dark mode patient photo */
+.dark .patient-photo {
+  background: #333333 !important;
+}
+
+.dark .patient-photo-placeholder {
+  background: linear-gradient(135deg, #2d6293 0%, #1B4266 100%) !important;
+}
+
+/* Dark mode icon-circle */
+.dark .icon-circle {
+  background: rgba(45, 98, 147, 0.2) !important;
+}
+
+/* Dark mode consent-checkbox-figma */
+.dark .consent-checkbox-figma {
+  background: #252525 !important;
+  border: 0.946px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .checkbox-text-figma {
+  color: #CCCCCC !important;
+}
+
+/* Dark mode audio progress */
+.dark .audio-progress-bar {
+  background: #333333 !important;
+}
+
+.dark .audio-progress-fill {
+  background: #2d6293 !important;
+}
+
+/* Dark mode buttons agendar/criar */
+.dark .btn-agendar {
+  background: transparent !important;
+  border: 1px solid #2d6293 !important;
+  color: #2d6293 !important;
+}
+
+.dark .btn-agendar:hover:not(:disabled) {
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+.dark .btn-criar {
+  background: #2d6293 !important;
+}
+
+.dark .btn-criar:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+/* Dark mode consultation-type-btn */
+.dark .consultation-type-btn {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .consultation-type-btn:hover:not(:disabled) {
+  border-color: #2d6293 !important;
+  color: #2d6293 !important;
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+.dark .consultation-type-btn.active {
+  background: #2d6293 !important;
+  border-color: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .consultation-type-btn.active:hover:not(:disabled) {
+  background: #1B4266 !important;
+  border-color: #1B4266 !important;
+}
+
+/* Dark mode patient info card */
+.dark .patient-info-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .patient-name {
+  color: #FFFFFF !important;
+}
+
+.dark .patient-location {
+  color: #CCCCCC !important;
+}
+
+.dark .patient-gender-icon {
+  color: #CCCCCC !important;
+}
+
+.dark .patient-data-item {
+  background: rgba(45, 98, 147, 0.2) !important;
+}
+
+.dark .data-icon {
+  color: #2d6293 !important;
+}
+
+.dark .data-label {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.dark .data-value {
+  color: #FFFFFF !important;
+}
+
+/* Dark mode consultation header */
+.dark .consultation-header-text {
+  color: #FFFFFF !important;
+}
+
+/* Dark mode sala-consulta */
+.dark .sala-consulta-container {
+  background: var(--dashboard-bg, #0a0a0a) !important;
+}
+
+.dark .sala-consulta-title {
+  color: #FFFFFF !important;
+}
+
+.dark .btn-voltar-consulta {
+  background: transparent !important;
+  border: 0.66px solid rgba(255, 255, 255, 0.3) !important;
+  color: #CCCCCC !important;
+}
+
+.dark .btn-voltar-consulta:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.dark .sala-consulta-main-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 13.96px 13.96px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .sala-consulta-patient-name {
+  color: #FFFFFF !important;
+}
+
+.dark .sala-consulta-patient-phone {
+  color: #CCCCCC !important;
+}
+
+.dark .sala-consulta-badge-btn {
+  border: 0.6px solid #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .sala-consulta-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .sala-consulta-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .sala-consulta-card-text,
+.dark .sala-consulta-card-text-permissions-main {
+  color: #FFFFFF !important;
+}
+
+.dark .sala-consulta-card-text-permissions-help {
+  color: #CCCCCC !important;
+}
+
+.dark .sala-consulta-warning-text {
+  color: #CCCCCC !important;
+}
+
+.dark .sala-consulta-btn-whatsapp {
+  border: 0.95px solid #25D366 !important;
+  color: #25D366 !important;
+}
+
+.dark .sala-consulta-btn-whatsapp:hover {
+  background: rgba(37, 211, 102, 0.1) !important;
+}
+
+.dark .sala-consulta-btn-copy-link {
+  border: 0.95px solid #2d6293 !important;
+  color: #2d6293 !important;
+}
+
+.dark .sala-consulta-btn-copy-link:hover {
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+.dark .sala-consulta-btn-enter {
+  background: #2d6293 !important;
+}
+
+.dark .sala-consulta-btn-enter:hover {
+  background: #1B4266 !important;
+}
+
+/* Dark mode para página Presencial */
+.dark .presencial-page {
+  background: var(--dashboard-bg, #0a0a0a) !important;
+}
+
+.dark .page-header h1 {
+  color: #FFFFFF !important;
+}
+
+.dark .page-header p {
+  color: #CCCCCC !important;
+}
+
+.dark .error-banner {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+.dark .error-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .error-card h2 {
+  color: #FFFFFF !important;
+}
+
+.dark .status-bar {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .status-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .status-label {
+  color: #CCCCCC !important;
+}
+
+.dark .status-value {
+  color: #FFFFFF !important;
+}
+
+.dark .btn-secondary {
+  background: #252525 !important;
+  color: #2d6293 !important;
+  border: 2px solid #2d6293 !important;
+}
+
+.dark .btn-secondary:hover {
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+.dark .btn-primary {
+  background: #2d6293 !important;
+}
+
+.dark .btn-primary:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+.dark .btn-danger {
+  background: #dc2626 !important;
+}
+
+.dark .btn-danger:hover {
+  background: #b91c1c !important;
+}
+
+/* Dark mode para página Finalizada */
+.dark .consulta-finalizada-container {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+}
+
+.dark .consulta-finalizada-content {
+  background: #1A1A1A !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .consulta-finalizada-content h1 {
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-finalizada-message p {
+  color: #CCCCCC !important;
+}
+
+.dark .consulta-finalizada-message strong {
+  color: #FFFFFF !important;
+}
+
+.dark .info-item {
+  background: #252525 !important;
+  border-left: 4px solid #2d6293 !important;
+}
+
+.dark .info-item svg {
+  color: #2d6293 !important;
+}
+
+.dark .info-item h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .info-item p {
+  color: #CCCCCC !important;
+}
+
+.dark .btn-home {
+  background: #2d6293 !important;
+}
+
+.dark .btn-home:hover {
+  background: #1B4266 !important;
+}
+
+/* Dark mode para DualMicrophoneControl */
+.dark .dual-microphone-control {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .dual-microphone-control.loading,
+.dark .dual-microphone-control.error {
+  color: #CCCCCC !important;
+}
+
+.dark .microphone-section {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .microphone-header h4 {
+  color: #FFFFFF !important;
+}
+
+.dark .header-icon {
+  color: #2d6293 !important;
+}
+
+.dark .microphone-select {
+  background: #1A1A1A !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .microphone-select:hover:not(:disabled) {
+  border-color: #2d6293 !important;
+  box-shadow: 0 0 0 3px rgba(45, 98, 147, 0.2) !important;
+}
+
+.dark .microphone-select:focus {
+  border-color: #2d6293 !important;
+  box-shadow: 0 0 0 3px rgba(45, 98, 147, 0.2) !important;
+}
+
+.dark .microphone-select:disabled {
+  background: #333333 !important;
+  opacity: 0.6 !important;
+}
+
+.dark .warning-message {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-left: 4px solid #F59E0B !important;
+  color: #FCD34D !important;
+}
+
+.dark .warning-icon {
+  color: #F59E0B !important;
+}
+
+/* Dark mode para PresencialTranscription */
+.dark .presencial-transcription {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .transcription-header {
+  background: #252525 !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .transcription-header h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .transcription-count {
+  background: #1A1A1A !important;
+  color: #2d6293 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .transcription-container {
+  background: #0F0F0F !important;
+}
+
+.dark .transcription-container::-webkit-scrollbar-track {
+  background: #252525 !important;
+}
+
+.dark .transcription-container::-webkit-scrollbar-thumb {
+  background: #2d6293 !important;
+}
+
+.dark .transcription-container::-webkit-scrollbar-thumb:hover {
+  background: #1B4266 !important;
+}
+
+.dark .empty-state {
+  color: #CCCCCC !important;
+}
+
+.dark .empty-state .hint {
+  color: #999999 !important;
+}
+
+.dark .transcription-item {
+  background: #252525 !important;
+  border-left: 4px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .transcription-item.doctor {
+  background: rgba(45, 98, 147, 0.2) !important;
+  border-left-color: #2d6293 !important;
+}
+
+.dark .transcription-item.patient {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-left-color: #10B981 !important;
+}
+
+.dark .speaker-name {
+  color: #FFFFFF !important;
+}
+
+.dark .speaker-icon {
+  color: #2d6293 !important;
+}
+
+.dark .timestamp {
+  color: #999999 !important;
+}
+
+.dark .transcription-text {
+  color: #CCCCCC !important;
+}
+
 /* Responsivo */
 @media (max-width: 480px) {
   .schedule-inputs {
@@ -2972,13 +3487,7 @@
   pointer-events: none;
 }
 
-.sala-consulta-badge-retorno {
-  /* Estilo específico se necessário */
-}
-
-.sala-consulta-badge-online {
-  /* Estilo específico se necessário */
-}
+/* .sala-consulta-badge-retorno e .sala-consulta-badge-online - estilos específicos se necessário */
 
 .sala-consulta-divider {
   width: 100%;

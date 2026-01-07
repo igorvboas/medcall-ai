@@ -272,6 +272,37 @@
 .dark .form-actions {
   border-top: 2px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Dark mode section icon wrapper */
+.dark .section-icon-wrapper {
+  background: #2d6293 !important;
+  box-shadow: 0 4px 12px rgba(45, 98, 147, 0.3) !important;
+}
+
+/* Dark mode buttons */
+.dark .btn-secondary {
+  background-color: #252525 !important;
+  color: #FFFFFF !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .btn-secondary:hover:not(:disabled) {
+  background-color: #333333 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark .btn-primary {
+  background: #2d6293 !important;
+}
+
+.dark .btn-primary:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+/* Dark mode date icon */
+.dark .date-icon {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
   
   .btn {
     display: flex;

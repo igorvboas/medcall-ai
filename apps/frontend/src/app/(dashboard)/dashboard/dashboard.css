@@ -41,34 +41,34 @@
   --status-text: #1a1a1a;
 }
 
-/* Dark Mode - Mantendo o mesmo background claro mesmo no dark mode por enquanto */
+/* Dark Mode - Tema escuro com identidade visual azul */
 .dark .dashboard-exact {
-  --dashboard-bg: #EBF3F6;
-  --dashboard-title-color: #1a1a1a;
-  --card-bg: #ffffff;
-  --card-text: #1a1a1a;
-  --card-border: rgba(0, 0, 0, 0.1);
-  --section-border: rgba(0, 0, 0, 0.15);
-  --table-row-bg: #f8f9fa;
-  --table-text: #1a1a1a;
-  --table-header: #666666;
-  --select-bg: #ffffff;
-  --select-text: #1a1a1a;
-  --legend-color: #666666;
-  --label-color: #666666;
-  --divider-color: rgba(0,0,0,0.1);
-  --progress-bg: #e5e7eb;
-  --pie-center: #ffffff;
-  --kpi-bg: #ffffff;
-  --kpi-text: #1a1a1a;
-  --kpi-number: #1a1a1a;
-  --chart-bg: #ffffff;
-  --chart-text: #1a1a1a;
-  --calendar-bg: #ffffff;
-  --calendar-text: #1a1a1a;
-  --calendar-border: #e5e7eb;
-  --status-bg: #ffffff;
-  --status-text: #1a1a1a;
+  --dashboard-bg: #0A0A0A;
+  --dashboard-title-color: #FFFFFF;
+  --card-bg: #1A1A1A;
+  --card-text: #FFFFFF;
+  --card-border: rgba(255, 255, 255, 0.1);
+  --section-border: rgba(255, 255, 255, 0.15);
+  --table-row-bg: #252525;
+  --table-text: #FFFFFF;
+  --table-header: #CCCCCC;
+  --select-bg: #252525;
+  --select-text: #FFFFFF;
+  --legend-color: #999999;
+  --label-color: #CCCCCC;
+  --divider-color: rgba(255, 255, 255, 0.1);
+  --progress-bg: #2A2A2A;
+  --pie-center: #1A1A1A;
+  --kpi-bg: transparent;
+  --kpi-text: #FFFFFF;
+  --kpi-number: #FFFFFF;
+  --chart-bg: #1A1A1A;
+  --chart-text: #FFFFFF;
+  --calendar-bg: #1A1A1A;
+  --calendar-text: #FFFFFF;
+  --calendar-border: #333333;
+  --status-bg: #1A1A1A;
+  --status-text: #FFFFFF;
 }
 
 /* Layout limpo sem duplicações */
@@ -190,6 +190,10 @@
   justify-content: center !important; /* Centraliza verticalmente o conteúdo */
 }
 
+.dark .kpi {
+  color: var(--kpi-text, #FFFFFF) !important;
+}
+
 /* Cards com imagens SVG */
 .kpi--cyan { 
   background-color: transparent !important;
@@ -224,15 +228,17 @@
   z-index: 1;
 }
 
-.kpi--status {
-  background-color: #ffffff;
-  background-image: none;
-  z-index: 1;
+.dark .kpi--status {
+  background-color: var(--card-bg, #1A1A1A);
 }
 
 /* Se não tiver imagem, usar fundo branco */
 .kpi:not([style*="background-image"]):not(.kpi--cyan):not(.kpi--amber):not(.kpi--lilac) {
   background-color: #ffffff;
+}
+
+.dark .kpi:not([style*="background-image"]):not(.kpi--cyan):not(.kpi--amber):not(.kpi--lilac) {
+  background-color: var(--card-bg, #1A1A1A);
 }
 
 /* Garantir que cards com SVG não tenham background */
@@ -242,21 +248,23 @@
   background-color: transparent !important;
 }
 
-/* Dark mode - KPI cards com background transparente mesmo no dark */
-.dark .kpi--cyan,
-.dark .kpi--amber,
-.dark .kpi--lilac {
+/* Dark mode - KPI cards com background transparente e texto claro usando imagens black */
+.dark .kpi--cyan {
   background-color: transparent !important;
-  background-image: url('/card01-home.svg');
-  color: #323232 !important;
+  background-image: url('/card01-black.svg') !important;
+  color: var(--kpi-text, #FFFFFF) !important;
 }
 
 .dark .kpi--amber {
-  background-image: url('/card02-home.svg');
+  background-color: transparent !important;
+  background-image: url('/card02-black.svg') !important;
+  color: var(--kpi-text, #FFFFFF) !important;
 }
 
 .dark .kpi--lilac {
-  background-image: url('/card03-home.svg');
+  background-color: transparent !important;
+  background-image: url('/card03-black.svg') !important;
+  color: var(--kpi-text, #FFFFFF) !important;
 }
 
 /* As imagens já contêm o efeito "dentes" */
@@ -300,6 +308,10 @@
   line-height: 1.4;
 }
 
+.dark .kpi .subtitle {
+  color: var(--text-secondary, #CCCCCC);
+}
+
 
 /* Cards Brancos com sombra sutil - Design limpo */
 .card-dark {
@@ -316,15 +328,15 @@
   box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Dark Mode - Cards brancos mesmo no dark */
+/* Dark Mode - Cards escuros */
 .dark .card-dark {
-  background: #ffffff;
-  color: #323232;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  background: var(--card-bg, #1A1A1A);
+  color: var(--card-text, #FFFFFF);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5);
 }
 
 .dark .card-dark:hover {
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.6);
 }
 
 /* Card específico do gráfico com padding reduzido */
@@ -351,6 +363,10 @@
   font-weight: 600;
   color: #1B4266;
   flex-shrink: 0;
+}
+
+.dark .weekly-chart .card-title {
+  color: #2d6293;
 }
 
 /* Container do gráfico semanal SVG */
@@ -381,6 +397,11 @@
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25) !important;
 }
 
+.dark .consultations-table.card-dark {
+  background: var(--card-bg, #1A1A1A) !important;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -402,6 +423,11 @@
   position: relative;
 }
 
+.dark .consultations-header {
+  background: var(--card-bg, #1A1A1A);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5);
+}
+
 .consultations-header-active {
   background: #1B4266;
   color: #ffffff;
@@ -416,12 +442,21 @@
   text-align: center;
 }
 
+.dark .consultations-header-active {
+  background: #2d6293;
+  color: #FFFFFF;
+}
+
 .consultations-header-item {
   color: #000000;
   font-size: 14px;
   font-weight: 600;
   text-align: center;
   padding: 0 8px;
+}
+
+.dark .consultations-header-item {
+  color: var(--table-header, #CCCCCC) !important;
 }
 
 .consultations-header-item.consultations-header-patient {
@@ -436,6 +471,10 @@
   height: 34px;
   background: #F2F2F2;
   border-radius: 66px;
+}
+
+.dark .consultations-header-divider {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Lista de consultas */
@@ -460,6 +499,11 @@
   position: relative;
 }
 
+.dark .consultation-row {
+  background: var(--table-row-bg, #252525);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.2);
+}
+
 
 .consultation-patient-col {
   display: flex;
@@ -482,6 +526,11 @@
   flex-shrink: 0;
 }
 
+.dark .consultation-avatar {
+  background: #333333;
+  color: #FFFFFF;
+}
+
 .consultation-patient-info {
   display: flex;
   flex-direction: column;
@@ -495,11 +544,19 @@
   line-height: 1.2;
 }
 
+.dark .consultation-medico-name {
+  color: var(--table-text, #FFFFFF);
+}
+
 .consultation-type {
   font-size: 12px;
   font-weight: 400;
   color: #323232;
   line-height: 1.2;
+}
+
+.dark .consultation-type {
+  color: var(--text-secondary, #CCCCCC);
 }
 
 .consultation-id-col,
@@ -513,12 +570,23 @@
   padding: 0 8px;
 }
 
+.dark .consultation-id-col,
+.dark .consultation-time-col,
+.dark .consultation-duration-col,
+.dark .consultation-room-col {
+  color: var(--table-text, #FFFFFF);
+}
+
 .consultation-divider {
   width: 2px;
   height: 50px;
   background: #F2F2F2;
   border-radius: 66px;
   align-self: center;
+}
+
+.dark .consultation-divider {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .consultations-empty {
@@ -528,14 +596,22 @@
   font-size: 14px;
 }
 
+.dark .consultations-empty {
+  color: var(--text-tertiary, #999999);
+}
+
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--card-text, #fff) !important;
+  color: var(--card-text, #323232) !important;
   margin: 0;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+.dark .card-title {
+  color: var(--card-text, #FFFFFF) !important;
 }
 
 
@@ -563,10 +639,35 @@
   background-size: 10px 5px;
 }
 
+.dark .year-select,
+.dark .month-select,
+.dark input[type="date"].year-select,
+.dark input[type="month"].year-select {
+  background: #000000 !important;
+  border: 0.946px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+  background-image: none !important;
+}
+
+.dark input[type="date"],
+.dark input[type="month"] {
+  color-scheme: dark;
+  color: var(--select-text, #FFFFFF) !important;
+}
+
 .year-select:focus,
-.month-select:focus {
+.month-select:focus,
+input[type="date"].year-select:focus,
+input[type="month"].year-select:focus {
   outline: none;
   border-color: #1B4266;
+}
+
+.dark .year-select:focus,
+.dark .month-select:focus,
+.dark input[type="date"].year-select:focus,
+.dark input[type="month"].year-select:focus {
+  border-color: #2d6293 !important;
 }
 
 .btn-download,
@@ -584,6 +685,13 @@
   gap: 6px;
 }
 
+.dark .btn-download,
+.dark .btn-filter {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+  background-image: none !important;
+}
+
 .view-btn {
   background: transparent;
   color: #1B4266;
@@ -599,6 +707,18 @@
 .view-btn:hover {
   background: rgba(27, 66, 102, 0.05);
   border-color: rgba(27, 66, 102, 0.5);
+}
+
+.dark .view-btn {
+  color: #2d6293;
+  border: 1px solid rgba(45, 98, 147, 0.3);
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.dark .view-btn:hover {
+  background: rgba(45, 98, 147, 0.1) !important;
+  border-color: rgba(45, 98, 147, 0.5);
 }
 
 /* Data Row - Removido, agora usando grid de 12 colunas */
@@ -634,6 +754,14 @@
   gap: 8px;
   font-size: 14px;
   color: var(--legend-color, #aaa);
+}
+
+.dark .chart-legend-top .legend-item {
+  color: #FFFFFF !important;
+}
+
+.dark .chart-legend-top .legend-item span {
+  color: #FFFFFF !important;
 }
 
 .legend-line {
@@ -736,6 +864,19 @@
   overflow: visible !important;
 }
 
+/* Dark mode para gráficos Plotly - ajustar cores dos textos dos eixos */
+.dark .chart-3d-container text,
+.dark .chart-3d-container .xtick text,
+.dark .chart-3d-container .ytick text {
+  fill: #FFFFFF !important;
+  opacity: 0.8 !important;
+}
+
+.dark .chart-3d-container .xgrid,
+.dark .chart-3d-container .ygrid {
+  stroke: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Estilos para o Chart3D Fallback */
 .chart-3d-fallback {
   width: 100%;
@@ -835,6 +976,55 @@
   gap: 6px;
 }
 
+/* Dark mode para calendário no dashboard */
+.dark .calendar-card .calendar-month-title {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-card .calendar-day-name {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-card .calendar-cell-number {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-card .calendar-cell {
+  background: #1A1A1A !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .calendar-card .calendar-cell:hover {
+  background: #2A2A2A !important;
+}
+
+.dark .calendar-card .calendar-cell-selected {
+  background: #2d6293 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .calendar-card .calendar-cell-highlighted {
+  background: #1A1A1A !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .calendar-card .calendar-cell-highlighted .calendar-cell-number {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-card .calendar-cell-monday {
+  background: rgba(255, 106, 106, 0.2) !important;
+  border-color: #FF6B6B !important;
+}
+
+.dark .calendar-card .calendar-cell-monday .calendar-cell-number {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-card .calendar-cell-disabled .calendar-cell-number {
+  color: #666666 !important;
+}
+
 /* Bottom Row - Removido, agora usando grid de 12 colunas */
 
 /* Gráfico de Barras 3D CSS - VERSÃO SIMPLIFICADA */
@@ -923,9 +1113,14 @@
 .bar-value {
   font-size: 12px;
   font-weight: 600;
-  color: var(--card-text, #fff);
+  color: var(--card-text, #323232);
   margin-top: 4px;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.dark .bar-value {
+  color: var(--card-text, #FFFFFF);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
 
@@ -965,12 +1160,12 @@
 
 .simple-bar-chart .recharts-cartesian-grid-horizontal line,
 .simple-bar-chart .recharts-cartesian-grid-vertical line {
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: rgba(0, 0, 0, 0.1);
 }
 
 .dark .simple-bar-chart .recharts-cartesian-grid-horizontal line,
 .dark .simple-bar-chart .recharts-cartesian-grid-vertical line {
-  stroke: rgba(0, 0, 0, 0.1);
+  stroke: rgba(255, 255, 255, 0.1);
 }
 
 .simple-bar-chart .recharts-bar {
@@ -1239,7 +1434,11 @@
 .unified-card .card-title {
   font-size: 16px;
   margin-bottom: 16px;
-  color: var(--card-text, #fff) !important;
+  color: var(--card-text, #323232) !important;
+}
+
+.dark .unified-card .card-title {
+  color: var(--card-text, #FFFFFF) !important;
 }
 
 .date-section,
@@ -1375,12 +1574,18 @@
 /* Date Range Select */
 .date-range-select {
   width: 100%;
-  background: var(--select-bg, #1f2024);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--select-text, #fff);
+  background: var(--select-bg, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: var(--select-text, #000000);
   padding: 12px;
   border-radius: 12px;
   font-size: 14px;
+}
+
+.dark .date-range-select {
+  background: var(--select-bg, #252525);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--select-text, #FFFFFF);
 }
 
 /* Metrics Card */
@@ -1401,17 +1606,17 @@
 }
 
 .dark .metric-label {
-  color: var(--label-color);
+  color: var(--label-color, #CCCCCC);
 }
 
 .metric-value {
   font-size: 16px;
   font-weight: 600;
-  color: var(--card-text, #fff);
+  color: var(--card-text, #323232);
 }
 
 .dark .metric-value {
-  color: var(--card-text);
+  color: var(--card-text, #FFFFFF);
 }
 
 .metric-change {
@@ -1439,7 +1644,7 @@
 }
 
 .dark .duration-label {
-  color: #666666;
+  color: var(--label-color, #CCCCCC);
 }
 
 .duration-value {
@@ -1450,7 +1655,7 @@
 }
 
 .dark .duration-value {
-  color: #323232;
+  color: var(--card-text, #FFFFFF);
 }
 
 .progress-bar {

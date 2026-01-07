@@ -257,3 +257,67 @@
     padding-top: 0;
   }
 }
+
+/* ==================== DARK MODE STYLES ==================== */
+.dark .chart-title {
+  color: #FFFFFF !important;
+}
+
+.dark .donut-center {
+  background: #1A1A1A !important;
+}
+
+.dark .donut-center-value {
+  color: #FFFFFF !important;
+}
+
+.dark .legend-label {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.dark .period-filter-label {
+  color: #FFFFFF !important;
+}
+
+.dark .period-select {
+  background: #252525 !important;
+  border: 0.946px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='5' viewBox='0 0 10 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L5 5L10 0H0Z' fill='white'/%3E%3C/svg%3E") !important;
+}
+
+.dark .period-select:focus {
+  border-color: #2d6293 !important;
+}
+
+.dark .period-select {
+  background-image: none !important;
+}
+
+.dark .metric-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .metric-label {
+  color: #CCCCCC !important;
+}
+
+.dark .metric-value-large {
+  color: #2d6293 !important;
+}
+
+.dark .metric-value-small {
+  color: #2d6293 !important;
+}
+
+.dark .divider-line {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .progress-bar-bg {
+  background: #2A2A2A !important;
+}
+
+.dark .progress-bar-fill {
+  background: #2d6293 !important;
+}

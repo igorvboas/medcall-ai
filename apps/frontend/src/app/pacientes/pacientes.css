@@ -25,6 +25,21 @@
   box-shadow: 0 0 10px rgba(27, 66, 102, 0.5);
 }
 
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #2d6293 !important;
+  border: 2px solid #1a1a1a !important;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #1B4266 !important;
+  box-shadow: 0 0 10px rgba(45, 98, 147, 0.5) !important;
+}
+
 .patients-page {
   min-height: 100vh;
   padding: 0;
@@ -172,6 +187,111 @@
 .dark .patients-table-container {
   background: rgba(26, 26, 26, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dark mode table header */
+.dark .patients-table-header {
+  background: #1A1A1A !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .header-label {
+  color: #FFFFFF !important;
+}
+
+.dark .table-header-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark mode search inline */
+.dark .search-input-inline {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .search-input-inline:focus {
+  border-color: #2d6293 !important;
+  background: #2A2A2A !important;
+}
+
+.dark .search-input-inline::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.dark .search-icon-inline {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Dark mode table rows */
+.dark .patients-table-row {
+  background: #1A1A1A !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .patients-table-row:hover {
+  background: #252525 !important;
+}
+
+.dark .table-cell-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark mode patient info table */
+.dark .patient-avatar-table {
+  background: #333333 !important;
+}
+
+.dark .avatar-placeholder-table {
+  background: #333333 !important;
+}
+
+.dark .avatar-initial-table {
+  color: #FFFFFF !important;
+}
+
+.dark .patient-name-table {
+  color: #FFFFFF !important;
+}
+
+.dark .patient-status-badge.active {
+  background: rgba(101, 246, 177, 0.2) !important;
+  color: #65F6B1 !important;
+  border: 1px solid rgba(101, 246, 177, 0.3) !important;
+}
+
+/* Dark mode contact info */
+.dark .contact-icon-table {
+  color: #CCCCCC !important;
+}
+
+.dark .contact-value-table {
+  color: #CCCCCC !important;
+}
+
+/* Dark mode action buttons table */
+.dark .action-btn-table {
+  background: rgba(42, 42, 42, 0.8) !important;
+}
+
+.dark .action-btn-table:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark mode badge */
+.dark .patients-count-badge {
+  background: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+/* Dark mode button novo paciente */
+.dark .btn-novo-paciente {
+  background: #2d6293 !important;
+}
+
+.dark .btn-novo-paciente:hover {
+  background: #1B4266 !important;
 }
 
 /* Cabeçalho da Tabela */

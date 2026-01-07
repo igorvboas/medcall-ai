@@ -669,7 +669,7 @@ export function CreateConsultationRoom({
                 </div>
               )}
             </div>
-
+          
             {/* Nome, telefone e badges */}
             <div className="sala-consulta-patient-details">
               <div className="sala-consulta-patient-name-row">
@@ -703,9 +703,9 @@ export function CreateConsultationRoom({
               </div>
               <p className="sala-consulta-card-text">
                 Compartilhe o link abaixo com seu paciente
-              </p>
-              
-              <button 
+          </p>
+
+          <button 
                 className="sala-consulta-btn-whatsapp"
                 onClick={() => handleShareWhatsApp(roomData.participantRoomUrl, roomData.patientName)}
               >
@@ -714,13 +714,13 @@ export function CreateConsultationRoom({
               
               <button 
                 className="sala-consulta-btn-copy-link"
-                onClick={() => handleCopyLink(roomData.participantRoomUrl)}
-              >
+            onClick={() => handleCopyLink(roomData.participantRoomUrl)}
+          >
                 <img src="/document-copy.svg" alt="Copiar" className="sala-consulta-copy-icon" />
                 Copiar link do Paciente
-              </button>
+          </button>
             </div>
-
+          
             {/* Card 2: Permissões (Câmera e Microfone) */}
             <div className="sala-consulta-card">
               <div className="sala-consulta-card-icon-container sala-consulta-icon-permissions">
@@ -741,18 +741,18 @@ export function CreateConsultationRoom({
               <div className="sala-consulta-card-icon-container sala-consulta-icon-login">
                 <img src="/login.svg" alt="Entrar" className="sala-consulta-card-icon-login" />
               </div>
-              <button 
+          <button 
                 className="sala-consulta-btn-enter"
-                onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
-              >
-                Entrar na Consulta
+            onClick={() => handleEnterRoom(roomData.hostRoomUrl)}
+          >
+            Entrar na Consulta
                 <svg width="20" height="15" viewBox="0 0 20 15" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M7.42499 2.54999L13.3396 7.49999L7.42499 12.45" stroke="currentColor" strokeWidth="1.24902" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-              </button>
+          </button>
               <p className="sala-consulta-warning-text">
                 ⚠ Caso ninguém entre na sala nos próximos 5 minutos a sessão será encerrada automaticamente
-              </p>
+          </p>
             </div>
           </div>
         </div>
@@ -775,7 +775,7 @@ export function CreateConsultationRoom({
       {/* Container dos três cards */}
       <form id="consultation-form" onSubmit={(e) => { e.preventDefault(); handleCreateRoom(); }} className="consultation-cards-container">
           {/* Card 1: Selecionar Paciente */}
-          <div className="consultation-card">
+      <div className="consultation-card">
             <div className="card-title-wrapper">
               <h2 className="card-title">Selecionar Paciente</h2>
               <span className="card-title-asterisk">*</span>
@@ -815,7 +815,7 @@ export function CreateConsultationRoom({
                   {selectedPatientData?.name?.charAt(0).toUpperCase() || '?'}
                 </div>
               )}
-            </div>
+          </div>
 
             {/* Dropdown Retorno */}
             <select
@@ -857,8 +857,8 @@ export function CreateConsultationRoom({
                   alt="Câmera e Microfone" 
                   className="cam-mic-icon"
                 />
-              </div>
             </div>
+          </div>
 
             {/* Checkbox de consentimento */}
             <label className="consent-checkbox-figma">
@@ -871,7 +871,7 @@ export function CreateConsultationRoom({
               <span className="checkbox-text-figma">
                 Eu confirmo que o paciente foi informado e consentiu com a gravação e transcrição da consulta para fins médicos e de análise.
               </span>
-            </label>
+              </label>
           </div>
 
           {/* Card 3: Microfone do Médico ou Agendamento */}
@@ -888,14 +888,14 @@ export function CreateConsultationRoom({
                   <label htmlFor="scheduled-date" className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 500, color: '#374151' }}>
                     Data da Consulta
                   </label>
-                  <input
-                    type="date"
+                <input
+                  type="date"
                     id="scheduled-date"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
                     className="form-select-figma"
-                    required
-                    min={new Date().toISOString().split('T')[0]}
+                  required
+                  min={new Date().toISOString().split('T')[0]}
                     style={{ width: '100%', padding: '12px', fontSize: '14px', border: '1px solid #D1D5DB', borderRadius: '8px' }}
                   />
                 </div>
@@ -905,16 +905,16 @@ export function CreateConsultationRoom({
                   <label htmlFor="scheduled-time" className="form-label" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 500, color: '#374151' }}>
                     Horário da Consulta
                   </label>
-                  <input
-                    type="time"
+                <input
+                  type="time"
                     id="scheduled-time"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
                     className="form-select-figma"
-                    required
+                  required
                     style={{ width: '100%', padding: '12px', fontSize: '14px', border: '1px solid #D1D5DB', borderRadius: '8px' }}
-                  />
-                </div>
+                />
+              </div>
 
                 {/* Ícone circular do calendário */}
                 <div className="icon-circle-container">
@@ -924,9 +924,9 @@ export function CreateConsultationRoom({
                       <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                       <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                       <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                  </div>
-                </div>
+                  </svg>
+            </div>
+          </div>
 
                 <p className="help-text">
                   Selecione a data e horário para agendar a consulta
@@ -939,19 +939,19 @@ export function CreateConsultationRoom({
                   <span className="card-title-asterisk">*</span>
                 </div>
 
-                <select
-                  value={selectedMicrophone}
-                  onChange={(e) => setSelectedMicrophone(e.target.value)}
+              <select
+                value={selectedMicrophone}
+                onChange={(e) => setSelectedMicrophone(e.target.value)}
                   className="form-select-figma"
-                  required
-                >
-                  <option value="">Selecione o Microfone</option>
-                  {microphones.map((mic) => (
-                    <option key={mic.deviceId} value={mic.deviceId}>
-                      {mic.label}
-                    </option>
-                  ))}
-                </select>
+                required
+              >
+                <option value="">Selecione o Microfone</option>
+                {microphones.map((mic) => (
+                  <option key={mic.deviceId} value={mic.deviceId}>
+                    {mic.label}
+                  </option>
+                ))}
+              </select>
 
                 {/* Ícone circular do microfone */}
                 <div className="icon-circle-container">
@@ -961,7 +961,7 @@ export function CreateConsultationRoom({
                       alt="Microfone" 
                       className="microphone-icon"
                     />
-                  </div>
+            </div>
                 </div>
 
                 {/* Barra de progresso de áudio */}
@@ -974,7 +974,7 @@ export function CreateConsultationRoom({
                     alt={isAudioMuted ? "Microfone mudo" : "Microfone ativo"} 
                     className={`audio-mute-icon ${isAudioMuted ? 'muted' : 'active'}`}
                   />
-                </div>
+          </div>
 
                 <p className="help-text">
                   Não esqueça de permitir o uso do microfone em seu navegador
@@ -1026,36 +1026,36 @@ export function CreateConsultationRoom({
 
       {/* Botões de ação */}
       <div className="action-buttons-container">
-        <button
-          type="submit"
+          <button 
+            type="submit" 
           form="consultation-form"
           onClick={(e) => {
             e.preventDefault();
             handleCreateRoom();
           }}
           className="btn-criar"
-          disabled={
-            isCreatingRoom || 
-            loadingPatients || 
-            loadingDoctor ||
-            (creationType === 'instantanea' && !socketConnected) ||
-            !selectedPatient || 
-            !consent ||
-            (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
-            (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
-          }
-        >
+            disabled={
+              isCreatingRoom || 
+              loadingPatients || 
+              loadingDoctor ||
+              (creationType === 'instantanea' && !socketConnected) ||
+              !selectedPatient || 
+              !consent ||
+              (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
+              (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
+            }
+          >
           Criar Consulta
           <img src="/arrow-left.svg" alt="Seta" className="btn-arrow" />
-        </button>
-      </div>
+          </button>
+            </div>
 
-      {isCreatingRoom && (
+        {isCreatingRoom && (
         <div className="loading-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>
-          <div className="spinner"></div>
-          <p>Criando consulta...</p>
-        </div>
-      )}
+            <div className="spinner"></div>
+            <p>Criando consulta...</p>
+          </div>
+        )}
     </div>
   );
 }

@@ -11,13 +11,19 @@ export default function AppLayout({
   const pathname = usePathname();
   
   // Páginas que devem ser renderizadas sem sidebar e header (página limpa)
-  const cleanPages = ['/patient', '/finalizada'];
+  // Inclui páginas de consulta em andamento (online e presencial)
+  const cleanPages = [
+    '/patient', 
+    '/finalizada',
+    '/consulta/online/doctor',
+    '/consulta/presencial'
+  ];
   
   // Se for uma página que deve ser limpa, renderizar sem layout
   if (pathname && cleanPages.some(page => pathname.includes(page))) {
     return children;
   }
   
-  // Para todas as outras páginas (incluindo /consulta/online), usar o layout padrão com sidebar e header
+  // Para todas as outras páginas (incluindo /consulta/nova), usar o layout padrão com sidebar e header
   return <Layout>{children}</Layout>;
 }

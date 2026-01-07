@@ -3144,6 +3144,61 @@
 
 /* ==================== DARK MODE STYLES ==================== */
 
+/* Scrollbar dark mode */
+.dark ::-webkit-scrollbar-track {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #2d6293 !important;
+  border: 2px solid #1a1a1a !important;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #1B4266 !important;
+  box-shadow: 0 0 10px rgba(45, 98, 147, 0.5) !important;
+}
+
+.dark .consultas-container::-webkit-scrollbar-track {
+  background: #2a2a2a !important;
+}
+
+.dark .consultas-container::-webkit-scrollbar-thumb {
+  background: #2d6293 !important;
+}
+
+.dark .consultas-container::-webkit-scrollbar-thumb:hover {
+  background: #1B4266 !important;
+}
+
+.dark .consultas-details-container::-webkit-scrollbar-track {
+  background: #2a2a2a !important;
+}
+
+.dark .consultas-details-container::-webkit-scrollbar-thumb {
+  background: #2d6293 !important;
+}
+
+.dark .consultas-details-container::-webkit-scrollbar-thumb:hover {
+  background: #1B4266 !important;
+}
+
+/* Stats Badge */
+.dark .consultas-stats-badge {
+  background: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+/* Button Nova Consulta */
+.dark .btn-new-consultation {
+  background: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .btn-new-consultation:hover {
+  background: #1B4266 !important;
+}
+
 /* Table Container */
 .dark .consultas-table-container {
   background: rgba(26, 26, 26, 0.95);
@@ -3157,24 +3212,202 @@
 
 /* Table Header */
 .dark .table-header {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  background: #1A1A1A !important;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark .header-cell {
-  background: linear-gradient(135deg, #cccccc 0%, #9ca3af 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #FFFFFF !important;
+}
+
+.dark .table-header-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Table Rows */
 .dark .table-row {
+  background: #1A1A1A !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dark .table-row:hover {
-  background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(51, 51, 51, 0.9) 100%);
+  background: #252525 !important;
+}
+
+.dark .table-row:hover::before {
+  background: #2d6293 !important;
+}
+
+.dark .table-row-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Table Cells */
+.dark .table-cell {
+  color: #FFFFFF !important;
+}
+
+.dark .patient-name {
+  color: #FFFFFF !important;
+}
+
+.dark .patient-description {
+  color: #CCCCCC !important;
+}
+
+.dark .patient-condition {
+  color: #999999 !important;
+}
+
+/* Avatar */
+.dark .patient-avatar {
+  background: #333333 !important;
+}
+
+.dark .avatar-placeholder {
+  background: #333333 !important;
+  color: #FFFFFF !important;
+}
+
+/* Status Badges */
+.dark .status-confirmed {
+  background: linear-gradient(135deg, rgba(101, 246, 177, 0.2) 0%, rgba(101, 246, 177, 0.15) 100%) !important;
+  color: #65F6B1 !important;
+  border: 1px solid rgba(101, 246, 177, 0.3) !important;
+}
+
+.dark .status-pending {
+  background: linear-gradient(135deg, rgba(255, 216, 77, 0.2) 0%, rgba(255, 216, 77, 0.15) 100%) !important;
+  color: #FFD84D !important;
+  border: 1px solid rgba(255, 216, 77, 0.3) !important;
+}
+
+.dark .status-cancelled {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.2) 0%, rgba(255, 71, 87, 0.15) 100%) !important;
+  color: #FF4757 !important;
+  border: 1px solid rgba(255, 71, 87, 0.3) !important;
+}
+
+/* Actions Button */
+.dark .actions-button {
+  background: #252525 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .actions-button::before {
+  background: #2d6293 !important;
+}
+
+.dark .actions-button:hover {
+  background: #2d6293 !important;
+  box-shadow: 0 6px 16px rgba(45, 98, 147, 0.4) !important;
+}
+
+.dark .actions-icon {
+  color: #FFFFFF !important;
+}
+
+/* Type Icon */
+.dark .type-icon {
+  color: #CCCCCC !important;
+}
+
+/* Pagination */
+.dark .pagination-arrow {
+  color: #FFFFFF !important;
+}
+
+.dark .pagination-arrow:hover:not(:disabled) {
+  opacity: 0.8 !important;
+}
+
+.dark .pagination-number {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .pagination-number:hover {
+  background: #252525 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .pagination-number.active {
+  background: #2d6293 !important;
+  border-color: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .pagination-dots {
+  color: #999999 !important;
+}
+
+/* Empty State */
+.dark .empty-state h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .empty-state p {
+  color: #CCCCCC !important;
+}
+
+.dark .empty-icon {
+  color: #666666 !important;
+}
+
+/* Consultas Stats */
+.dark .consultas-stats {
+  color: #CCCCCC !important;
+}
+
+.dark .consultas-stats span {
+  background: #252525 !important;
+  color: #FFFFFF !important;
+}
+
+/* Back Button */
+.dark .back-button {
+  background: #1A1A1A !important;
+  color: #FFFFFF !important;
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .back-button:hover {
+  background: #252525 !important;
+  border-color: #2d6293 !important;
+  color: #2d6293 !important;
+}
+
+/* Modal */
+.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.dark .modal-content {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .modal-header {
+  background: #252525 !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .modal-title {
+  background: linear-gradient(135deg, #FFFFFF 0%, #CCCCCC 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+.dark .modal-close {
+  background: #252525 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .modal-close:hover {
+  background: #333333 !important;
 }
 
 /* ===== UPLOAD DE EXAMES LABORATORIAIS ===== */
@@ -3777,6 +4010,245 @@
   color: #f9fafb;
 }
 
+/* Exames Modal */
+.dark .exames-upload-modal {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .exames-upload-modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .exames-upload-modal-header h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-upload-modal-close {
+  color: #CCCCCC !important;
+}
+
+.dark .exames-upload-modal-close:hover:not(:disabled) {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-upload-modal-content {
+  background: #1A1A1A !important;
+  color: #FFFFFF !important;
+}
+
+.dark .exames-upload-modal-hint {
+  color: #999999 !important;
+}
+
+.dark .exames-upload-modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .exames-upload-modal-cancel {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .exames-upload-modal-cancel:hover:not(:disabled) {
+  background: #333333 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark .exames-upload-modal-submit {
+  background: #2d6293 !important;
+}
+
+.dark .exames-upload-modal-submit:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+/* File Upload */
+.dark .file-upload-container {
+  background: linear-gradient(135deg, #1A1A1A 0%, #252525 100%) !important;
+  border: 2px dashed rgba(45, 98, 147, 0.4) !important;
+}
+
+.dark .file-upload-container:hover {
+  border-color: rgba(45, 98, 147, 0.8) !important;
+  background: linear-gradient(135deg, #252525 0%, #2A2A2A 100%) !important;
+}
+
+.dark .file-upload-container.dragover {
+  border-color: #2d6293 !important;
+  background: linear-gradient(135deg, rgba(45, 98, 147, 0.2) 0%, rgba(45, 98, 147, 0.15) 100%) !important;
+}
+
+.dark .file-upload-icon {
+  color: #2d6293 !important;
+  background: rgba(45, 98, 147, 0.2) !important;
+}
+
+.dark .file-upload-container:hover .file-upload-icon {
+  background: rgba(45, 98, 147, 0.3) !important;
+}
+
+.dark .file-upload-title {
+  color: #FFFFFF !important;
+}
+
+.dark .file-upload-subtitle {
+  color: #CCCCCC !important;
+}
+
+.dark .file-upload-button {
+  background: #2d6293 !important;
+}
+
+.dark .file-upload-button:hover {
+  background: #1B4266 !important;
+}
+
+.dark .file-upload-info {
+  background: rgba(45, 98, 147, 0.2) !important;
+  color: #CCCCCC !important;
+}
+
+.dark .file-upload-info svg {
+  color: #2d6293 !important;
+}
+
+/* Exames Section */
+.dark .exames-section-container {
+  background: var(--dashboard-bg, #0a0a0a) !important;
+}
+
+.dark .exames-section-header {
+  background: #1A1A1A !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .exames-tab-header {
+  background: #2d6293 !important;
+}
+
+.dark .exames-tab-active {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-anexar-button {
+  background: #2d6293 !important;
+}
+
+.dark .exames-anexar-button:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+/* Exames Search */
+.dark .exames-search-container {
+  background: #252525 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .exames-search-icon {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.dark .exames-search-input {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Exames Loading/Empty */
+.dark .exames-loading,
+.dark .exames-empty {
+  color: #CCCCCC !important;
+}
+
+.dark .exames-empty-hint {
+  color: #999999 !important;
+}
+
+/* Exames Table */
+.dark .exames-table-header {
+  background: #1A1A1A !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .exames-table-header-content > .exames-table-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .exames-table-col-nome,
+.dark .exames-table-col-data,
+.dark .exames-table-col-tipo,
+.dark .exames-table-col-acoes {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-table-row {
+  background: #1A1A1A !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .exames-table-row:hover {
+  background: #252525 !important;
+}
+
+.dark .exames-table-row-content > .exames-table-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .exames-table-row .exames-table-col-nome,
+.dark .exames-table-row .exames-table-col-data,
+.dark .exames-table-row .exames-table-col-tipo {
+  color: #FFFFFF !important;
+}
+
+.dark .exames-table-icon {
+  color: #CCCCCC !important;
+}
+
+.dark .exames-action-menu {
+  color: #CCCCCC !important;
+}
+
+.dark .exames-action-menu:hover {
+  color: #FFFFFF !important;
+}
+
+/* Exames Pagination */
+.dark .exames-pagination-button {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .exames-pagination-button:hover:not(:disabled) {
+  background: #252525 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .exames-pagination-page {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .exames-pagination-page:hover {
+  background: #252525 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .exames-pagination-page.active {
+  background: #2d6293 !important;
+  border-color: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .exames-pagination-ellipsis {
+  color: #999999 !important;
+}
+
 /* ===== COMPONENTE FILE UPLOAD ===== */
 .file-upload-container {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -4186,8 +4658,26 @@
 }
 
 .dark .modal-close:hover {
-  background: linear-gradient(135deg, #4a2626 0%, #3a1f1f 100%);
-  color: #ff6b6b;
+  background: #333333 !important;
+  color: #ff6b6b !important;
+}
+
+.dark .modal-body {
+  background: #1A1A1A !important;
+  color: #FFFFFF !important;
+}
+
+.dark .modal-loading {
+  color: #FFFFFF !important;
+}
+
+.dark .loading-icon {
+  border: 4px solid #333333 !important;
+  border-top: 4px solid #2d6293 !important;
+}
+
+.dark .info-grid {
+  color: #FFFFFF !important;
 }
 
 .dark .section-title {
@@ -4516,6 +5006,28 @@
 
 .dark .btn-cancel:hover {
   background: #333333;
+}
+
+.dark .btn-save {
+  background: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .btn-save:hover {
+  background: #1B4266 !important;
+}
+
+.dark .retry-button {
+  background: #dc2626 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .retry-button:hover {
+  background: #b91c1c !important;
+}
+
+.dark .edit-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* No consultations message */

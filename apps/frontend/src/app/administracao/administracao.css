@@ -5,6 +5,232 @@
   overflow-x: hidden;
 }
 
+/* Dark mode page */
+.dark .administracao-page {
+  background: var(--dashboard-bg, #0a0a0a) !important;
+}
+
+/* Dark mode labels */
+.dark .clinic-filter label,
+.dark .professional-filter label,
+.dark .type-filter label {
+  color: #CCCCCC !important;
+}
+
+/* Dark mode selects */
+.dark .clinic-filter select,
+.dark .professional-filter select {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+/* Dark mode type buttons */
+.dark .type-buttons button {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .type-buttons button.active {
+  background: #2d6293 !important;
+  border-color: #2d6293 !important;
+}
+
+/* Dark mode period filter */
+.dark .period-filter button {
+  background: #252525 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .period-filter button.active {
+  background: #2d6293 !important;
+}
+
+.dark .period-filter button:hover:not(.active) {
+  background: #333333 !important;
+}
+
+/* Dark mode stat cards */
+.dark .stat-content h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .stat-value {
+  color: #FFFFFF !important;
+}
+
+.dark .stat-subtitle {
+  color: #CCCCCC !important;
+}
+
+.dark .stat-subtitle.meta-badge {
+  background: rgba(101, 246, 177, 0.2) !important;
+  color: #65F6B1 !important;
+}
+
+/* Dark mode chart cards */
+.dark .chart-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .chart-card h3 {
+  color: #FFFFFF !important;
+}
+
+/* Dark mode table */
+.dark .active-consultations {
+  background: #1A1A1A !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .section-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .tab {
+  color: #CCCCCC !important;
+}
+
+.dark .consultation-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .consultation-avatar {
+  background: #333333 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .medico-info strong,
+.dark .consultation-patient,
+.dark .consultation-time,
+.dark .consultation-duration,
+.dark .consultation-room {
+  color: #FFFFFF !important;
+}
+
+/* Dark mode status cards */
+.dark .status-card,
+.dark .upcoming-consultations,
+.dark .calendar-section {
+  background: #1A1A1A !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .status-card h3,
+.dark .upcoming-header h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .legend-item {
+  color: #CCCCCC !important;
+}
+
+.dark .upcoming-item {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .upcoming-item:hover {
+  background: #333333 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .upcoming-info strong {
+  color: #FFFFFF !important;
+}
+
+.dark .upcoming-info span {
+  color: #CCCCCC !important;
+}
+
+/* Dark mode calendar */
+.dark .calendar-day {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-day:hover:not(.empty) {
+  background: #252525 !important;
+}
+
+.dark .calendar-month {
+  color: #FFFFFF !important;
+}
+
+.dark .calendar-nav {
+  background: rgba(45, 98, 147, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.dark .add-event-btn {
+  background: #2d6293 !important;
+}
+
+.dark .add-event-btn:hover {
+  background: #1B4266 !important;
+}
+
+.dark .view-btn {
+  background: #252525 !important;
+  color: #FFFFFF !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .view-btn.active {
+  background: #2d6293 !important;
+}
+
+.dark .weekday {
+  color: rgba(255, 255, 255, 0.7) !important;
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+/* Dark mode modal */
+.dark .consultas-modal-container {
+  background: #1A1A1A !important;
+}
+
+.dark .consultas-modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .consultas-modal-header h2 {
+  color: #FFFFFF !important;
+}
+
+.dark .consultas-modal-close {
+  color: #CCCCCC !important;
+}
+
+.dark .consultas-modal-close:hover {
+  background: #333333 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .medico-item,
+.dark .consulta-item-modal {
+  background: #252525 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .medico-item:hover,
+.dark .consulta-item-modal:hover {
+  background: #333333 !important;
+  border-color: #2d6293 !important;
+}
+
+.dark .medico-info strong,
+.dark .consulta-info strong {
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-horario {
+  color: #2d6293 !important;
+}
+
 /* Header */
 .admin-header {
   display: flex;

@@ -159,11 +159,11 @@ body {
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* Dark mode sidebar - mantém design branco do Figma */
+/* Dark mode sidebar - design escuro */
 .dark .sidebar {
-  background: #FFFFFF;
-  color: #171717;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  background: #1A1A1A;
+  color: #FFFFFF;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar.expanded {
@@ -271,29 +271,41 @@ body {
   color: #FFFFFF;
 }
 
-/* Dark mode nav buttons - mantém design do Figma */
-.dark .nav-btn:hover { background: transparent; }
+/* Dark mode nav buttons */
+.dark .nav-btn {
+  color: #FFFFFF !important;
+}
+
+.dark .nav-btn:hover { 
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
 .dark .sidebar.expanded .nav-btn:hover { 
-  background: #2D6293; 
-  color: #FFFFFF;
+  background: #2d6293 !important; 
+  color: #FFFFFF !important;
 }
 .dark .sidebar.expanded .nav-btn:hover svg {
-  color: #FFFFFF;
+  color: #FFFFFF !important;
 }
 .dark .sidebar.expanded .nav-btn:hover .nav-label {
-  color: #FFFFFF;
+  color: #FFFFFF !important;
 }
-.dark .nav-btn.is-active { background: transparent; color: #171717; }
+
+.dark .nav-btn.is-active { 
+  background: transparent !important; 
+  color: #FFFFFF !important;
+}
+
 .dark .sidebar.expanded .nav-btn.is-active { 
-  background: #2D6293; 
-  color: #FFFFFF; 
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); 
+  background: #2d6293 !important; 
+  color: #FFFFFF !important; 
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1) !important; 
 }
 .dark .sidebar.expanded .nav-btn.is-active svg {
-  color: #FFFFFF;
+  color: #FFFFFF !important;
 }
 .dark .sidebar.expanded .nav-btn.is-active .nav-label {
-  color: #FFFFFF;
+  color: #FFFFFF !important;
 }
 
 .nav-label {
@@ -313,7 +325,11 @@ body {
 
 /* Dark mode nav labels - mantém design do Figma */
 .dark .nav-label {
-  color: #666666;
+  color: #CCCCCC !important;
+}
+
+.dark .sidebar.expanded .nav-label {
+  color: #FFFFFF !important;
 }
 
 /* Garantir que os ícones sejam sempre visíveis e alinhados */
@@ -323,14 +339,27 @@ body {
   height: 24px !important;
   display: block;
   margin: 0;
+  padding: 0;
   color: #171717;
   transition: color 0.3s ease;
   stroke-width: 1.5;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-/* Dark mode icons - mantém design do Figma */
+/* Dark mode icons */
 .dark .nav-btn svg {
-  color: #171717;
+  color: #FFFFFF !important;
+}
+
+.dark .sidebar:not(.expanded) .nav-btn svg {
+  color: #FFFFFF !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 /* Active state icons */
@@ -339,7 +368,15 @@ body {
 }
 
 .dark .nav-btn.is-active svg {
-  color: #171717;
+  color: #FFFFFF !important;
+}
+
+.dark .sidebar.expanded .nav-btn.is-active svg {
+  color: #FFFFFF !important;
+}
+
+.dark .sidebar:not(.expanded) .nav-btn.is-active svg {
+  color: #FFFFFF !important;
 }
 
 /* Forçar centralização absoluta dos ícones no estado compacto */
@@ -361,8 +398,10 @@ body {
   padding: 0 !important;
   flex-shrink: 0 !important;
   display: block !important;
-  position: relative !important;
-  vertical-align: middle !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 /* Mostrar labels quando expandido */
@@ -527,6 +566,18 @@ body {
   flex-shrink: 0 !important;
   display: block !important;
 }
+
+.dark .sidebar:not(.expanded) .bottom .nav-btn svg {
+  color: #FFFFFF !important;
+}
+
+.dark .sidebar.expanded .bottom .nav-btn svg {
+  color: #FFFFFF !important;
+}
+
+.dark .bottom .nav-btn {
+  color: #FFFFFF !important;
+}
 .toggle-darkmode { 
   width: 46px; 
   height: 26px; 
@@ -661,8 +712,17 @@ body {
   overflow-x: hidden;
 }
 
+.dark .header {
+  background: #0A0A0A !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 .header-test-env {
   margin-top: 48px; /* Altura aproximada do banner de teste */
+}
+
+.dark .header.header-test-env {
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.15) 0%, #0A0A0A 100%) !important;
 }
 
 .header-content {
@@ -767,6 +827,10 @@ body {
   color: #ffffff;
 }
 
+.dark .theme-icon {
+  color: #FFFFFF !important;
+}
+
 .notification-button {
   position: relative;
   padding: 10px;
@@ -869,6 +933,10 @@ body {
   max-width: 100%;
 }
 
+.dark .user-full-name {
+  color: #FFFFFF !important;
+}
+
 .user-email-header {
   font-size: 12px;
   color: var(--text-secondary);
@@ -878,6 +946,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+.dark .user-email-header {
+  color: #CCCCCC !important;
 }
 
 .user-avatar {
@@ -923,8 +995,16 @@ body {
   transition: transform 0.2s;
 }
 
+.dark .dropdown-icon {
+  color: #FFFFFF !important;
+}
+
 .user-button:hover .dropdown-icon {
   transform: rotate(180deg);
+}
+
+.dark .user-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .user-name {
@@ -2818,6 +2898,12 @@ body {
   transform-origin: top right;
 }
 
+.dark .user-dropdown {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
 @keyframes dropdownFadeIn {
   from {
     opacity: 0;
@@ -2840,6 +2926,10 @@ body {
   margin: 0;
 }
 
+.dark .user-email {
+  color: #CCCCCC !important;
+}
+
 .dropdown-item-button {
   display: flex;
   align-items: center;
@@ -2856,8 +2946,21 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
+.dark .dropdown-item-button {
+  color: #FFFFFF !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 .dropdown-item-button:hover {
   background: var(--hover-bg);
+}
+
+.dark .dropdown-item-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .dropdown-item-button svg {
+  color: #FFFFFF !important;
 }
 
 .logout-button {
@@ -2874,8 +2977,20 @@ body {
   transition: background-color 0.2s ease;
 }
 
+.dark .logout-button {
+  color: #FFFFFF !important;
+}
+
 .logout-button:hover {
   background: var(--hover-bg);
+}
+
+.dark .logout-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .logout-button svg {
+  color: #FFFFFF !important;
 }
 
 /* Media Queries para Header Responsivo */
@@ -2944,4 +3059,170 @@ body {
     min-width: 160px;
     top: 70px;
   }
+}
+
+/* ==============================================
+   DARK MODE - PÁGINAS DE CONSULTA (INLINE STYLES)
+   ============================================== */
+
+/* Página Presencial - estilos inline precisam de dark mode global */
+.dark .presencial-page {
+  background: var(--dashboard-bg, #0a0a0a) !important;
+}
+
+.dark .page-header {
+  color: #FFFFFF !important;
+}
+
+.dark .page-header h1 {
+  color: #FFFFFF !important;
+}
+
+.dark .page-header p {
+  color: #CCCCCC !important;
+}
+
+.dark .error-banner {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+.dark .error-card {
+  background: #1A1A1A !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .error-card h2 {
+  color: #FFFFFF !important;
+}
+
+.dark .error-card p {
+  color: #CCCCCC !important;
+}
+
+.dark .setup-container {
+  /* Container já usa cores do componente */
+}
+
+.dark .consultation-container {
+  /* Container já usa cores do componente */
+}
+
+.dark .status-bar {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .status-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .status-label {
+  color: #CCCCCC !important;
+}
+
+.dark .status-value {
+  color: #FFFFFF !important;
+}
+
+.dark .transcription-panel {
+  /* Já tem estilos no componente */
+}
+
+.dark .btn-secondary {
+  background: #252525 !important;
+  color: #2d6293 !important;
+  border: 2px solid #2d6293 !important;
+}
+
+.dark .btn-secondary:hover {
+  background: rgba(45, 98, 147, 0.1) !important;
+}
+
+.dark .btn-primary {
+  background: #2d6293 !important;
+}
+
+.dark .btn-primary:hover:not(:disabled) {
+  background: #1B4266 !important;
+}
+
+.dark .btn-danger {
+  background: #dc2626 !important;
+}
+
+.dark .btn-danger:hover {
+  background: #b91c1c !important;
+}
+
+/* Página Finalizada - estilos inline precisam de dark mode global */
+.dark .consulta-finalizada-container {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+}
+
+.dark .consulta-finalizada-content {
+  background: #1A1A1A !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .consulta-finalizada-icon svg {
+  color: #10b981 !important;
+}
+
+.dark .consulta-finalizada-content h1 {
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-finalizada-message p {
+  color: #CCCCCC !important;
+}
+
+.dark .consulta-finalizada-message strong {
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-finalizada-info .info-item {
+  background: #252525 !important;
+  border-left: 4px solid #2d6293 !important;
+}
+
+.dark .consulta-finalizada-info .info-item svg {
+  color: #2d6293 !important;
+}
+
+.dark .consulta-finalizada-info .info-item h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-finalizada-info .info-item p {
+  color: #CCCCCC !important;
+}
+
+.dark .consulta-finalizada-actions .btn-home {
+  background: #2d6293 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .consulta-finalizada-actions .btn-home:hover {
+  background: #1B4266 !important;
+}
+
+/* AudioLevelIndicator - dark mode */
+.dark .audio-level-indicator .audio-label {
+  color: #FFFFFF !important;
+}
+
+.dark .audio-level-indicator .level-bar {
+  background: #333333 !important;
+}
+
+.dark .audio-level-indicator .level-bar.active {
+  background: #2d6293 !important;
+}
+
+.dark .audio-level-indicator .level-bar.speaking {
+  background: #2d6293 !important;
+  box-shadow: 0 0 8px rgba(45, 98, 147, 0.4) !important;
 }
