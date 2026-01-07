@@ -486,13 +486,29 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                 }
               } else {
                 // Criar nova consulta (comportamento original)
+
+                // ✅ Determinar ambiente baseado na origem do socket
+                let env = 'prod'; // Default production
+                try {
+                  // Tentar pegar do header origin ou referer
+                  const origin = socket.handshake.headers.origin || socket.handshake.headers.referer || '';
+                  // Se origem contiver medcall-ai-homolog ou localhost, marcar como homolog
+                  if (origin.includes('medcall-ai-homolog.vercel.app') || origin.includes('localhost')) {
+                    env = 'homolog';
+                  }
+                  console.log(`🌍 [ENV-CHECK] Origin: ${origin} -> Env: ${env}`);
+                } catch (e) {
+                  console.warn('⚠️ [ENV-CHECK] Erro ao determinar ambiente:', e);
+                }
+
                 const consultation = await db.createConsultation({
                   doctor_id: doctor.id,
                   patient_id: patientId,
                   patient_name: patientName,
                   consultation_type: consultationTypeValue,
                   status: 'RECORDING',
-                  patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`
+                  patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`,
+                  env: env // ✅ Passando ambiente detectado
                 });
 
                 if (consultation) {

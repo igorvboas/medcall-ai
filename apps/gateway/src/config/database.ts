@@ -39,12 +39,12 @@ export async function testDatabaseConnection(): Promise<boolean> {
     const { data, error } = await supabase
       .from('call_sessions')
       .select('count', { count: 'exact', head: true });
-    
+
     if (error) {
       console.error('Erro ao conectar com Supabase:', error.message);
       return false;
     }
-    
+
     console.log('✅ Conexão com Supabase estabelecida com sucesso');
     return true;
   } catch (error) {
@@ -107,14 +107,14 @@ export const db = {
       .insert(data)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar sessão:', error);
       // Log assíncrono para não bloquear
       logError(`Erro ao criar sessão no banco`, 'error', null, { error: error.message, code: error.code });
       return null;
     }
-    
+
     return session;
   },
 
@@ -124,13 +124,13 @@ export const db = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) {
       console.error('Erro ao buscar sessão:', error);
       logError(`Erro ao buscar sessão no banco`, 'error', null, { sessionId: id, error: error.message, code: error.code });
       return null;
     }
-    
+
     return session;
   },
 
@@ -141,13 +141,13 @@ export const db = {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
-    
+
     if (error) {
       console.error('Erro ao buscar utterances:', error);
       logError(`Erro ao buscar utterances no banco`, 'error', null, { sessionId, error: error.message, code: error.code });
       return [];
     }
-    
+
     return utterances || [];
   },
 
@@ -158,13 +158,13 @@ export const db = {
       .from('call_sessions')
       .update({ ...data, updated_at: new Date().toISOString() })
       .eq('id', id);
-    
+
     if (error) {
       console.error('Erro ao atualizar sessão:', error);
       logError(`Erro ao atualizar sessão no banco`, 'error', null, { sessionId: id, error: error.message, code: error.code });
       return false;
     }
-    
+
     return true;
   },
 
@@ -191,7 +191,7 @@ export const db = {
       // ✅ Se a sessão não existe, criar automaticamente para permitir salvar transcrições
       if (!callSession) {
         console.warn(`⚠️ [SAVE] session_id ${data.session_id} não encontrado em call_sessions. Criando sessão automaticamente...`);
-        
+
         try {
           // Criar sessão básica para permitir salvar transcrições
           const { data: newSession, error: createError } = await supabase
@@ -230,7 +230,7 @@ export const db = {
           console.warn(`⚠️ [SAVE] ID fornecido não é UUID válido: "${data.id}", deixando banco gerar`);
         }
       }
-      
+
       const insertData: any = {
         id: validId, // UUID gerado pelo banco se não fornecido ou inválido
         session_id: data.session_id, // UUID obrigatório (foreign key para call_sessions)
@@ -240,8 +240,8 @@ export const db = {
         is_final: data.is_final !== undefined ? data.is_final : false,
         start_ms: data.start_ms || 0,
         end_ms: data.end_ms || null, // Opcional
-        confidence: data.confidence !== undefined && data.confidence !== null 
-          ? Number(data.confidence) 
+        confidence: data.confidence !== undefined && data.confidence !== null
+          ? Number(data.confidence)
           : null, // Opcional, numeric(4,3) - garantir que é número
         processing_status: 'completed', // 'pending', 'processing', 'completed', 'error'
         created_at: data.created_at || new Date().toISOString()
@@ -274,7 +274,7 @@ export const db = {
         .insert(insertData)
         .select()
         .single();
-      
+
       if (error) {
         console.error('❌ [SAVE] Erro ao criar utterance no banco:', error);
         console.error('❌ [SAVE] Código do erro:', error.code);
@@ -292,7 +292,7 @@ export const db = {
         });
         return null;
       }
-      
+
       console.log(`✅ [SAVE] Transcrição salva no banco (${insertData.speaker}):`, insertData.text?.substring(0, 50) + '...');
       return utterance;
     } catch (error) {
@@ -311,13 +311,13 @@ export const db = {
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
       .limit(limit);
-    
+
     if (error) {
       console.error('Erro ao buscar utterances:', error);
       logError(`Erro ao buscar utterances da sessão`, 'error', null, { sessionId, limit, error: error.message, code: error.code });
       return [];
     }
-    
+
     return utterances || [];
   },
 
@@ -334,17 +334,17 @@ export const db = {
         .eq('session_id', sessionId)
         .eq('processing_status', 'completed') // ✅ Flag para identificar registro único
         .maybeSingle();
-      
+
       if (error) {
         console.error('Erro ao buscar conversas:', error);
         logError(`Erro ao buscar conversas no banco`, 'error', null, { sessionId, error: error.message, code: error.code });
         return [];
       }
-      
+
       if (!transcription || !transcription.text) {
         return [];
       }
-      
+
       // ✅ Parse do JSON do campo text
       try {
         const conversations = JSON.parse(transcription.text);
@@ -368,13 +368,13 @@ export const db = {
       .insert(data)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar sugestão:', error);
       logError(`Erro ao criar sugestão no banco`, 'error', null, { sessionId: data.session_id, type: data.type, error: error.message, code: error.code });
       return null;
     }
-    
+
     return suggestion;
   },
 
@@ -384,13 +384,13 @@ export const db = {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('Erro ao buscar sugestões:', error);
       logError(`Erro ao buscar sugestões da sessão`, 'error', null, { sessionId, error: error.message, code: error.code });
       return [];
     }
-    
+
     return suggestions || [];
   },
 
@@ -399,13 +399,13 @@ export const db = {
       .from('suggestions')
       .update({ used: true })
       .eq('id', id);
-    
+
     if (error) {
       console.error('Erro ao marcar sugestão como usada:', error);
       logError(`Erro ao marcar sugestão como usada`, 'error', null, { suggestionId: id, error: error.message, code: error.code });
       return false;
     }
-    
+
     return true;
   },
 
@@ -462,13 +462,13 @@ export const db = {
       .select('*')
       .eq('user_auth', userAuthId)
       .single();
-    
+
     if (error) {
       console.error('Erro ao buscar médico:', error);
       logError(`Erro ao buscar médico por userAuth`, 'error', null, { userAuthId, error: error.message, code: error.code });
       return null;
     }
-    
+
     return doctor;
   },
 
@@ -482,26 +482,32 @@ export const db = {
     consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
     status?: string;
     patient_context?: string;
+    env?: string; // ✅ Campo env opcional
   }): Promise<any | null> {
     const now = new Date().toISOString();
+
+    // ✅ Log para debug do ambiente
+    console.log(`🏥 [CREATE-CONSULTATION] Environment: ${data.env || 'not_specified'}`);
+
     const { data: consultation, error } = await supabase
       .from('consultations')
       .insert({
         ...data,
         status: data.status || 'CREATED',
-        consulta_inicio: now, // ✅ Registrar início da consulta
+        consulta_inicio: now,
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        env: data.env // ✅ Salvando campo env
       })
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar consulta:', error);
       logError(`Erro ao criar consulta no banco`, 'error', null, { doctorId: data.doctor_id, patientId: data.patient_id, error: error.message, code: error.code });
       return null;
     }
-    
+
     return consultation;
   },
 
@@ -516,12 +522,12 @@ export const db = {
         .select('consultation_id')
         .eq('room_id', roomId)
         .maybeSingle();
-      
+
       if (error) {
         console.error('Erro ao buscar consultation_id por roomId:', error);
         return null;
       }
-      
+
       return data?.consultation_id || null;
     } catch (error) {
       console.error('Exceção ao buscar consultation_id por roomId:', error);
@@ -546,13 +552,13 @@ export const db = {
         updated_at: new Date().toISOString()
       })
       .eq('room_id', roomId); // Buscar por room_id que é o roomId
-    
+
     if (error) {
       console.error('Erro ao atualizar call_session:', error);
       logError(`Erro ao atualizar call_session`, 'error', data.consultation_id || null, { roomId, error: error.message, code: error.code });
       return false;
     }
-    
+
     return true;
   },
 
@@ -567,13 +573,13 @@ export const db = {
         updated_at: new Date().toISOString()
       })
       .eq('room_id', roomId);
-    
+
     if (error) {
       console.error('Erro ao atualizar webrtc_active:', error);
       logError(`Erro ao atualizar webrtc_active`, 'error', null, { roomId, active, error: error.message, code: error.code });
       return false;
     }
-    
+
     console.log(`✅ [WebRTC] Sala ${roomId} - webrtc_active = ${active}`);
     return true;
   },
@@ -618,7 +624,7 @@ export const db = {
         .select('*')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
-      
+
       if (fetchAllError && fetchAllError.code !== 'PGRST116') {
         console.error('❌ [ARRAY-SAVE] Erro ao buscar transcrições:', fetchAllError);
         if (fetchAllError.code === '42501') {
@@ -628,31 +634,31 @@ export const db = {
         logError(`Erro ao buscar transcrições para adicionar ao array`, 'error', null, { sessionId, error: fetchAllError.message, code: fetchAllError.code });
         return false;
       }
-      
+
       // ✅ Encontrar o registro com processing_status = 'completed' (registro único)
       let existingTranscription = allTranscriptions?.find((t: any) => t.processing_status === 'completed') || null;
-      
+
       // ✅ Se há múltiplos registros, usar o mais recente com processing_status = 'completed'
       // Se não houver nenhum com 'completed', usar o mais recente e atualizar para 'completed'
       if (!existingTranscription && allTranscriptions && allTranscriptions.length > 0) {
         console.warn(`⚠️ [ARRAY-SAVE] Encontrados ${allTranscriptions.length} registros para sessão ${sessionId}, mas nenhum com processing_status='completed'`);
         console.warn(`⚠️ [ARRAY-SAVE] Usando o registro mais recente e atualizando para 'completed'`);
         // Ordenar por created_at descendente e pegar o mais recente
-        existingTranscription = allTranscriptions.sort((a: any, b: any) => 
+        existingTranscription = allTranscriptions.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
       }
-      
+
       // ✅ Se há múltiplos registros com 'completed', usar o mais recente e marcar os outros
       if (allTranscriptions && allTranscriptions.filter((t: any) => t.processing_status === 'completed').length > 1) {
         console.warn(`⚠️ [ARRAY-SAVE] Múltiplos registros com processing_status='completed' encontrados!`);
         console.warn(`⚠️ [ARRAY-SAVE] Consolidando em um único registro...`);
         // Usar o mais recente
         const completedOnes = allTranscriptions.filter((t: any) => t.processing_status === 'completed');
-        existingTranscription = completedOnes.sort((a: any, b: any) => 
+        existingTranscription = completedOnes.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
-        
+
         // Marcar os outros como 'error' para não serem usados
         const otherIds = completedOnes.filter((t: any) => t.id !== existingTranscription.id).map((t: any) => t.id);
         if (otherIds.length > 0) {
@@ -714,12 +720,12 @@ export const db = {
           text: JSON.stringify(conversations), // Array JSON simplificado no campo text
           end_ms: Date.now() // Atualizar timestamp de fim
         };
-        
+
         // ✅ Se doctor_name foi fornecido e o registro não tem, atualizar
         if (transcription.doctor_name && !existingTranscription.doctor_name) {
           updateData.doctor_name = transcription.doctor_name;
         }
-        
+
         const { data: updatedData, error: updateError } = await supabase
           .from('transcriptions_med')
           .update(updateData)
@@ -737,12 +743,12 @@ export const db = {
           console.error('❌ [ARRAY-SAVE] Hint:', updateError.hint);
           console.error('❌ [ARRAY-SAVE] Array size:', conversations.length);
           console.error('❌ [ARRAY-SAVE] Text length:', JSON.stringify(conversations).length);
-          logError(`Erro ao atualizar array de transcrições`, 'error', null, { 
-            sessionId, 
-            recordId: existingTranscription.id, 
+          logError(`Erro ao atualizar array de transcrições`, 'error', null, {
+            sessionId,
+            recordId: existingTranscription.id,
             arraySize: conversations.length,
-            error: updateError.message, 
-            code: updateError.code 
+            error: updateError.message,
+            code: updateError.code
           });
           return false;
         }
@@ -772,7 +778,7 @@ export const db = {
               .select('participants, metadata')
               .eq('id', sessionId)
               .maybeSingle();
-            
+
             if (callSession?.participants?.host) {
               doctorName = callSession.participants.host;
             } else if (callSession?.metadata?.doctorName) {
@@ -792,8 +798,8 @@ export const db = {
           is_final: true,
           start_ms: transcription.start_ms || Date.now(),
           end_ms: transcription.end_ms || Date.now(),
-          confidence: transcription.confidence !== undefined && transcription.confidence !== null 
-            ? Number(transcription.confidence) 
+          confidence: transcription.confidence !== undefined && transcription.confidence !== null
+            ? Number(transcription.confidence)
             : 0.95,
           processing_status: 'completed', // ✅ Flag para identificar registro único
           created_at: new Date().toISOString()
@@ -824,7 +830,7 @@ export const db = {
           .insert(insertData)
           .select()
           .single();
-        
+
         // ✅ Log detalhado se houver erro de RLS
         if (insertError && insertError.code === '42501') {
           console.error('❌ [ARRAY-SAVE] Erro de RLS ao inserir!');
@@ -839,10 +845,10 @@ export const db = {
             speaker: insertData.speaker,
             has_doctor_name: !!insertData.doctor_name
           });
-          logError(`Erro de RLS ao inserir transcrição`, 'error', null, { 
-            sessionId, 
-            speaker: mainSpeaker, 
-            error: insertError.message, 
+          logError(`Erro de RLS ao inserir transcrição`, 'error', null, {
+            sessionId,
+            speaker: mainSpeaker,
+            error: insertError.message,
             code: insertError.code,
             hint: 'Verificar configuração do SUPABASE_SERVICE_ROLE_KEY'
           });
@@ -864,35 +870,35 @@ export const db = {
           });
           // Log no banco apenas se não for erro de RLS (já logado acima)
           if (insertError.code !== '42501') {
-            logError(`Erro ao criar registro de transcrição`, 'error', null, { 
-              sessionId, 
-              speaker: mainSpeaker, 
-              error: insertError.message, 
-              code: insertError.code 
+            logError(`Erro ao criar registro de transcrição`, 'error', null, {
+              sessionId,
+              speaker: mainSpeaker,
+              error: insertError.message,
+              code: insertError.code
             });
           }
-          
+
           // ✅ Se erro for de coluna não existe (doctor_name), tentar novamente sem ela
           if (insertError.code === '42703' && insertData.doctor_name) {
             console.log('🔄 [ARRAY-SAVE] Erro de coluna não existe, tentando novamente sem doctor_name...');
             const retryData = { ...insertData };
             delete retryData.doctor_name;
-            
+
             const { data: retryTranscription, error: retryError } = await supabase
               .from('transcriptions_med')
               .insert(retryData)
               .select()
               .single();
-            
+
             if (retryError) {
               console.error('❌ [ARRAY-SAVE] Erro ao criar mesmo sem doctor_name:', retryError);
               return false;
             }
-            
+
             console.log(`✅ [ARRAY-SAVE] Registro criado sem doctor_name: ${retryTranscription.id}`);
             return true;
           }
-          
+
           return false;
         }
 
@@ -904,10 +910,10 @@ export const db = {
       if (error instanceof Error) {
         console.error('❌ [ARRAY-SAVE] Stack:', error.stack);
       }
-      logError(`Exceção ao adicionar transcrição ao array`, 'error', null, { 
-        sessionId, 
-        speaker: transcription.speaker, 
-        error: error instanceof Error ? error.message : String(error) 
+      logError(`Exceção ao adicionar transcrição ao array`, 'error', null, {
+        sessionId,
+        speaker: transcription.speaker,
+        error: error instanceof Error ? error.message : String(error)
       });
       return false;
     }
@@ -935,13 +941,13 @@ export const db = {
       })
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar call_session:', error);
       logError(`Erro ao criar call_session no banco`, 'error', null, { roomId: data.room_id, roomName: data.room_name, error: error.message, code: error.code });
       return null;
     }
-    
+
     return session;
   },
 
@@ -964,13 +970,13 @@ export const db = {
       })
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao salvar transcrição:', error);
       logError(`Erro ao salvar transcrição da consulta no banco`, 'error', data.consultation_id, { error: error.message, code: error.code });
       return null;
     }
-    
+
     return transcription;
   },
 
@@ -997,17 +1003,17 @@ export const db = {
       .insert(data)
       .select()
       .single();
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao salvar metadados de gravação:', error);
-      logError(`Erro ao salvar metadados de gravação`, 'error', data.consultation_id || null, { 
-        error: error.message, 
+      logError(`Erro ao salvar metadados de gravação`, 'error', data.consultation_id || null, {
+        error: error.message,
         code: error.code,
-        session_id: data.session_id 
+        session_id: data.session_id
       });
       return null;
     }
-    
+
     console.log('✅ [DB] Metadados de gravação salvos:', data.id);
     return recording;
   },
@@ -1018,22 +1024,22 @@ export const db = {
   async updateSessionRecording(sessionId: string, recordingUrl: string): Promise<boolean> {
     const { error } = await supabase
       .from('call_sessions')
-      .update({ 
+      .update({
         recording_url: recordingUrl,
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       })
       .eq('id', sessionId);
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao atualizar recording_url na sessão:', error);
-      logError(`Erro ao atualizar recording_url na sessão`, 'error', null, { 
-        error: error.message, 
+      logError(`Erro ao atualizar recording_url na sessão`, 'error', null, {
+        error: error.message,
         code: error.code,
-        session_id: sessionId 
+        session_id: sessionId
       });
       return false;
     }
-    
+
     console.log('✅ [DB] Recording URL atualizada na sessão:', sessionId);
     return true;
   },
@@ -1047,12 +1053,12 @@ export const db = {
       .select('*')
       .eq('id', recordingId)
       .single();
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao buscar gravação:', error);
       return null;
     }
-    
+
     return recording;
   },
 
@@ -1065,12 +1071,12 @@ export const db = {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao listar gravações por sessão:', error);
       return [];
     }
-    
+
     return recordings || [];
   },
 
@@ -1083,12 +1089,12 @@ export const db = {
       .select('*')
       .eq('consultation_id', consultationId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao listar gravações por consulta:', error);
       return [];
     }
-    
+
     return recordings || [];
   },
 
@@ -1096,7 +1102,7 @@ export const db = {
    * Atualiza status de gravação
    */
   async updateRecordingStatus(recordingId: string, status: string, additionalData?: Record<string, any>): Promise<boolean> {
-    const updateData: any = { 
+    const updateData: any = {
       status,
       updated_at: new Date().toISOString(),
       ...additionalData
@@ -1106,12 +1112,12 @@ export const db = {
       .from('recordings')
       .update(updateData)
       .eq('id', recordingId);
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao atualizar status da gravação:', error);
       return false;
     }
-    
+
     return true;
   },
 
@@ -1123,12 +1129,12 @@ export const db = {
       .from('recordings')
       .delete()
       .eq('id', recordingId);
-    
+
     if (error) {
       console.error('❌ [DB] Erro ao remover gravação:', error);
       return false;
     }
-    
+
     console.log('🗑️ [DB] Gravação removida:', recordingId);
     return true;
   },
