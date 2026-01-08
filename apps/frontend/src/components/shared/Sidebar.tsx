@@ -35,8 +35,8 @@ const menuItems = [
 ];
 
 const adminMenuItems = [
-  { icon: LayoutDashboard, label: 'Administração Geral', href: '/administracao' },
-  { icon: ShieldCheck, label: 'Admin', href: '/consultas-admin' }
+  { icon: LayoutDashboard, label: 'Gestão da Clínica', href: '/clinica/gestao' },
+  { icon: ShieldCheck, label: 'Admin Sistema', href: '/consultas-admin' }
 ];
 
 export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: SidebarProps) {
@@ -57,15 +57,21 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
       try {
         const { data, error } = await supabase
           .from('medicos')
-          .select('admin')
+          .select('admin, clinica_admin')
           .eq('user_auth', user.id)
           .maybeSingle();
+
+
 
         if (error) {
           console.error('Erro ao verificar status de admin:', error);
           setIsAdmin(false);
         } else {
-          setIsAdmin(data?.admin === true);
+          const isSystemAdmin = data?.admin === true;
+          const isClinicAdmin = data?.clinica_admin === true;
+
+          // ✅ Verifica tanto admin do sistema quanto admin de clínica
+          setIsAdmin(isSystemAdmin || isClinicAdmin);
         }
       } catch (err) {
         console.error('Erro ao verificar status de admin:', err);
@@ -88,7 +94,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
   const handleMouseEnter = () => {
     // Se for menu no topo, não expandir (sempre compacto)
     if (isTopMenu) return;
-    
+
     // Limpar qualquer timeout pendente
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -100,17 +106,17 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
   const handleMouseLeave = (e: React.MouseEvent) => {
     // Se for menu no topo, não fazer nada
     if (isTopMenu) return;
-    
+
     const sidebar = e.currentTarget as HTMLElement;
     const relatedTarget = e.relatedTarget as Node | null;
-    
+
     // Verificar se o mouse realmente saiu do sidebar
     if (!sidebar.contains(relatedTarget)) {
       // Limpar qualquer timeout anterior
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
-      
+
       // Pequeno delay para evitar colapsar durante movimentos rápidos
       hoverTimeoutRef.current = setTimeout(() => {
         onExpandedChange(false);
@@ -118,7 +124,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
       }, 150);
     }
   };
-  
+
   // Limpar timeout quando componente desmontar
   useEffect(() => {
     return () => {
@@ -127,7 +133,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
       }
     };
   }, []);
-  
+
   // Garantir que o menu no topo sempre fique compacto (nunca expandido)
   useEffect(() => {
     if (isTopMenu) {
@@ -152,20 +158,20 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
             </Link>
           );
         })}
-        
+
         {/* Menu Admin - visível apenas para administradores */}
         {isAdmin && adminMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
-          <Link 
+            <Link
               key={item.href}
-              href={item.href} 
+              href={item.href}
               className={`nav-btn nav-btn-admin ${isActive ? 'is-active' : ''}`}
-          >
+            >
               <Icon size={24} />
               <span className="nav-label">{item.label}</span>
-          </Link>
+            </Link>
           );
         })}
       </nav>

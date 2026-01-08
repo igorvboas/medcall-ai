@@ -482,12 +482,13 @@ export const db = {
     consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
     status?: string;
     patient_context?: string;
-    env?: string; // ✅ Campo env opcional
+    env?: string;
+    clinica_id?: string; // ✅ Campo clinica_id opcional
   }): Promise<any | null> {
     const now = new Date().toISOString();
 
     // ✅ Log para debug do ambiente
-    console.log(`🏥 [CREATE-CONSULTATION] Environment: ${data.env || 'not_specified'}`);
+    console.log(`🏥 [CREATE-CONSULTATION] Environment: ${data.env || 'not_specified'} | Clinic: ${data.clinica_id || 'none'}`);
 
     const { data: consultation, error } = await supabase
       .from('consultations')
@@ -497,7 +498,8 @@ export const db = {
         consulta_inicio: now,
         created_at: now,
         updated_at: now,
-        env: data.env // ✅ Salvando campo env
+        env: data.env, // ✅ Salvando campo env
+        clinica_id: data.clinica_id // ✅ Salvando id da clínica
       })
       .select()
       .single();

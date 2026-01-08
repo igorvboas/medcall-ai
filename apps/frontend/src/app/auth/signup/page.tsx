@@ -20,7 +20,11 @@ export default function SignUpPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
+  // ✅ NOVO: Estado para tipo de conta
+  const [accountType, setAccountType] = useState<'doctor' | 'clinic'>('doctor');
+
+
   const { signUp, signInWithGoogle, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -54,8 +58,9 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const { error } = await signUp(email, password, name.trim());
-      
+      // ✅ Passando accountType (role) para o signUp
+      const { error } = await signUp(email, password, name.trim(), accountType);
+
       if (error) {
         setError(error.message);
       } else {
@@ -119,7 +124,39 @@ export default function SignUpPage() {
           </div>
 
           <div className="signup-form-wrapper">
+
+            {/* ✅ NOVO: Seletor de Tipo de Conta */}
+            <div className="flex gap-4 mb-6 p-1 bg-gray-100 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setAccountType('doctor')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${accountType === 'doctor'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                  }`}
+              >
+                Médico Independente
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType('clinic')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${accountType === 'clinic'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                  }`}
+              >
+                Clínica
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="signup-form">
+              {/* ✅ Mensagem explicativa dinâmica */}
+              <div className="text-sm text-gray-500 mb-2 italic text-center">
+                {accountType === 'doctor'
+                  ? 'Você está criando uma conta para atendimento médico individual.'
+                  : 'Você está criando uma conta administrativa para sua clínica.'}
+              </div>
+
               <div className="form-group">
                 <label htmlFor="name" className="form-label">
                   Nome Completo

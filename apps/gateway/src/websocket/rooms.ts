@@ -508,7 +508,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                   consultation_type: consultationTypeValue,
                   status: 'RECORDING',
                   patient_context: `Consulta ${consultationTypeValue.toLowerCase()} - Sala: ${roomName || 'Sala sem nome'}`,
-                  env: env // ✅ Passando ambiente detectado
+                  env: env, // ✅ Passando ambiente detectado
+                  clinica_id: doctor.clinica_id // ✅ Vinculando à clínica do médico
                 });
 
                 if (consultation) {

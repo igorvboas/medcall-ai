@@ -127,6 +127,8 @@ app.use('/api/rooms', roomsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/recordings', recordingsRoutes);
 app.use('/api', twilioRoutes);
+import clinicRoutes from './routes/clinic';
+app.use('/api/clinic', clinicRoutes);
 
 // Endpoint para estatísticas de WebSocket PCM
 app.get('/api/pcm-transcription/stats', (req, res) => {

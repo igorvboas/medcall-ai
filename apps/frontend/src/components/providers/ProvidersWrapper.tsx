@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from './ThemeProvider';
 import { NotificationProvider } from '@/components/shared/NotificationSystem';
+import { FirstAccessGuard } from '@/components/auth/FirstAccessGuard';
 
 interface ProvidersWrapperProps {
   children: React.ReactNode;
@@ -12,7 +13,9 @@ export function ProvidersWrapper({ children }: ProvidersWrapperProps) {
     <div suppressHydrationWarning>
       <ThemeProvider>
         <NotificationProvider>
-          {children}
+          <FirstAccessGuard>
+            {children}
+          </FirstAccessGuard>
         </NotificationProvider>
       </ThemeProvider>
     </div>

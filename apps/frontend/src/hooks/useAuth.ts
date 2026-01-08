@@ -9,7 +9,7 @@ export interface AuthState {
 }
 
 export interface AuthActions {
-  signUp: (email: string, password: string, name?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, name?: string, role?: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
@@ -27,19 +27,19 @@ export function useAuth(): AuthState & AuthActions {
       try {
         // eslint-disable-next-line no-console
         //console.log('[DEBUG] useAuth.getInitialSession start', supabaseConfigDebug);
-        
+
         // Timeout de 5 segundos para evitar loading infinito
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 5000)
         );
-        
+
         const sessionPromise = supabase.auth.getSession();
-        
+
         const { data: { session } } = await Promise.race([
           sessionPromise,
           timeoutPromise
         ]) as { data: { session: Session | null } };
-        
+
         // eslint-disable-next-line no-console
         //console.log('[DEBUG] useAuth.getInitialSession session', { hasSession: Boolean(session) });
         setSession(session);
@@ -69,7 +69,7 @@ export function useAuth(): AuthState & AuthActions {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, name?: string) => {
+  const signUp = async (email: string, password: string, name?: string, role?: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -77,6 +77,7 @@ export function useAuth(): AuthState & AuthActions {
         options: {
           data: {
             name: name || email.split('@')[0],
+            role: role || 'doctor', // Default to doctor if not specified
           },
         },
       });
@@ -90,10 +91,32 @@ export function useAuth(): AuthState & AuthActions {
     try {
       // eslint-disable-next-line no-console
       console.log('[DEBUG] useAuth.signIn request', { email, url: supabaseConfigDebug.url });
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      if (!error && authData.user) {
+        // ✅ Verificar se o médico foi deletado/bloqueado
+        const { data: medico } = await supabase
+          .from('medicos')
+          .select('medico_deletado')
+          .eq('user_auth', authData.user.id)
+          .single();
+
+        if (medico?.medico_deletado) {
+          // Bloquear acesso e fazer logout
+          await supabase.auth.signOut();
+          return {
+            error: {
+              message: 'Acesso bloqueado pela clínica. Entre em contato com o administrador.',
+              name: 'AuthError',
+              status: 403
+            } as AuthError
+          };
+        }
+      }
+
       // eslint-disable-next-line no-console
       console.log('[DEBUG] useAuth.signIn response', { error });
       return { error };
