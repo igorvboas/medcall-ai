@@ -93,9 +93,7 @@ export default function ClinicManagementPage() {
         setMessage(null);
 
         try {
-            let gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
-            // Correct protocol for HTTP fetch if it comes as WS
-            gatewayUrl = gatewayUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+            const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_HTTP_URL || 'http://localhost:3001';
 
             const response = await fetch(`${gatewayUrl}/api/clinic/registry-doctor`, {
                 method: 'POST',
@@ -129,7 +127,12 @@ export default function ClinicManagementPage() {
 
         } catch (error: any) {
             console.error('Erro:', error);
-            setMessage({ type: 'error', text: error.message });
+            // Handle network errors (Failed to fetch)
+            if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+                setMessage({ type: 'error', text: 'Erro de conexão com o servidor. Verifique sua internet ou tente novamente.' });
+            } else {
+                setMessage({ type: 'error', text: error.message || 'Erro desconhecido ao cadastrar médico' });
+            }
         } finally {
             setLoading(false);
         }
