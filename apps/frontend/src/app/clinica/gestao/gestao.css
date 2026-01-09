@@ -7,7 +7,8 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 40px 32px;
-  min-height: calc(100vh - 64px); /* Altura total menos header */
+  min-height: calc(100vh - 64px);
+  /* Altura total menos header */
   background: var(--bg-primary, #EBF3F6);
 }
 
@@ -834,4 +835,81 @@
     flex-direction: column;
     gap: 4px;
   }
+}
+
+/* =====================================================
+   ESTILOS PARA MÉDICOS BLOQUEADOS
+   ===================================================== */
+
+/* Linha de médico bloqueado */
+.lista-medicos-tr-blocked {
+  background: rgba(239, 68, 68, 0.05) !important;
+  opacity: 0.75;
+}
+
+.lista-medicos-tr-blocked:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+/* Dark mode blocked row */
+.dark .lista-medicos-tr-blocked {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.dark .lista-medicos-tr-blocked:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Nome do médico bloqueado */
+.doctor-name-blocked {
+  text-decoration: line-through;
+  color: var(--text-secondary, #5B5B5B);
+}
+
+.dark .doctor-name-blocked {
+  color: #999999;
+}
+
+/* Email de médico bloqueado */
+.email-blocked {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Badge de bloqueado */
+.badge-blocked {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.dark .badge-blocked {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+/* Botão de desbloquear */
+.btn-action-unblock {
+  color: #10b981;
+}
+
+.btn-action-unblock:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+/* Dark mode unblock */
+.dark .btn-action-unblock {
+  color: #34d399;
+}
+
+.dark .btn-action-unblock:hover {
+  background: rgba(52, 211, 153, 0.2);
 }

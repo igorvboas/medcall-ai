@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { UserPlus, Mail, User, Edit2, Trash2, X, RotateCcw } from 'lucide-react';
+import { UserPlus, Mail, User, Edit2, Trash2, X, RotateCcw, Unlock } from 'lucide-react';
 import './gestao.css';
 
 interface Doctor {
@@ -74,8 +74,8 @@ export default function ClinicManagementPage() {
                 .select('*')
                 .eq('clinica_id', currentClinicId)
                 .eq('is_doctor', true) // Apenas médicos
-                .neq('user_auth', user?.id) // Excluir o próprio admin da lista (opcional)
-                .or('medico_deletado.is.null,medico_deletado.is.false') // Filtrar deletados (ou mostrar todos se quiser)
+                .neq('user_auth', user?.id) // Excluir o próprio admin da lista
+                .order('medico_deletado', { ascending: true, nullsFirst: true }) // Ativos primeiro
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -109,7 +109,17 @@ export default function ClinicManagementPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Erro ao cadastrar médico');
+                // Handle different error formats (string, array of Zod errors, or object)
+                let errorMessage = 'Erro ao cadastrar médico';
+                if (typeof data.error === 'string') {
+                    errorMessage = data.error;
+                } else if (Array.isArray(data.error)) {
+                    // Zod validation errors come as an array
+                    errorMessage = data.error.map((e: any) => e.message).join(', ');
+                } else if (data.error?.message) {
+                    errorMessage = data.error.message;
+                }
+                throw new Error(errorMessage);
             }
 
             setMessage({ type: 'success', text: `Médico ${data.doctor.name} cadastrado com sucesso! Senha: meuprimeiroacesso_123456789` });
@@ -176,6 +186,24 @@ export default function ClinicManagementPage() {
         } catch (err: any) {
             console.error('Erro ao bloquear:', err);
             setMessage({ type: 'error', text: 'Erro ao bloquear médico' });
+        }
+    };
+
+    // === Ação de Desbloquear ===
+    const handleUnblockDoctor = async (doctor: Doctor) => {
+        try {
+            const { error } = await supabase
+                .from('medicos')
+                .update({ medico_deletado: false })
+                .eq('id', doctor.id);
+
+            if (error) throw error;
+
+            setMessage({ type: 'success', text: `Acesso do médico ${doctor.name} liberado com sucesso!` });
+            fetchDoctors();
+        } catch (err: any) {
+            console.error('Erro ao desbloquear:', err);
+            setMessage({ type: 'error', text: 'Erro ao liberar acesso do médico' });
         }
     };
 
@@ -282,28 +310,55 @@ export default function ClinicManagementPage() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        doctors.map((doctor) => (
-                                            <tr key={doctor.id} className="lista-medicos-tr">
-                                                <td className="lista-medicos-td lista-medicos-td-name">{doctor.name}</td>
-                                                <td className="lista-medicos-td lista-medicos-td-email">{doctor.email}</td>
-                                                <td className="lista-medicos-td lista-medicos-td-actions">
-                                                    <button
-                                                        onClick={() => openEditModal(doctor)}
-                                                        className="btn-action btn-action-edit"
-                                                        title="Editar"
-                                                    >
-                                                        <Edit2 size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteModal(doctor)}
-                                                        className="btn-action btn-action-delete"
-                                                        title="Bloquear Acesso"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
+                                        doctors.map((doctor) => {
+                                            const isBlocked = doctor.medico_deletado === true;
+                                            return (
+                                                <tr
+                                                    key={doctor.id}
+                                                    className={`lista-medicos-tr ${isBlocked ? 'lista-medicos-tr-blocked' : ''}`}
+                                                >
+                                                    <td className="lista-medicos-td lista-medicos-td-name">
+                                                        <span className={isBlocked ? 'doctor-name-blocked' : ''}>
+                                                            {doctor.name}
+                                                        </span>
+                                                        {isBlocked && (
+                                                            <span className="badge-blocked">Bloqueado</span>
+                                                        )}
+                                                    </td>
+                                                    <td className={`lista-medicos-td lista-medicos-td-email ${isBlocked ? 'email-blocked' : ''}`}>
+                                                        {doctor.email}
+                                                    </td>
+                                                    <td className="lista-medicos-td lista-medicos-td-actions">
+                                                        {!isBlocked && (
+                                                            <button
+                                                                onClick={() => openEditModal(doctor)}
+                                                                className="btn-action btn-action-edit"
+                                                                title="Editar"
+                                                            >
+                                                                <Edit2 size={18} />
+                                                            </button>
+                                                        )}
+                                                        {isBlocked ? (
+                                                            <button
+                                                                onClick={() => handleUnblockDoctor(doctor)}
+                                                                className="btn-action btn-action-unblock"
+                                                                title="Liberar Acesso"
+                                                            >
+                                                                <Unlock size={18} />
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => openDeleteModal(doctor)}
+                                                                className="btn-action btn-action-delete"
+                                                                title="Bloquear Acesso"
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     )}
                                 </tbody>
                             </table>
