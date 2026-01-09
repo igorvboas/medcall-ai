@@ -1,0 +1,837 @@
+/* =====================================================
+   PÁGINA DE GESTÃO DA CLÍNICA - DESIGN CONSISTENTE
+   ===================================================== */
+
+/* Container principal */
+.clinica-gestao-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 32px;
+  min-height: calc(100vh - 64px); /* Altura total menos header */
+  background: var(--bg-primary, #EBF3F6);
+}
+
+/* Dark mode container */
+.dark .clinica-gestao-container {
+  background: var(--dashboard-bg, #0a0a0a);
+}
+
+/* Header */
+.clinica-gestao-header {
+  margin-bottom: 40px;
+}
+
+.clinica-gestao-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #323232;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+/* Dark mode title */
+.dark .clinica-gestao-title {
+  color: #FFFFFF;
+}
+
+.clinica-gestao-subtitle {
+  font-size: 16px;
+  color: #5B5B5B;
+  margin: 0;
+}
+
+/* Dark mode subtitle */
+.dark .clinica-gestao-subtitle {
+  color: #CCCCCC;
+}
+
+/* Grid Layout */
+.clinica-gestao-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .clinica-gestao-grid {
+    grid-template-columns: 400px 1fr;
+  }
+}
+
+/* Card de Cadastro */
+.cadastro-card {
+  background: var(--card-bg, #FFFFFF);
+  border: none;
+  border-radius: 3px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  position: sticky;
+  top: 88px;
+}
+
+/* Dark mode cadastro card */
+.dark .cadastro-card {
+  background: var(--card-bg, #1A1A1A);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5);
+}
+
+.cadastro-card-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color, #C4D9E5);
+  background: var(--bg-secondary, #D6E8F0);
+}
+
+/* Dark mode card header */
+.dark .cadastro-card-header {
+  background: var(--bg-secondary, #1A1A1A);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cadastro-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cadastro-card-title svg {
+  color: #2d6293;
+  flex-shrink: 0;
+}
+
+/* Dark mode card title */
+.dark .cadastro-card-title {
+  color: #FFFFFF;
+}
+
+.cadastro-card-body {
+  padding: 24px;
+}
+
+/* Formulário */
+.cadastro-form-group {
+  margin-bottom: 20px;
+}
+
+.cadastro-form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+  margin-bottom: 8px;
+}
+
+/* Dark mode label */
+.dark .cadastro-form-label {
+  color: #FFFFFF;
+}
+
+.cadastro-form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color, #C4D9E5);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--input-bg, #E6F1F6);
+  color: var(--text-primary, #1A1A1A);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.cadastro-form-input::placeholder {
+  color: var(--text-secondary, #5B5B5B);
+}
+
+.cadastro-form-input:focus {
+  outline: none;
+  border-color: #1B4266;
+  background: var(--bg-primary, #EBF3F6);
+  box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
+}
+
+/* Dark mode input */
+.dark .cadastro-form-input {
+  background: var(--input-bg, #1A1A1A);
+  border-color: #333333;
+  color: #FFFFFF;
+}
+
+.dark .cadastro-form-input::placeholder {
+  color: #999999;
+}
+
+.dark .cadastro-form-input:focus {
+  background: var(--bg-primary, #0A0A0A);
+  border-color: #2d6293;
+  box-shadow: 0 0 0 3px rgba(45, 98, 147, 0.2);
+}
+
+.cadastro-form-input:disabled {
+  background: var(--hover-bg, #D6E8F0);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dark .cadastro-form-input:disabled {
+  background: #2A2A2A;
+}
+
+/* Botão Cadastrar */
+.btn-cadastrar {
+  width: 100%;
+  padding: 12px 24px;
+  background: #1B4266;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-cadastrar:hover:not(:disabled) {
+  background: #153350;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
+}
+
+.btn-cadastrar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Dark mode botão */
+.dark .btn-cadastrar {
+  background: #2d6293;
+}
+
+.dark .btn-cadastrar:hover:not(:disabled) {
+  background: #1B4266;
+}
+
+.cadastro-password-info {
+  font-size: 12px;
+  color: var(--text-secondary, #5B5B5B);
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* Dark mode password info */
+.dark .cadastro-password-info {
+  color: #CCCCCC;
+}
+
+/* Card Lista de Médicos */
+.lista-medicos-card {
+  background: var(--card-bg, #FFFFFF);
+  border: none;
+  border-radius: 3px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+/* Dark mode lista card */
+.dark .lista-medicos-card {
+  background: var(--card-bg, #1A1A1A);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.5);
+}
+
+.lista-medicos-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color, #C4D9E5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Dark mode lista header */
+.dark .lista-medicos-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lista-medicos-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0;
+}
+
+/* Dark mode lista title */
+.dark .lista-medicos-title {
+  color: #FFFFFF;
+}
+
+.btn-refresh {
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #5B5B5B);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-refresh:hover {
+  background: var(--hover-bg, #D6E8F0);
+  color: var(--text-primary, #1A1A1A);
+}
+
+/* Dark mode refresh button */
+.dark .btn-refresh {
+  color: #CCCCCC;
+}
+
+.dark .btn-refresh:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+/* Mensagem de Sucesso/Erro */
+.message-alert {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.message-alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.dark .message-alert-success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.message-alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.dark .message-alert-error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-close-message {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.btn-close-message:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.dark .btn-close-message:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Tabela */
+.lista-medicos-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.lista-medicos-thead {
+  background: var(--bg-secondary, #D6E8F0);
+}
+
+/* Dark mode thead */
+.dark .lista-medicos-thead {
+  background: var(--bg-secondary, #1A1A1A);
+}
+
+.lista-medicos-th {
+  padding: 16px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #5B5B5B);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.lista-medicos-th:last-child {
+  text-align: right;
+}
+
+/* Dark mode th */
+.dark .lista-medicos-th {
+  color: #CCCCCC;
+}
+
+.lista-medicos-tbody {
+  background: var(--card-bg, #FFFFFF);
+}
+
+/* Dark mode tbody */
+.dark .lista-medicos-tbody {
+  background: var(--card-bg, #1A1A1A);
+}
+
+.lista-medicos-tr {
+  border-bottom: 1px solid var(--border-color, #C4D9E5);
+  transition: background 0.2s ease;
+}
+
+.lista-medicos-tr:hover {
+  background: var(--hover-bg, #D6E8F0);
+}
+
+/* Dark mode tr */
+.dark .lista-medicos-tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .lista-medicos-tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.lista-medicos-tr:last-child {
+  border-bottom: none;
+}
+
+.lista-medicos-td {
+  padding: 16px 20px;
+  font-size: 14px;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.lista-medicos-td-name {
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.lista-medicos-td-email {
+  color: var(--text-secondary, #5B5B5B);
+}
+
+.lista-medicos-td-actions {
+  text-align: right;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Dark mode td */
+.dark .lista-medicos-td-name {
+  color: #FFFFFF;
+}
+
+.dark .lista-medicos-td-email {
+  color: #CCCCCC;
+}
+
+/* Estado vazio/carregando */
+.lista-medicos-empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-secondary, #5B5B5B);
+  font-size: 14px;
+}
+
+/* Dark mode empty */
+.dark .lista-medicos-empty {
+  color: #999999;
+}
+
+/* Botões de ação */
+.btn-action {
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-action-edit {
+  color: #1B4266;
+}
+
+.btn-action-edit:hover {
+  background: rgba(27, 66, 102, 0.1);
+}
+
+/* Dark mode edit */
+.dark .btn-action-edit {
+  color: #2d6293;
+}
+
+.dark .btn-action-edit:hover {
+  background: rgba(45, 98, 147, 0.2);
+}
+
+.btn-action-delete {
+  color: #ef4444;
+}
+
+.btn-action-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Dark mode delete */
+.dark .btn-action-delete {
+  color: #f87171;
+}
+
+.dark .btn-action-delete:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--card-bg, #FFFFFF);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+}
+
+/* Dark mode modal */
+.dark .modal-content {
+  background: var(--card-bg, #1A1A1A);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color, #C4D9E5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Dark mode modal header */
+.dark .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0;
+}
+
+/* Dark mode modal title */
+.dark .modal-title {
+  color: #FFFFFF;
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #5B5B5B);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-close-modal:hover {
+  background: var(--hover-bg, #D6E8F0);
+  color: var(--text-primary, #1A1A1A);
+}
+
+/* Dark mode close */
+.dark .btn-close-modal {
+  color: #CCCCCC;
+}
+
+.dark .btn-close-modal:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-form-group {
+  margin-bottom: 20px;
+}
+
+.modal-form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+  margin-bottom: 8px;
+}
+
+/* Dark mode modal label */
+.dark .modal-form-label {
+  color: #FFFFFF;
+}
+
+.modal-form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color, #C4D9E5);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--input-bg, #E6F1F6);
+  color: var(--text-primary, #1A1A1A);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.modal-form-input:focus {
+  outline: none;
+  border-color: #1B4266;
+  background: var(--bg-primary, #EBF3F6);
+  box-shadow: 0 0 0 3px rgba(27, 66, 102, 0.1);
+}
+
+.modal-form-input:disabled {
+  background: var(--hover-bg, #D6E8F0);
+  cursor: not-allowed;
+  opacity: 0.6;
+  color: var(--text-secondary, #5B5B5B);
+}
+
+/* Dark mode modal input */
+.dark .modal-form-input {
+  background: var(--input-bg, #1A1A1A);
+  border-color: #333333;
+  color: #FFFFFF;
+}
+
+.dark .modal-form-input:focus {
+  background: var(--bg-primary, #0A0A0A);
+  border-color: #2d6293;
+  box-shadow: 0 0 0 3px rgba(45, 98, 147, 0.2);
+}
+
+.dark .modal-form-input:disabled {
+  background: #2A2A2A;
+  color: #999999;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color, #C4D9E5);
+  margin-top: 24px;
+}
+
+/* Dark mode modal actions */
+.dark .modal-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-modal-secondary {
+  flex: 1;
+  padding: 12px 24px;
+  background: var(--bg-secondary, #D6E8F0);
+  color: var(--text-primary, #1A1A1A);
+  border: 1px solid var(--border-color, #C4D9E5);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-secondary:hover {
+  background: var(--hover-bg, #D6E8F0);
+  border-color: var(--border-color, #C4D9E5);
+}
+
+/* Dark mode secondary */
+.dark .btn-modal-secondary {
+  background: #252525;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.dark .btn-modal-secondary:hover {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-modal-primary {
+  flex: 1;
+  padding: 12px 24px;
+  background: #1B4266;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-primary:hover {
+  background: #153350;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
+}
+
+/* Dark mode primary */
+.dark .btn-modal-primary {
+  background: #2d6293;
+}
+
+.dark .btn-modal-primary:hover {
+  background: #1B4266;
+}
+
+.btn-modal-danger {
+  flex: 1;
+  padding: 12px 24px;
+  background: #ef4444;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-danger:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Modal de confirmação */
+.modal-confirm {
+  text-align: center;
+  padding: 24px;
+}
+
+.modal-confirm-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #ef4444;
+}
+
+/* Dark mode confirm icon */
+.dark .modal-confirm-icon {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.modal-confirm-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0 0 12px 0;
+}
+
+/* Dark mode confirm title */
+.dark .modal-confirm-title {
+  color: #FFFFFF;
+}
+
+.modal-confirm-text {
+  font-size: 14px;
+  color: var(--text-secondary, #5B5B5B);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+/* Dark mode confirm text */
+.dark .modal-confirm-text {
+  color: #CCCCCC;
+}
+
+.modal-confirm-text strong {
+  color: var(--text-primary, #1A1A1A);
+  font-weight: 600;
+}
+
+/* Dark mode confirm text strong */
+.dark .modal-confirm-text strong {
+  color: #FFFFFF;
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .clinica-gestao-container {
+    padding: 24px 16px;
+  }
+
+  .cadastro-card {
+    position: static;
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .clinica-gestao-header {
+    margin-bottom: 24px;
+  }
+
+  .clinica-gestao-title {
+    font-size: 24px;
+  }
+
+  .lista-medicos-th,
+  .lista-medicos-td {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  .lista-medicos-td-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

@@ -125,33 +125,27 @@ export default function SignUpPage() {
 
           <div className="signup-form-wrapper">
 
-            {/* ✅ NOVO: Seletor de Tipo de Conta */}
-            <div className="flex gap-4 mb-6 p-1 bg-gray-100 rounded-lg">
+            {/* Seletor de Tipo de Conta */}
+            <div className="account-type-selector">
               <button
                 type="button"
                 onClick={() => setAccountType('doctor')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${accountType === 'doctor'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                className={`account-type-button ${accountType === 'doctor' ? 'active' : ''}`}
               >
                 Médico Independente
               </button>
               <button
                 type="button"
                 onClick={() => setAccountType('clinic')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${accountType === 'clinic'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                className={`account-type-button ${accountType === 'clinic' ? 'active' : ''}`}
               >
                 Clínica
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="signup-form">
-              {/* ✅ Mensagem explicativa dinâmica */}
-              <div className="text-sm text-gray-500 mb-2 italic text-center">
+              {/* Mensagem explicativa dinâmica */}
+              <div className="account-type-message">
                 {accountType === 'doctor'
                   ? 'Você está criando uma conta para atendimento médico individual.'
                   : 'Você está criando uma conta administrativa para sua clínica.'}
