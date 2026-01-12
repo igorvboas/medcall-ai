@@ -33,20 +33,20 @@ export async function sendCredentialsEmail({
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     const appName = process.env.APP_NAME || 'TRIA';
-    
+
     // Verificar se está em modo de teste (só pode enviar para email verificado)
     // Modo de teste = usando onboarding@resend.dev ou qualquer email @resend.dev
     const isTestMode = fromEmail.includes('@resend.dev');
-    
+    const verifiedEmail = process.env.RESEND_VERIFIED_EMAIL || 'ferramentas@triacompany.com.br';
+
     if (isTestMode) {
-      const verifiedEmail = process.env.RESEND_VERIFIED_EMAIL || 'ferramentas@triacompany.com.br';
       // Se estiver em modo de teste e o destinatário não for o email verificado, avisar
       if (to !== verifiedEmail) {
         console.warn('⚠️ Resend em modo de teste - só pode enviar para:', verifiedEmail);
         console.warn('⚠️ Para enviar para outros emails, verifique um domínio no Resend');
-        return { 
-          success: false, 
-          error: `Resend em modo de teste. Só é possível enviar para ${verifiedEmail}. Para enviar para outros emails, verifique um domínio em resend.com/domains` 
+        return {
+          success: false,
+          error: `Resend em modo de teste. Só é possível enviar para ${verifiedEmail}. Para enviar para outros emails, verifique um domínio em resend.com/domains`
         };
       }
     }
@@ -61,7 +61,7 @@ export async function sendCredentialsEmail({
     console.log('  - From:', `${appName} <${fromEmail}>`);
     console.log('  - To:', to);
     console.log(`  - Subject: Suas credenciais de acesso - ${appName}`);
-    
+
     const { data, error } = await resend.emails.send({
       from: `${appName} <${fromEmail}>`,
       to: [to],
@@ -152,7 +152,7 @@ Se você não solicitou esta conta, por favor ignore este email.
       console.error('  - Erro completo:', JSON.stringify(error, null, 2));
       console.error('  - Message:', error.message);
       console.error('  - Name:', error.name);
-      
+
       // Tratar erro específico de modo de teste
       const errorMessage = error.message || String(error);
       if (errorMessage.includes('only send testing emails') || errorMessage.includes('verify a domain')) {
@@ -160,20 +160,20 @@ Se você não solicitou esta conta, por favor ignore este email.
         console.warn('⚠️', message);
         return { success: false, error: message };
       }
-      
+
       return { success: false, error: errorMessage };
     }
 
     console.log('✅ Email aceito pelo Resend!');
     console.log('  - ID do email:', data?.id);
     console.log('  - Resposta completa:', JSON.stringify(data, null, 2));
-    
+
     if (data?.id) {
       console.log('📧 Email enviado com ID:', data.id);
       console.log('📧 Verifique o status no dashboard do Resend: https://resend.com/emails');
       console.log('📧 IMPORTANTE: Verifique também a caixa de SPAM do destinatário!');
     }
-    
+
     return { success: true, emailId: data?.id };
   } catch (err: any) {
     console.error('❌ Erro ao enviar email (catch):', err);
@@ -195,17 +195,17 @@ export async function sendAnamneseEmail({
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     const appName = process.env.APP_NAME || 'TRIA';
-    
+
     // Verificar se está em modo de teste
     const isTestMode = fromEmail.includes('@resend.dev');
-    
+
     if (isTestMode) {
       const verifiedEmail = process.env.RESEND_VERIFIED_EMAIL || 'ferramentas@triacompany.com.br';
       if (to !== verifiedEmail) {
         console.warn('⚠️ Resend em modo de teste - só pode enviar para:', verifiedEmail);
-        return { 
-          success: false, 
-          error: `Resend em modo de teste. Só é possível enviar para ${verifiedEmail}` 
+        return {
+          success: false,
+          error: `Resend em modo de teste. Só é possível enviar para ${verifiedEmail}`
         };
       }
     }
@@ -294,7 +294,7 @@ Se você não solicitou este formulário ou tiver alguma dúvida, entre em conta
 
     console.log('✅ Email de anamnese aceito pelo Resend!');
     console.log('  - ID do email:', data?.id);
-    
+
     return { success: true, emailId: data?.id };
   } catch (err: any) {
     console.error('❌ Erro ao enviar email de anamnese (catch):', err);
