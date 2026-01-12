@@ -3969,12 +3969,18 @@ function ConsultationDetailsOverview({
   consultaDetails,
   patientId,
   onNavigateToSection,
-  onBack
+  onBack,
+  hasAnamneseData,
+  hasDiagnosticoData,
+  hasSolucaoData
 }: {
   consultaDetails: Consultation;
   patientId?: string;
-  onNavigateToSection: (section: 'ANAMNESE' | 'SOLUCOES' | 'EXAMES') => void;
+  onNavigateToSection: (section: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCOES' | 'EXAMES') => void;
   onBack: () => void;
+  hasAnamneseData: () => boolean;
+  hasDiagnosticoData: () => boolean;
+  hasSolucaoData: () => boolean;
 }) {
   const [patientData, setPatientData] = useState<any>(null);
   const [loadingPatientData, setLoadingPatientData] = useState(false);
@@ -4341,10 +4347,30 @@ function ConsultationDetailsOverview({
               <ArrowRight size={18} />
             </button>
 
+            {/* Botão Diagnóstico */}
+            <button
+              className="consultation-details-action-button consultation-details-action-button-primary"
+              onClick={() => onNavigateToSection('DIAGNOSTICO')}
+              disabled={!hasDiagnosticoData()}
+              style={{ 
+                opacity: !hasDiagnosticoData() ? 0.5 : 1,
+                cursor: !hasDiagnosticoData() ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Plus size={18} />
+              <span>Diagnóstico</span>
+              <ArrowRight size={18} />
+            </button>
+
             {/* Botão Soluções */}
             <button
               className="consultation-details-action-button consultation-details-action-button-primary"
               onClick={() => onNavigateToSection('SOLUCOES')}
+              disabled={!hasSolucaoData()}
+              style={{ 
+                opacity: !hasSolucaoData() ? 0.5 : 1,
+                cursor: !hasSolucaoData() ? 'not-allowed' : 'pointer'
+              }}
             >
               <Plus size={18} />
               <span>Soluções</span>
@@ -4392,7 +4418,7 @@ function ConsultasPageContent() {
   const [consultaDetails, setConsultaDetails] = useState<Consultation | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showSolutionsViewer, setShowSolutionsViewer] = useState(false);
-  const [selectedSection, setSelectedSection] = useState<'ANAMNESE' | 'SOLUCOES' | 'EXAMES' | null>(null);
+  const [selectedSection, setSelectedSection] = useState<'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCOES' | 'EXAMES' | null>(null);
   const [forceShowSolutionSelection, setForceShowSolutionSelection] = useState(false);
 
   // Função para voltar para a tela de seleção de soluções
@@ -5572,6 +5598,9 @@ function ConsultasPageContent() {
     try {
       setIsSaving(true);
       
+      // Verificar se já existe solução gerada - se sim, apenas avançar sem reprocessar
+      const shouldGenerate = !hasSolucaoData();
+      
       // Atualiza a etapa da consulta para SOLUCAO sem definir solucao_etapa (mostra tela de seleção)
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
@@ -5580,7 +5609,7 @@ function ConsultasPageContent() {
         },
         body: JSON.stringify({
           etapa: 'SOLUCAO',
-          status: 'VALID_SOLUCAO',
+          status: shouldGenerate ? 'PROCESSING' : 'VALID_SOLUCAO',
           solucao_etapa: null
         }),
       });
@@ -5588,28 +5617,34 @@ function ConsultasPageContent() {
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
-
-      // Disparar webhook para iniciar processamento da solução
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.triggerSolucao, {
-          method: 'POST',
-        headers: webhookHeaders,
-        body: JSON.stringify({
-            consultaId: consultaDetails.id,
-            medicoId: consultaDetails.doctor_id,
-            pacienteId: consultaDetails.patient_id
-          }),
-        });
-        console.log('✅ Webhook de solução disparado com sucesso');
-      } catch (webhookError) {
-        console.warn('⚠️ Webhook de solução falhou, mas consulta foi atualizada:', webhookError);
+      
+      // Disparar webhook apenas se precisar gerar (não se já existe)
+      if (shouldGenerate) {
+        try {
+          const webhookEndpoints = getWebhookEndpoints();
+          const webhookHeaders = getWebhookHeaders();
+          
+          await fetch(webhookEndpoints.edicaoLivroDaVida, {
+            method: 'POST',
+            headers: webhookHeaders,
+            body: JSON.stringify({
+              consultaId: consultaDetails.id,
+              medicoId: consultaDetails.doctor_id,
+              pacienteId: consultaDetails.patient_id
+            }),
+          });
+          console.log('✅ Webhook de solução disparado com sucesso');
+        } catch (webhookError) {
+          console.warn('⚠️ Webhook de solução falhou, mas consulta foi atualizada:', webhookError);
+        }
       }
 
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
+      
+      // Redirecionar para a tela inicial (overview) após salvar
+      setSelectedSection(null);
+      showSuccess('Diagnóstico processado com sucesso!', 'Sucesso');
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
@@ -5968,6 +6003,42 @@ function ConsultasPageContent() {
     );
   }
 
+
+  // Funções auxiliares para verificar se há dados disponíveis
+  // Anamnese sempre está acessível (primeira etapa)
+  const hasAnamneseData = (): boolean => {
+    return true; // Anamnese sempre acessível
+  };
+
+  // Verifica se há dados de anamnese validados (para texto do botão)
+  const hasValidAnamneseData = (): boolean => {
+    if (!consultaDetails) return false;
+    return consultaDetails.status === 'VALID_ANAMNESE' || 
+           (consultaDetails.status === 'VALIDATION' && consultaDetails.etapa === 'ANAMNESE') ||
+           consultaDetails.etapa === 'DIAGNOSTICO' || 
+           consultaDetails.etapa === 'SOLUCAO' ||
+           consultaDetails.status === 'VALID_DIAGNOSTICO' ||
+           consultaDetails.status === 'VALID_SOLUCAO' ||
+           consultaDetails.status === 'COMPLETED';
+  };
+
+  const hasDiagnosticoData = (): boolean => {
+    if (!consultaDetails) return false;
+    return consultaDetails.status === 'VALID_DIAGNOSTICO' || 
+           (consultaDetails.status === 'VALIDATION' && consultaDetails.etapa === 'DIAGNOSTICO') ||
+           consultaDetails.etapa === 'SOLUCAO' ||
+           consultaDetails.status === 'VALID_SOLUCAO' ||
+           consultaDetails.status === 'COMPLETED';
+  };
+
+  // Verifica se há dados de solução disponíveis (só acessível quando solução já foi gerada)
+  const hasSolucaoData = (): boolean => {
+    if (!consultaDetails) return false;
+    // Solução acessível APENAS quando solução já foi gerada/validada
+    return consultaDetails.status === 'VALID_SOLUCAO' || 
+           consultaDetails.etapa === 'SOLUCAO' ||
+           consultaDetails.status === 'COMPLETED';
+  };
 
   // Função para renderizar o conteúdo baseado no status e etapa
   const renderConsultationContent = (): 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO_MENTALIDADE' | 'SOLUCAO_SUPLEMENTACAO' | 'SOLUCAO_ALIMENTACAO' | 'SOLUCAO_ATIVIDADE_FISICA' | 'SELECT_SOLUCAO' | JSX.Element | null => {
@@ -6506,6 +6577,32 @@ function ConsultasPageContent() {
       );
     }
 
+    // Se o status for PROCESSING, mostrar a tela de processamento
+    if (consultaDetails.status === 'PROCESSING') {
+      const contentType = renderConsultationContent();
+      if (typeof contentType !== 'string' && contentType !== null) {
+        // Se retornou JSX (tela de processamento), renderizar
+        return (
+          <div className="consultas-container consultas-details-container">
+            <div className="consultas-header">
+              <button 
+                className="back-button"
+                onClick={handleBackToList}
+                style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Voltar
+              </button>
+              <h1 className="consultas-title">Processando</h1>
+            </div>
+            <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+              {contentType}
+            </div>
+          </div>
+        );
+      }
+    }
+
     // Se selectedSection for null e não há solução selecionada, mostrar a tela intermediária
     // Se há uma solução selecionada (solucao_etapa), renderConsultationContent vai determinar qual tela mostrar
     // A tela intermediária (overview) só aparece quando não há solução selecionada E selectedSection é null
@@ -6514,15 +6611,29 @@ function ConsultasPageContent() {
         <ConsultationDetailsOverview
           consultaDetails={consultaDetails}
           patientId={consultaDetails.patient_id}
+          hasAnamneseData={hasAnamneseData}
+          hasDiagnosticoData={hasDiagnosticoData}
+          hasSolucaoData={hasSolucaoData}
           onNavigateToSection={(section) => {
             if (section === 'ANAMNESE') {
-              // Para anamnese, setar selectedSection para 'ANAMNESE'
+              // Anamnese sempre acessível (primeira etapa)
               setSelectedSection('ANAMNESE');
+            } else if (section === 'DIAGNOSTICO') {
+              // Verificar se há dados de diagnóstico antes de permitir acesso
+              if (hasDiagnosticoData()) {
+                setSelectedSection('DIAGNOSTICO');
+              }
             } else if (section === 'SOLUCOES') {
-              // Para soluções, forçar a renderização da tela de seleção de soluções imediatamente
-              setForceShowSolutionSelection(true);
-              setSelectedSection(null);
-              setShowSolutionsViewer(false);
+              // Verificar se há dados de solução antes de permitir acesso
+              if (hasSolucaoData()) {
+                // Para soluções, forçar a renderização da tela de seleção de soluções imediatamente
+                setForceShowSolutionSelection(true);
+                setSelectedSection(null);
+                setShowSolutionsViewer(false);
+              } else {
+                // Se não houver dados, não permitir acesso
+                return;
+              }
               // Atualizar a consulta em background para garantir que solucao_etapa seja null
               // Mas não esperar por isso para renderizar a tela
               if (consultaId) {
@@ -6721,6 +6832,58 @@ function ConsultasPageContent() {
             </div>
           </div>
 
+          {/* Botão Avançar para Diagnóstico - Movido para o topo */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                requestAdvanceConfirmation(
+                  handleSaveAndContinue,
+                  'Você está prestes a avançar para a etapa de Diagnóstico. Esta ação iniciará o processamento do diagnóstico integrativo. Deseja continuar?'
+                );
+              }}
+              disabled={isSaving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: isSaving ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#059669';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#10b981';
+                }
+              }}
+            >
+              {isSaving ? (
+                <>
+                  <div className="loading-spinner-small"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4" />
+                  {hasValidAnamneseData() ? 'Avançar para Diagnóstico' : 'Gerar Diagnóstico'}
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Conteúdo da Anamnese */}
           <div className="anamnese-content-wrapper">
             <AnamneseSection 
@@ -6914,6 +7077,422 @@ function ConsultasPageContent() {
           {showAIChat && (
             <div className="ai-chat-overlay" onClick={() => setShowAIChat(false)}></div>
           )}
+
+          {/* Modal de Confirmação de Avanço de Etapa */}
+          {showAdvanceModal && (
+            <div className="modal-overlay" onClick={cancelAdvance}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                    <ArrowRight className="w-6 h-6" />
+                  </div>
+                  <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+                </div>
+                
+                <div className="modal-body">
+                  <p className="modal-text" style={{ marginBottom: '15px' }}>
+                    {advanceMessage}
+                  </p>
+                </div>
+                
+                <div className="modal-footer">
+                  <button 
+                    className="modal-button cancel-button"
+                    onClick={cancelAdvance}
+                    disabled={isSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    className="modal-button"
+                    onClick={confirmAdvance}
+                    disabled={isSaving}
+                    style={{
+                      background: '#10b981',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="loading-spinner-small"></div>
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-4 h-4" />
+                        Avançar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Se selectedSection for 'DIAGNOSTICO', renderizar a seção de diagnóstico
+    if (selectedSection === 'DIAGNOSTICO') {
+      // Funções auxiliares para formatação
+      const formatDateOnly = (dateString: string | undefined) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      };
+
+      const formatTime = (dateString: string | undefined) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      const formatDuration = (seconds?: number) => {
+        if (!seconds) return 'N/A';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (hours > 0) {
+          return `${hours}h ${minutes}min`;
+        }
+        return `${minutes} min`;
+      };
+
+      const mapConsultationType = (type: string) => {
+        return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+      };
+
+      // Avatar do paciente
+      const patientsData = Array.isArray(consultaDetails.patients) 
+        ? consultaDetails.patients[0] 
+        : consultaDetails.patients;
+      const patientAvatar = patientsData?.profile_pic || null;
+      const patientInitials = (consultaDetails.patient_name || 'P')
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      // Renderizar a tela de diagnóstico completa com botão flutuante e sidebar de chat
+      return (
+        <div className="consultas-container consultas-details-container anamnese-page-container">
+          <div className="consultation-details-overview-header">
+            <button 
+              className="back-button"
+              onClick={() => {
+                setSelectedSection(null);
+                // Remover o parâmetro section da URL se existir
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('section');
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
+            <h1 className="consultation-details-overview-title">Detalhes da Consulta - Diagnóstico</h1>
+          </div>
+
+          {/* Cards de Informação no Topo */}
+          <div className="consultation-details-cards-row">
+            {/* Card Paciente */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-avatar">
+                {patientAvatar ? (
+                  <Image
+                    src={patientAvatar}
+                    alt={consultaDetails.patient_name}
+                    width={60}
+                    height={60}
+                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="consultation-details-avatar-placeholder">
+                    {patientInitials}
+                  </div>
+                )}
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Paciente</div>
+                <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+                {patientsData?.phone && (
+                  <div className="consultation-details-card-phone">{patientsData.phone}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Card Data/Hora */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Calendar size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Data / Hora</div>
+                <div className="consultation-details-card-value">
+                  {consultaDetails.consulta_inicio 
+                    ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
+                    : formatDateOnly(consultaDetails.created_at)}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Tipo */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <FileText size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Tipo</div>
+                <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+              </div>
+            </div>
+
+            {/* Card Duração */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <Clock size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Duração</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              </div>
+            </div>
+
+            {/* Card Status */}
+            <div className="consultation-details-info-card">
+              <div className="consultation-details-card-icon-wrapper">
+                <User size={20} />
+              </div>
+              <div className="consultation-details-card-content">
+                <div className="consultation-details-card-label">Status</div>
+                <div className="consultation-details-card-value">
+                  <StatusBadge status={mapBackendStatus(consultaDetails.status)} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Conteúdo do Diagnóstico */}
+          <div className="anamnese-content-wrapper">
+            <DiagnosticoSection 
+              consultaId={consultaId}
+              selectedField={selectedField}
+              chatMessages={chatMessages}
+              isTyping={isTyping}
+              chatInput={chatInput}
+              onFieldSelect={handleFieldSelect}
+              onSendMessage={handleSendAIMessage}
+              onChatInputChange={setChatInput}
+            />
+          </div>
+
+          {/* Botão Avançar para Solução */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', borderTop: '1px solid #e5e7eb' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                requestAdvanceConfirmation(
+                  handleSaveDiagnosticoAndContinue,
+                  'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
+                );
+              }}
+              disabled={isSaving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: isSaving ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#059669';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#10b981';
+                }
+              }}
+            >
+              {isSaving ? (
+                <>
+                  <div className="loading-spinner-small"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4" />
+                  {hasSolucaoData() ? 'Avançar para Solução' : 'Gerar Solução'}
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Botão Flutuante de IA */}
+          <button
+            className="ai-float-button"
+            onClick={() => setShowAIChat(!showAIChat)}
+            title="Abrir Assistente de IA"
+          >
+            <Sparkles className="w-6 h-6" />
+          </button>
+
+          {/* Sidebar de Chat com IA */}
+          <div className={`ai-chat-sidebar ${showAIChat ? 'open' : ''}`}>
+            <div className="chat-container">
+              <div className="chat-header">
+                <div>
+                  <h3>Chat com IA - Assistente de Diagnóstico</h3>
+                  {selectedField && (
+                    <p className="chat-field-indicator">
+                      <Sparkles className="w-4 h-4 inline mr-1" />
+                      Editando: <strong>{selectedField.label}</strong>
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="chat-close-button"
+                  onClick={() => setShowAIChat(false)}
+                  title="Fechar chat"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="chat-messages">
+                {!selectedField ? (
+                  <div className="chat-welcome">
+                    <Sparkles className="w-8 h-8" style={{ color: '#1B4266', marginBottom: '12px' }} />
+                    <p>Selecione um campo do diagnóstico para editar com IA</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`chat-message ${msg.role}`}>
+                      <div className="message-content">{msg.content}</div>
+                      <div className="message-time">
+                        {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isTyping && (
+                  <div className="chat-message assistant">
+                    <div className="message-content typing-indicator">
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {selectedField && (
+                <div className="chat-input-container">
+                  <textarea
+                    className="chat-input"
+                    placeholder="Descreva como deseja editar este campo..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendAIMessage();
+                      }
+                    }}
+                    rows={3}
+                  />
+                  <button 
+                    className="chat-send-button"
+                    onClick={handleSendAIMessage}
+                    disabled={!chatInput.trim() || isTyping}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Enviar
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Overlay para fechar o sidebar ao clicar fora */}
+          {showAIChat && (
+            <div className="ai-chat-overlay" onClick={() => setShowAIChat(false)}></div>
+          )}
+
+          {/* Modal de Confirmação de Avanço de Etapa */}
+          {showAdvanceModal && (
+            <div className="modal-overlay" onClick={cancelAdvance}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                    <ArrowRight className="w-6 h-6" />
+                  </div>
+                  <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+                </div>
+                
+                <div className="modal-body">
+                  <p className="modal-text" style={{ marginBottom: '15px' }}>
+                    {advanceMessage}
+                  </p>
+                </div>
+                
+                <div className="modal-footer">
+                  <button 
+                    className="modal-button cancel-button"
+                    onClick={cancelAdvance}
+                    disabled={isSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    className="modal-button"
+                    onClick={confirmAdvance}
+                    disabled={isSaving}
+                    style={{
+                      background: '#10b981',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="loading-spinner-small"></div>
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-4 h-4" />
+                        Avançar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -6935,20 +7514,22 @@ function ConsultasPageContent() {
     
     // Se renderConsultationContent retornar 'ANAMNESE', definir selectedSection como 'ANAMNESE'
     // e retornar null para que o componente re-renderize com a nova tela
-    if (contentType === 'ANAMNESE' && selectedSection !== 'ANAMNESE') {
-      // Usar useEffect para evitar problemas de renderização
-      // Mas como estamos dentro do render, vamos usar um efeito via requestAnimationFrame
-      if (typeof window !== 'undefined') {
-        requestAnimationFrame(() => {
-          setSelectedSection('ANAMNESE');
-        });
+    if (contentType === 'ANAMNESE') {
+      if (selectedSection !== 'ANAMNESE') {
+        // Usar useEffect para evitar problemas de renderização
+        // Mas como estamos dentro do render, vamos usar um efeito via requestAnimationFrame
+        if (typeof window !== 'undefined') {
+          requestAnimationFrame(() => {
+            setSelectedSection('ANAMNESE');
+          });
+        }
+        // Retornar um loading temporário enquanto o estado é atualizado
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+            <div className="loading-spinner"></div>
+          </div>
+        );
       }
-      // Retornar um loading temporário enquanto o estado é atualizado
-      return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-          <div className="loading-spinner"></div>
-        </div>
-      );
     }
 
     // Se for SELECT_SOLUCAO, renderiza a tela de seleção de soluções
@@ -8473,7 +9054,7 @@ function ConsultasPageContent() {
           <button 
             className="back-button"
             onClick={() => {
-              if (selectedSection === 'ANAMNESE') {
+              if (selectedSection && (selectedSection === 'ANAMNESE' || selectedSection === 'DIAGNOSTICO' || selectedSection === 'EXAMES')) {
                 setSelectedSection(null);
               } else {
                 handleBackToList();

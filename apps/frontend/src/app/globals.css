@@ -104,6 +104,8 @@ body {
   min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
+  overflow: visible !important;
+  height: auto !important;
 }
 
 .main-content {
@@ -111,6 +113,9 @@ body {
   margin-left: 0;
   transition: margin-left 0.3s ease;
   padding-left: 120px; /* Espaço para o menu flutuante */
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 .main-content.expanded {
@@ -124,14 +129,18 @@ body {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 .page-content > * {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 /* Header visível normalmente */
