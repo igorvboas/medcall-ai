@@ -6,6 +6,10 @@
   background: transparent;
   height: 100%;
   gap: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Título */
@@ -16,6 +20,10 @@
   margin: 0 0 12px 0;
   padding: 0 25px;
   line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Container do gráfico com legenda */
@@ -25,6 +33,18 @@
   gap: 24px;
   margin-bottom: 20px;
   padding: 0 25px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 1400px) {
+  .chart-with-legend {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
 }
 
 /* Container do donut chart */
@@ -69,9 +89,15 @@
 /* Legenda */
 .status-legend {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 10px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 0;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .legend-item {
@@ -108,11 +134,17 @@
   color: rgba(0, 0, 0, 0.6);
   font-weight: 400;
   line-height: 1.5;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* Filtro por período */
 .period-filter-section {
   margin-bottom: 24px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 25px;
 }
 
 .period-filter-label {
@@ -121,6 +153,10 @@
   color: #000000;
   margin-bottom: 8px;
   font-weight: 400;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .period-select {
@@ -140,6 +176,8 @@
   background-position: right 16px center;
   background-size: 10px 5px;
   padding-right: 36px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .period-select:focus {
@@ -152,6 +190,10 @@
   margin-bottom: 12px;
   padding: 0 25px 4px 25px;
   border-bottom: 1px solid #D9D9D9;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .metric-section:last-of-type,
@@ -165,12 +207,19 @@
   margin-bottom: 4px;
   font-weight: 400;
   line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .metric-value-group {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .metric-value-large {
@@ -242,19 +291,263 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .consultation-status-chart {
-    padding: 16px;
+@media (max-width: 1024px) {
+  .chart-title {
+    padding: 0 16px;
+    font-size: 13px;
   }
   
   .chart-with-legend {
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
+    padding: 0 16px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .donut-chart-container {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .donut-center {
+    width: 65px;
+    height: 65px;
+  }
+  
+  .donut-center-value {
+    font-size: 24px;
   }
   
   .status-legend {
-    padding-top: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .legend-label {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .period-filter-section {
+    padding: 0 16px;
+  }
+  
+  .period-select {
+    max-width: 100%;
+  }
+  
+  .metric-section {
+    padding: 0 16px 4px 16px;
+  }
+  
+  .metric-label {
+    font-size: 12px;
+  }
+  
+  .metric-value-large {
+    font-size: 20px;
+  }
+  
+  .metric-value-small {
+    font-size: 14px;
+  }
+  
+  .progress-bar-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .consultation-status-chart {
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  .chart-title {
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .chart-with-legend {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-bottom: 16px !important;
+    padding: 0 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .donut-chart-container {
+    width: 90px !important;
+    height: 90px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .donut-center {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  .donut-center-value {
+    font-size: 20px !important;
+  }
+  
+  .status-legend {
+    padding-top: 0 !important;
+    width: 100% !important;
+    align-items: flex-start !important;
+    max-width: 100% !important;
+  }
+  
+  .legend-item {
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .legend-label {
+    font-size: 11px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: calc(100% - 20px) !important;
+  }
+  
+  .period-filter-section {
+    padding: 0 12px !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .period-filter-label {
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+    word-break: break-word !important;
+  }
+  
+  .period-select {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 32px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+  
+  .metric-section {
+    padding: 0 12px 8px 12px !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .metric-label {
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+  
+  .metric-value-large {
+    font-size: 18px !important;
+  }
+  
+  .metric-value-small {
+    font-size: 13px !important;
+  }
+  
+  .metric-value-group {
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .change-value {
+    font-size: 10px !important;
+  }
+  
+  .progress-bar-container {
+    max-width: 100% !important;
+    margin-top: 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .divider-line {
+    width: calc(100% - 24px) !important;
+    margin: 10px 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-title {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  
+  .chart-with-legend {
+    padding: 0 8px;
+    gap: 12px;
+  }
+  
+  .donut-chart-container {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .donut-center {
+    width: 55px;
+    height: 55px;
+  }
+  
+  .donut-center-value {
+    font-size: 18px;
+  }
+  
+  .legend-label {
+    font-size: 10px;
+  }
+  
+  .period-filter-section {
+    padding: 0 8px;
+  }
+  
+  .period-filter-label {
+    font-size: 11px;
+  }
+  
+  .period-select {
+    height: 30px;
+    font-size: 12px;
+    padding: 0 12px;
+    padding-right: 30px;
+  }
+  
+  .metric-section {
+    padding: 0 8px 6px 8px;
+  }
+  
+  .metric-label {
+    font-size: 10px;
+  }
+  
+  .metric-value-large {
+    font-size: 16px;
+  }
+  
+  .metric-value-small {
+    font-size: 12px;
+  }
+  
+  .divider-line {
+    width: calc(100% - 16px);
+    margin: 8px;
   }
 }
 

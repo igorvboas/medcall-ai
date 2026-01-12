@@ -18,14 +18,46 @@ export async function GET(request: NextRequest) {
     const doctorAuthId = user.id;
 
     // Buscar médico na tabela medicos usando a FK do auth.users
-    const { data: medico, error: medicoError } = await supabase
-      .from('medicos')
-      .select('id')
-      .eq('user_auth', doctorAuthId)
-      .single();
+    // Retry logic para lidar com timeouts temporários
+    let medico = null;
+    let medicoError = null;
+    const maxRetries = 2;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const result = await supabase
+        .from('medicos')
+        .select('id')
+        .eq('user_auth', doctorAuthId)
+        .single();
+      
+      medico = result.data;
+      medicoError = result.error;
+      
+      // Se sucesso ou erro não relacionado a timeout, parar
+      if (!medicoError || (!medicoError.message?.includes('timeout') && !medicoError.message?.includes('upstream connect error'))) {
+        break;
+      }
+      
+      // Aguardar antes de tentar novamente (apenas se não for a última tentativa)
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
 
     if (medicoError || !medico) {
-      console.error('❌ Médico não encontrado:', medicoError);
+      // Log apenas se não for timeout (para reduzir spam)
+      if (!medicoError?.message?.includes('timeout') && !medicoError?.message?.includes('upstream connect error')) {
+        console.error('❌ Médico não encontrado:', medicoError);
+      }
+      
+      // Retornar erro apropriado baseado no tipo
+      if (medicoError?.message?.includes('timeout') || medicoError?.message?.includes('upstream connect error')) {
+        return NextResponse.json(
+          { error: 'Erro de conexão com o servidor. Tente novamente em alguns instantes.' },
+          { status: 503 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Médico não encontrado no sistema' },
         { status: 404 }
@@ -116,7 +148,19 @@ export async function GET(request: NextRequest) {
     const { data: consultations, error, count } = await query;
 
     if (error) {
-      console.error('Erro ao buscar consultas:', error);
+      // Log apenas se não for timeout (para reduzir spam)
+      if (!error.message?.includes('timeout') && !error.message?.includes('upstream connect error')) {
+        console.error('Erro ao buscar consultas:', error);
+      }
+      
+      // Retornar erro apropriado baseado no tipo
+      if (error.message?.includes('timeout') || error.message?.includes('upstream connect error')) {
+        return NextResponse.json(
+          { error: 'Erro de conexão com o servidor. Tente novamente em alguns instantes.' },
+          { status: 503 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Erro ao buscar consultas' },
         { status: 500 }
