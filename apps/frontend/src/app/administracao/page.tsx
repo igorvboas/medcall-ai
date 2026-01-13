@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import './administracao.css';
 
 interface DashboardData {
@@ -59,8 +60,10 @@ interface DashboardData {
 
 export default function AdministracaoPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [periodo, setPeriodo] = useState('semana');
   const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'TELEMEDICINA' | 'TODAS'>('TODAS');
+  const [filtrarPorClinica, setFiltrarPorClinica] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; content: string }>({
@@ -91,7 +94,7 @@ export default function AdministracaoPage() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [periodo, tipoConsulta, mesAtualCalendario]);
+  }, [periodo, tipoConsulta, mesAtualCalendario, filtrarPorClinica]);
 
   const fetchDashboardData = async () => {
     try {
@@ -102,6 +105,10 @@ export default function AdministracaoPage() {
       }
       // Adicionar mês do calendário para buscar consultas corretas
       params.append('mesCalendario', mesAtualCalendario.toISOString());
+      // Adicionar parâmetro de filtro por clínica
+      if (filtrarPorClinica) {
+        params.append('filtrarPorClinica', 'true');
+      }
       const response = await fetch(`/api/admin/dashboard?${params.toString()}`);
       if (!response.ok) throw new Error('Erro ao buscar dados');
       const data = await response.json();
@@ -273,8 +280,8 @@ export default function AdministracaoPage() {
         <div className="header-filters">
           <div className="clinic-filter">
             <label>Clínica / Unidade</label>
-            <select>
-              <option>Clínica Principal</option>
+            <select disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+              <option>Todas as Clínicas</option>
             </select>
           </div>
           
@@ -305,6 +312,19 @@ export default function AdministracaoPage() {
                 onClick={() => setTipoConsulta('TODAS')}
               >
                 Todas
+              </button>
+            </div>
+          </div>
+
+          <div className="type-filter">
+            <label>Filtro</label>
+            <div className="type-buttons">
+              <button 
+                className={filtrarPorClinica ? 'active' : ''}
+                onClick={() => setFiltrarPorClinica(!filtrarPorClinica)}
+                title="Filtrar apenas médicos da mesma clínica"
+              >
+                Minha Clínica
               </button>
             </div>
           </div>

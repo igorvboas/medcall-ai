@@ -22,8 +22,9 @@ export function Header() {
 
 
   // Extrair dados do usuário diretamente do useAuth
-  const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário';
   const email = user?.email || '';
+  // Usar o nome do médico da tabela medicos quando disponível, caso contrário usar metadata ou email
+  const displayName = medicoData?.name || user?.user_metadata?.name || email?.split('@')[0] || 'Usuário';
 
   // Aguarda a hidratação para evitar erro de mismatch
   useEffect(() => {

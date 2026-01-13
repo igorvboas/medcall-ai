@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     
     const { supabase, user } = authResult;
 
-    // Verificar se é admin
+    // Verificar se é admin e obter dados do médico
     const { data: medico } = await supabase
       .from('medicos')
-      .select('admin')
+      .select('admin, clinica_id')
       .eq('user_auth', user.id)
       .single();
 
@@ -28,6 +28,24 @@ export async function GET(request: NextRequest) {
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
     const tipoConsulta = searchParams.get('tipoConsulta'); // PRESENCIAL, TELEMEDICINA, ou null para todas
+    const filtrarPorClinica = searchParams.get('filtrarPorClinica') === 'true';
+    const clinicaIdFiltro = filtrarPorClinica && medico.clinica_id ? medico.clinica_id : null;
+
+    // Se filtrar por clínica, buscar IDs dos médicos da clínica
+    let medicosIdsDaClinica: string[] | null = null;
+    if (clinicaIdFiltro) {
+      const { data: medicosClinica } = await supabase
+        .from('medicos')
+        .select('id')
+        .eq('clinica_id', clinicaIdFiltro);
+      
+      if (medicosClinica && medicosClinica.length > 0) {
+        medicosIdsDaClinica = medicosClinica.map(m => m.id);
+      } else {
+        // Se não há médicos na clínica, retornar dados vazios
+        medicosIdsDaClinica = [];
+      }
+    }
 
     // Calcular datas baseado no período
     const hoje = new Date();
@@ -66,6 +84,15 @@ export async function GET(request: NextRequest) {
       consultasQuery = consultasQuery.eq('consultation_type', tipoConsulta);
     }
     
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length === 0) {
+        // Se não há médicos na clínica, totalConsultas = 0
+        consultasQuery = consultasQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Filtro impossível
+      } else {
+        consultasQuery = consultasQuery.in('doctor_id', medicosIdsDaClinica);
+      }
+    }
+    
     const { count: totalConsultas } = await consultasQuery;
 
     // Calcular período anterior para comparação (mesma duração, período imediatamente anterior)
@@ -82,6 +109,14 @@ export async function GET(request: NextRequest) {
     
     if (tipoConsulta && tipoConsulta !== 'TODAS') {
       consultasAnterioresQuery = consultasAnterioresQuery.eq('consultation_type', tipoConsulta);
+    }
+    
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length === 0) {
+        consultasAnterioresQuery = consultasAnterioresQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        consultasAnterioresQuery = consultasAnterioresQuery.in('doctor_id', medicosIdsDaClinica);
+      }
     }
     
     const { count: totalConsultasAnterior } = await consultasAnterioresQuery;
@@ -119,6 +154,14 @@ export async function GET(request: NextRequest) {
       duracaoQuery = duracaoQuery.eq('consultation_type', tipoConsulta);
     }
     
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        duracaoQuery = duracaoQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        duracaoQuery = duracaoQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+    
     const { data: consultasComDuracao } = await duracaoQuery;
 
     const duracoes = consultasComDuracao?.map(c => c.duracao || 0) || [];
@@ -138,6 +181,14 @@ export async function GET(request: NextRequest) {
       canceladasQuery = canceladasQuery.eq('consultation_type', tipoConsulta);
     }
     
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        canceladasQuery = canceladasQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        canceladasQuery = canceladasQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+    
     const { count: consultasCanceladas } = await canceladasQuery;
 
     const taxaNoShow = totalConsultas && totalConsultas > 0
@@ -154,6 +205,14 @@ export async function GET(request: NextRequest) {
     
     if (tipoConsulta && tipoConsulta !== 'TODAS') {
       porTipoQuery = porTipoQuery.eq('consultation_type', tipoConsulta);
+    }
+    
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        porTipoQuery = porTipoQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        porTipoQuery = porTipoQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
     }
     
     const { data: consultasPorTipo } = await porTipoQuery;
@@ -187,6 +246,14 @@ export async function GET(request: NextRequest) {
       porMedicoQuery = porMedicoQuery.eq('consultation_type', tipoConsulta);
     }
     
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        porMedicoQuery = porMedicoQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        porMedicoQuery = porMedicoQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+    
     const { data: consultasPorMedico, error: errorPorMedico } = await porMedicoQuery;
 
     if (errorPorMedico) {
@@ -207,7 +274,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 6);
 
     // 7. Consultas ativas (em andamento)
-    const { data: consultasAtivas } = await supabase
+    let consultasAtivasQuery = supabase
       .from('consultations')
       .select(`
         id,
@@ -220,13 +287,29 @@ export async function GET(request: NextRequest) {
       .eq('status', 'RECORDING')
       .order('consulta_inicio', { ascending: false })
       .limit(10);
+    
+    if (medicosIdsDaClinica !== null && medicosIdsDaClinica.length > 0) {
+      consultasAtivasQuery = consultasAtivasQuery.in('doctor_id', medicosIdsDaClinica);
+    }
+    
+    const { data: consultasAtivas } = await consultasAtivasQuery;
 
     // 8. Status das consultas
-    const { data: consultasPorStatus } = await supabase
+    let consultasPorStatusQuery = supabase
       .from('consultations')
       .select('status')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
+    
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        consultasPorStatusQuery = consultasPorStatusQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        consultasPorStatusQuery = consultasPorStatusQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+    
+    const { data: consultasPorStatus } = await consultasPorStatusQuery;
 
     const statusCount: Record<string, number> = {};
     consultasPorStatus?.forEach(c => {
@@ -234,12 +317,22 @@ export async function GET(request: NextRequest) {
     });
 
     // 9. Situação das consultas (por etapa)
-    const { data: consultasPorEtapa } = await supabase
+    let consultasPorEtapaQuery = supabase
       .from('consultations')
       .select('etapa')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
       .not('etapa', 'is', null);
+    
+    if (medicosIdsDaClinica !== null) {
+      if (medicosIdsDaClinica.length > 0) {
+        consultasPorEtapaQuery = consultasPorEtapaQuery.in('doctor_id', medicosIdsDaClinica);
+      } else {
+        consultasPorEtapaQuery = consultasPorEtapaQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+    
+    const { data: consultasPorEtapa } = await consultasPorEtapaQuery;
 
     const etapaCount: Record<string, number> = {};
     consultasPorEtapa?.forEach(c => {
@@ -249,7 +342,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 10. Próximas consultas agendadas
-    const { data: proximasConsultas } = await supabase
+    let proximasConsultasQuery = supabase
       .from('consultations')
       .select(`
         id,
@@ -261,6 +354,12 @@ export async function GET(request: NextRequest) {
       .gte('consulta_inicio', hoje.toISOString())
       .order('consulta_inicio', { ascending: true })
       .limit(10);
+    
+    if (medicosIdsDaClinica !== null && medicosIdsDaClinica.length > 0) {
+      proximasConsultasQuery = proximasConsultasQuery.in('doctor_id', medicosIdsDaClinica);
+    }
+    
+    const { data: proximasConsultas } = await proximasConsultasQuery;
 
     // 11. Consultas para o calendário (busca consultas do mês inteiro para suportar visualização de semana/dia)
     const mesCalendarioParam = searchParams.get('mesCalendario');
@@ -270,7 +369,7 @@ export async function GET(request: NextRequest) {
     const ultimoDiaMes = new Date(dataCalendario.getFullYear(), dataCalendario.getMonth() + 1, 0);
     ultimoDiaMes.setHours(23, 59, 59, 999); // Fim do último dia do mês
     
-    const { data: consultasMes } = await supabase
+    let consultasMesQuery = supabase
       .from('consultations')
       .select(`
         id,
@@ -282,6 +381,12 @@ export async function GET(request: NextRequest) {
       `)
       .gte('consulta_inicio', primeiroDiaMes.toISOString())
       .lte('consulta_inicio', ultimoDiaMes.toISOString());
+    
+    if (medicosIdsDaClinica !== null && medicosIdsDaClinica.length > 0) {
+      consultasMesQuery = consultasMesQuery.in('doctor_id', medicosIdsDaClinica);
+    }
+    
+    const { data: consultasMes } = await consultasMesQuery;
 
     // Agrupar consultas por dia
     const consultasPorDiaCalendario: Record<string, { agendadas: any[]; canceladas: any[] }> = {};

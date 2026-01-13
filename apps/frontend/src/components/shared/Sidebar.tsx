@@ -14,6 +14,7 @@ import {
   LogOut,
   ShieldCheck,
   LayoutDashboard,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -27,15 +28,16 @@ interface SidebarProps {
 const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: FileText, label: 'Nova Consulta', href: '/consulta/nova' },
+  { icon: LayoutDashboard, label: 'Gestão de Clínica', href: '/clinica/gestao' },
   { icon: MessageCircle, label: 'Consultas', href: '/consultas' },
   { icon: Calendar, label: 'Agenda', href: '/agenda' },
   { icon: User, label: 'Pacientes', href: '/pacientes' },
   { icon: Plus, label: 'Cadastrar Paciente', href: '/pacientes/cadastro' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
+  { icon: Building2, label: 'Administração', href: '/administracao' },
 ];
 
 const adminMenuItems = [
-  { icon: LayoutDashboard, label: 'Gestão da Clínica', href: '/clinica/gestao' },
   { icon: ShieldCheck, label: 'Admin Sistema', href: '/consultas-admin' }
 ];
 
