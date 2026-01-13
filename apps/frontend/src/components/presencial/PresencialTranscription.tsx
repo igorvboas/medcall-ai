@@ -34,7 +34,7 @@ export function PresencialTranscription({
     return (
         <div className="presencial-transcription">
             <div className="transcription-header">
-                <h3>Transcrição em Tempo Real (Debug)</h3>
+                <h3>Transcrição em Tempo Real</h3>
                 <span className="transcription-count">{transcriptions.length} mensagens</span>
             </div>
 
@@ -120,6 +120,7 @@ export function PresencialTranscription({
           flex-direction: column;
           gap: 16px;
           background: #FAFBFC;
+          min-height: 0;
         }
         
         .empty-state {

@@ -3833,6 +3833,35 @@ function ExamesSection({
     return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'CREATED':
+        return 'Criada';
+      case 'AGENDAMENTO':
+        return 'Agendada';
+      case 'RECORDING':
+        return 'Gravando';
+      case 'PROCESSING':
+        return 'Processando';
+      case 'VALIDATION':
+        return 'Validação';
+      case 'VALID_ANAMNESE':
+        return 'Anamnese Validada';
+      case 'VALID_DIAGNOSTICO':
+        return 'Diagnóstico Validado';
+      case 'VALID_SOLUCAO':
+        return 'Solução Validada';
+      case 'COMPLETED':
+        return 'Concluída';
+      case 'ERROR':
+        return 'Erro';
+      case 'CANCELLED':
+        return 'Cancelada';
+      default:
+        return status;
+    }
+  };
+
   // Avatar do paciente
   const patientsData = Array.isArray(consultaDetails.patients) 
     ? consultaDetails.patients[0] 
@@ -3934,18 +3963,7 @@ function ExamesSection({
           <div className="consultation-details-card-content">
             <div className="consultation-details-card-label">Status</div>
             <div className="consultation-details-card-value">
-              {(() => {
-                const statusMap: { [key: string]: string } = {
-                  'AGENDAMENTO': 'Agendamento',
-                  'EM_ANDAMENTO': 'Em Andamento',
-                  'PROCESSING': 'Processamento',
-                  'VALIDATION': 'Validação',
-                  'FINALIZADA': 'Finalizada',
-                  'CANCELADA': 'Cancelada',
-                  'RECORDING': 'Gravando'
-                };
-                return statusMap[consultaDetails.status] || consultaDetails.status;
-              })()}
+              {getStatusLabel(consultaDetails.status)}
             </div>
           </div>
         </div>
@@ -4082,6 +4100,35 @@ function ConsultationDetailsOverview({
 
   const mapConsultationType = (type: string) => {
     return type === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial';
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'CREATED':
+        return 'Criada';
+      case 'AGENDAMENTO':
+        return 'Agendada';
+      case 'RECORDING':
+        return 'Gravando';
+      case 'PROCESSING':
+        return 'Processando';
+      case 'VALIDATION':
+        return 'Validação';
+      case 'VALID_ANAMNESE':
+        return 'Anamnese Validada';
+      case 'VALID_DIAGNOSTICO':
+        return 'Diagnóstico Validado';
+      case 'VALID_SOLUCAO':
+        return 'Solução Validada';
+      case 'COMPLETED':
+        return 'Concluída';
+      case 'ERROR':
+        return 'Erro';
+      case 'CANCELLED':
+        return 'Cancelada';
+      default:
+        return status;
+    }
   };
 
   const getPatientAge = () => {
@@ -4233,18 +4280,7 @@ function ConsultationDetailsOverview({
           <div className="consultation-details-card-content">
             <div className="consultation-details-card-label">Status</div>
             <div className="consultation-details-card-value">
-              {(() => {
-                const statusMap: { [key: string]: string } = {
-                  'AGENDAMENTO': 'Agendamento',
-                  'EM_ANDAMENTO': 'Em Andamento',
-                  'PROCESSING': 'Processamento',
-                  'VALIDATION': 'Validação',
-                  'FINALIZADA': 'Finalizada',
-                  'CANCELADA': 'Cancelada',
-                  'RECORDING': 'Gravando'
-                };
-                return statusMap[consultaDetails.status] || consultaDetails.status;
-              })()}
+              {getStatusLabel(consultaDetails.status)}
             </div>
           </div>
         </div>
@@ -6806,7 +6842,7 @@ function ConsultasPageContent() {
                 </div>
               </div>
 
-          {/* Barra de Tabs */}
+          {/* Barra de Tabs com Navegação */}
           <div className="anamnese-tabs-container">
             <div className="anamnese-tabs">
               {[
@@ -6829,8 +6865,94 @@ function ConsultasPageContent() {
                   {tab}
                 </button>
               ))}
-                </div>
-                </div>
+            </div>
+            
+            {/* Botões de Navegação no Topo */}
+            <div className="anamnese-navigation-buttons-top">
+              {activeAnamneseTab !== 'Dados do Paciente' && (
+                <button
+                  className="anamnese-nav-button prev"
+                  onClick={() => {
+                    const tabs = [
+                      'Dados do Paciente',
+                      'Objetivos e Queixas',
+                      'Histórico de Risco',
+                      'Observação Clínica e Laboratorial',
+                      'História de vida',
+                      'Setênios e Eventos',
+                      'Ambiente e Contexto',
+                      'Sensação e Emoções',
+                      'Preocupações e Crenças',
+                      'Reino e Miasma'
+                    ];
+                    const currentIndex = tabs.indexOf(activeAnamneseTab);
+                    if (currentIndex > 0) {
+                      setActiveAnamneseTab(tabs[currentIndex - 1]);
+                    }
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {(() => {
+                    const tabs = [
+                      'Dados do Paciente',
+                      'Objetivos e Queixas',
+                      'Histórico de Risco',
+                      'Observação Clínica e Laboratorial',
+                      'História de vida',
+                      'Setênios e Eventos',
+                      'Ambiente e Contexto',
+                      'Sensação e Emoções',
+                      'Preocupações e Crenças',
+                      'Reino e Miasma'
+                    ];
+                    const currentIndex = tabs.indexOf(activeAnamneseTab);
+                    return currentIndex > 0 ? tabs[currentIndex - 1] : '';
+                  })()}
+                </button>
+              )}
+              {activeAnamneseTab !== 'Reino e Miasma' && (
+                <button
+                  className="anamnese-nav-button next"
+                  onClick={() => {
+                    const tabs = [
+                      'Dados do Paciente',
+                      'Objetivos e Queixas',
+                      'Histórico de Risco',
+                      'Observação Clínica e Laboratorial',
+                      'História de vida',
+                      'Setênios e Eventos',
+                      'Ambiente e Contexto',
+                      'Sensação e Emoções',
+                      'Preocupações e Crenças',
+                      'Reino e Miasma'
+                    ];
+                    const currentIndex = tabs.indexOf(activeAnamneseTab);
+                    if (currentIndex < tabs.length - 1) {
+                      setActiveAnamneseTab(tabs[currentIndex + 1]);
+                    }
+                  }}
+                >
+                  {(() => {
+                    const tabs = [
+                      'Dados do Paciente',
+                      'Objetivos e Queixas',
+                      'Histórico de Risco',
+                      'Observação Clínica e Laboratorial',
+                      'História de vida',
+                      'Setênios e Eventos',
+                      'Ambiente e Contexto',
+                      'Sensação e Emoções',
+                      'Preocupações e Crenças',
+                      'Reino e Miasma'
+                    ];
+                    const currentIndex = tabs.indexOf(activeAnamneseTab);
+                    return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
+                  })()}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Botão Avançar para Diagnóstico - Movido para o topo */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
@@ -6903,91 +7025,6 @@ function ConsultasPageContent() {
             />
             </div>
 
-          {/* Botões de Navegação Inferiores */}
-          <div className="anamnese-navigation-buttons">
-            {activeAnamneseTab !== 'Dados do Paciente' && (
-              <button
-                className="anamnese-nav-button prev"
-                onClick={() => {
-                  const tabs = [
-                    'Dados do Paciente',
-                    'Objetivos e Queixas',
-                    'Histórico de Risco',
-                    'Observação Clínica e Laboratorial',
-                    'História de vida',
-                    'Setênios e Eventos',
-                    'Ambiente e Contexto',
-                    'Sensação e Emoções',
-                    'Preocupações e Crenças',
-                    'Reino e Miasma'
-                  ];
-                  const currentIndex = tabs.indexOf(activeAnamneseTab);
-                  if (currentIndex > 0) {
-                    setActiveAnamneseTab(tabs[currentIndex - 1]);
-                  }
-                }}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {(() => {
-                  const tabs = [
-                    'Dados do Paciente',
-                    'Objetivos e Queixas',
-                    'Histórico de Risco',
-                    'Observação Clínica e Laboratorial',
-                    'História de vida',
-                    'Setênios e Eventos',
-                    'Ambiente e Contexto',
-                    'Sensação e Emoções',
-                    'Preocupações e Crenças',
-                    'Reino e Miasma'
-                  ];
-                  const currentIndex = tabs.indexOf(activeAnamneseTab);
-                  return currentIndex > 0 ? tabs[currentIndex - 1] : '';
-                })()}
-              </button>
-            )}
-            {activeAnamneseTab !== 'Reino e Miasma' && (
-              <button
-                className="anamnese-nav-button next"
-                onClick={() => {
-                  const tabs = [
-                    'Dados do Paciente',
-                    'Objetivos e Queixas',
-                    'Histórico de Risco',
-                    'Observação Clínica e Laboratorial',
-                    'História de vida',
-                    'Setênios e Eventos',
-                    'Ambiente e Contexto',
-                    'Sensação e Emoções',
-                    'Preocupações e Crenças',
-                    'Reino e Miasma'
-                  ];
-                  const currentIndex = tabs.indexOf(activeAnamneseTab);
-                  if (currentIndex < tabs.length - 1) {
-                    setActiveAnamneseTab(tabs[currentIndex + 1]);
-                  }
-                }}
-              >
-                {(() => {
-                  const tabs = [
-                    'Dados do Paciente',
-                    'Objetivos e Queixas',
-                    'Histórico de Risco',
-                    'Observação Clínica e Laboratorial',
-                    'História de vida',
-                    'Setênios e Eventos',
-                    'Ambiente e Contexto',
-                    'Sensação e Emoções',
-                    'Preocupações e Crenças',
-                    'Reino e Miasma'
-                  ];
-                  const currentIndex = tabs.indexOf(activeAnamneseTab);
-                  return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
-                })()}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
 
           {/* Botão Flutuante de IA */}
           <button
@@ -7285,6 +7322,58 @@ function ConsultasPageContent() {
             </div>
           </div>
 
+          {/* Botão Avançar para Solução - Movido para o topo */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                requestAdvanceConfirmation(
+                  handleSaveDiagnosticoAndContinue,
+                  'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
+                );
+              }}
+              disabled={isSaving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: isSaving ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#059669';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSaving) {
+                  e.currentTarget.style.background = '#10b981';
+                }
+              }}
+            >
+              {isSaving ? (
+                <>
+                  <div className="loading-spinner-small"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4" />
+                  {hasSolucaoData() ? 'Avançar para Solução' : 'Gerar Solução'}
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Conteúdo do Diagnóstico */}
           <div className="anamnese-content-wrapper">
             <DiagnosticoSection 
@@ -7298,58 +7387,6 @@ function ConsultasPageContent() {
               onChatInputChange={setChatInput}
             />
           </div>
-
-          {/* Botão Avançar para Solução */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', borderTop: '1px solid #e5e7eb' }}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      requestAdvanceConfirmation(
-                        handleSaveDiagnosticoAndContinue,
-                        'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
-                      );
-                    }}
-                    disabled={isSaving}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: isSaving ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: isSaving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#059669';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSaving) {
-                        e.currentTarget.style.background = '#10b981';
-                      }
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="w-4 h-4" />
-                  {hasSolucaoData() ? 'Avançar para Solução' : 'Gerar Solução'}
-                      </>
-                    )}
-                  </button>
-                </div>
 
           {/* Botão Flutuante de IA */}
           <button

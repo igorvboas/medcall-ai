@@ -4587,7 +4587,7 @@ export function ConsultationRoom({
           {/* Header acima do vídeo */}
           <div className="consultation-header-above-video">
             <span className="consultation-header-text">
-              Consulta Online - {userType === 'doctor' ? 'Médico' : 'Paciente'}
+              Consulta Online
               {' • '}
               <span style={{ fontWeight: '600' }}>{userType === 'doctor' ? (userName || 'Médico') : (patientName || participantName)}</span>
               {' • '}

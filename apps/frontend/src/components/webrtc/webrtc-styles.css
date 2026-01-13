@@ -1698,7 +1698,7 @@
 
 /* Sidebar direita de transcrição */
 .transcription-sidebar {
-  width: 600px;
+  width: 350px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1925,8 +1925,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 66A0px;
-  max-height: calc(100vh - 150px);
+  min-height: 0;
+  max-height: calc(100vh - 200px);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
@@ -2026,20 +2026,328 @@
   color: white;
 }
 
-/* Responsivo */
-@media (max-width: 1024px) {
+/* Responsivo - Tela de Consulta Online */
+@media (max-width: 1400px) {
+  .transcription-sidebar {
+    width: 320px;
+  }
+}
+
+@media (max-width: 1200px) {
   .video-layout {
     flex-direction: column;
+    gap: 12px;
   }
   
-  .video-sidebar {
+  .doctor-patient-sidebar {
     width: 100%;
-    flex-direction: row;
+    max-width: 100%;
+    padding-right: 0;
+    max-height: none;
+    overflow-y: visible;
   }
   
-  .video-local-overlay {
+  .video-container-stacked {
+    width: 100%;
+    min-height: 400px;
+    max-height: 60vh;
+  }
+  
+  .transcription-sidebar {
+    width: 100%;
+    max-width: 100%;
+    min-height: 300px;
+    max-height: 40vh;
+  }
+}
+
+@media (max-width: 1024px) {
+  .consultation-room-container {
+    padding: 8px 12px 12px 12px;
+  }
+  
+  .video-layout {
+    gap: 10px;
+  }
+  
+  .patient-info-card {
+    padding: 12px;
+  }
+  
+  .patient-data-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .patient-data-item {
+    padding: 8px 12px;
+  }
+  
+  .data-value {
+    font-size: 16px;
+  }
+  
+  .patient-action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .video-container-stacked {
+    min-height: 350px;
+    max-height: 55vh;
+  }
+  
+  .video-local-stack {
     width: 200px;
-    height: 130px;
+    height: 120px;
+    top: 12px;
+    right: 12px;
+  }
+  
+  .consultation-header-text {
+    font-size: 12px;
+  }
+  
+  .transcription-sidebar {
+    min-height: 250px;
+    max-height: 35vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .consultation-room-container {
+    padding: 8px 8px 8px 8px;
+  }
+  
+  .video-layout {
+    gap: 8px;
+  }
+  
+  .patient-info-card {
+    padding: 10px;
+  }
+  
+  .patient-avatar-placeholder {
+    width: 35px;
+    height: 35px;
+    font-size: 13px;
+  }
+  
+  .patient-name {
+    font-size: 12px;
+  }
+  
+  .patient-location {
+    font-size: 10px;
+  }
+  
+  .patient-data-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .patient-data-item {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  
+  .data-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .data-label {
+    font-size: 11px;
+  }
+  
+  .data-value {
+    font-size: 14px;
+  }
+  
+  .patient-actions {
+    gap: 8px;
+  }
+  
+  .patient-action-btn {
+    padding: 8px 10px;
+    font-size: 11px;
+    gap: 6px;
+  }
+  
+  .patient-action-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .video-container-stacked {
+    min-height: 300px;
+    max-height: 50vh;
+  }
+  
+  .consultation-header-above-video {
+    padding: 0 8px 4px 8px;
+  }
+  
+  .consultation-header-text {
+    font-size: 11px;
+  }
+  
+  .video-local-stack {
+    width: 150px;
+    height: 100px;
+    top: 8px;
+    right: 8px;
+  }
+  
+  .video-label {
+    font-size: 11px;
+  }
+  
+  .media-controls-stacked {
+    gap: 8px;
+  }
+  
+  .media-btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .media-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .transcription-sidebar {
+    min-height: 200px;
+    max-height: 30vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .consultation-room-container {
+    padding: 4px 4px 4px 4px;
+  }
+  
+  .patient-info-card {
+    padding: 8px;
+  }
+  
+  .patient-avatar-placeholder {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+  
+  .patient-name {
+    font-size: 11px;
+  }
+  
+  .patient-location {
+    font-size: 9px;
+  }
+  
+  .patient-data-item {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  
+  .data-label {
+    font-size: 10px;
+  }
+  
+  .data-value {
+    font-size: 13px;
+  }
+  
+  .patient-action-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
+  
+  .patient-action-btn svg {
+    width: 11px;
+    height: 11px;
+  }
+  
+  .patient-action-btn span {
+    font-size: 10px;
+  }
+  
+  .video-container-stacked {
+    min-height: 250px;
+    max-height: 45vh;
+  }
+  
+  .consultation-header-text {
+    font-size: 10px;
+  }
+  
+  .video-local-stack {
+    width: 120px;
+    height: 80px;
+    top: 6px;
+    right: 6px;
+  }
+  
+  .media-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .media-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .transcription-sidebar {
+    min-height: 180px;
+    max-height: 25vh;
+  }
+}
+
+@media (max-height: 700px) {
+  .video-container-stacked {
+    min-height: 200px;
+    max-height: 40vh;
+  }
+  
+  .transcription-sidebar {
+    min-height: 150px;
+    max-height: 25vh;
+  }
+  
+  .patient-data-grid {
+    gap: 6px;
+  }
+  
+  .patient-data-item {
+    padding: 6px 10px;
+  }
+}
+
+@media (max-height: 600px) {
+  .video-container-stacked {
+    min-height: 180px;
+    max-height: 35vh;
+  }
+  
+  .transcription-sidebar {
+    min-height: 120px;
+    max-height: 20vh;
+  }
+  
+  .patient-info-card {
+    padding: 8px;
+  }
+  
+  .patient-actions {
+    gap: 6px;
+  }
+  
+  .patient-action-btn {
+    padding: 6px 10px;
+    font-size: 11px;
   }
 }
 

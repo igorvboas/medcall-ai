@@ -337,6 +337,46 @@ export default function AgendaPage() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'CREATED':
+        return 'Criada';
+      case 'AGENDAMENTO':
+        return 'Agendada';
+      case 'RECORDING':
+        return 'Gravando';
+      case 'PROCESSING':
+        return 'Processando';
+      case 'VALIDATION':
+        return 'Validação';
+      case 'VALID_ANAMNESE':
+        return 'Anamnese Validada';
+      case 'VALID_DIAGNOSTICO':
+        return 'Diagnóstico Validado';
+      case 'VALID_SOLUCAO':
+        return 'Solução Validada';
+      case 'COMPLETED':
+        return 'Concluída';
+      case 'ERROR':
+        return 'Erro';
+      case 'CANCELLED':
+        return 'Cancelada';
+      default:
+        return status;
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'TELEMEDICINA':
+        return 'Telemedicina';
+      case 'PRESENCIAL':
+        return 'Presencial';
+      default:
+        return type;
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     return type === 'TELEMEDICINA' ? <Video className="event-type-icon" /> : <User className="event-type-icon" />;
   };
@@ -344,6 +384,11 @@ export default function AgendaPage() {
   // Função para entrar na consulta agendada
   const handleEnterConsultation = (consultation: ConsultationEvent) => {
     router.push(`/consulta/nova?agendamento_id=${consultation.id}&patient_id=${consultation.patient_id}&patient_name=${encodeURIComponent(consultation.patient)}&consultation_type=${consultation.type}`);
+  };
+
+  // Função para abrir detalhes da consulta
+  const handleViewConsultation = (consultation: ConsultationEvent) => {
+    router.push(`/consultas?consulta_id=${consultation.id}`);
   };
 
   // Função para abrir modal de edição
@@ -730,7 +775,12 @@ export default function AgendaPage() {
                     {getSelectedDayConsultations()
                       .sort((a, b) => a.time.localeCompare(b.time))
                       .map(consultation => (
-                        <div key={consultation.id} className="consultation-card">
+                        <div 
+                          key={consultation.id} 
+                          className="consultation-card"
+                          onClick={() => handleViewConsultation(consultation)}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className="consultation-header">
                             <div className="consultation-time">
                               <Clock className="time-icon" />
@@ -738,7 +788,7 @@ export default function AgendaPage() {
                             </div>
                             <div className="consultation-header-right">
                               <div className={`consultation-status ${getStatusColor(consultation.status)}`}>
-                                {consultation.status}
+                                {getStatusLabel(consultation.status)}
                               </div>
                               {/* Botões de Editar e Excluir (apenas para agendamentos) */}
                               {consultation.status === 'AGENDAMENTO' && (
@@ -777,7 +827,7 @@ export default function AgendaPage() {
                             </div>
                             <div className="consultation-type">
                               {getTypeIcon(consultation.type)}
-                              {consultation.type}
+                              {getTypeLabel(consultation.type)}
                             </div>
                             <div className="consultation-duration">
                               Duração: {consultation.duration} min

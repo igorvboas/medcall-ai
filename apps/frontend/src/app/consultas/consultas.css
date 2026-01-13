@@ -1652,7 +1652,19 @@
   font-weight: 600;
 }
 
-/* Botões de Navegação Inferiores */
+/* Botões de Navegação no Topo */
+.anamnese-navigation-buttons-top {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Botões de Navegação Inferiores (mantido para compatibilidade se necessário) */
 .anamnese-navigation-buttons {
   display: flex;
   justify-content: space-between;
@@ -2439,19 +2451,21 @@
   gap: 8px;
   box-sizing: border-box;
   min-width: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  position: relative;
 }
 
 .data-field-header .data-label {
   flex: 1;
   margin-bottom: 0;
   min-width: 0;
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 80px);
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
   white-space: normal;
   box-sizing: border-box;
+  padding-right: 8px;
 }
 
 .edit-button-small {
@@ -2486,6 +2500,8 @@
   display: flex;
   gap: 4px;
   align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .ai-button {
@@ -2602,25 +2618,40 @@
 
 .edit-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: 12px;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .save-button,
 .cancel-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.4 !important;
+  min-height: 28px !important;
+  box-sizing: border-box !important;
+}
+
+.save-button svg,
+.cancel-button svg {
+  width: 12px !important;
+  height: 12px !important;
+  flex-shrink: 0;
 }
 
 .save-button::before,
@@ -2899,13 +2930,36 @@
 /* Mobile - Campos editáveis */
 @media (max-width: 768px) {
   .edit-actions {
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .save-button,
   .cancel-button {
-    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 10px;
+    gap: 3px;
+  }
+
+  .save-button svg,
+  .cancel-button svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .save-button,
+  .cancel-button {
     width: 100%;
+    justify-content: center;
   }
 
   .field-actions {

@@ -323,15 +323,34 @@ function PresencialConsultationContent() {
 
       <style jsx>{`
         .presencial-page {
-          min-height: 100vh;
+          height: 100vh;
           background: #EBF3F6;
-          padding: 40px 20px;
+          padding: 8px 20px 12px 20px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
         }
         
         .page-header {
           text-align: center;
           color: #1B4266;
-          margin-bottom: 40px;
+          margin-bottom: 4px;
+          flex-shrink: 0;
+        }
+        
+        .page-header h1 {
+          font-size: 20px;
+          margin: 0 0 2px 0;
+          font-weight: 700;
+          color: #1B4266;
+        }
+        
+        .page-header p {
+          font-size: 13px;
+          color: #5B5B5B;
+          font-weight: 500;
+          margin: 0;
         }
         
         .page-header h1 {
@@ -396,36 +415,52 @@ function PresencialConsultationContent() {
           justify-content: center;
         }
         
+        .consultation-wrapper {
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        
         .consultation-container {
           display: grid;
-          grid-template-columns: 420px 1fr;
-          gap: 24px;
+          grid-template-columns: 380px 1fr;
+          gap: 16px;
           max-width: 1400px;
           margin: 0 auto;
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+          width: 100%;
+          align-items: start;
         }
         
         .consultation-controls {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 12px;
+          min-height: 0;
+          overflow: hidden;
         }
         
         .status-bar {
           background: white;
-          padding: 24px;
+          padding: 16px;
           border-radius: 12px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
           border: 1px solid #E5E7EB;
+          flex-shrink: 0;
         }
         
         .status-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding-bottom: 12px;
+          padding-bottom: 10px;
           border-bottom: 1px solid #F3F4F6;
         }
         
@@ -481,8 +516,11 @@ function PresencialConsultationContent() {
         }
         
         .transcription-panel {
-          height: calc(100vh - 200px);
-          min-height: 600px;
+          height: calc(100vh - 60px);
+          min-height: 700px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
         
         .btn {
@@ -500,9 +538,10 @@ function PresencialConsultationContent() {
         }
         
         .btn-lg {
-          padding: 16px 32px;
-          font-size: 18px;
+          padding: 12px 24px;
+          font-size: 16px;
           width: 100%;
+          flex-shrink: 0;
         }
         
         .btn-primary {
