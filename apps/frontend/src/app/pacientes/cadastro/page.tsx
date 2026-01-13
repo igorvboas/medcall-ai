@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useRouter } from 'next/navigation';
-import { User, FileText, Shield, Calendar, Camera, Loader2, X } from 'lucide-react';
+import { User, FileText, Shield, Calendar, Camera, Loader2, X, Copy, Check, Mail, CheckCircle, Clock } from 'lucide-react';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
@@ -83,6 +83,9 @@ export default function CadastrarPaciente() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [anamneseLink, setAnamneseLink] = useState<string | null>(null);
+  const [anamneseStatus, setAnamneseStatus] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const handleChange = (field: keyof PatientFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -261,12 +264,69 @@ export default function CadastrarPaciente() {
       }
 
       const result = await response.json();
-      showSuccess(result.message || 'Anamnese enviada para o paciente com sucesso!', 'Anamnese Enviada');
+      
+      // Armazenar o link retornado
+      if (result.link) {
+        setAnamneseLink(result.link);
+      }
+      
+      // Buscar status da anamnese
+      if (result.anamnese?.status) {
+        setAnamneseStatus(result.anamnese.status);
+      }
+      
+      showSuccess(
+        result.emailSent 
+          ? 'Anamnese enviada por email com sucesso!'
+          : 'Anamnese criada com sucesso! Use o botão abaixo para copiar o link.',
+        'Anamnese Enviada'
+      );
     } catch (error) {
       console.error('Erro ao enviar anamnese:', error);
       showError(`Erro ao enviar anamnese: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Erro');
     } finally {
       setSendingAnamnese(false);
+    }
+  };
+
+  const handleCopyAnamneseLink = async () => {
+    if (!anamneseLink && !patientId) {
+      showWarning('Nenhum link disponível. Envie a anamnese primeiro.', 'Atenção');
+      return;
+    }
+
+    // Se não tiver link armazenado, gerar baseado no patientId
+    const linkToCopy = anamneseLink || `${window.location.origin}/anamnese-inicial?paciente_id=${patientId}`;
+
+    try {
+      await navigator.clipboard.writeText(linkToCopy);
+      setLinkCopied(true);
+      showSuccess('Link copiado para a área de transferência!', 'Link Copiado');
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      showError('Erro ao copiar link. Tente novamente.', 'Erro');
+    }
+  };
+
+  // Buscar status da anamnese quando patientId estiver disponível
+  const fetchAnamneseStatus = async () => {
+    if (!patientId) return;
+
+    try {
+      const response = await fetch(`/api/anamnese-inicial?patient_id=${patientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.anamnese) {
+          setAnamneseStatus(data.anamnese.status);
+          
+          // Gerar link se anamnese existir
+          const baseUrl = window.location.origin;
+          setAnamneseLink(`${baseUrl}/anamnese-inicial?paciente_id=${patientId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status da anamnese:', error);
     }
   };
 
@@ -364,6 +424,10 @@ export default function CadastrarPaciente() {
       // Salvar ID do paciente para upload de avatar e permitir enviar anamnese
       if (result.patient && result.patient.id) {
         setPatientId(result.patient.id);
+        // Buscar status da anamnese após criar paciente
+        setTimeout(() => {
+          fetchAnamneseStatus();
+        }, 500);
         // Não redireciona imediatamente, permite que o médico envie anamnese se quiser
         showSuccess('Paciente cadastrado com sucesso!', 'Sucesso');
       } else {
@@ -812,6 +876,40 @@ export default function CadastrarPaciente() {
           </div>
         </div>
 
+        {/* Status da Anamnese (se paciente já foi cadastrado) */}
+        {patientId && anamneseStatus && (
+          <div className="form-section" style={{ 
+            backgroundColor: anamneseStatus === 'preenchida' ? '#f0fdf4' : '#fef3c7',
+            border: `1px solid ${anamneseStatus === 'preenchida' ? '#86efac' : '#fcd34d'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ margin: 0, marginBottom: '4px', fontSize: '16px', fontWeight: '600' }}>
+                  Status da Anamnese Inicial
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {anamneseStatus === 'preenchida' ? (
+                    <>
+                      <CheckCircle size={16} />
+                      <span>Anamnese já foi preenchida pelo paciente</span>
+                    </>
+                  ) : anamneseStatus === 'pendente' ? (
+                    <>
+                      <Clock size={16} />
+                      <span>Anamnese pendente - aguardando preenchimento</span>
+                    </>
+                  ) : (
+                    <span>Status: {anamneseStatus}</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Botões de Ação */}
         <div className="form-actions">
           <button
@@ -839,30 +937,57 @@ export default function CadastrarPaciente() {
           </button>
 
           {patientId && (
-            <button
-              type="button"
-              onClick={handleSendAnamnese}
-              className="btn btn-secondary"
-              disabled={sendingAnamnese || isSubmitting}
-              style={{
-                marginLeft: '12px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none'
-              }}
-            >
-              {sendingAnamnese ? (
-                <>
-                  <div className="btn-spinner"></div>
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <FileText size={16} style={{ marginRight: '8px' }} />
-                  Enviar Anamnese Inicial
-                </>
-              )}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleSendAnamnese}
+                className="btn btn-secondary"
+                disabled={sendingAnamnese || isSubmitting}
+                style={{
+                  marginLeft: '12px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none'
+                }}
+              >
+                {sendingAnamnese ? (
+                  <>
+                    <div className="btn-spinner"></div>
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Mail size={16} style={{ marginRight: '8px' }} />
+                    Enviar por Email
+                  </>
+                )}
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleCopyAnamneseLink}
+                className="btn btn-secondary"
+                disabled={isSubmitting}
+                style={{
+                  marginLeft: '12px',
+                  backgroundColor: linkCopied ? '#10b981' : '#6b7280',
+                  color: 'white',
+                  border: 'none'
+                }}
+              >
+                {linkCopied ? (
+                  <>
+                    <Check size={16} style={{ marginRight: '8px' }} />
+                    Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} style={{ marginRight: '8px' }} />
+                    Copiar Link
+                  </>
+                )}
+              </button>
+            </>
           )}
         </div>
       </form>

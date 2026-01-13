@@ -84,12 +84,8 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Estados para upload de foto
+  // Estado para URL da foto do perfil
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(patient?.profile_pic || null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(patient?.profile_pic || null);
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
   useEffect(() => {
@@ -165,34 +161,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
     setIsSubmitting(true);
     
     try {
-      // Se houver imagem selecionada mas ainda não foi feito upload, fazer upload agora
-      let finalProfilePicUrl = profilePicUrl;
-      if (selectedImageFile && !profilePicUrl) {
-        // Fazer upload da imagem antes de criar o paciente
-        const fileExt = selectedImageFile.name.split('.').pop();
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
-        const fileName = `temp_paciente_${timestamp}_${randomString}.${fileExt}`;
-        const filePath = `pacientes/temp/${fileName}`;
-
-        const { error: uploadError, data } = await supabase.storage
-          .from('profile_pics')
-          .upload(filePath, selectedImageFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('profile_pics')
-          .getPublicUrl(filePath);
-
-        finalProfilePicUrl = publicUrl;
-      }
-
       // Limpar campos vazios antes de enviar
       const cleanedData: CreatePatientData = {
         name: formData.name,
@@ -201,7 +169,7 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
             key !== 'name' && value !== '' && value !== undefined && value !== null
           )
         ),
-        profile_pic: finalProfilePicUrl || undefined
+        profile_pic: profilePicUrl || undefined
       } as CreatePatientData;
       
       console.log('📋 Dados do formulário antes do envio:', formData);
@@ -403,125 +371,6 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       </div>
 
       <form onSubmit={handleSubmit} className="form-content">
-        {/* Upload de Imagem - Disponível antes e depois do cadastro */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', position: 'relative' }}>
-          <div 
-            style={{
-              position: 'relative',
-              width: '120px',
-              height: '120px',
-              borderRadius: '50%',
-              overflow: 'hidden',
-              cursor: uploadingImage ? 'wait' : 'pointer',
-              border: '3px solid #e5e7eb',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f9fafb'
-            }}
-            onClick={() => {
-              if (!uploadingImage && !patient?.id) {
-                imageInputRef.current?.click();
-              }
-            }}
-            onMouseEnter={(e) => {
-              if (!uploadingImage && !patient?.id) {
-                e.currentTarget.style.borderColor = '#1B4266';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(27, 66, 102, 0.3)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            {imagePreview || profilePicUrl ? (
-              <>
-                <Image
-                  src={imagePreview || profilePicUrl || ''}
-                  alt="Foto do paciente"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                />
-                {!uploadingImage && !patient?.id && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0,
-                    transition: 'opacity 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
-                  >
-                    <Camera size={24} color="white" />
-                  </div>
-                )}
-                {!uploadingImage && !patient?.id && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveImage();
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      backgroundColor: '#ef4444',
-                      border: 'none',
-                      color: 'white',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
-                    }}
-                    title="Remover imagem"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </>
-            ) : (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                color: '#6b7280'
-              }}>
-                {uploadingImage ? (
-                  <Loader2 size={32} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
-                ) : (
-                  <>
-                    <Camera size={32} />
-                    <span style={{ fontSize: '12px', textAlign: 'center' }}>Adicionar Foto</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          {!patient?.id && (
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/jpg,image/webp"
-              onChange={handleImageSelect}
-              disabled={uploadingImage}
-              style={{ display: 'none' }}
-            />
-          )}
-        </div>
-
         {/* AvatarUpload - apenas quando editando */}
         {patient && patient.id && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>

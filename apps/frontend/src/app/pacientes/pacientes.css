@@ -536,6 +536,10 @@
   min-width: 60px;
 }
 
+.action-btn-table.email {
+  color: #3b82f6;
+}
+
 .action-btn-table.copy {
   color: #22c55e;
 }

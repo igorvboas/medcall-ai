@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNotifications } from '@/components/shared/NotificationSystem';
-import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash, FileText } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar, Grid3X3, List, Link2, Copy, User, Trash, FileText, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { PatientForm } from '@/components/patients/PatientForm';
 import './pacientes.css';
 
@@ -282,16 +282,54 @@ export default function PatientsPage() {
     }
   };
 
-  // Copiar link da anamnese personalizada
+  // Copiar link da anamnese inicial
   const handleCopyAnamneseLink = async (patientId: string) => {
-    const link = `https://funnel.insiderhub.com.br/anamnese-personalizada?paciente_id=${patientId}`;
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/anamnese-inicial?paciente_id=${patientId}`;
     try {
       await navigator.clipboard.writeText(link);
-      // TODO: Adicionar feedback visual de sucesso (toast/notification)
       showSuccess('Link da anamnese copiado para a área de transferência!', 'Link Copiado');
     } catch (err) {
       console.error('Erro ao copiar link:', err);
       showError('Erro ao copiar link. Tente novamente.', 'Erro ao Copiar');
+    }
+  };
+
+  // Enviar anamnese por email
+  const [sendingAnamnese, setSendingAnamnese] = useState<string | null>(null);
+  const handleSendAnamneseEmail = async (patientId: string) => {
+    setSendingAnamnese(patientId);
+    try {
+      const response = await fetch('/api/anamnese-inicial', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patient_id: patientId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao enviar anamnese');
+      }
+
+      const result = await response.json();
+      showSuccess(
+        result.emailSent 
+          ? 'Anamnese enviada por email com sucesso!'
+          : 'Anamnese criada com sucesso!',
+        'Anamnese Enviada'
+      );
+      
+      // Recarregar lista de pacientes para atualizar status
+      fetchPatients(pagination.page, searchTerm, statusFilter, false);
+    } catch (error) {
+      console.error('Erro ao enviar anamnese:', error);
+      showError(`Erro ao enviar anamnese: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'Erro');
+    } finally {
+      setSendingAnamnese(null);
     }
   };
 
@@ -431,9 +469,49 @@ export default function PatientsPage() {
                         </div>
                         <div className="patient-name-badge-container">
                           <div className="patient-name-table">{patient.name}</div>
-                          {patient.status === 'active' && (
-                            <span className="patient-status-badge active">ATIVO</span>
-                          )}
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {patient.status === 'active' && (
+                              <span className="patient-status-badge active">ATIVO</span>
+                            )}
+                            {patient.anamnese?.status ? (
+                              <span 
+                                className="patient-status-badge" 
+                                style={{
+                                  backgroundColor: patient.anamnese.status === 'preenchida' ? '#d1fae5' : '#fef3c7',
+                                  color: patient.anamnese.status === 'preenchida' ? '#065f46' : '#92400e',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                {patient.anamnese.status === 'preenchida' ? (
+                                  <>
+                                    <CheckCircle size={14} />
+                                    <span>Anamnese Preenchida</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Clock size={14} />
+                                    <span>Anamnese Pendente</span>
+                                  </>
+                                )}
+                              </span>
+                            ) : (
+                              <span 
+                                className="patient-status-badge" 
+                                style={{
+                                  backgroundColor: '#f3f4f6',
+                                  color: '#6b7280',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <FileText size={14} />
+                                <span>Anamnese Não Enviada</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -458,15 +536,36 @@ export default function PatientsPage() {
                     <div className="table-cell table-cell-acoes">
                       <div className="patient-actions-table">
                         <button 
+                          className="action-btn-table email"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSendAnamneseEmail(patient.id);
+                          }}
+                          disabled={sendingAnamnese === patient.id}
+                          title="Enviar anamnese por email"
+                        >
+                          {sendingAnamnese === patient.id ? (
+                            <>
+                              <Loader2 size={16} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
+                              <span>Enviando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mail size={16} />
+                              <span>Enviar Email</span>
+                            </>
+                          )}
+                        </button>
+                        <button 
                           className={`action-btn-table copy ${copySuccess === patient.id ? 'success' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCopyAnamneseLink(patient.id);
                           }}
-                          title="Copiar link da anamnese"
+                          title="Copiar link da anamnese inicial"
                         >
                           <Copy size={16} />
-                          <span>Copiar</span>
+                          <span>Copiar Link</span>
                         </button>
                         <button 
                           className="action-btn-table edit"
