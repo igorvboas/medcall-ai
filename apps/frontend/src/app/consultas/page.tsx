@@ -3342,7 +3342,7 @@ function SuplemementacaoSection({
     return (
       <CollapsibleSection title={title} defaultOpen={true}>
         <div className="anamnese-subsection">
-          {items.map((item, index) => (
+              {items.map((item, index) => (
             <div key={index} style={{ marginBottom: '16px' }}>
               <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
                 Item {index + 1}
@@ -3665,10 +3665,10 @@ function AlimentacaoSection({
 
   return (
     <div className="anamnese-sections">
-      {refeicoes.map((refeicao) => {
-        const items = getRefeicaoData(refeicao.key);
-        
-        return (
+          {refeicoes.map((refeicao) => {
+            const items = getRefeicaoData(refeicao.key);
+            
+            return (
           <CollapsibleSection key={refeicao.key} title={refeicao.label} defaultOpen={true}>
             {items.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic', padding: '20px' }}>
@@ -3849,14 +3849,14 @@ function ExamesSection({
     <div className="consultation-details-overview-container">
       {/* Header com botão voltar */}
       <div className="consultation-details-overview-header">
-        <button 
+                              <button
           className="back-button"
           onClick={onBack}
           style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
         >
           <ArrowLeft className="w-5 h-5" />
           Voltar
-        </button>
+                              </button>
         <h1 className="consultation-details-overview-title">Exames</h1>
       </div>
 
@@ -3879,14 +3879,14 @@ function ExamesSection({
                 {patientInitials}
               </div>
             )}
-          </div>
+                </div>
           <div className="consultation-details-card-content">
             <div className="consultation-details-card-label">Paciente</div>
             <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
             {patientsData?.phone && (
               <div className="consultation-details-card-phone">{patientsData.phone}</div>
             )}
-          </div>
+              </div>
         </div>
 
         {/* Card Data/Hora */}
@@ -3901,8 +3901,8 @@ function ExamesSection({
                 ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
                 : formatDateOnly(consultaDetails.created_at)}
             </div>
-          </div>
         </div>
+      </div>
 
         {/* Card Tipo */}
         <div className="consultation-details-info-card">
@@ -3958,8 +3958,8 @@ function ExamesSection({
           patientId={consultaDetails.patient_id}
           consultaStatus={consultaDetails.status}
           consultaEtapa={consultaDetails.etapa}
-        />
-      </div>
+                />
+              </div>
     </div>
   );
 }
@@ -4157,7 +4157,7 @@ function ConsultationDetailsOverview({
           Voltar
         </button>
         <h1 className="consultation-details-overview-title">Detalhes da Consulta</h1>
-      </div>
+              </div>
 
       {/* Cards de informações da consulta no topo */}
       <div className="consultation-details-cards-row">
@@ -4269,7 +4269,7 @@ function ConsultationDetailsOverview({
                 {patientInitials}
               </div>
             )}
-          </div>
+            </div>
 
           {loadingPatientData ? (
             <div className="consultation-details-loading">Carregando dados do paciente...</div>
@@ -4345,7 +4345,7 @@ function ConsultationDetailsOverview({
               <Plus size={18} />
               <span>Anamnese</span>
               <ArrowRight size={18} />
-            </button>
+              </button>
 
             {/* Botão Diagnóstico */}
             <button
@@ -4385,10 +4385,10 @@ function ConsultationDetailsOverview({
               <Plus size={18} />
               <span>Exames</span>
               <ArrowRight size={18} />
-            </button>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }
@@ -5254,7 +5254,7 @@ function ConsultasPageContent() {
       
       // Aguardar um pouco antes de recarregar para garantir que o banco foi atualizado
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       // Recarregar detalhes da consulta
       console.log('🔄 [handleSelectSolucao] Recarregando detalhes da consulta...');
       await fetchConsultaDetails(consultaId);
@@ -5617,25 +5617,25 @@ function ConsultasPageContent() {
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
-      
+
       // Disparar webhook apenas se precisar gerar (não se já existe)
       if (shouldGenerate) {
-        try {
-          const webhookEndpoints = getWebhookEndpoints();
-          const webhookHeaders = getWebhookHeaders();
-          
+      try {
+        const webhookEndpoints = getWebhookEndpoints();
+        const webhookHeaders = getWebhookHeaders();
+        
           await fetch(webhookEndpoints.edicaoLivroDaVida, {
-            method: 'POST',
-            headers: webhookHeaders,
-            body: JSON.stringify({
-              consultaId: consultaDetails.id,
-              medicoId: consultaDetails.doctor_id,
-              pacienteId: consultaDetails.patient_id
-            }),
-          });
-          console.log('✅ Webhook de solução disparado com sucesso');
-        } catch (webhookError) {
-          console.warn('⚠️ Webhook de solução falhou, mas consulta foi atualizada:', webhookError);
+          method: 'POST',
+        headers: webhookHeaders,
+        body: JSON.stringify({
+            consultaId: consultaDetails.id,
+            medicoId: consultaDetails.doctor_id,
+            pacienteId: consultaDetails.patient_id
+          }),
+        });
+        console.log('✅ Webhook de solução disparado com sucesso');
+      } catch (webhookError) {
+        console.warn('⚠️ Webhook de solução falhou, mas consulta foi atualizada:', webhookError);
         }
       }
 
@@ -6236,7 +6236,7 @@ function ConsultasPageContent() {
         />
       );
     }
-
+    
     // Se forceShowSolutionSelection for true, renderizar a tela de seleção de soluções diretamente
     if (forceShowSolutionSelection) {
       // Renderizar a tela de seleção de soluções diretamente, sem depender do renderConsultationContent
@@ -6582,19 +6582,19 @@ function ConsultasPageContent() {
       const contentType = renderConsultationContent();
       if (typeof contentType !== 'string' && contentType !== null) {
         // Se retornou JSX (tela de processamento), renderizar
-        return (
-          <div className="consultas-container consultas-details-container">
-            <div className="consultas-header">
-              <button 
-                className="back-button"
-                onClick={handleBackToList}
-                style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Voltar
-              </button>
+      return (
+        <div className="consultas-container consultas-details-container">
+          <div className="consultas-header">
+            <button 
+              className="back-button"
+              onClick={handleBackToList}
+              style={{ marginRight: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Voltar
+            </button>
               <h1 className="consultas-title">Processando</h1>
-            </div>
+          </div>
             <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
               {contentType}
             </div>
@@ -6724,7 +6724,7 @@ function ConsultasPageContent() {
               Voltar
             </button>
             <h1 className="consultation-details-overview-title">Detalhes da Consulta - Anamnese</h1>
-          </div>
+                </div>
 
           {/* Cards de Informação no Topo */}
           <div className="consultation-details-cards-row">
@@ -6752,60 +6752,60 @@ function ConsultasPageContent() {
                 {patientsData?.phone && (
                   <div className="consultation-details-card-phone">{patientsData.phone}</div>
                 )}
+                </div>
               </div>
-            </div>
 
             {/* Card Data/Hora */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Calendar size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Data / Hora</div>
                 <div className="consultation-details-card-value">
-                  {consultaDetails.consulta_inicio 
+                    {consultaDetails.consulta_inicio 
                     ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
                     : formatDateOnly(consultaDetails.created_at)}
                 </div>
+                </div>
               </div>
-            </div>
 
             {/* Card Tipo */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <FileText size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Tipo</div>
                 <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Duração */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Clock size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
                 <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Status */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <User size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Status</div>
                 <div className="consultation-details-card-value">
                   <StatusBadge status={mapBackendStatus(consultaDetails.status)} />
                 </div>
               </div>
-            </div>
-          </div>
-          
+                </div>
+              </div>
+
           {/* Barra de Tabs */}
           <div className="anamnese-tabs-container">
             <div className="anamnese-tabs">
@@ -6829,8 +6829,8 @@ function ConsultasPageContent() {
                   {tab}
                 </button>
               ))}
-            </div>
-          </div>
+                </div>
+                </div>
 
           {/* Botão Avançar para Diagnóstico - Movido para o topo */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
@@ -6882,7 +6882,7 @@ function ConsultasPageContent() {
                 </>
               )}
             </button>
-          </div>
+              </div>
 
           {/* Conteúdo da Anamnese */}
           <div className="anamnese-content-wrapper">
@@ -6901,7 +6901,7 @@ function ConsultasPageContent() {
               consultaEtapa={consultaDetails?.etapa}
               activeTab={activeAnamneseTab}
             />
-          </div>
+            </div>
 
           {/* Botões de Navegação Inferiores */}
           <div className="anamnese-navigation-buttons">
@@ -7000,8 +7000,8 @@ function ConsultasPageContent() {
 
           {/* Sidebar de Chat com IA */}
           <div className={`ai-chat-sidebar ${showAIChat ? 'open' : ''}`}>
-            <div className="chat-container">
-              <div className="chat-header">
+              <div className="chat-container">
+                <div className="chat-header">
                 <div>
                   <h3>Chat com IA - Assistente de Diagnóstico</h3>
                   {selectedField && (
@@ -7018,33 +7018,33 @@ function ConsultasPageContent() {
                 >
                   <X className="w-5 h-5" />
                 </button>
-              </div>
-              
-              <div className="chat-messages">
-                {!selectedField ? (
+                </div>
+                
+                <div className="chat-messages">
+                  {!selectedField ? (
                   <div className="chat-welcome">
                     <Sparkles className="w-8 h-8" style={{ color: '#1B4266', marginBottom: '12px' }} />
                     <p>Selecione um campo da anamnese para editar com IA</p>
-                  </div>
-                ) : (
+                    </div>
+                  ) : (
                   chatMessages.map((msg, idx) => (
                     <div key={idx} className={`chat-message ${msg.role}`}>
                       <div className="message-content">{msg.content}</div>
                       <div className="message-time">
                         {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
+                          </div>
+                          </div>
                   ))
                 )}
-                {isTyping && (
+                      {isTyping && (
                   <div className="chat-message assistant">
                     <div className="message-content typing-indicator">
                       <span></span><span></span><span></span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
+                          </div>
+                        </div>
+                  )}
+                </div>
+
               {selectedField && (
                 <div className="chat-input-container">
                   <textarea
@@ -7070,8 +7070,8 @@ function ConsultasPageContent() {
                   </button>
                 </div>
               )}
+              </div>
             </div>
-          </div>
 
           {/* Overlay para fechar o sidebar ao clicar fora */}
           {showAIChat && (
@@ -7301,55 +7301,55 @@ function ConsultasPageContent() {
 
           {/* Botão Avançar para Solução */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', borderTop: '1px solid #e5e7eb' }}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                requestAdvanceConfirmation(
-                  handleSaveDiagnosticoAndContinue,
-                  'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
-                );
-              }}
-              disabled={isSaving}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                background: isSaving ? '#9ca3af' : '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: isSaving ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                if (!isSaving) {
-                  e.currentTarget.style.background = '#059669';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSaving) {
-                  e.currentTarget.style.background = '#10b981';
-                }
-              }}
-            >
-              {isSaving ? (
-                <>
-                  <div className="loading-spinner-small"></div>
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="w-4 h-4" />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      requestAdvanceConfirmation(
+                        handleSaveDiagnosticoAndContinue,
+                        'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
+                      );
+                    }}
+                    disabled={isSaving}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 20px',
+                      background: isSaving ? '#9ca3af' : '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: isSaving ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSaving) {
+                        e.currentTarget.style.background = '#059669';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSaving) {
+                        e.currentTarget.style.background = '#10b981';
+                      }
+                    }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="loading-spinner-small"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-4 h-4" />
                   {hasSolucaoData() ? 'Avançar para Solução' : 'Gerar Solução'}
-                </>
-              )}
-            </button>
-          </div>
+                      </>
+                    )}
+                  </button>
+                </div>
 
           {/* Botão Flutuante de IA */}
           <button
@@ -7372,7 +7372,7 @@ function ConsultasPageContent() {
                       Editando: <strong>{selectedField.label}</strong>
                     </p>
                   )}
-                </div>
+                    </div>
                 <button
                   className="chat-close-button"
                   onClick={() => setShowAIChat(false)}
@@ -7380,29 +7380,29 @@ function ConsultasPageContent() {
                 >
                   <X className="w-5 h-5" />
                 </button>
-              </div>
+                </div>
               
               <div className="chat-messages">
                 {!selectedField ? (
                   <div className="chat-welcome">
                     <Sparkles className="w-8 h-8" style={{ color: '#1B4266', marginBottom: '12px' }} />
                     <p>Selecione um campo do diagnóstico para editar com IA</p>
-                  </div>
+              </div>
                 ) : (
                   chatMessages.map((msg, idx) => (
                     <div key={idx} className={`chat-message ${msg.role}`}>
                       <div className="message-content">{msg.content}</div>
                       <div className="message-time">
                         {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
+            </div>
+          </div>
                   ))
                 )}
                 {isTyping && (
                   <div className="chat-message assistant">
                     <div className="message-content typing-indicator">
                       <span></span><span></span><span></span>
-                    </div>
+        </div>
                   </div>
                 )}
               </div>
@@ -7441,58 +7441,58 @@ function ConsultasPageContent() {
           )}
 
           {/* Modal de Confirmação de Avanço de Etapa */}
-          {showAdvanceModal && (
-            <div className="modal-overlay" onClick={cancelAdvance}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                <div className="modal-header">
-                  <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
-                    <ArrowRight className="w-6 h-6" />
-                  </div>
-                  <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+        {showAdvanceModal && (
+          <div className="modal-overlay" onClick={cancelAdvance}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <div className="modal-icon" style={{ background: '#10b981', color: 'white' }}>
+                  <ArrowRight className="w-6 h-6" />
                 </div>
-                
-                <div className="modal-body">
-                  <p className="modal-text" style={{ marginBottom: '15px' }}>
-                    {advanceMessage}
-                  </p>
-                </div>
-                
-                <div className="modal-footer">
-                  <button 
-                    className="modal-button cancel-button"
-                    onClick={cancelAdvance}
-                    disabled={isSaving}
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    className="modal-button"
-                    onClick={confirmAdvance}
-                    disabled={isSaving}
-                    style={{
-                      background: '#10b981',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="loading-spinner-small"></div>
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="w-4 h-4" />
-                        Avançar
-                      </>
-                    )}
-                  </button>
-                </div>
+                <h3 className="modal-title">Avançar para Próxima Etapa</h3>
+              </div>
+              
+              <div className="modal-body">
+                <p className="modal-text" style={{ marginBottom: '15px' }}>
+                  {advanceMessage}
+                </p>
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="modal-button cancel-button"
+                  onClick={cancelAdvance}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="modal-button"
+                  onClick={confirmAdvance}
+                  disabled={isSaving}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="loading-spinner-small"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      Avançar
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
         </div>
       );
     }
@@ -8394,18 +8394,18 @@ function ConsultasPageContent() {
           {/* Conteúdo principal */}
           <div className="anamnese-content-wrapper">
             <div className="anamnese-sections">
-              <MentalidadeSection 
-                consultaId={consultaId}
-                selectedField={selectedField}
-                chatMessages={chatMessages}
-                isTyping={isTyping}
-                chatInput={chatInput}
-                onFieldSelect={handleFieldSelect}
-                onSendMessage={handleSendAIMessage}
-                onChatInputChange={setChatInput}
-              />
-            </div>
-          </div>
+                  <MentalidadeSection 
+                    consultaId={consultaId}
+                    selectedField={selectedField}
+                    chatMessages={chatMessages}
+                    isTyping={isTyping}
+                    chatInput={chatInput}
+                    onFieldSelect={handleFieldSelect}
+                    onSendMessage={handleSendAIMessage}
+                    onChatInputChange={setChatInput}
+                  />
+                </div>
+              </div>
 
           {/* Botão Flutuante de IA */}
           <button
@@ -8428,7 +8428,7 @@ function ConsultasPageContent() {
                       Editando: <strong>{selectedField.label}</strong>
                     </p>
                   )}
-                </div>
+            </div>
                 <button
                   className="chat-close-button"
                   onClick={() => setShowAIChat(false)}
@@ -8510,55 +8510,55 @@ function ConsultasPageContent() {
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <User size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Paciente</div>
                 <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Data/Hora */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Calendar size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Data / Hora</div>
                 <div className="consultation-details-card-value">
-                  {consultaDetails.consulta_inicio 
+                    {consultaDetails.consulta_inicio 
                     ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
                     : formatDateOnly(consultaDetails.created_at)}
                 </div>
+                </div>
               </div>
-            </div>
 
             {/* Card Tipo */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <FileText size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Tipo</div>
                 <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Duração */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Clock size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
                 <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Status */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <User size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Status</div>
                 <div className="consultation-details-card-value">
@@ -8696,36 +8696,36 @@ function ConsultasPageContent() {
             </div>
 
             <div className="anamnese-content">
-              {loadingAtividadeFisica ? (
-                <div className="loading-container">
-                  <div className="loading-spinner"></div>
-                  <p>Carregando exercícios físicos...</p>
-                </div>
-              ) : (
-                <div className="atividade-fisica-container">
+            {loadingAtividadeFisica ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Carregando exercícios físicos...</p>
+              </div>
+            ) : (
+              <div className="atividade-fisica-container">
                   <div className="anamnese-sections">
-                  {atividadeFisicaData.length === 0 ? (
+                {atividadeFisicaData.length === 0 ? (
                     <div className="no-data" style={{ padding: '40px', width: '100%' }}>
-                      <FileText className="w-16 h-16" style={{ color: '#6366f1', marginBottom: '20px' }} />
-                      <h3>Nenhum exercício encontrado</h3>
-                      <p>Não há exercícios físicos cadastrados para este paciente.</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Agrupar exercícios por nome_treino */}
-                      {Object.entries(
-                        atividadeFisicaData.reduce((acc, exercicio) => {
-                          const treino = exercicio.nome_treino || 'Treino Sem Nome';
-                          if (!acc[treino]) {
-                            acc[treino] = [];
-                          }
-                          acc[treino].push(exercicio);
-                          return acc;
-                        }, {} as Record<string, ExercicioFisico[]>)
-                      ).map(([nomeTreino, exercicios]: [string, ExercicioFisico[]]) => (
+                    <FileText className="w-16 h-16" style={{ color: '#6366f1', marginBottom: '20px' }} />
+                    <h3>Nenhum exercício encontrado</h3>
+                    <p>Não há exercícios físicos cadastrados para este paciente.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Agrupar exercícios por nome_treino */}
+                    {Object.entries(
+                      atividadeFisicaData.reduce((acc, exercicio) => {
+                        const treino = exercicio.nome_treino || 'Treino Sem Nome';
+                        if (!acc[treino]) {
+                          acc[treino] = [];
+                        }
+                        acc[treino].push(exercicio);
+                        return acc;
+                      }, {} as Record<string, ExercicioFisico[]>)
+                    ).map(([nomeTreino, exercicios]: [string, ExercicioFisico[]]) => (
                         <CollapsibleSection key={nomeTreino} title={nomeTreino} defaultOpen={true}>
                           <div className="anamnese-subsection">
-                            {exercicios.map((exercicio: ExercicioFisico) => (
+                              {exercicios.map((exercicio: ExercicioFisico) => (
                               <div key={exercicio.id} style={{ marginBottom: '16px' }}>
                                 <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
                                   {exercicio.nome_exercicio || 'Exercício Sem Nome'}
@@ -8841,17 +8841,17 @@ function ConsultasPageContent() {
                                     }} 
                                     onAIEdit={() => {}} 
                                   />
-                                </div>
-                              </div>
-                            ))}
+                        </div>
+                      </div>
+                    ))}
                           </div>
                         </CollapsibleSection>
                       ))}
-                    </>
-                  )}
+                  </>
+                )}
                   </div>
-                </div>
-              )}
+              </div>
+            )}
             </div>
           </div>
         </div>
@@ -8881,55 +8881,55 @@ function ConsultasPageContent() {
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <User size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Paciente</div>
                 <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Data/Hora */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Calendar size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Data / Hora</div>
                 <div className="consultation-details-card-value">
-                  {consultaDetails.consulta_inicio 
+                    {consultaDetails.consulta_inicio 
                     ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
                     : formatDateOnly(consultaDetails.created_at)}
                 </div>
+                </div>
               </div>
-            </div>
 
             {/* Card Tipo */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <FileText size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Tipo</div>
                 <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Duração */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <Clock size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
                 <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                </div>
               </div>
-            </div>
 
             {/* Card Status */}
             <div className="consultation-details-info-card">
               <div className="consultation-details-card-icon-wrapper">
                 <User size={20} />
-              </div>
+                </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Status</div>
                 <div className="consultation-details-card-value">
@@ -9074,55 +9074,55 @@ function ConsultasPageContent() {
           <div className="consultation-details-info-card">
             <div className="consultation-details-card-icon-wrapper">
               <User size={20} />
-            </div>
+              </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Paciente</div>
               <div className="consultation-details-card-value" style={{ fontWeight: 700 }}>{consultaDetails.patient_name}</div>
+              </div>
             </div>
-          </div>
 
           {/* Card Data/Hora */}
           <div className="consultation-details-info-card">
             <div className="consultation-details-card-icon-wrapper">
               <Calendar size={20} />
-            </div>
+              </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Data / Hora</div>
               <div className="consultation-details-card-value">
-                {consultaDetails.consulta_inicio 
+                  {consultaDetails.consulta_inicio 
                   ? `${formatDateOnly(consultaDetails.consulta_inicio)}, ${formatTime(consultaDetails.consulta_inicio)}`
                   : formatDateOnly(consultaDetails.created_at)}
               </div>
+              </div>
             </div>
-          </div>
 
           {/* Card Tipo */}
           <div className="consultation-details-info-card">
             <div className="consultation-details-card-icon-wrapper">
               <FileText size={20} />
-            </div>
+              </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Tipo</div>
               <div className="consultation-details-card-value">{mapConsultationType(consultaDetails.consultation_type)}</div>
+              </div>
             </div>
-          </div>
 
           {/* Card Duração */}
           <div className="consultation-details-info-card">
             <div className="consultation-details-card-icon-wrapper">
               <Clock size={20} />
-            </div>
+              </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Duração</div>
               <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              </div>
             </div>
-          </div>
 
           {/* Card Status */}
           <div className="consultation-details-info-card">
             <div className="consultation-details-card-icon-wrapper">
               <User size={20} />
-            </div>
+              </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Status</div>
               <div className="consultation-details-card-value">
@@ -9648,9 +9648,9 @@ function ConsultasPageContent() {
                         >
                           {consultation.patient_name}
                         </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   <div className="table-row-divider"></div>
                   <div className="table-cell date-cell">
                     {formatDate(consultation.created_at)}

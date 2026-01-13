@@ -66,7 +66,7 @@ export function CreateConsultationRoom({
   const [isFromAgendamento, setIsFromAgendamento] = useState(false);
   
   // Estado para tipo de retorno (Novo/Retorno)
-  const [patientReturnType, setPatientReturnType] = useState<'novo' | 'retorno'>('retorno');
+  const [patientReturnType, setPatientReturnType] = useState<'novo' | 'retorno'>('novo');
   
   // Estados para captura de áudio em tempo real
   const [audioLevel, setAudioLevel] = useState(0);
@@ -678,10 +678,10 @@ export function CreateConsultationRoom({
                 </h2>
                 <div className="sala-consulta-patient-badges">
                   <button className="sala-consulta-badge-btn sala-consulta-badge-retorno">
-                    Retorno
+                    {patientReturnType === 'novo' ? 'Novo' : 'Retorno'}
                   </button>
                   <button className="sala-consulta-badge-btn sala-consulta-badge-online">
-                    Online
+                    {consultationType === 'online' ? 'Online' : 'Presencial'}
                   </button>
                 </div>
               </div>

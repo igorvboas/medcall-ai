@@ -133,8 +133,8 @@
   grid-column: span 12 / span 12 !important; /* Mobile: full width */
 }
 
-/* Desktop (lg+) - 1024px+ */
-@media (min-width: 1024px) {
+/* Desktop (xl+) - 1280px+ - Aumentado para evitar corte do calendário */
+@media (min-width: 1280px) {
   .dashboard-col-span-3 {
     grid-column: span 3 / span 3 !important;
   }
@@ -941,24 +941,27 @@ input[type="month"].year-select:focus {
 .calendar-content {
   padding: 0;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 .dashboard-calendar {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 /* Ajustes específicos para o calendário no dashboard */
 .calendar-card {
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
 }
 
 .calendar-card .calendar-container {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 .calendar-card .calendar-month-title {
@@ -1212,6 +1215,41 @@ input[type="month"].year-select:focus {
   .bar-3d::after {
     top: -6px;
     height: 6px;
+  }
+  
+  /* Calendário em mobile */
+  .calendar-card .calendar-cell {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .calendar-card .calendar-day-name {
+    width: 32px !important;
+    font-size: 11px !important;
+  }
+  
+  .calendar-card .calendar-cell-number {
+    font-size: 12px !important;
+  }
+  
+  .calendar-card .calendar-month-title {
+    font-size: 18px !important;
+  }
+  
+  /* Tabela de consultas em mobile - permitir scroll horizontal */
+  .consultations-table.card-dark {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+  
+  .consultations-header {
+    min-width: 700px;
+    grid-template-columns: 80px 150px 2px 80px 2px 70px 2px 70px 2px 120px !important;
+  }
+  
+  .consultation-row {
+    min-width: 700px;
+    grid-template-columns: 200px 2px 80px 2px 70px 2px 70px 2px 120px !important;
   }
   
   .bar-value {

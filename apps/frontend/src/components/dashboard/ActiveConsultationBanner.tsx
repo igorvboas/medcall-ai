@@ -33,6 +33,8 @@ export function ActiveConsultationBanner() {
   // Ref para armazenar IDs dos intervalos
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const fastIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref para armazenar a consulta ativa atual (evita problemas com closures)
+  const activeConsultationRef = useRef<ActiveConsultation | null>(null);
 
   useEffect(() => {
     pollingActiveRef.current = true;
@@ -78,7 +80,11 @@ export function ActiveConsultationBanner() {
     }
 
     try {
-      setLoading(true);
+      // ✅ Só definir loading como true na primeira verificação
+      if (!activeConsultationRef.current) {
+        setLoading(true);
+      }
+      
       // Buscar apenas consultas com status RECORDING (sala aberta/gravando)
       const response = await fetch('/api/consultations?status=RECORDING&limit=10');
       
@@ -89,11 +95,17 @@ export function ActiveConsultationBanner() {
         if (intervalRef.current) clearInterval(intervalRef.current);
         if (fastIntervalRef.current) clearInterval(fastIntervalRef.current);
         setActiveConsultation(null);
+        setLoading(false);
         return;
       }
       
       if (!response.ok) {
-        setActiveConsultation(null);
+        // ✅ Se já existe consulta ativa, não remover em caso de erro temporário
+        if (!activeConsultationRef.current) {
+          activeConsultationRef.current = null;
+          setActiveConsultation(null);
+        }
+        setLoading(false);
         return;
       }
 
@@ -105,13 +117,27 @@ export function ActiveConsultationBanner() {
       );
 
       if (active) {
-        setActiveConsultation(active);
+        // ✅ Só atualizar se for uma consulta diferente (mudança de ID)
+        if (!activeConsultationRef.current || activeConsultationRef.current.id !== active.id) {
+          activeConsultationRef.current = active;
+          setActiveConsultation(active);
+        }
+        // Se for a mesma consulta, não atualizar o estado (evita re-render desnecessário)
       } else {
-        setActiveConsultation(null);
+        // ✅ Só remover se realmente não houver consulta ativa
+        // Isso evita que o banner desapareça temporariamente durante o polling
+        if (!activeConsultationRef.current) {
+          activeConsultationRef.current = null;
+          setActiveConsultation(null);
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar consulta em andamento:', error);
-      setActiveConsultation(null);
+      // ✅ Em caso de erro, só remover se não houver consulta ativa já carregada
+      if (!activeConsultationRef.current) {
+        activeConsultationRef.current = null;
+        setActiveConsultation(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -190,6 +216,7 @@ export function ActiveConsultationBanner() {
       }
 
       // Remover o banner
+      activeConsultationRef.current = null;
       setActiveConsultation(null);
       
       // Recarregar a página para atualizar o dashboard
@@ -202,6 +229,7 @@ export function ActiveConsultationBanner() {
   };
 
   const handleDismiss = () => {
+    activeConsultationRef.current = null;
     setActiveConsultation(null);
   };
 

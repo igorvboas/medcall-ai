@@ -110,7 +110,7 @@
   width: 100%;
   max-width: 1327px; /* 409px * 3 + 30px * 2 (gaps) */
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   box-sizing: border-box;
   align-items: stretch;
 }
@@ -3359,6 +3359,7 @@
   width: 100%;
   max-width: 1288px;
   margin-bottom: 24px;
+  align-self: flex-start;
 }
 
 .sala-consulta-title {
@@ -3369,21 +3370,19 @@
 }
 
 .btn-voltar-consulta {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 6px;
+  padding: 6px 12px;
   background: transparent;
   border: 0.66px solid #939393;
   border-radius: 3.96px;
   color: #939393;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   margin-bottom: 32px;
   align-self: flex-start;
-  max-width: 1288px;
-  width: 100%;
   transition: all 0.2s ease;
 }
 
@@ -3719,5 +3718,104 @@
   .sala-consulta-patient-badges {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+/* Responsividade para Nova Consulta */
+@media (max-width: 1400px) {
+  .consultation-cards-container {
+    gap: 20px;
+    padding: 0 16px;
+  }
+  
+  .consultation-card {
+    width: calc(50% - 10px) !important;
+    min-width: 300px;
+    max-width: 409px;
+    height: auto !important;
+    min-height: 431px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .create-consultation-container {
+    padding: 16px 16px 60px 16px;
+  }
+  
+  .nova-consulta-header {
+    padding: 0 16px;
+    margin-bottom: 24px;
+  }
+  
+  .nova-consulta-title {
+    font-size: 24px;
+  }
+  
+  .consultation-cards-container {
+    gap: 16px;
+    padding: 0 16px;
+    max-width: 100%;
+  }
+  
+  .consultation-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: auto;
+    padding: 24px 32px 32px 32px;
+  }
+  
+  .form-select-figma {
+    max-width: 100% !important;
+  }
+  
+  .help-text {
+    max-width: 100% !important;
+  }
+  
+  .retorno-select {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .create-consultation-container {
+    padding: 12px 12px 60px 12px;
+  }
+  
+  .nova-consulta-header {
+    padding: 0 12px;
+    margin-bottom: 20px;
+  }
+  
+  .nova-consulta-title {
+    font-size: 20px;
+  }
+  
+  .consultation-cards-container {
+    gap: 12px;
+    padding: 0 12px;
+    margin-bottom: 20px;
+  }
+  
+  .consultation-card {
+    padding: 20px 24px 24px 24px;
+  }
+  
+  .patient-photo,
+  .patient-photo-placeholder {
+    width: 120px !important;
+    height: 120px !important;
+    font-size: 36px !important;
+  }
+  
+  .card-title {
+    font-size: 14px;
+  }
+  
+  .form-select-figma {
+    font-size: 16px;
+    height: 36px;
   }
 }

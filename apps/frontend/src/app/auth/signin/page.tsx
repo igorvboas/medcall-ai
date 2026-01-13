@@ -85,10 +85,10 @@ export default function SignInPage() {
         <div className="signin-logo-section">
           <div className="signin-logo-wrapper">
             <Image
-              src="/logo-eva.png"
+              src="/logo-auton.png"
               alt="TRIA Logo"
-              width={48}
-              height={48}
+              width={220}
+              height={220}
               className="signin-logo-image"
               priority
             />

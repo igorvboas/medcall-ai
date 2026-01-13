@@ -1,4 +1,4 @@
-/* Sign In Page Styles - Based on Landing Page Design */
+/* Sign In Page Styles - Dashboard Color Palette */
 
 /* Apply Inter font to the entire sign in page */
 .signin-page {
@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  background: #EBF3F6; /* Cor principal do dashboard */
   padding: 1rem;
   overflow: hidden;
   box-sizing: border-box;
@@ -22,8 +22,8 @@
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle at 20% 80%, rgba(230, 195, 168, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(230, 195, 168, 0.06) 0%, transparent 50%);
+    radial-gradient(circle at 20% 80%, rgba(45, 98, 147, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(45, 98, 147, 0.03) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -37,7 +37,7 @@
 /* Logo Section */
 .signin-logo-section {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.1rem;
 }
 
 .signin-logo-wrapper {
@@ -45,12 +45,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .signin-logo-image {
-  width: 48px;
-  height: 48px;
+  width: 220px;
+  height: 220px;
   object-fit: contain;
   filter: none;
 }
@@ -144,8 +144,8 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #E6C3A8 !important;
-  box-shadow: 0 0 0 3px rgba(230, 195, 168, 0.1);
+  border-color: #2D6293 !important; /* Cor primária do dashboard */
+  box-shadow: 0 0 0 3px rgba(45, 98, 147, 0.1);
   background-color: #ffffff !important;
   color: #111827 !important;
 }
@@ -212,7 +212,7 @@
 }
 
 .password-input:focus {
-  border-color: #E6C3A8 !important;
+  border-color: #2D6293 !important; /* Cor primária do dashboard */
   background-color: #ffffff !important;
   color: #111827 !important;
 }
@@ -252,7 +252,7 @@
 .submit-button {
   width: 100%;
   height: 2.75rem;
-  background: #111827;
+  background: #1B4266; /* Azul escuro da paleta do dashboard */
   color: white;
   border: none;
   border-radius: 8px;
@@ -265,9 +265,9 @@
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #1F2937;
+  background: #153350; /* Tom ainda mais escuro do azul */
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
 }
 
 .submit-button:active:not(:disabled) {
@@ -289,7 +289,7 @@
 .forgot-password-btn {
   font-size: 0.875rem;
   font-weight: 400;
-  color: #E6C3A8;
+  color: #1B4266; /* Azul escuro da paleta do dashboard */
   text-decoration: none;
   transition: all 0.2s ease;
   font-family: inherit;
@@ -297,7 +297,7 @@
 }
 
 .forgot-password-btn:hover {
-  color: #D4B59E;
+  color: #153350; /* Tom ainda mais escuro do azul */
   text-decoration: underline;
 }
 
@@ -385,13 +385,13 @@
 
 .signup-link {
   font-weight: 500;
-  color: #E6C3A8;
+  color: #1B4266; /* Azul escuro da paleta do dashboard */
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .signup-link:hover {
-  color: #D4B59E;
+  color: #153350; /* Tom ainda mais escuro do azul */
   text-decoration: underline;
 }
 
@@ -401,7 +401,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  background: #EBF3F6; /* Cor principal do dashboard */
 }
 
 .loading-content {
@@ -411,8 +411,8 @@
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #E5E7EB;
-  border-top-color: #E6C3A8;
+  border: 3px solid #D6E8F0;
+  border-top-color: #2D6293; /* Cor primária do dashboard */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 1rem;
@@ -440,8 +440,8 @@
   }
   
   .signin-logo-image {
-    width: 40px;
-    height: 40px;
+    width: 100px;
+    height: 100px;
   }
   
   .signin-logo-text {
@@ -480,8 +480,8 @@
   }
   
   .signin-logo-image {
-    width: 36px;
-    height: 36px;
+    width: 80px;
+    height: 80px;
   }
   
   .signin-logo-text {

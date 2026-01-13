@@ -820,13 +820,13 @@ export default function AgendaPage() {
               <div className="summary-item">
                 <span className="summary-label">Concluídas</span>
                 <span className="summary-value">
-                  {consultations.filter(c => c.status === 'CONCLUIDA').length}
+                  {consultations.filter(c => c.status === 'COMPLETED').length}
                 </span>
               </div>
               <div className="summary-item">
                 <span className="summary-label">Agendadas</span>
                 <span className="summary-value">
-                  {consultations.filter(c => c.status === 'AGENDADA').length}
+                  {consultations.filter(c => c.status === 'AGENDAMENTO').length}
                 </span>
               </div>
               <div className="summary-item">
