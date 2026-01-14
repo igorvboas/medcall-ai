@@ -338,8 +338,10 @@ class AIPricingService {
 
     console.log(`[SUPABASE-AI TOKEN] Registrando uso Realtime API:
       - Total Tokens: ${totalTokens}
-      - Input (Text/Audio): ${textIn} / ${audioIn}
-      - Output (Text/Audio): ${textOut} / ${audioOut}
+      - Text In: ${textIn}
+      - Text Out: ${textOut}
+      - Audio In: ${audioIn}
+      - Audio Out: ${audioOut}
       - Cached Tokens: ${cachedTokens}
       - Preço: $${price.toFixed(6)}
       - Consulta ID: ${consultaId || 'N/A'}
