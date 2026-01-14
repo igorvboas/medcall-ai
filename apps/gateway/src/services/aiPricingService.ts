@@ -49,9 +49,14 @@ export interface AIPricingRecord {
   consulta_id?: string;
   LLM: LLMType;
   token: number;          // Total de tokens (mantido para compatibilidade) OU minutos de áudio
-  in_tokens_ia?: number;  // Tokens de entrada (input)
-  out_tokens_ia?: number; // Tokens de saída (output)
+  in_tokens_ia?: number;  // Tokens de entrada (input) - DEPRECATED: usar tokens_text_in + tokens_audio_in
+  out_tokens_ia?: number; // Tokens de saída (output) - DEPRECATED: usar tokens_text_out + tokens_audio_out
   cached_tokens_ia?: number; // Tokens de entrada em cache (desconto de 50%)
+  // ✅ NOVO: Campos granulares para Realtime API
+  tokens_text_in?: number;   // Tokens de texto de entrada
+  tokens_audio_in?: number;  // Tokens de áudio de entrada
+  tokens_text_out?: number;  // Tokens de texto de saída
+  tokens_audio_out?: number; // Tokens de áudio de saída
   price: number;          // Preço calculado em USD
   tester?: boolean;       // Se é ambiente de teste
   etapa: AIStage;         // Etapa onde foi usado
@@ -220,6 +225,11 @@ class AIPricingService {
           in_tokens_ia: record.in_tokens_ia || null,
           out_tokens_ia: record.out_tokens_ia || null,
           cached_tokens_ia: record.cached_tokens_ia || null,
+          // ✅ NOVO: Campos granulares
+          tokens_text_in: record.tokens_text_in || null,
+          tokens_audio_in: record.tokens_audio_in || null,
+          tokens_text_out: record.tokens_text_out || null,
+          tokens_audio_out: record.tokens_audio_out || null,
           price: record.price,
           tester: isTester,
           etapa: record.etapa,
@@ -285,6 +295,7 @@ class AIPricingService {
       textOutputTokens?: number;
       audioInputTokens?: number;
       audioOutputTokens?: number;
+      cachedTokens?: number;
     },
     consultaId?: string
   ): Promise<boolean> {
@@ -296,49 +307,40 @@ class AIPricingService {
     let textOut = 0;
     let audioIn = 0;
     let audioOut = 0;
+    let cachedTokens = 0;
 
-    // Se tiver tokens detalhados, usa o cálculo preciso
-    // Sempre calcula com base nos tokens (default 0)
-    if (true) {
-      textIn = params.textInputTokens || 0;
-      textOut = params.textOutputTokens || 0;
-      audioIn = params.audioInputTokens || 0;
-      audioOut = params.audioOutputTokens || 0;
+    // Extrair valores dos parâmetros
+    textIn = params.textInputTokens || 0;
+    textOut = params.textOutputTokens || 0;
+    audioIn = params.audioInputTokens || 0;
+    audioOut = params.audioOutputTokens || 0;
+    cachedTokens = params.cachedTokens || 0;
 
-      // Calcular preço exato
-      // Importar função do módulo de pricing (precisamos importar no topo do arquivo)
-      // Como não posso adicionar import aqui, vou usar a lógica inline baseada na função calculateRealtimeCost
-      // Mas o ideal é adicionar o import. Vou assumir que vou adicionar o import `calculateRealtimeCost` no topo depois.
-      // Por enquanto, vou replicar a lógica para garantir que funcione sem erros de import imediato, 
-      // ou melhor, vou adicionar o import no topo em um passo separado.
+    // Calcular preço exato usando os preços da Realtime API
+    // Preços por 1M de tokens (USD):
+    // textInput: $2.50/1M, textOutput: $10.00/1M
+    // audioInput: $40.00/1M, audioOutput: $80.00/1M
+    const pricing = {
+      textInput: 2.50,
+      textOutput: 10.00,
+      audioInput: 40.00,
+      audioOutput: 80.00
+    };
 
-      // Cálculo manual temporário (replicando logic do calculateRealtimeCost para evitar erro de import se eu não fizer o replace do topo primeiro)
-      // textInput: $2.50/1M, textOutput: $10.00/1M, audioInput: $40.00/1M, audioOutput: $80.00/1M
-      const pricing = {
-        textInput: 2.50,
-        textOutput: 10.00,
-        audioInput: 40.00,
-        audioOutput: 80.00
-      };
+    price = (textIn / 1_000_000 * pricing.textInput) +
+      (textOut / 1_000_000 * pricing.textOutput) +
+      (audioIn / 1_000_000 * pricing.audioInput) +
+      (audioOut / 1_000_000 * pricing.audioOutput);
 
-      price = (textIn / 1_000_000 * pricing.textInput) +
-        (textOut / 1_000_000 * pricing.textOutput) +
-        (audioIn / 1_000_000 * pricing.audioInput) +
-        (audioOut / 1_000_000 * pricing.audioOutput);
-
-      totalTokens = textIn + textOut + audioIn + audioOut;
-      inputTokens = textIn + audioIn;
-      outputTokens = textOut + audioOut;
-
-    }
-
-    // Fallback removido conforme solicitação. Se não houver tokens, custo será 0.
-    // Opcionalmente, poderíamos logar um warning se totalTokens for 0 e durationMs > 0.
+    totalTokens = textIn + textOut + audioIn + audioOut;
+    inputTokens = textIn + audioIn;
+    outputTokens = textOut + audioOut;
 
     console.log(`[SUPABASE-AI TOKEN] Registrando uso Realtime API:
       - Total Tokens: ${totalTokens}
       - Input (Text/Audio): ${textIn} / ${audioIn}
       - Output (Text/Audio): ${textOut} / ${audioOut}
+      - Cached Tokens: ${cachedTokens}
       - Preço: $${price.toFixed(6)}
       - Consulta ID: ${consultaId || 'N/A'}
     `);
@@ -349,6 +351,12 @@ class AIPricingService {
       token: totalTokens,
       in_tokens_ia: inputTokens,
       out_tokens_ia: outputTokens,
+      cached_tokens_ia: cachedTokens,
+      // ✅ NOVO: Campos granulares
+      tokens_text_in: textIn,
+      tokens_audio_in: audioIn,
+      tokens_text_out: textOut,
+      tokens_audio_out: audioOut,
       price,
       etapa: 'transcricao_realtime',
     });

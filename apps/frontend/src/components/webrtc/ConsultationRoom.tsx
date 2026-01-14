@@ -4187,7 +4187,7 @@ export function ConsultationRoom({
                 <span>{linkCopied ? 'Link Copiado!' : 'Copiar link do Paciente'}</span>
               </button>
 
-              {/* Gravar Consulta */}
+              {/* Gravar Consulta - OCULTO */}
               <button
                 className="patient-action-btn action-btn-primary"
                 onClick={() => {
@@ -4199,6 +4199,7 @@ export function ConsultationRoom({
                 }}
                 disabled={recordingState.isUploading}
                 style={{
+                  display: 'none', // ✅ OCULTO: Funcionalidade não oferecida por enquanto
                   background: recordingState.isRecording ? '#fef2f2' : '#1B4266',
                   color: recordingState.isRecording ? '#dc2626' : 'white',
                   borderColor: recordingState.isRecording ? '#dc2626' : '#1B4266',
@@ -4374,7 +4375,7 @@ export function ConsultationRoom({
               <span>{linkCopied ? 'Link Copiado!' : 'Copiar Link do Paciente'}</span>
             </button>
 
-            {/* Gravar Consulta */}
+            {/* Gravar Consulta - OCULTO */}
             <button
               className="action-btn action-btn-record"
               onClick={() => {
@@ -4386,6 +4387,7 @@ export function ConsultationRoom({
               }}
               disabled={recordingState.isUploading}
               style={{
+                display: 'none', // ✅ OCULTO: Funcionalidade não oferecida por enquanto
                 background: recordingState.isRecording ? '#fef2f2' : 'transparent',
                 color: recordingState.isRecording ? '#dc2626' : '#1B4266',
                 borderColor: recordingState.isRecording ? '#dc2626' : '#1B4266',

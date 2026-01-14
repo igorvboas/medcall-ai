@@ -1274,10 +1274,13 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                 const { aiPricingService } = await import('../services/aiPricingService'); // Import inside async block
                 await aiPricingService.logRealtimeUsage({
                   durationMs: 0, // Duração é irrelevante para log por token
+                  // Nota: Input Tokens incluem TODO o histórico da conversa (contexto),
+                  // por isso os valores podem parecer altos em conversas longas.
                   textInputTokens: usage.input_token_details?.text_tokens || 0,
                   textOutputTokens: usage.output_token_details?.text_tokens || 0,
                   audioInputTokens: usage.input_token_details?.audio_tokens || 0,
-                  audioOutputTokens: usage.output_token_details?.audio_tokens || 0
+                  audioOutputTokens: usage.output_token_details?.audio_tokens || 0,
+                  cachedTokens: usage.input_token_details?.cached_tokens || 0
                 }, consultaId);
               } catch (err) {
                 console.error('Erro ao logar uso realtime por interação:', err);
