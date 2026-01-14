@@ -23,7 +23,7 @@ export async function POST(
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, name')
       .eq('user_auth', doctorAuthId)
       .single();
     
@@ -37,19 +37,39 @@ export async function POST(
     // Pegar dados do body
     const { fieldPath, value } = await request.json();
     
+    if (!fieldPath) {
+      return NextResponse.json(
+        { error: 'fieldPath é obrigatório' },
+        { status: 400 }
+      );
+    }
+    
     console.log('📝 Atualizando campo:', { fieldPath, value });
 
     // Determinar qual tabela e campo atualizar baseado no fieldPath
     const [tableName, fieldName] = fieldPath.split('.');
     
-    // Mapear nomes de tabelas do frontend para backend
+    if (!fieldName) {
+      return NextResponse.json(
+        { error: 'fieldPath inválido - deve ser no formato "tabela.campo"' },
+        { status: 400 }
+      );
+    }
+    
+    // Mapear nomes de tabelas do frontend para backend (aceita com e sem prefixo d_)
     const tableMap: Record<string, string> = {
       'diagnostico_principal': 'd_diagnostico_principal',
+      'd_diagnostico_principal': 'd_diagnostico_principal',
       'estado_geral': 'd_estado_geral',
+      'd_estado_geral': 'd_estado_geral',
       'estado_mental': 'd_estado_mental',
+      'd_estado_mental': 'd_estado_mental',
       'estado_fisiologico': 'd_estado_fisiologico',
+      'd_estado_fisiologico': 'd_estado_fisiologico',
       'integracao_diagnostica': 'd_agente_integracao_diagnostica',
-      'habitos_vida': 'd_agente_habitos_vida_sistemica'
+      'd_agente_integracao_diagnostica': 'd_agente_integracao_diagnostica',
+      'habitos_vida': 'd_agente_habitos_vida_sistemica',
+      'd_agente_habitos_vida_sistemica': 'd_agente_habitos_vida_sistemica'
     };
 
     const actualTableName = tableMap[tableName] || tableName;
@@ -129,8 +149,8 @@ export async function POST(
     await auditTableField({
       request,
       user_id: doctorAuthId,
-      user_email: user.email,
-      user_name: medico?.name,
+      user_email: user.email || '',
+      user_name: medico.name || '',
       consultaId,
       consultation,
       tableName: actualTableName,

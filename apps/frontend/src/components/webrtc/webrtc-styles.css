@@ -1277,21 +1277,24 @@
   min-height: 0;
   max-height: 100%; /* Garantir que não ultrapasse a altura do container */
   padding: 0;
-  align-items: flex-start; /* Alinha no topo para alinhar com sidebar */
+  align-items: stretch; /* Esticar todos os itens para ocupar 100% da altura */
   overflow: hidden; /* Prevenir que o conteúdo ultrapasse */
+  height: 100%; /* Ocupar toda altura disponível */
 }
 
 /* Sidebar lateral esquerda com botões de ação */
 /* Sidebar lateral esquerda com informações do paciente */
 .doctor-patient-sidebar {
-  width: 300px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   background: transparent;
-  padding-right: 16px;
+  padding-right: 8px;
   overflow-y: auto;
   max-height: 100%;
+  height: 100%; /* Ocupar 100% da altura do video-layout */
+  align-self: stretch; /* Esticar para ocupar toda altura */
 }
 
 /* Card de informações do paciente */
@@ -1304,6 +1307,8 @@
   flex-direction: column;
   gap: 6px;
   position: relative;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .patient-avatar-section {
@@ -1356,6 +1361,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .patient-data-item {
@@ -1529,7 +1537,7 @@
 
 /* Container de vídeos empilhados */
 .video-container-stacked {
-  flex: 1;
+  flex: 1 1 70%; /* Vídeo ocupa 70% do espaço */
   position: relative;
   background: transparent;
   border-radius: 3px;
@@ -1543,6 +1551,7 @@
   min-height: 0; /* Permitir que o flex funcione corretamente */
   /* Garantir que o container respeite a altura disponível */
   height: 100%;
+  align-self: stretch; /* Esticar para ocupar toda altura do video-layout */
 }
 
 .video-stack-item {
@@ -1575,6 +1584,7 @@
   z-index: 1; /* Garantir contexto de empilhamento correto */
   /* Garantir que o vídeo não ultrapasse e que os controles fiquem visíveis */
   box-sizing: border-box;
+  align-self: stretch; /* Esticar para ocupar toda altura do container */
 }
 
 /* Header acima do vídeo */
@@ -1632,6 +1642,8 @@
   object-fit: cover;
   position: relative;
   z-index: 1; /* Z-index baixo para ficar abaixo dos controles */
+  flex: 1; /* Ocupar todo espaço disponível */
+  min-height: 0; /* Permitir que o flex funcione */
 }
 
 .video-controls-overlay {
@@ -1698,11 +1710,14 @@
 
 /* Sidebar direita de transcrição */
 .transcription-sidebar {
-  width: 350px;
+  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  flex-shrink: 0; /* Evitar que a transcrição encolha muito */
+  height: 100%; /* Ocupar 100% da altura do video-layout */
+  align-self: stretch; /* Esticar para ocupar toda altura */
 }
 
 .video-main-container {
@@ -1809,6 +1824,8 @@
   object-fit: cover;
   position: relative;
   z-index: 1; /* Z-index baixo para ficar abaixo dos controles */
+  flex: 1; /* Ocupar todo espaço disponível */
+  min-height: 0; /* Permitir que o flex funcione */
 }
 
 .remote-playback-overlay {
@@ -1921,7 +1938,7 @@
 .transcription-box {
   background: #ffffff;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1983,17 +2000,17 @@
 
 .transcription-textarea {
   flex: 1;
-  min-height: 400px;
+  min-height: 300px;
   resize: none;
   background: #ffffff;
   border: 2px solid #e2e8f0;
   color: #2d3748;
-  font-size: 15px;
-  padding: 20px;
+  font-size: 14px;
+  padding: 16px;
   border-radius: 12px;
   font-family: inherit;
   transition: all 0.3s ease;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .transcription-textarea:focus {
@@ -2049,15 +2066,28 @@
   
   .video-container-stacked {
     width: 100%;
-    min-height: 400px;
-    max-height: 60vh;
+    min-height: 450px;
+    max-height: 70vh;
+    flex: 1 1 70%;
   }
   
   .transcription-sidebar {
     width: 100%;
     max-width: 100%;
-    min-height: 300px;
-    max-height: 40vh;
+    min-height: 200px;
+    max-height: 30vh;
+    flex: 1 1 30%;
+  }
+  
+  .transcription-box {
+    max-height: calc(30vh - 20px);
+    min-height: 150px;
+  }
+  
+  .transcription-textarea {
+    min-height: 120px;
+    max-height: calc(30vh - 100px);
+    font-size: 13px;
   }
 }
 
@@ -2179,28 +2209,122 @@
     height: 12px;
   }
   
+  .doctor-patient-sidebar {
+    order: 3;
+    display: none; /* Oculta em telas menores que 768px para dar mais espaço ao vídeo */
+  }
+  
   .video-container-stacked {
-    min-height: 300px;
-    max-height: 50vh;
+    flex: 0 0 65vh !important;
+    min-height: 65vh !important;
+    max-height: 65vh !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    order: 1 !important;
+    position: relative !important;
+  }
+  
+  .video-remote-stack {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  .video-stack-item {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  .video-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+  
+  .video-remote-stack .video-player,
+  .video-stack-item .video-player,
+  .video-remote-stack .video-player-container,
+  .video-stack-item .video-player-container,
+  .video-container-stacked .video-player-container,
+  .video-container-stacked video,
+  .video-remote-stack video,
+  .video-stack-item video,
+  .video-player-container video {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+  }
+  
+  video {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
   }
   
   .consultation-header-above-video {
-    padding: 0 8px 4px 8px;
+    padding: 8px 12px !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0 !important;
   }
   
   .consultation-header-text {
-    font-size: 11px;
+    font-size: 11px !important;
   }
   
   .video-local-stack {
-    width: 150px;
-    height: 100px;
-    top: 8px;
-    right: 8px;
+    width: 120px !important;
+    height: 90px !important;
+    top: 8px !important;
+    right: 8px !important;
+    z-index: 10 !important;
   }
   
   .video-label {
-    font-size: 11px;
+    font-size: 11px !important;
+    top: 8px !important;
+    left: 8px !important;
   }
   
   .media-controls-stacked {
@@ -2217,9 +2341,37 @@
     height: 16px;
   }
   
-  .transcription-sidebar {
-    min-height: 200px;
-    max-height: 30vh;
+  .transcription-sidebar,
+  .video-sidebar.transcription-sidebar {
+    width: 100% !important;
+    flex: 0 0 35vh !important;
+    min-height: 35vh !important;
+    max-height: 35vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    order: 2 !important;
+  }
+  
+  .transcription-box {
+    flex: 1 !important;
+    min-height: 0 !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  
+  .transcription-textarea {
+    flex: 1 !important;
+    min-height: 0 !important;
+    font-size: 12px !important;
+    padding: 8px !important;
+    line-height: 1.4 !important;
+    overflow-y: auto !important;
+    resize: none !important;
+    width: 100% !important;
   }
 }
 
@@ -2275,8 +2427,18 @@
   }
   
   .video-container-stacked {
-    min-height: 250px;
-    max-height: 45vh;
+    min-height: 450px;
+    max-height: 80vh;
+    flex: 1 1 80%;
+    height: 80vh;
+  }
+  
+  .video-player {
+    object-fit: cover !important;
+  }
+  
+  .video-stack-item .video-player {
+    object-fit: cover !important;
   }
   
   .consultation-header-text {
@@ -2301,20 +2463,346 @@
   }
   
   .transcription-sidebar {
-    min-height: 180px;
-    max-height: 25vh;
+    min-height: 120px;
+    max-height: 20vh;
+    flex: 1 1 20%;
+  }
+  
+  .transcription-box {
+    max-height: calc(20vh - 20px);
+    min-height: 80px;
+    padding: 10px;
+  }
+  
+  .transcription-textarea {
+    min-height: 60px;
+    max-height: calc(20vh - 70px);
+    font-size: 11px;
+    padding: 8px;
+    line-height: 1.4;
+  }
+}
+
+/* Media query específica para telas menores que 700px de largura */
+@media (max-width: 700px) {
+  .consultation-room-container {
+    padding: 0 !important;
+    height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  
+  .video-layout {
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    display: flex !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+  }
+  
+  /* Sidebar do paciente - oculta em telas pequenas */
+  .doctor-patient-sidebar {
+    display: none !important;
+  }
+  
+  /* Container do vídeo - ocupa a maior parte da tela */
+  .video-container-stacked {
+    flex: 0 0 65vh !important;
+    min-height: 65vh !important;
+    max-height: 65vh !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    order: 1 !important;
+    position: relative !important;
+  }
+  
+  .consultation-header-above-video {
+    padding: 8px 12px !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .consultation-header-text {
+    font-size: 11px !important;
+  }
+  
+  /* Stack remoto do vídeo */
+  .video-remote-stack {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  .video-stack-item {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  /* Vídeo local - menor em telas pequenas */
+  .video-local-stack {
+    width: 120px !important;
+    height: 90px !important;
+    top: 8px !important;
+    right: 8px !important;
+    z-index: 10 !important;
+  }
+  
+  /* Container do VideoPlayer */
+  .video-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+  
+  /* Player de vídeo - garantir que ocupe todo espaço */
+  .video-remote-stack .video-player,
+  .video-stack-item .video-player,
+  .video-remote-stack .video-player-container,
+  .video-stack-item .video-player-container,
+  .video-container-stacked .video-player-container,
+  .video-container-stacked video,
+  .video-remote-stack video,
+  .video-stack-item video {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+  }
+  
+  /* Classe video-player genérica */
+  .video-player {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+  }
+  
+  /* Elemento video direto dentro do container */
+  .video-player-container video,
+  .video-remote-stack video,
+  .video-stack-item video,
+  .video-container-stacked video {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+  }
+  
+  /* Elemento video genérico */
+  video {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+  }
+  
+  /* Sidebar de transcrição - ocupa o restante */
+  .transcription-sidebar,
+  .video-sidebar.transcription-sidebar {
+    width: 100% !important;
+    flex: 0 0 35vh !important;
+    min-height: 35vh !important;
+    max-height: 35vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    order: 2 !important;
+  }
+  
+  .transcription-box {
+    flex: 1 !important;
+    min-height: 0 !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  
+  .transcription-textarea {
+    flex: 1 !important;
+    min-height: 0 !important;
+    font-size: 12px !important;
+    padding: 8px !important;
+    line-height: 1.4 !important;
+    overflow-y: auto !important;
+    resize: none !important;
+    width: 100% !important;
+  }
+  
+  .transcription-header {
+    margin-bottom: 4px !important;
+    padding: 4px 0 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .transcription-header h6 {
+    font-size: 12px !important;
+  }
+  
+  /* Ajustes para labels */
+  .video-label {
+    font-size: 11px !important;
+    top: 8px !important;
+    left: 8px !important;
+  }
+  
+  /* Controles de mídia */
+  .video-controls-overlay {
+    bottom: 8px !important;
+    padding: 6px 12px !important;
+  }
+  
+  .media-controls-stacked .media-btn {
+    width: 42px !important;
+    height: 42px !important;
+  }
+  
+  .media-controls-stacked .media-btn svg {
+    width: 18px !important;
+    height: 18px !important;
   }
 }
 
 @media (max-height: 700px) {
-  .video-container-stacked {
-    min-height: 200px;
-    max-height: 40vh;
+  .consultation-room-container {
+    padding: 0 !important;
+    height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
   }
   
-  .transcription-sidebar {
-    min-height: 150px;
-    max-height: 25vh;
+  .video-layout {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+  
+  .video-container-stacked {
+    flex: 1 1 70% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+  
+  .video-remote-stack {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+  
+  .video-stack-item {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+  
+  .video-player-container,
+  .video-remote-stack .video-player-container,
+  .video-stack-item .video-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+  
+  .video-player-container video,
+  .video-remote-stack video,
+  .video-stack-item video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+  
+  .transcription-sidebar,
+  .video-sidebar.transcription-sidebar {
+    flex: 1 1 30% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+  
+  .transcription-box {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+  
+  .transcription-textarea {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
   }
   
   .patient-data-grid {
@@ -2327,14 +2815,94 @@
 }
 
 @media (max-height: 600px) {
-  .video-container-stacked {
-    min-height: 180px;
-    max-height: 35vh;
+  .consultation-room-container {
+    padding: 0 !important;
+    height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
   }
   
-  .transcription-sidebar {
-    min-height: 120px;
-    max-height: 20vh;
+  .video-layout {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+  
+  .video-container-stacked {
+    flex: 1 1 60% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+  
+  .video-remote-stack {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+  
+  .video-stack-item {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+  
+  .video-player-container,
+  .video-remote-stack .video-player-container,
+  .video-stack-item .video-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+  
+  .video-player-container video,
+  .video-remote-stack video,
+  .video-stack-item video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+  
+  .video-player {
+    object-fit: cover !important;
+  }
+  
+  .video-stack-item .video-player {
+    object-fit: cover !important;
+  }
+  
+  .transcription-sidebar,
+  .video-sidebar.transcription-sidebar {
+    flex: 1 1 40% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+  
+  .transcription-box {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 8px !important;
+  }
+  
+  .transcription-textarea {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    font-size: 12px !important;
+    padding: 8px !important;
+    line-height: 1.4 !important;
   }
   
   .patient-info-card {
@@ -2348,6 +2916,39 @@
   .patient-action-btn {
     padding: 6px 10px;
     font-size: 11px;
+  }
+}
+
+@media (min-height: 701px) {
+  .patient-info-card {
+    overflow: visible !important;
+  }
+  
+  .patient-data-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+  }
+  
+  .patient-data-item {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  
+  .data-content {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  .data-label,
+  .data-value {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 }
 

@@ -94,13 +94,13 @@ export function VideoPlayer({
     };
 
     return (
-        <div className={`video-player-container ${className}`} onClick={handleClick}>
+        <div className={`video-player-container ${className}`} onClick={handleClick} style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
             <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted={muted}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             />
             {isBlocked && (
                 <div className="video-blocked-overlay">

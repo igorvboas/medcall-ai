@@ -806,7 +806,9 @@ function AnamneseSection({
     if (!activeTab) {
       return true; // Se não há tab ativa, mostrar todas
     }
-    return getSectionTitle(activeTab) === sectionTitle;
+    const mappedTitle = getSectionTitle(activeTab);
+    const shouldShow = mappedTitle === sectionTitle;
+    return shouldShow;
   };
 
   // Mostrar loading apenas no primeiro carregamento
@@ -1525,7 +1527,8 @@ function DiagnosticoSection({
   chatInput,
   onFieldSelect,
   onSendMessage,
-  onChatInputChange
+  onChatInputChange,
+  activeTab
 }: {
   consultaId: string;
   selectedField: { fieldPath: string; label: string } | null;
@@ -1535,6 +1538,7 @@ function DiagnosticoSection({
   onFieldSelect: (fieldPath: string, label: string) => void;
   onSendMessage: () => void;
   onChatInputChange: (value: string) => void;
+  activeTab?: string;
 }) {
   const [diagnosticoData, setDiagnosticoData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -1653,13 +1657,59 @@ function DiagnosticoSection({
   console.log('🔍 DiagnosticoSection - Renderizando componente com dados:', {
     loading,
     hasDiagnosticoData: !!diagnosticoData,
-    diagnosticoDataKeys: diagnosticoData ? Object.keys(diagnosticoData) : []
+    diagnosticoDataKeys: diagnosticoData ? Object.keys(diagnosticoData) : [],
+    diagnostico_principal: !!diagnostico_principal,
+    estado_geral: !!estado_geral,
+    estado_mental: !!estado_mental,
+    estado_fisiologico: !!estado_fisiologico,
+    integracao_diagnostica: !!integracao_diagnostica,
+    habitos_vida: !!habitos_vida
+  });
+
+  // Verificar se há dados em alguma seção
+  const hasAnyData = diagnostico_principal || estado_geral || estado_mental || 
+                     estado_fisiologico || integracao_diagnostica || habitos_vida;
+
+  // Função para mapear nomes de tabs para títulos de seções
+  const getSectionTitle = (tab: string): string => {
+    const map: { [key: string]: string } = {
+      'Diagnóstico Principal': '1. Diagnóstico Principal',
+      'Estado Geral': '2. Estado Geral',
+      'Estado Mental': '3. Estado Mental',
+      'Estado Fisiológico': '4. Estado Fisiológico (Resumo - devido ao volume de campos)',
+      'Integração Diagnóstica': '5. Integração Diagnóstica',
+      'Hábitos de Vida': '6. Hábitos de Vida (Resumo dos 5 Pilares)'
+    };
+    return map[tab] || tab;
+  };
+
+  const shouldShowSection = (sectionTitle: string): boolean => {
+    if (!activeTab) {
+      return true; // Se não há tab ativa, mostrar todas
+    }
+    const mappedTitle = getSectionTitle(activeTab);
+    const shouldShow = mappedTitle === sectionTitle;
+    console.log('🔍 [Diagnóstico] shouldShowSection:', { activeTab, sectionTitle, mappedTitle, shouldShow });
+    return shouldShow;
+  };
+
+  console.log('🔍 [Diagnóstico] Renderizando com:', { 
+    activeTab, 
+    hasAnyData, 
+    loading,
+    diagnostico_principal: !!diagnostico_principal,
+    estado_geral: !!estado_geral,
+    estado_mental: !!estado_mental,
+    estado_fisiologico: !!estado_fisiologico,
+    integracao_diagnostica: !!integracao_diagnostica,
+    habitos_vida: !!habitos_vida
   });
 
   return (
     <div className="anamnese-sections">
       {/* ==================== DIAGNÓSTICO PRINCIPAL ==================== */}
-      <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={true}>
+      {shouldShowSection('1. Diagnóstico Principal') && (
+      <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={activeTab === 'Diagnóstico Principal' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>CID e Diagnósticos</h4>
           <DataField label="CID Principal." value={diagnostico_principal?.cid_principal} fieldPath="d_diagnostico_principal.cid_principal" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -1717,9 +1767,11 @@ function DiagnosticoSection({
           <DataField label="Alertas Críticos" value={diagnostico_principal?.alertas_criticos} fieldPath="d_diagnostico_principal.alertas_criticos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
 
       {/* ==================== ESTADO GERAL ==================== */}
-      <CollapsibleSection title="2. Estado Geral" defaultOpen={false}>
+      {shouldShowSection('2. Estado Geral') && (
+      <CollapsibleSection title="2. Estado Geral" defaultOpen={activeTab === 'Estado Geral' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>Avaliação Global</h4>
           <DataField label="Estado Geral" value={estado_geral?.avaliacao_estado} fieldPath="d_estado_geral.avaliacao_estado" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -1806,9 +1858,11 @@ function DiagnosticoSection({
           <DataField label="Saúde" value={estado_geral?.impacto_saude} fieldPath="d_estado_geral.impacto_saude" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
 
       {/* ====================ESTADO MENTAL ==================== */}
-      <CollapsibleSection title="3. Estado Mental" defaultOpen={false}>
+      {shouldShowSection('3. Estado Mental') && (
+      <CollapsibleSection title="3. Estado Mental" defaultOpen={activeTab === 'Estado Mental' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>Memória</h4>
           <DataField label="Curto Prazo" value={estado_mental?.memoria_curto_prazo} fieldPath="d_estado_mental.memoria_curto_prazo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -1953,9 +2007,11 @@ function DiagnosticoSection({
           <DataField label="Técnicas Complementares" value={estado_mental?.intervencao_tecnicas_complementares} fieldPath="d_estado_mental.intervencao_tecnicas_complementares" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
 
       {/* ==================== ESTADO FISIOLÓGICO ==================== */}
-      <CollapsibleSection title="4. Estado Fisiológico (Resumo - devido ao volume de campos)" defaultOpen={false}>
+      {shouldShowSection('4. Estado Fisiológico (Resumo - devido ao volume de campos)') && (
+      <CollapsibleSection title="4. Estado Fisiológico (Resumo - devido ao volume de campos)" defaultOpen={activeTab === 'Estado Fisiológico' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>Sistema Endócrino - Tireoide</h4>
           <DataField label="Status" value={estado_fisiologico?.end_tireo_status} fieldPath="d_estado_fisiologico.end_tireo_status" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -1998,9 +2054,11 @@ function DiagnosticoSection({
           <DataField label="Média Prioridade (60-90 dias)" value={estado_fisiologico?.exames_media_prioridade_60_90_dias} fieldPath="d_estado_fisiologico.exames_media_prioridade_60_90_dias" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
 
       {/* ==================== INTEGRAÇÃO DIAGNÓSTICA ==================== */}
-      <CollapsibleSection title="5. Integração Diagnóstica" defaultOpen={false}>
+      {shouldShowSection('5. Integração Diagnóstica') && (
+      <CollapsibleSection title="5. Integração Diagnóstica" defaultOpen={activeTab === 'Integração Diagnóstica' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>Diagnóstico Integrado</h4>
           <DataField label="Título do Diagnóstico" value={integracao_diagnostica?.diagnostico_titulo} fieldPath="d_agente_integracao_diagnostica.diagnostico_titulo" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -2076,9 +2134,11 @@ function DiagnosticoSection({
           <DataField label="Nível de Confiança no Diagnóstico" value={integracao_diagnostica?.nivel_confianca_diagnostico} fieldPath="d_agente_integracao_diagnostica.nivel_confianca_diagnostico" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
 
       {/* ==================== HÁBITOS DE VIDA ==================== */}
-      <CollapsibleSection title="6. Hábitos de Vida (Resumo dos 5 Pilares)" defaultOpen={false}>
+      {shouldShowSection('6. Hábitos de Vida (Resumo dos 5 Pilares)') && (
+      <CollapsibleSection title="6. Hábitos de Vida (Resumo dos 5 Pilares)" defaultOpen={activeTab === 'Hábitos de Vida' || !activeTab}>
         <div className="anamnese-subsection">
           <h4>Pilar 1 - Alimentação</h4>
           <DataField label="Status Global" value={habitos_vida?.pilar1_alimentacao_status_global} fieldPath="d_agente_habitos_vida_sistemica.pilar1_alimentacao_status_global" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
@@ -2131,6 +2191,7 @@ function DiagnosticoSection({
           <DataField label="Prioridades de Intervenção" value={habitos_vida?.prioridades_intervencao_habitos} fieldPath="d_agente_habitos_vida_sistemica.prioridades_intervencao_habitos" consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
+      )}
     </div>
   );
 }
@@ -4535,6 +4596,9 @@ function ConsultasPageContent() {
   
   // Estado para controlar a tab ativa na Anamnese
   const [activeAnamneseTab, setActiveAnamneseTab] = useState<string>('Dados do Paciente');
+  
+  // Estado para controlar a tab ativa no Diagnóstico (undefined = mostrar todas)
+  const [activeDiagnosticoTab, setActiveDiagnosticoTab] = useState<string | undefined>(undefined);
 
   // Estado para salvar alterações
   const [isSaving, setIsSaving] = useState(false);
@@ -7374,6 +7438,99 @@ function ConsultasPageContent() {
             </button>
           </div>
 
+          {/* Menu de Tabs do Diagnóstico */}
+          <div className="anamnese-tabs-container">
+            <div className="anamnese-tabs">
+              {[
+                'Diagnóstico Principal',
+                'Estado Geral',
+                'Estado Mental',
+                'Estado Fisiológico',
+                'Integração Diagnóstica',
+                'Hábitos de Vida'
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  className={`anamnese-tab ${activeDiagnosticoTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveDiagnosticoTab(activeDiagnosticoTab === tab ? undefined : tab)}
+                  title={activeDiagnosticoTab === tab ? 'Clique para mostrar todas as seções' : `Clique para ver apenas: ${tab}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            
+            {/* Botões de Navegação no Topo */}
+            <div className="anamnese-navigation-buttons-top">
+              {activeDiagnosticoTab !== 'Diagnóstico Principal' && (
+                <button
+                  className="anamnese-nav-button prev"
+                  onClick={() => {
+                    const tabs = [
+                      'Diagnóstico Principal',
+                      'Estado Geral',
+                      'Estado Mental',
+                      'Estado Fisiológico',
+                      'Integração Diagnóstica',
+                      'Hábitos de Vida'
+                    ];
+                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                    if (currentIndex > 0) {
+                      setActiveDiagnosticoTab(tabs[currentIndex - 1]);
+                    }
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {(() => {
+                    const tabs = [
+                      'Diagnóstico Principal',
+                      'Estado Geral',
+                      'Estado Mental',
+                      'Estado Fisiológico',
+                      'Integração Diagnóstica',
+                      'Hábitos de Vida'
+                    ];
+                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                    return currentIndex > 0 ? tabs[currentIndex - 1] : '';
+                  })()}
+                </button>
+              )}
+              {activeDiagnosticoTab !== 'Hábitos de Vida' && (
+                <button
+                  className="anamnese-nav-button next"
+                  onClick={() => {
+                    const tabs = [
+                      'Diagnóstico Principal',
+                      'Estado Geral',
+                      'Estado Mental',
+                      'Estado Fisiológico',
+                      'Integração Diagnóstica',
+                      'Hábitos de Vida'
+                    ];
+                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                    if (currentIndex < tabs.length - 1) {
+                      setActiveDiagnosticoTab(tabs[currentIndex + 1]);
+                    }
+                  }}
+                >
+                  {(() => {
+                    const tabs = [
+                      'Diagnóstico Principal',
+                      'Estado Geral',
+                      'Estado Mental',
+                      'Estado Fisiológico',
+                      'Integração Diagnóstica',
+                      'Hábitos de Vida'
+                    ];
+                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                    return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
+                  })()}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Conteúdo do Diagnóstico */}
           <div className="anamnese-content-wrapper">
             <DiagnosticoSection 
@@ -7385,6 +7542,7 @@ function ConsultasPageContent() {
               onFieldSelect={handleFieldSelect}
               onSendMessage={handleSendAIMessage}
               onChatInputChange={setChatInput}
+              activeTab={activeDiagnosticoTab}
             />
           </div>
 
@@ -8198,6 +8356,99 @@ function ConsultasPageContent() {
                   </button>
                 </div>
 
+                {/* Menu de Tabs do Diagnóstico */}
+                <div className="anamnese-tabs-container">
+                  <div className="anamnese-tabs">
+                    {[
+                      'Diagnóstico Principal',
+                      'Estado Geral',
+                      'Estado Mental',
+                      'Estado Fisiológico',
+                      'Integração Diagnóstica',
+                      'Hábitos de Vida'
+                    ].map((tab) => (
+                      <button
+                        key={tab}
+                        className={`anamnese-tab ${activeDiagnosticoTab === tab ? 'active' : ''}`}
+                        onClick={() => setActiveDiagnosticoTab(activeDiagnosticoTab === tab ? undefined : tab)}
+                        title={activeDiagnosticoTab === tab ? 'Clique para mostrar todas as seções' : `Clique para ver apenas: ${tab}`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Botões de Navegação no Topo */}
+                  <div className="anamnese-navigation-buttons-top">
+                    {activeDiagnosticoTab !== 'Diagnóstico Principal' && (
+                      <button
+                        className="anamnese-nav-button prev"
+                        onClick={() => {
+                          const tabs = [
+                            'Diagnóstico Principal',
+                            'Estado Geral',
+                            'Estado Mental',
+                            'Estado Fisiológico',
+                            'Integração Diagnóstica',
+                            'Hábitos de Vida'
+                          ];
+                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                          if (currentIndex > 0) {
+                            setActiveDiagnosticoTab(tabs[currentIndex - 1]);
+                          }
+                        }}
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        {(() => {
+                          const tabs = [
+                            'Diagnóstico Principal',
+                            'Estado Geral',
+                            'Estado Mental',
+                            'Estado Fisiológico',
+                            'Integração Diagnóstica',
+                            'Hábitos de Vida'
+                          ];
+                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                          return currentIndex > 0 ? tabs[currentIndex - 1] : '';
+                        })()}
+                      </button>
+                    )}
+                    {activeDiagnosticoTab !== 'Hábitos de Vida' && (
+                      <button
+                        className="anamnese-nav-button next"
+                        onClick={() => {
+                          const tabs = [
+                            'Diagnóstico Principal',
+                            'Estado Geral',
+                            'Estado Mental',
+                            'Estado Fisiológico',
+                            'Integração Diagnóstica',
+                            'Hábitos de Vida'
+                          ];
+                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                          if (currentIndex < tabs.length - 1) {
+                            setActiveDiagnosticoTab(tabs[currentIndex + 1]);
+                          }
+                        }}
+                      >
+                        {(() => {
+                          const tabs = [
+                            'Diagnóstico Principal',
+                            'Estado Geral',
+                            'Estado Mental',
+                            'Estado Fisiológico',
+                            'Integração Diagnóstica',
+                            'Hábitos de Vida'
+                          ];
+                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
+                          return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
+                        })()}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="anamnese-content">
                   <DiagnosticoSection 
                     consultaId={consultaId}
@@ -8208,6 +8459,7 @@ function ConsultasPageContent() {
                     onFieldSelect={handleFieldSelect}
                     onSendMessage={handleSendAIMessage}
                     onChatInputChange={setChatInput}
+                    activeTab={activeDiagnosticoTab}
                   />
                 </div>
               </div>

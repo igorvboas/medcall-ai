@@ -39,54 +39,82 @@ export async function GET(
     const userId = medico.id;
     console.log('🔍 Buscando dados de diagnóstico para:', { userId, consultaId });
 
+    // Buscar todos os dados em paralelo para melhor performance
     // 1. Diagnóstico Principal
-    const { data: diagnostico_principal, error: diagnosticoError } = await supabase
+    const diagnosticoPromise = supabase
       .from('d_diagnostico_principal')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
     
-    console.log('📊 Diagnóstico Principal:', { diagnostico_principal, diagnosticoError });
-
     // 2. Estado Geral
-    const { data: estado_geral, error: estadoGeralError } = await supabase
+    const estadoGeralPromise = supabase
       .from('d_estado_geral')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-    console.log('📊 Estado Geral:', { estado_geral, estadoGeralError });
 
     // 3. Estado Mental
-    const { data: estado_mental, error: estadoMentalError } = await supabase
+    const estadoMentalPromise = supabase
       .from('d_estado_mental')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-    console.log('📊 Estado Mental:', { estado_mental, estadoMentalError });
 
     // 4. Estado Fisiológico
-    const { data: estado_fisiologico, error: estadoFisiologicoError } = await supabase
+    const estadoFisiologicoPromise = supabase
       .from('d_estado_fisiologico')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-    console.log('📊 Estado Fisiológico:', { estado_fisiologico, estadoFisiologicoError });
 
     // 5. Integração Diagnóstica
-    const { data: integracao_diagnostica, error: integracaoError } = await supabase
+    const integracaoPromise = supabase
       .from('d_agente_integracao_diagnostica')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-    console.log('📊 Integração Diagnóstica:', { integracao_diagnostica, integracaoError });
 
     // 6. Hábitos de Vida
-    const { data: habitos_vida, error: habitosError } = await supabase
+    const habitosPromise = supabase
       .from('d_agente_habitos_vida_sistemica')
       .select('*')
       .eq('consulta_id', consultaId)
       .maybeSingle();
-    console.log('📊 Hábitos de Vida:', { habitos_vida, habitosError });
+
+    // Aguardar todas as queries em paralelo
+    const [
+      { data: diagnostico_principal, error: diagnosticoError },
+      { data: estado_geral, error: estadoGeralError },
+      { data: estado_mental, error: estadoMentalError },
+      { data: estado_fisiologico, error: estadoFisiologicoError },
+      { data: integracao_diagnostica, error: integracaoError },
+      { data: habitos_vida, error: habitosError }
+    ] = await Promise.all([
+      diagnosticoPromise,
+      estadoGeralPromise,
+      estadoMentalPromise,
+      estadoFisiologicoPromise,
+      integracaoPromise,
+      habitosPromise
+    ]);
+    
+    // Log de erros (mas não falhar se alguma tabela não tiver dados)
+    if (diagnosticoError) console.warn('⚠️ Erro ao buscar Diagnóstico Principal:', diagnosticoError);
+    if (estadoGeralError) console.warn('⚠️ Erro ao buscar Estado Geral:', estadoGeralError);
+    if (estadoMentalError) console.warn('⚠️ Erro ao buscar Estado Mental:', estadoMentalError);
+    if (estadoFisiologicoError) console.warn('⚠️ Erro ao buscar Estado Fisiológico:', estadoFisiologicoError);
+    if (integracaoError) console.warn('⚠️ Erro ao buscar Integração Diagnóstica:', integracaoError);
+    if (habitosError) console.warn('⚠️ Erro ao buscar Hábitos de Vida:', habitosError);
+
+    console.log('📊 Dados de diagnóstico carregados:', {
+      diagnostico_principal: !!diagnostico_principal,
+      estado_geral: !!estado_geral,
+      estado_mental: !!estado_mental,
+      estado_fisiologico: !!estado_fisiologico,
+      integracao_diagnostica: !!integracao_diagnostica,
+      habitos_vida: !!habitos_vida
+    });
 
     const result = {
       diagnostico_principal,
