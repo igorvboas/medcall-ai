@@ -303,12 +303,14 @@ function PresencialConsultationContent() {
               disabled={true}
             />
 
-            <button
-              onClick={handleEndSession}
-              className="btn btn-danger btn-lg"
-            >
-              Finalizar Consulta
-            </button>
+            <div className="finish-button">
+              <button
+                onClick={handleEndSession}
+                className="btn btn-danger btn-lg"
+              >
+                Finalizar Consulta
+              </button>
+            </div>
           </div>
 
           <div className="transcription-panel">
@@ -323,10 +325,11 @@ function PresencialConsultationContent() {
 
       <style jsx>{`
         .presencial-page {
-          height: 100vh;
+          min-height: 100vh;
           background: #EBF3F6;
           padding: 8px 20px 12px 20px;
-          overflow: hidden;
+          overflow-x: hidden;
+          overflow-y: auto;
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
@@ -425,13 +428,10 @@ function PresencialConsultationContent() {
         
         .consultation-container {
           display: grid;
-          grid-template-columns: 380px 1fr;
+          grid-template-columns: 360px 1fr;
           gap: 16px;
           max-width: 1400px;
           margin: 0 auto;
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
           width: 100%;
           align-items: start;
         }
@@ -440,8 +440,7 @@ function PresencialConsultationContent() {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          min-height: 0;
-          overflow: hidden;
+          height: fit-content;
         }
         
         .status-bar {
@@ -516,11 +515,16 @@ function PresencialConsultationContent() {
         }
         
         .transcription-panel {
-          height: calc(100vh - 60px);
-          min-height: 700px;
-          overflow: hidden;
+          min-height: 600px;
+          max-height: calc(100vh - 100px);
+          overflow-y: auto;
           display: flex;
           flex-direction: column;
+        }
+
+        .finish-button {
+          margin-top: auto;
+          padding-top: 12px;
         }
         
         .btn {
@@ -587,10 +591,29 @@ function PresencialConsultationContent() {
         @media (max-width: 1024px) {
           .consultation-container {
             grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          
+          .consultation-controls {
+            order: 2;
           }
           
           .transcription-panel {
-            height: 500px;
+            order: 1;
+            max-height: 500px;
+            min-height: 400px;
+          }
+
+          .finish-button {
+            margin-top: 12px;
+            padding-top: 0;
+          }
+        }
+        
+        @media (max-height: 800px) {
+          .transcription-panel {
+            max-height: calc(100vh - 200px);
+            min-height: 400px;
           }
         }
       `}</style>
