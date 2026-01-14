@@ -86,6 +86,10 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   
   // Estado para URL da foto do perfil
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(patient?.profile_pic || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Preencher formulário se estiver editando
   useEffect(() => {

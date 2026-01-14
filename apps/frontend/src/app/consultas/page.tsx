@@ -301,69 +301,84 @@ function DataField({
   };
 
   return (
-    <div className="data-field">
-      <div className="data-field-header">
-        <label className="data-label">{label}:</label>
-        {!readOnly && (
-          <div className="field-actions">
-            {fieldPath && consultaId && onAIEdit && !isEditing && (
-              <button 
-                className="ai-button"
-                onClick={() => onAIEdit(fieldPath, label)}
-                title="Editar com IA"
-              >
-                <Sparkles className="w-4 h-4" />
-              </button>
-            )}
-            {fieldPath && consultaId && onSave && !isEditing && (
-              <button 
-                className="edit-button"
-                onClick={handleEdit}
-                title="Editar campo manualmente"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {isEditing ? (
-        <div className="edit-field">
-          <textarea
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="edit-input"
-            rows={3}
-            placeholder="Digite o novo valor..."
-          />
-          <div className="edit-actions">
-            <button 
-              className="save-button"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <div className="loading-spinner-small"></div>
-              ) : (
-                <Save className="w-4 h-4" />
+    <>
+      <div className="data-field">
+        <div className="data-field-header">
+          <label className="data-label">{label}:</label>
+          {!readOnly && (
+            <div className="field-actions">
+              {fieldPath && consultaId && onAIEdit && (
+                <button 
+                  className="ai-button"
+                  onClick={() => onAIEdit(fieldPath, label)}
+                  title="Editar com IA"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
               )}
-              {isSaving ? 'Salvando...' : 'Salvar'}
-            </button>
-            <button 
-              className="cancel-button"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              <X className="w-4 h-4" />
-              Cancelar
-            </button>
+              {fieldPath && consultaId && onSave && (
+                <button 
+                  className="edit-button"
+                  onClick={handleEdit}
+                  title="Editar campo manualmente"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {renderValue()}
+      </div>
+
+      {isEditing && (
+        <div className="edit-modal-overlay" onClick={handleCancel}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <h3 className="edit-modal-title">Editar: {label}</h3>
+              <button 
+                className="edit-modal-close"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="edit-modal-body">
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="edit-modal-input"
+                placeholder="Digite o novo valor..."
+                autoFocus
+              />
+            </div>
+            <div className="edit-modal-actions">
+              <button 
+                className="cancel-button"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </button>
+              <button 
+                className="save-button"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <div className="loading-spinner-small"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSaving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
         </div>
-      ) : (
-        renderValue()
       )}
-    </div>
+    </>
   );
 }
 
@@ -612,6 +627,10 @@ function AnamneseSection({
             [stateKey]: result.data
           }));
           console.log('✅ Interface atualizada com dados da API');
+        } else if (tableName === 'a_sintese_analitica') {
+          // Se for síntese analítica, atualizar o estado específico
+          fetchSinteseAnalitica();
+          console.log('✅ Síntese analítica atualizada');
         } else {
           console.warn('⚠️ Não foi possível mapear a tabela para o estado:', tableName);
         }
@@ -788,6 +807,7 @@ function AnamneseSection({
   // Mapear activeTab para o título da seção
   const getSectionTitle = (tab: string) => {
     const map: { [key: string]: string } = {
+      'Síntese': 'Síntese',
       'Dados do Paciente': 'Dados do Paciente',
       'Objetivos e Queixas': 'Objetivos e Queixas',
       'Histórico de Risco': 'Histórico de Risco',
@@ -840,106 +860,139 @@ function AnamneseSection({
         </div>
       )}
 
-      {/* Síntese Analítica - Resumo da Anamnese */}
-      {sinteseAnalitica && (
-        <CollapsibleSection title="Síntese Analítica do Paciente (Resumo da Anamnese)" defaultOpen={true}>
-          <div className="anamnese-subsection" style={{ 
-            background: '#f8fafc', 
-            padding: '20px', 
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0',
-            marginBottom: '20px'
-          }}>
-            {sinteseAnalitica.sintese && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Síntese</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.sintese}</p>
-              </div>
-            )}
+      {/* Síntese Analítica - Agora dentro do menu */}
+      {shouldShowSection('Síntese') && sinteseAnalitica && (
+        <CollapsibleSection title="Síntese Analítica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
+          <div className="anamnese-subsection">
+            <DataField 
+              label="Síntese" 
+              value={sinteseAnalitica.sintese} 
+              fieldPath="a_sintese_analitica.sintese" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
             
-            {sinteseAnalitica.tres_linhas && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Três Linhas</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.tres_linhas}</p>
-              </div>
-            )}
+            <DataField 
+              label="Três Linhas" 
+              value={sinteseAnalitica.tres_linhas} 
+              fieldPath="a_sintese_analitica.tres_linhas" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.eixo_causal_principal && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Eixo Causal Principal</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.eixo_causal_principal}</p>
-              </div>
-            )}
+            <DataField 
+              label="Eixo Causal Principal" 
+              value={sinteseAnalitica.eixo_causal_principal} 
+              fieldPath="a_sintese_analitica.eixo_causal_principal" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.perpetuadores && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Perpetuadores</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.perpetuadores}</p>
-              </div>
-            )}
+            <DataField 
+              label="Perpetuadores" 
+              value={sinteseAnalitica.perpetuadores} 
+              fieldPath="a_sintese_analitica.perpetuadores" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.achados_criticos_urgentes && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#dc2626', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Achados Críticos Urgentes</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.achados_criticos_urgentes}</p>
-              </div>
-            )}
+            <DataField 
+              label="Achados Críticos Urgentes" 
+              value={sinteseAnalitica.achados_criticos_urgentes} 
+              fieldPath="a_sintese_analitica.achados_criticos_urgentes" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.achados_criticos_importantes && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Achados Críticos Importantes</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.achados_criticos_importantes}</p>
-              </div>
-            )}
+            <DataField 
+              label="Achados Críticos Importantes" 
+              value={sinteseAnalitica.achados_criticos_importantes} 
+              fieldPath="a_sintese_analitica.achados_criticos_importantes" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.psicoemocional && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Psicoemocional</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.psicoemocional}</p>
-              </div>
-            )}
+            <DataField 
+              label="Psicoemocional" 
+              value={sinteseAnalitica.psicoemocional} 
+              fieldPath="a_sintese_analitica.psicoemocional" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.intervencao_imediata && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#dc2626', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Intervenção Imediata</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.intervencao_imediata}</p>
-              </div>
-            )}
+            <DataField 
+              label="Intervenção Imediata" 
+              value={sinteseAnalitica.intervencao_imediata} 
+              fieldPath="a_sintese_analitica.intervencao_imediata" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.proximas_etapas && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Próximas Etapas</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.proximas_etapas}</p>
-              </div>
-            )}
+            <DataField 
+              label="Próximas Etapas" 
+              value={sinteseAnalitica.proximas_etapas} 
+              fieldPath="a_sintese_analitica.proximas_etapas" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.exames_faltantes && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Exames Faltantes</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.exames_faltantes}</p>
-              </div>
-            )}
+            <DataField 
+              label="Exames Faltantes" 
+              value={sinteseAnalitica.exames_faltantes} 
+              fieldPath="a_sintese_analitica.exames_faltantes" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.encaminhar && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Encaminhar</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.encaminhar}</p>
-              </div>
-            )}
+            <DataField 
+              label="Encaminhar" 
+              value={sinteseAnalitica.encaminhar} 
+              fieldPath="a_sintese_analitica.encaminhar" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.pontos_atencao && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#ea580c', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Pontos de Atenção</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.pontos_atencao}</p>
-              </div>
-            )}
+            <DataField 
+              label="Pontos de Atenção" 
+              value={sinteseAnalitica.pontos_atencao} 
+              fieldPath="a_sintese_analitica.pontos_atencao" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
-            {sinteseAnalitica.prognostico && (
-              <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ color: '#1e40af', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Prognóstico</h4>
-                <p style={{ color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{sinteseAnalitica.prognostico}</p>
-              </div>
-            )}
+            <DataField 
+              label="Prognóstico" 
+              value={sinteseAnalitica.prognostico} 
+              fieldPath="a_sintese_analitica.prognostico" 
+              consultaId={consultaId} 
+              onSave={handleSaveField} 
+              onAIEdit={handleAIEdit} 
+              readOnly={readOnly} 
+            />
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
               {sinteseAnalitica.complexidade && (
@@ -6910,6 +6963,7 @@ function ConsultasPageContent() {
           <div className="anamnese-tabs-container">
             <div className="anamnese-tabs">
               {[
+                'Síntese',
                 'Dados do Paciente',
                 'Objetivos e Queixas',
                 'Histórico de Risco',
@@ -6929,92 +6983,6 @@ function ConsultasPageContent() {
                   {tab}
                 </button>
               ))}
-            </div>
-            
-            {/* Botões de Navegação no Topo */}
-            <div className="anamnese-navigation-buttons-top">
-              {activeAnamneseTab !== 'Dados do Paciente' && (
-                <button
-                  className="anamnese-nav-button prev"
-                  onClick={() => {
-                    const tabs = [
-                      'Dados do Paciente',
-                      'Objetivos e Queixas',
-                      'Histórico de Risco',
-                      'Observação Clínica e Laboratorial',
-                      'História de vida',
-                      'Setênios e Eventos',
-                      'Ambiente e Contexto',
-                      'Sensação e Emoções',
-                      'Preocupações e Crenças',
-                      'Reino e Miasma'
-                    ];
-                    const currentIndex = tabs.indexOf(activeAnamneseTab);
-                    if (currentIndex > 0) {
-                      setActiveAnamneseTab(tabs[currentIndex - 1]);
-                    }
-                  }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  {(() => {
-                    const tabs = [
-                      'Dados do Paciente',
-                      'Objetivos e Queixas',
-                      'Histórico de Risco',
-                      'Observação Clínica e Laboratorial',
-                      'História de vida',
-                      'Setênios e Eventos',
-                      'Ambiente e Contexto',
-                      'Sensação e Emoções',
-                      'Preocupações e Crenças',
-                      'Reino e Miasma'
-                    ];
-                    const currentIndex = tabs.indexOf(activeAnamneseTab);
-                    return currentIndex > 0 ? tabs[currentIndex - 1] : '';
-                  })()}
-                </button>
-              )}
-              {activeAnamneseTab !== 'Reino e Miasma' && (
-                <button
-                  className="anamnese-nav-button next"
-                  onClick={() => {
-                    const tabs = [
-                      'Dados do Paciente',
-                      'Objetivos e Queixas',
-                      'Histórico de Risco',
-                      'Observação Clínica e Laboratorial',
-                      'História de vida',
-                      'Setênios e Eventos',
-                      'Ambiente e Contexto',
-                      'Sensação e Emoções',
-                      'Preocupações e Crenças',
-                      'Reino e Miasma'
-                    ];
-                    const currentIndex = tabs.indexOf(activeAnamneseTab);
-                    if (currentIndex < tabs.length - 1) {
-                      setActiveAnamneseTab(tabs[currentIndex + 1]);
-                    }
-                  }}
-                >
-                  {(() => {
-                    const tabs = [
-                      'Dados do Paciente',
-                      'Objetivos e Queixas',
-                      'Histórico de Risco',
-                      'Observação Clínica e Laboratorial',
-                      'História de vida',
-                      'Setênios e Eventos',
-                      'Ambiente e Contexto',
-                      'Sensação e Emoções',
-                      'Preocupações e Crenças',
-                      'Reino e Miasma'
-                    ];
-                    const currentIndex = tabs.indexOf(activeAnamneseTab);
-                    return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
-                  })()}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
 
@@ -7386,7 +7354,30 @@ function ConsultasPageContent() {
             </div>
           </div>
 
-          {/* Botão Avançar para Solução - Movido para o topo */}
+          {/* Menu de Tabs do Diagnóstico */}
+          <div className="anamnese-tabs-container">
+            <div className="anamnese-tabs">
+              {[
+                'Diagnóstico Principal',
+                'Estado Geral',
+                'Estado Mental',
+                'Estado Fisiológico',
+                'Integração Diagnóstica',
+                'Hábitos de Vida'
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  className={`anamnese-tab ${activeDiagnosticoTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveDiagnosticoTab(activeDiagnosticoTab === tab ? undefined : tab)}
+                  title={activeDiagnosticoTab === tab ? 'Clique para mostrar todas as seções' : `Clique para ver apenas: ${tab}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Botão Avançar para Solução - Abaixo do menu */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
             <button
               type="button"
@@ -7436,99 +7427,6 @@ function ConsultasPageContent() {
                 </>
               )}
             </button>
-          </div>
-
-          {/* Menu de Tabs do Diagnóstico */}
-          <div className="anamnese-tabs-container">
-            <div className="anamnese-tabs">
-              {[
-                'Diagnóstico Principal',
-                'Estado Geral',
-                'Estado Mental',
-                'Estado Fisiológico',
-                'Integração Diagnóstica',
-                'Hábitos de Vida'
-              ].map((tab) => (
-                <button
-                  key={tab}
-                  className={`anamnese-tab ${activeDiagnosticoTab === tab ? 'active' : ''}`}
-                  onClick={() => setActiveDiagnosticoTab(activeDiagnosticoTab === tab ? undefined : tab)}
-                  title={activeDiagnosticoTab === tab ? 'Clique para mostrar todas as seções' : `Clique para ver apenas: ${tab}`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            
-            {/* Botões de Navegação no Topo */}
-            <div className="anamnese-navigation-buttons-top">
-              {activeDiagnosticoTab !== 'Diagnóstico Principal' && (
-                <button
-                  className="anamnese-nav-button prev"
-                  onClick={() => {
-                    const tabs = [
-                      'Diagnóstico Principal',
-                      'Estado Geral',
-                      'Estado Mental',
-                      'Estado Fisiológico',
-                      'Integração Diagnóstica',
-                      'Hábitos de Vida'
-                    ];
-                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                    if (currentIndex > 0) {
-                      setActiveDiagnosticoTab(tabs[currentIndex - 1]);
-                    }
-                  }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  {(() => {
-                    const tabs = [
-                      'Diagnóstico Principal',
-                      'Estado Geral',
-                      'Estado Mental',
-                      'Estado Fisiológico',
-                      'Integração Diagnóstica',
-                      'Hábitos de Vida'
-                    ];
-                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                    return currentIndex > 0 ? tabs[currentIndex - 1] : '';
-                  })()}
-                </button>
-              )}
-              {activeDiagnosticoTab !== 'Hábitos de Vida' && (
-                <button
-                  className="anamnese-nav-button next"
-                  onClick={() => {
-                    const tabs = [
-                      'Diagnóstico Principal',
-                      'Estado Geral',
-                      'Estado Mental',
-                      'Estado Fisiológico',
-                      'Integração Diagnóstica',
-                      'Hábitos de Vida'
-                    ];
-                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                    if (currentIndex < tabs.length - 1) {
-                      setActiveDiagnosticoTab(tabs[currentIndex + 1]);
-                    }
-                  }}
-                >
-                  {(() => {
-                    const tabs = [
-                      'Diagnóstico Principal',
-                      'Estado Geral',
-                      'Estado Mental',
-                      'Estado Fisiológico',
-                      'Integração Diagnóstica',
-                      'Hábitos de Vida'
-                    ];
-                    const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                    return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
-                  })()}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Conteúdo do Diagnóstico */}
@@ -8376,76 +8274,6 @@ function ConsultasPageContent() {
                         {tab}
                       </button>
                     ))}
-                  </div>
-                  
-                  {/* Botões de Navegação no Topo */}
-                  <div className="anamnese-navigation-buttons-top">
-                    {activeDiagnosticoTab !== 'Diagnóstico Principal' && (
-                      <button
-                        className="anamnese-nav-button prev"
-                        onClick={() => {
-                          const tabs = [
-                            'Diagnóstico Principal',
-                            'Estado Geral',
-                            'Estado Mental',
-                            'Estado Fisiológico',
-                            'Integração Diagnóstica',
-                            'Hábitos de Vida'
-                          ];
-                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                          if (currentIndex > 0) {
-                            setActiveDiagnosticoTab(tabs[currentIndex - 1]);
-                          }
-                        }}
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        {(() => {
-                          const tabs = [
-                            'Diagnóstico Principal',
-                            'Estado Geral',
-                            'Estado Mental',
-                            'Estado Fisiológico',
-                            'Integração Diagnóstica',
-                            'Hábitos de Vida'
-                          ];
-                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                          return currentIndex > 0 ? tabs[currentIndex - 1] : '';
-                        })()}
-                      </button>
-                    )}
-                    {activeDiagnosticoTab !== 'Hábitos de Vida' && (
-                      <button
-                        className="anamnese-nav-button next"
-                        onClick={() => {
-                          const tabs = [
-                            'Diagnóstico Principal',
-                            'Estado Geral',
-                            'Estado Mental',
-                            'Estado Fisiológico',
-                            'Integração Diagnóstica',
-                            'Hábitos de Vida'
-                          ];
-                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                          if (currentIndex < tabs.length - 1) {
-                            setActiveDiagnosticoTab(tabs[currentIndex + 1]);
-                          }
-                        }}
-                      >
-                        {(() => {
-                          const tabs = [
-                            'Diagnóstico Principal',
-                            'Estado Geral',
-                            'Estado Mental',
-                            'Estado Fisiológico',
-                            'Integração Diagnóstica',
-                            'Hábitos de Vida'
-                          ];
-                          const currentIndex = tabs.indexOf(activeDiagnosticoTab);
-                          return currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : '';
-                        })()}
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
 

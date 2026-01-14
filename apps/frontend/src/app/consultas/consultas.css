@@ -2609,6 +2609,139 @@
   line-height: 1.6;
 }
 
+/* Modal de Edição */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.edit-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B4266;
+  margin: 0;
+}
+
+.edit-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.edit-modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 300px;
+}
+
+.edit-modal-input {
+  width: 100%;
+  min-height: 400px;
+  padding: 16px 20px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  line-height: 1.6;
+}
+
+.edit-modal-input:focus {
+  outline: none;
+  border-color: #1B4266;
+  box-shadow: 0 4px 16px rgba(27, 66, 102, 0.25);
+}
+
+.edit-modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.edit-modal-actions .save-button,
+.edit-modal-actions .cancel-button {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  min-height: 40px !important;
+}
+
+.edit-modal-actions .save-button svg,
+.edit-modal-actions .cancel-button svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
 .edit-input:focus {
   outline: none;
   border-color: #1B4266;

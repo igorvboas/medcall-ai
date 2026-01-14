@@ -104,10 +104,10 @@ export default function SignUpPage() {
         <div className="signup-logo-section">
           <div className="signup-logo-wrapper">
             <Image
-              src="/logo-eva.png"
+              src="/logo-auton.png"
               alt="TRIA Logo"
-              width={48}
-              height={48}
+              width={180}
+              height={180}
               className="signup-logo-image"
               priority
             />

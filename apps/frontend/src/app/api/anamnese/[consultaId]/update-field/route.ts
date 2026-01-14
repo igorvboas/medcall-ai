@@ -48,7 +48,10 @@ export async function PATCH(
     // Determinar a tabela e campo baseado no fieldPath
     const pathParts = fieldPath.split('.');
     const tableName = pathParts[0];
-    const fieldName = pathParts.slice(1).join('_');
+    // Para síntese analítica, usar apenas o último segmento (sem join com _)
+    const fieldName = tableName === 'a_sintese_analitica' 
+      ? pathParts[pathParts.length - 1] 
+      : pathParts.slice(1).join('_');
 
     console.log('🔍 Debug fieldPath:', { pathParts, tableName, fieldName });
 
@@ -74,6 +77,8 @@ export async function PATCH(
       'a_preocupacoes_crencas': 'a_preocupacoes_crencas',
       'reino_miasma': 'a_reino_miasma',
       'a_reino_miasma': 'a_reino_miasma',
+      'sintese_analitica': 'a_sintese_analitica',
+      'a_sintese_analitica': 'a_sintese_analitica',
     };
 
     const actualTableName = tableMapping[tableName];

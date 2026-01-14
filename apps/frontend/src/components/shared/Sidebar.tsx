@@ -113,7 +113,8 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
     const relatedTarget = e.relatedTarget as Node | null;
 
     // Verificar se o mouse realmente saiu do sidebar
-    if (!sidebar.contains(relatedTarget)) {
+    // Verificar se relatedTarget é um Node válido antes de usar contains
+    if (!relatedTarget || !(relatedTarget instanceof Node) || !sidebar.contains(relatedTarget)) {
       // Limpar qualquer timeout anterior
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);

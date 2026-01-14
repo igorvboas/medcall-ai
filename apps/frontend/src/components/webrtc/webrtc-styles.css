@@ -110,7 +110,7 @@
   width: 100%;
   max-width: 1327px; /* 409px * 3 + 30px * 2 (gaps) */
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   box-sizing: border-box;
   align-items: stretch;
 }
@@ -120,14 +120,15 @@
   border-radius: 3px;
   padding: 26px 42px 42px 42px;
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
-  width: 409px;
+  flex: 1 1 0;
+  min-width: 280px;
+  max-width: 409px;
   height: 431px;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  flex-shrink: 0;
 }
 
 /* Estilos específicos dos cards */
@@ -4638,11 +4639,8 @@
   }
   
   .consultation-card {
-    width: calc(50% - 10px) !important;
-    min-width: 300px;
-    max-width: 409px;
-    height: auto !important;
-    min-height: 431px;
+    min-width: 250px;
+    padding: 24px 32px 36px 32px;
   }
 }
 
@@ -4667,12 +4665,8 @@
   }
   
   .consultation-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    min-height: auto;
-    padding: 24px 32px 32px 32px;
+    min-width: 220px;
+    padding: 24px 24px 32px 24px;
   }
   
   .form-select-figma {
@@ -4709,6 +4703,7 @@
   }
   
   .consultation-card {
+    min-width: 200px;
     padding: 20px 24px 24px 24px;
   }
   

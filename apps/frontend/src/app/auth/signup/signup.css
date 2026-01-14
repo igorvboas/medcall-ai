@@ -24,13 +24,13 @@
   width: 100%;
   position: relative;
   z-index: 1;
-  padding: 2rem 0;
+  padding: 1rem 0;
 }
 
 /* Logo Section */
 .signup-logo-section {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.5rem;
 }
 
 .signup-logo-wrapper {
@@ -38,12 +38,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .signup-logo-image {
-  width: 48px;
-  height: 48px;
+  width: 180px;
+  height: 180px;
   object-fit: contain;
   filter: none;
 }
