@@ -3934,7 +3934,8 @@ export function ConsultationRoom({
             doctorId: doctorId || null,
             patientId: patientId || 'unknown',
             transcription: transcriptionText,
-            consulta_finalizada: true  // ✅ Consulta está sendo finalizada
+            consulta_finalizada: true,  // ✅ Consulta está sendo finalizada
+            paciente_entrou_sala: !!response.participantUserName  // ✅ NOVO: Usa dados do backend (participantUserName não-nulo = entrou)
           };
 
           console.log('📤 Enviando transcrição final para webhook (consulta_finalizada: true):', webhookData);

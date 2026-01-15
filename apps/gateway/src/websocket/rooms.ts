@@ -1887,7 +1887,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       callback({
         success: true,
         message: 'Sala finalizada com sucesso',
-        saveResult: saveResult
+        saveResult: saveResult,
+        participantUserName: room.participantUserName  // ✅ NOVO: Indicar se paciente entrou
       });
     });
 
