@@ -32,6 +32,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Período alvo - MOVER PARA O INÍCIO para poder usar nas consultas
+    const { searchParams } = new URL(request.url);
+    const yearParam = searchParams.get('year');
+    const periodParam = searchParams.get('period'); // '7d' | '15d' | '30d'
+    const targetYear = yearParam ? Number(yearParam) : new Date().getFullYear();
+
+    // Calcular período para filtros de estatísticas
+    let startDateRange: Date;
+    let endDateRange: Date;
+
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      const days = Number(periodParam.replace('d', ''));
+      endDateRange = new Date();
+      startDateRange = new Date();
+      startDateRange.setDate(startDateRange.getDate() - days + 1);
+      startDateRange.setHours(0, 0, 0, 0);
+      endDateRange.setHours(23, 59, 59, 999);
+    } else {
+      // fallback por ano
+      startDateRange = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
+      endDateRange = targetYear === new Date().getFullYear()
+        ? new Date()
+        : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
+    }
+
     // Estatísticas de Pacientes
     const { count: totalPatients } = await supabase
       .from('patients')
@@ -51,58 +76,133 @@ export async function GET(request: NextRequest) {
       .gte('created_at', today.toISOString())
       .lt('created_at', tomorrow.toISOString());
 
-    // Consultas concluídas no mês
-    const inicioMes = new Date();
-    inicioMes.setDate(1);
-    inicioMes.setHours(0, 0, 0, 0);
-
-    const { count: consultasConcluidasMes } = await supabase
+    // Consultas concluídas (filtradas por período se informado, senão no mês atual)
+    let consultasConcluidasQuery = supabase
       .from('consultations')
       .select('*', { count: 'exact', head: true })
       .eq('doctor_id', medico.id)
-      .eq('status', 'COMPLETED')
-      .gte('created_at', inicioMes.toISOString());
+      .eq('status', 'COMPLETED');
+    
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      // Se período informado, usar o período selecionado
+      consultasConcluidasQuery = consultasConcluidasQuery
+        .gte('created_at', startDateRange.toISOString())
+        .lte('created_at', endDateRange.toISOString());
+      
+      console.log('📅 [DASHBOARD] Filtrando consultas concluídas por período:', {
+        periodParam,
+        startDate: startDateRange.toISOString(),
+        endDate: endDateRange.toISOString()
+      });
+    } else {
+      // Senão, usar mês atual
+      const inicioMes = new Date();
+      inicioMes.setDate(1);
+      inicioMes.setHours(0, 0, 0, 0);
+      consultasConcluidasQuery = consultasConcluidasQuery
+        .gte('created_at', inicioMes.toISOString());
+    }
+    
+    const { count: consultasConcluidasMes, error: errorConcluidas } = await consultasConcluidasQuery;
+    
+    if (errorConcluidas) {
+      console.error('❌ [DASHBOARD] Erro ao buscar consultas concluídas:', errorConcluidas);
+    }
 
-    // Duração média das consultas (geral e por tipo)
-    const { data: consultasComDuracao } = await supabase
+    // Duração média das consultas (geral e por tipo) - filtradas por período se informado
+    // Tentar ambos os campos: duration (em segundos) e duracao (em minutos ou segundos)
+    let consultasComDuracaoQuery = supabase
       .from('consultations')
-      .select('duration, consultation_type')
+      .select('duration, duracao, consultation_type, created_at')
       .eq('doctor_id', medico.id)
       .eq('status', 'COMPLETED')
-      .not('duration', 'is', null);
+      .or('duration.not.is.null,duracao.not.is.null');
+    
+    // Aplicar filtro de período se fornecido
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      consultasComDuracaoQuery = consultasComDuracaoQuery
+        .gte('created_at', startDateRange.toISOString())
+        .lte('created_at', endDateRange.toISOString());
+    }
+    
+    const { data: consultasComDuracao, error: errorDuracao } = await consultasComDuracaoQuery;
+
+    if (errorDuracao) {
+      console.error('❌ [DASHBOARD] Erro ao buscar consultas com duração:', errorDuracao);
+    }
+
+    // Normalizar duração: usar duration (em segundos) ou duracao (assumindo segundos também, ou converter se necessário)
+    const calcularDuracaoEmSegundos = (c: any) => {
+      // Se tiver duration, usar (assumindo que está em segundos)
+      if (c.duration != null && c.duration !== undefined) {
+        return Number(c.duration);
+      }
+      // Se tiver duracao, usar (pode estar em segundos ou minutos - assumindo segundos por padrão)
+      if (c.duracao != null && c.duracao !== undefined) {
+        const duracaoValue = Number(c.duracao);
+        // Se o valor for muito pequeno (menos de 60), pode estar em minutos, converter
+        return duracaoValue < 60 && duracaoValue > 0 ? duracaoValue * 60 : duracaoValue;
+      }
+      return 0;
+    };
 
     const duracaoMedia = consultasComDuracao && consultasComDuracao.length > 0
-      ? consultasComDuracao.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasComDuracao.length
+      ? consultasComDuracao.reduce((acc, c) => acc + calcularDuracaoEmSegundos(c), 0) / consultasComDuracao.length
       : 0;
+    
+    console.log('⏱️ [DASHBOARD] Duração média calculada:', {
+      periodParam,
+      totalConsultasComDuracao: consultasComDuracao?.length || 0,
+      duracaoMedia: Math.round(duracaoMedia),
+      duracaoMediaSegundos: duracaoMedia
+    });
 
     // Calcular duração média por tipo
     const consultasPresencial = consultasComDuracao?.filter(c => c.consultation_type === 'PRESENCIAL') || [];
     const consultasTelemedicina = consultasComDuracao?.filter(c => c.consultation_type === 'TELEMEDICINA') || [];
     
     const duracaoMediaPresencial = consultasPresencial.length > 0
-      ? consultasPresencial.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasPresencial.length
+      ? consultasPresencial.reduce((acc, c) => acc + calcularDuracaoEmSegundos(c), 0) / consultasPresencial.length
       : 0;
     
     const duracaoMediaTelemedicina = consultasTelemedicina.length > 0
-      ? consultasTelemedicina.reduce((acc, c) => acc + (c.duration || 0), 0) / consultasTelemedicina.length
+      ? consultasTelemedicina.reduce((acc, c) => acc + calcularDuracaoEmSegundos(c), 0) / consultasTelemedicina.length
       : 0;
 
-    // Consultas por status
-    const { data: consultasPorStatus } = await supabase
+    // Consultas por status (filtradas por período se informado)
+    let consultasPorStatusQuery = supabase
       .from('consultations')
       .select('status')
       .eq('doctor_id', medico.id);
+    
+    // Aplicar filtro de período se fornecido
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      consultasPorStatusQuery = consultasPorStatusQuery
+        .gte('created_at', startDateRange.toISOString())
+        .lte('created_at', endDateRange.toISOString());
+    }
+    
+    const { data: consultasPorStatus } = await consultasPorStatusQuery;
 
     const statusCounts = consultasPorStatus?.reduce((acc, c) => {
       acc[c.status] = (acc[c.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>) || {};
 
-    // Consultas por tipo
-    const { data: consultasPorTipo } = await supabase
+    // Consultas por tipo (filtradas por período se informado)
+    let consultasPorTipoQuery = supabase
       .from('consultations')
       .select('consultation_type')
       .eq('doctor_id', medico.id);
+    
+    // Aplicar filtro de período se fornecido
+    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+      consultasPorTipoQuery = consultasPorTipoQuery
+        .gte('created_at', startDateRange.toISOString())
+        .lte('created_at', endDateRange.toISOString());
+    }
+    
+    const { data: consultasPorTipo } = await consultasPorTipoQuery;
 
     const tipoCounts = consultasPorTipo?.reduce((acc, c) => {
       acc[c.consultation_type] = (acc[c.consultation_type] || 0) + 1;
@@ -133,12 +233,6 @@ export async function GET(request: NextRequest) {
       .eq('doctor_id', medico.id)
       .order('created_at', { ascending: false })
       .limit(5);
-
-    // Período alvo
-    const { searchParams } = new URL(request.url);
-    const yearParam = searchParams.get('year');
-    const periodParam = searchParams.get('period'); // '7d' | '15d' | '30d'
-    const targetYear = yearParam ? Number(yearParam) : new Date().getFullYear();
 
     // Parâmetros específicos para o gráfico de Presencial/Telemedicina
     const chartPeriodParam = searchParams.get('chartPeriod'); // 'day' | 'week' | 'month' | 'year'
@@ -189,23 +283,6 @@ export async function GET(request: NextRequest) {
         : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
     }
 
-    // Se ano informado, buscamos do início do ano até hoje (ou final do ano se for passado)
-    let startDateRange: Date;
-    let endDateRange: Date;
-
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
-      const days = Number(periodParam.replace('d', ''));
-      endDateRange = new Date();
-      startDateRange = new Date();
-      startDateRange.setDate(startDateRange.getDate() - days + 1);
-    } else {
-      // fallback por ano
-      startDateRange = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
-      endDateRange = targetYear === new Date().getFullYear()
-        ? new Date()
-        : new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
-    }
-
     // Buscar consultas para o gráfico de Presencial/Telemedicina usando o período específico
     const { data: consultasUltimos30Dias } = await supabase
       .from('consultations')
@@ -247,11 +324,22 @@ export async function GET(request: NextRequest) {
       ...data
     })).sort((a, b) => a.date.localeCompare(b.date));
 
-    // Taxa de sucesso
+    // Taxa de sucesso (baseada nas consultas do período filtrado)
     const totalConsultas = Object.values(statusCounts).reduce((acc, count) => acc + count, 0);
+    const consultasCompletas = statusCounts.COMPLETED || 0;
     const taxaSucesso = totalConsultas > 0 
-      ? ((statusCounts.COMPLETED || 0) / totalConsultas) * 100 
+      ? (consultasCompletas / totalConsultas) * 100 
       : 0;
+    
+    console.log('📊 [DASHBOARD] Estatísticas calculadas:', {
+      periodParam,
+      totalConsultas,
+      consultasCompletas,
+      taxaSucesso: taxaSucesso.toFixed(2) + '%',
+      consultasConcluidasMes,
+      duracaoMedia: Math.round(duracaoMedia),
+      statusCounts
+    });
 
     // Próximas consultas (hoje e amanhã)
     const { data: proximasConsultas } = await supabase

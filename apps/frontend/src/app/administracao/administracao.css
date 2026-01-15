@@ -3,6 +3,9 @@
   background: #EBF3F6;
   padding: 24px 32px;
   overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Dark mode page */
@@ -522,6 +525,10 @@
 .bar-label {
   font-size: 14px;
   color: #4B5563;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  min-width: 0;
 }
 
 .bar-wrapper {
@@ -626,6 +633,8 @@
 .medico-info strong {
   font-size: 14px;
   color: #1F2937;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .tipo-badge {
@@ -642,6 +651,9 @@
 .consultation-room {
   font-size: 14px;
   color: #4B5563;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 /* Seção Inferior */
@@ -649,12 +661,18 @@
   display: grid !important;
   grid-template-columns: 300px 1fr !important;
   gap: 20px !important;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .charts-left-column {
   display: grid !important;
   grid-template-rows: auto auto !important;
   gap: 20px !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .status-card {
@@ -666,6 +684,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
 }
 
 .status-card h3 {
@@ -679,10 +700,17 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .donut-chart {
   flex-shrink: 0;
+  min-width: 100px;
+  width: 100px;
+  height: 100px;
 }
 
 .donut-svg {
@@ -695,6 +723,10 @@
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .legend-item {
@@ -703,6 +735,9 @@
   gap: 8px;
   font-size: 13px;
   color: #4B5563;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .dot {
@@ -1039,54 +1074,673 @@
 /* Responsividade */
 @media (max-width: 1600px) {
   .bottom-section {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+  }
+  
+  .charts-left-column {
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: auto !important;
+    width: 100%;
+  }
+  
+  .status-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .status-card-content {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .legend {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1400px) {
+  .administracao-page {
+    padding: 20px 24px;
+  }
+  
+  .filters-row {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .header-filters {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .clinic-filter select,
+  .professional-filter select {
+    min-width: 160px;
+  }
+  
+  .type-buttons {
+    flex-wrap: wrap;
   }
 }
 
 @media (max-width: 1200px) {
+  .administracao-page {
+    padding: 16px 20px;
+  }
+  
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
   
   .charts-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .charts-left-column {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .bottom-section {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .status-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  
+  .status-card-content {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .legend {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .consultation-item {
+    grid-template-columns: 48px 1.5fr 1fr 80px 80px 100px;
+    gap: 12px;
+  }
+  
+  .section-tabs {
+    grid-template-columns: 48px 1.5fr 1fr 80px 80px 100px;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  
+  .tab {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .administracao-page {
+    padding: 16px;
+    overflow-x: hidden;
+  }
+  
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .period-filter {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .period-filter button {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .header-filters {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .clinic-filter,
+  .professional-filter,
+  .type-filter {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+  }
+  
+  .clinic-filter select,
+  .professional-filter select {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .type-buttons {
+    flex-wrap: wrap;
+  }
+  
+  .type-buttons button {
+    flex: 1 1 auto;
+    min-width: 80px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .stat-content h3 {
+    font-size: 14px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+  
+  .stat-variation {
+    font-size: 16px;
+  }
+  
+  .chart-card {
+    padding: 16px;
+  }
+  
+  .line-chart {
+    min-height: 280px;
+  }
+  
+  .bar-item {
+    grid-template-columns: 120px 1fr 35px;
+    gap: 10px;
+  }
+  
+  .bar-label {
+    font-size: 13px;
+  }
+  
+  .consultation-item {
+    grid-template-columns: 40px 2fr 1fr 70px 70px 90px;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  
+  .section-tabs {
+    grid-template-columns: 40px 2fr 1fr 70px 70px 90px;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  
+  .tab {
+    font-size: 12px;
+  }
+  
+  .consultation-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+  }
+  
+  .medico-info strong,
+  .consultation-patient,
+  .consultation-time,
+  .consultation-duration,
+  .consultation-room {
+    font-size: 13px;
+  }
+  
+  .calendar-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .calendar-month {
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  
+  .calendar-view-buttons {
+    flex: 1;
+  }
+  
+  .view-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .calendar-day {
+    min-height: 80px;
+    padding: 8px;
+  }
+  
+  .upcoming-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
+  .administracao-page {
+    padding: 12px;
+  }
+  
   .admin-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .header-logo img {
+    max-width: 200px;
+    height: auto;
+  }
+  
+  .filters-row {
+    gap: 12px;
+  }
+  
+  .period-filter {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .period-filter button {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
   }
   
   .header-filters {
     flex-direction: column;
     width: 100%;
     align-items: stretch;
+    gap: 12px;
+  }
+  
+  .clinic-filter,
+  .professional-filter,
+  .type-filter {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  
+  .type-buttons {
+    width: 100%;
+  }
+  
+  .type-buttons button {
+    flex: 1;
   }
   
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
   }
   
-  .bottom-section {
-    grid-template-columns: 1fr;
+  .stat-card {
+    padding: 14px;
   }
   
-  .upcoming-grid {
-    grid-template-columns: 1fr;
+  .stat-content h3 {
+    font-size: 13px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
+  .stat-variation {
+    font-size: 14px;
+  }
+  
+  .chart-card {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .chart-card h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  
+  .line-chart {
+    min-height: 250px;
+  }
+  
+  .bar-chart {
+    margin-top: 32px;
+    gap: 12px;
+  }
+  
+  .bar-item {
+    grid-template-columns: 100px 1fr 30px;
+    gap: 8px;
+  }
+  
+  .bar-label {
+    font-size: 12px;
+  }
+  
+  .bar-value {
+    font-size: 12px;
+  }
+  
+  .active-consultations {
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  
+  .section-tabs {
+    display: none;
+  }
+  
+  .consultations-list {
+    padding: 8px 12px;
   }
   
   .consultation-item {
-    grid-template-columns: 48px 1fr;
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid #F3F4F6;
+    background: #F9FAFB;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .consultation-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .consultation-avatar {
+    align-self: flex-start;
   }
   
   .consultation-patient,
   .consultation-time,
   .consultation-duration,
   .consultation-room {
-    grid-column: 2;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  
+  .consultation-patient::before {
+    content: 'Paciente: ';
+    font-weight: 600;
+    color: #6B7280;
+  }
+  
+  .consultation-time::before {
+    content: 'Início: ';
+    font-weight: 600;
+    color: #6B7280;
+  }
+  
+  .consultation-duration::before {
+    content: 'Duração: ';
+    font-weight: 600;
+    color: #6B7280;
+  }
+  
+  .consultation-room::before {
+    content: 'Sala: ';
+    font-weight: 600;
+    color: #6B7280;
+  }
+  
+  .bottom-section {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .charts-left-column {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .status-card {
+    padding: 16px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  
+  .status-card-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+  
+  .legend {
+    width: 100%;
+    max-width: 100%;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  
+  .legend-item {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  
+  .donut-chart {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+  
+  .donut-chart {
+    align-self: center;
+  }
+  
+  .legend {
+    width: 100%;
+  }
+  
+  .upcoming-consultations {
+    padding: 16px;
+  }
+  
+  .upcoming-header h3 {
+    font-size: 14px;
+  }
+  
+  .upcoming-item {
+    padding: 10px;
+  }
+  
+  .upcoming-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 11px;
+  }
+  
+  .upcoming-info strong {
+    font-size: 12px;
+  }
+  
+  .upcoming-info span {
+    font-size: 10px;
+  }
+  
+  .upcoming-time {
+    font-size: 12px;
+  }
+  
+  .calendar-section {
+    padding: 16px;
+    margin-top: 16px;
+  }
+  
+  .calendar-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .calendar-nav {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+  
+  .add-event-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  
+  .calendar-month {
+    font-size: 16px;
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  
+  .calendar-view-buttons {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .view-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .calendar-day {
+    min-height: 70px;
+    padding: 6px;
+  }
+  
+  .day-number {
+    font-size: 12px;
+  }
+  
+  .consultation-count {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+  
+  .weekday {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .administracao-page {
+    padding: 8px;
+  }
+  
+  .header-logo img {
+    max-width: 150px;
+  }
+  
+  .period-filter {
+    gap: 6px;
+  }
+  
+  .period-filter button {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .stats-grid {
+    gap: 8px;
+  }
+  
+  .stat-card {
+    padding: 12px;
+  }
+  
+  .stat-content h3 {
+    font-size: 12px;
+  }
+  
+  .stat-value {
+    font-size: 16px;
+  }
+  
+  .stat-variation {
+    font-size: 12px;
+  }
+  
+  .chart-card {
+    padding: 12px;
+  }
+  
+  .line-chart {
+    min-height: 220px;
+  }
+  
+  .bar-item {
+    grid-template-columns: 80px 1fr 25px;
+  }
+  
+  .bar-label {
+    font-size: 11px;
+  }
+  
+  .bar-value {
+    font-size: 11px;
+  }
+  
+  .calendar-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .calendar-day-content {
+    margin-top: 4px;
+  }
+  
+  .consultas-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .consultas-modal-header {
+    padding: 16px;
+  }
+  
+  .consultas-modal-header h2 {
+    font-size: 16px;
+  }
+  
+  .consultas-modal-body {
+    padding: 16px;
   }
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -215,8 +215,11 @@ export default function DashboardPage() {
   const [chartPeriodType, setChartPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('year');
   const [chartSelectedDate, setChartSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [chartSelectedMonth, setChartSelectedMonth] = useState<string>(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
+  const [chartSelectedYear, setChartSelectedYear] = useState<number>(new Date().getFullYear()); // Ano específico para o gráfico
   const isMock = process.env.NEXT_PUBLIC_MOCK === 'true' || process.env.MOCK_MODE === 'true';
   const [consultationDates, setConsultationDates] = useState<Date[]>([]);
+  const [updatingPeriodData, setUpdatingPeriodData] = useState(false);
+  const isUpdatingRef = useRef(false);
 
   // Atualizar nome do médico e datas quando os dados do dashboard forem carregados
   useEffect(() => {
@@ -237,7 +240,7 @@ export default function DashboardPage() {
     }
   }, [dashboardData]);
 
-  // Carregar dados iniciais do dashboard
+  // Carregar dados iniciais do dashboard (apenas na montagem)
   useEffect(() => {
     if (isMock) {
       const today = new Date();
@@ -280,61 +283,125 @@ export default function DashboardPage() {
       return;
     }
     fetchDashboardData();
-  }, [isMock, selectedYear, selectedPeriod]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMock]); // Removido selectedYear para não recarregar quando mudar no gráfico
 
-  // Função para atualizar apenas os dados do gráfico sem recarregar toda a página
-  const fetchChartData = useCallback(async () => {
-    if (!dashboardData) return;
-    
-    try {
-      // Construir parâmetros para o gráfico de Presencial/Telemedicina
-      let chartParams = '';
-      if (chartPeriodType === 'day') {
-        chartParams = `&chartPeriod=day&chartDate=${encodeURIComponent(chartSelectedDate)}`;
-      } else if (chartPeriodType === 'week') {
-        chartParams = `&chartPeriod=week&chartDate=${encodeURIComponent(chartSelectedDate)}`;
-      } else if (chartPeriodType === 'month') {
-        chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
-      } else {
-        chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(selectedYear)}`;
-      }
-      
-      const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
-      
-      if (!response.ok) {
-        throw new Error('Erro ao carregar dados do gráfico');
-      }
-      
-      const data = await response.json();
-      
-      // Atualizar apenas os dados do gráfico, mantendo o resto dos dados
-      setDashboardData(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          graficos: {
-            ...prev.graficos,
-            consultasPorDia: data.graficos?.consultasPorDia || prev.graficos.consultasPorDia
-          }
-        };
-      });
-    } catch (err) {
-      console.error('Erro ao atualizar gráfico:', err);
-      // Não mostrar erro global, apenas logar
-    }
-  }, [dashboardData, chartPeriodType, chartSelectedDate, chartSelectedMonth, selectedYear, selectedPeriod]);
-
-  // Atualizar apenas o gráfico quando os filtros do gráfico mudarem
+  // Atualizar dados quando o período mudar (sem recarregar página)
   useEffect(() => {
-    if (isMock || !dashboardData) return;
+    if (isMock || !dashboardData || isUpdatingRef.current) return;
     
     // Usar um pequeno delay para evitar múltiplas chamadas rápidas
-    const timeoutId = setTimeout(() => {
-      fetchChartData();
+    const timeoutId = setTimeout(async () => {
+      if (isUpdatingRef.current) return;
+      
+      try {
+        isUpdatingRef.current = true;
+        setUpdatingPeriodData(true);
+        
+        // Construir parâmetros para o gráfico de Presencial/Telemedicina
+        let chartParams = '';
+        if (chartPeriodType === 'day') {
+          chartParams = `&chartPeriod=day&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+        } else if (chartPeriodType === 'week') {
+          chartParams = `&chartPeriod=week&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+        } else if (chartPeriodType === 'month') {
+          chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
+        } else {
+          chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(chartSelectedYear)}`;
+        }
+        
+        const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
+        
+        if (!response.ok) {
+          throw new Error('Erro ao carregar dados do período');
+        }
+        
+        const data = await response.json();
+        
+        // Atualizar apenas os dados que mudam com o período, mantendo o resto
+        setDashboardData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            estatisticas: data.estatisticas || prev.estatisticas,
+            distribuicoes: data.distribuicoes || prev.distribuicoes,
+            graficos: {
+              ...prev.graficos,
+              consultasPorDia: data.graficos?.consultasPorDia || prev.graficos.consultasPorDia
+            }
+          };
+        });
+      } catch (err) {
+        console.error('Erro ao atualizar dados do período:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao atualizar dados');
+      } finally {
+        isUpdatingRef.current = false;
+        setUpdatingPeriodData(false);
+      }
+    }, 300);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod]); // Apenas selectedPeriod como dependência
+
+  // Ref para controlar atualização do gráfico
+  const isUpdatingChartRef = useRef(false);
+
+  // Atualizar apenas o gráfico quando os filtros do gráfico mudarem (sem recarregar página)
+  useEffect(() => {
+    if (isMock || !dashboardData || isUpdatingChartRef.current || isUpdatingRef.current) return;
+    
+    // Usar um pequeno delay para evitar múltiplas chamadas rápidas
+    const timeoutId = setTimeout(async () => {
+      if (isUpdatingChartRef.current || isUpdatingRef.current) return;
+      
+      try {
+        isUpdatingChartRef.current = true;
+        
+        // Construir parâmetros para o gráfico de Presencial/Telemedicina
+        let chartParams = '';
+        if (chartPeriodType === 'day') {
+          chartParams = `&chartPeriod=day&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+        } else if (chartPeriodType === 'week') {
+          chartParams = `&chartPeriod=week&chartDate=${encodeURIComponent(chartSelectedDate)}`;
+        } else if (chartPeriodType === 'month') {
+          chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
+        } else {
+          chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(chartSelectedYear)}`;
+        }
+        
+        const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
+        
+        if (!response.ok) {
+          throw new Error('Erro ao carregar dados do gráfico');
+        }
+        
+        const data = await response.json();
+        
+        // Atualizar apenas os dados do gráfico, mantendo o resto dos dados
+        setDashboardData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            graficos: {
+              ...prev.graficos,
+              consultasPorDia: data.graficos?.consultasPorDia || prev.graficos.consultasPorDia
+            }
+          };
+        });
+      } catch (err) {
+        console.error('Erro ao atualizar gráfico:', err);
+        // Não mostrar erro global, apenas logar
+      } finally {
+        isUpdatingChartRef.current = false;
+      }
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [fetchChartData, isMock]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartPeriodType, chartSelectedDate, chartSelectedMonth, chartSelectedYear]); // Usar chartSelectedYear ao invés de selectedYear
 
   const fetchDashboardData = async () => {
     try {
@@ -350,7 +417,7 @@ export default function DashboardPage() {
       } else if (chartPeriodType === 'month') {
         chartParams = `&chartPeriod=month&chartMonth=${encodeURIComponent(chartSelectedMonth)}`;
       } else {
-        chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(selectedYear)}`;
+        chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(chartSelectedYear)}`;
       }
       
       const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
@@ -589,7 +656,7 @@ export default function DashboardPage() {
       <div className="dashboard-grid-container">
         {/* Row 1: KPIs - 3 cards + Status de Consultas (col-span-3 cada) */}
         <div className="kpi kpi--cyan dashboard-col-span-3">
-          <div className="title">Consultas</div>
+          <div className="title">Consultas no Dia</div>
           <div className="value">{dashboardData.estatisticas.consultasHoje}</div>
         </div>
         <div className="kpi kpi--amber dashboard-col-span-3">
@@ -613,7 +680,36 @@ export default function DashboardPage() {
             })()}
           </div>
         </div>
-        <div className="card-dark status-card dashboard-col-span-3 dashboard-row-span-2">
+        <div className="card-dark status-card dashboard-col-span-3 dashboard-row-span-2" style={{ position: 'relative' }}>
+          {updatingPeriodData && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              borderRadius: '8px'
+            }}>
+              <div style={{
+                background: 'rgba(27, 66, 102, 0.9)',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <div className="spinner-small" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                Atualizando dados...
+              </div>
+            </div>
+          )}
           <ConsultationStatusChart 
             data={{
               created: dashboardData?.distribuicoes?.porStatus?.CREATED || 0,
@@ -636,7 +732,10 @@ export default function DashboardPage() {
               }
             ]}
             selectedPeriod={selectedPeriod}
-            onPeriodChange={(period: string) => setSelectedPeriod(period)}
+            onPeriodChange={(period: string) => {
+              setSelectedPeriod(period);
+              // fetchPeriodData será chamado automaticamente pelo useEffect
+            }}
             duracaoMedia={dashboardData?.estatisticas?.duracaoMediaSegundos || 0}
             taxaFinalizacao={dashboardData?.estatisticas?.taxaSucesso || 0}
           />
@@ -692,8 +791,8 @@ export default function DashboardPage() {
               {chartPeriodType === 'year' && (
                 <select 
                   className="year-select"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  value={chartSelectedYear}
+                  onChange={(e) => setChartSelectedYear(Number(e.target.value))}
                   style={{ minWidth: '100px' }}
                 >
                   <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>

@@ -7,7 +7,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle
 } from 'lucide-react';
 import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -3960,7 +3960,7 @@ function ExamesSection({
       case 'VALIDATION':
         return 'Validação';
       case 'VALID_ANAMNESE':
-        return 'Anamnese Validada';
+        return 'Validação Análise';
       case 'VALID_DIAGNOSTICO':
         return 'Diagnóstico Validado';
       case 'VALID_SOLUCAO':
@@ -4229,7 +4229,7 @@ function ConsultationDetailsOverview({
       case 'VALIDATION':
         return 'Validação';
       case 'VALID_ANAMNESE':
-        return 'Anamnese Validada';
+        return 'Validação Análise';
       case 'VALID_DIAGNOSTICO':
         return 'Diagnóstico Validado';
       case 'VALID_SOLUCAO':
@@ -4487,13 +4487,13 @@ function ConsultationDetailsOverview({
           </div>
           
           <div className="consultation-details-actions-buttons">
-            {/* Botão Anamnese */}
+            {/* Botão Análise */}
             <button
               className="consultation-details-action-button consultation-details-action-button-primary"
               onClick={() => onNavigateToSection('ANAMNESE')}
             >
               <Plus size={18} />
-              <span>Anamnese</span>
+              <span>Análise</span>
               <ArrowRight size={18} />
               </button>
 
@@ -4687,6 +4687,26 @@ function ConsultasPageContent() {
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [advanceAction, setAdvanceAction] = useState<(() => Promise<void>) | null>(null);
   const [advanceMessage, setAdvanceMessage] = useState<string>('');
+
+  // Estado para verificar se anamnese está preenchida
+  const [anamnesePreenchida, setAnamnesePreenchida] = useState<boolean | null>(null);
+
+  // Função para verificar se anamnese está preenchida (definida aqui para ser usada nos useEffects)
+  const checkAnamnesePreenchida = useCallback(async (patientId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/patients/${patientId}`);
+      if (!response.ok) {
+        console.error('Erro ao buscar dados do paciente');
+        return false;
+      }
+      const data = await response.json();
+      const patient = data.patient || data;
+      return patient?.anamnese?.status === 'preenchida';
+    } catch (error) {
+      console.error('Erro ao verificar anamnese:', error);
+      return false;
+    }
+  }, []);
 
   // Função para selecionar campo para edição com IA
   const handleFieldSelect = (fieldPath: string, label: string) => {
@@ -5096,6 +5116,29 @@ function ConsultasPageContent() {
       setSelectedSection(null);
     }
   }, [consultaId, sectionParam]);
+
+  // Verificar status da anamnese quando consulta for carregada
+  useEffect(() => {
+    const verifyAnamneseStatus = async () => {
+      if (!consultaDetails?.patient_id) {
+        setAnamnesePreenchida(null);
+        return;
+      }
+
+      // Se já tem solução, não precisa verificar
+      if (consultaDetails.status === 'VALID_SOLUCAO' || 
+          consultaDetails.status === 'COMPLETED' ||
+          consultaDetails.etapa === 'SOLUCAO') {
+        setAnamnesePreenchida(null);
+        return;
+      }
+
+      const isPreenchida = await checkAnamnesePreenchida(consultaDetails.patient_id);
+      setAnamnesePreenchida(isPreenchida);
+    };
+
+    verifyAnamneseStatus();
+  }, [consultaDetails?.patient_id, consultaDetails?.status, consultaDetails?.etapa, checkAnamnesePreenchida]);
 
   // Efeito para definir selectedSection automaticamente apenas quando houver parâmetro section=anamnese na URL
   // Não deve definir automaticamente baseado no status da consulta - deve mostrar a tela de overview primeiro
@@ -5753,6 +5796,21 @@ function ConsultasPageContent() {
       
       // Verificar se já existe solução gerada - se sim, apenas avançar sem reprocessar
       const shouldGenerate = !hasSolucaoData();
+      
+      // Se precisar gerar solução, verificar se anamnese está preenchida
+      if (shouldGenerate && consultaDetails.patient_id) {
+        const isAnamnesePreenchida = await checkAnamnesePreenchida(consultaDetails.patient_id);
+        setAnamnesePreenchida(isAnamnesePreenchida);
+        
+        if (!isAnamnesePreenchida) {
+          showWarning(
+            'A anamnese do paciente não foi preenchida. Por favor, envie a anamnese inicial para o paciente na tela de Pacientes antes de gerar a solução.',
+            'Anamnese Não Preenchida'
+          );
+          setIsSaving(false);
+          return;
+        }
+      }
       
       // Atualiza a etapa da consulta para SOLUCAO sem definir solucao_etapa (mostra tela de seleção)
       const response = await fetch(`/api/consultations/${consultaId}`, {
@@ -7378,30 +7436,56 @@ function ConsultasPageContent() {
           </div>
 
           {/* Botão Avançar para Solução - Abaixo do menu */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 0', marginBottom: '20px', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+            {!hasSolucaoData() && anamnesePreenchida === false && (
+              <div style={{
+                padding: '12px 16px',
+                background: '#FEF3C7',
+                border: '1px solid #F59E0B',
+                borderRadius: '8px',
+                color: '#92400E',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                <AlertTriangle size={18} />
+                <span>A anamnese do paciente não foi preenchida. Por favor, envie a anamnese inicial para o paciente na tela de Pacientes antes de gerar a solução.</span>
+              </div>
+            )}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                // Se anamnese não estiver preenchida e precisar gerar, bloquear
+                if (!hasSolucaoData() && anamnesePreenchida === false) {
+                  showWarning(
+                    'A anamnese do paciente não foi preenchida. Por favor, envie a anamnese inicial para o paciente na tela de Pacientes antes de gerar a solução.',
+                    'Anamnese Não Preenchida'
+                  );
+                  return;
+                }
                 requestAdvanceConfirmation(
                   handleSaveDiagnosticoAndContinue,
                   'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
                 );
               }}
-              disabled={isSaving}
+              disabled={isSaving || (!hasSolucaoData() && anamnesePreenchida === false)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 20px',
-                background: isSaving ? '#9ca3af' : '#10b981',
+                background: (isSaving || (!hasSolucaoData() && anamnesePreenchida === false)) ? '#9ca3af' : '#10b981',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
-                cursor: isSaving ? 'not-allowed' : 'pointer',
+                cursor: (isSaving || (!hasSolucaoData() && anamnesePreenchida === false)) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
@@ -8856,7 +8940,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'nome_exercicio', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Tipo de Treino" 
@@ -8866,7 +8949,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'tipo_treino', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Grupo Muscular" 
@@ -8876,7 +8958,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'grupo_muscular', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Séries" 
@@ -8886,7 +8967,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'series', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Repetições" 
@@ -8896,7 +8976,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'repeticoes', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Descanso" 
@@ -8906,7 +8985,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'descanso', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Treino Atual" 
@@ -8916,7 +8994,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'treino_atual', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Próximo Treino" 
@@ -8926,7 +9003,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'proximo_treino', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Último Treino" 
@@ -8936,7 +9012,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'ultimo_treino', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Alertas Importantes" 
@@ -8946,7 +9021,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'alertas_importantes', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                                   <DataField 
                                     label="Observações" 
@@ -8956,7 +9030,6 @@ function ConsultasPageContent() {
                                     onSave={async (fieldPath: string, newValue: string, consultaId: string) => {
                                       await handleSaveExercicio(exercicio.id, 'observacoes', newValue);
                                     }} 
-                                    onAIEdit={() => {}} 
                                   />
                         </div>
                       </div>

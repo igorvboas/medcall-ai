@@ -136,7 +136,7 @@ const statusConfig = {
   },
   'validation-anamnese': {
     icon: FileText,
-    label: 'Validação Anamnese',
+    label: 'Validação Análise',
     color: 'info',
     bgColor: '#dbeafe',
     textColor: '#1e40af',

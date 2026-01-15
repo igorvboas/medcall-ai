@@ -244,7 +244,7 @@ export function ActiveConsultationBanner() {
       case 'PROCESSING':
         return 'Processando';
       case 'VALID_ANAMNESE':
-        return 'Validação Anamnese';
+        return 'Validação Análise';
       case 'VALID_DIAGNOSTICO':
         return 'Validação Diagnóstico';
       case 'VALID_SOLUCAO':

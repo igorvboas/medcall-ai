@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
 import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft } from 'lucide-react';
@@ -8,6 +8,7 @@ import { DualMicrophoneControl } from '@/components/presencial/DualMicrophoneCon
 import { PresencialTranscription } from '@/components/presencial/PresencialTranscription';
 import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
 import { formatDuration } from '@/lib/audioUtils';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
 interface Transcription {
   speaker: 'doctor' | 'patient';
@@ -38,6 +39,16 @@ function PresencialConsultationContent() {
   const [doctorName, setDoctorName] = useState('');
 
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmEndModal, setShowConfirmEndModal] = useState(false);
+
+  // Estados para monitoramento de níveis de áudio durante setup
+  const [doctorMicLevel, setDoctorMicLevel] = useState(0);
+  const [patientMicLevel, setPatientMicLevel] = useState(0);
+  const doctorStreamRef = useRef<MediaStream | null>(null);
+  const patientStreamRef = useRef<MediaStream | null>(null);
+  const doctorAnalyserRef = useRef<AnalyserNode | null>(null);
+  const patientAnalyserRef = useRef<AnalyserNode | null>(null);
+  const levelIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hook de captura de áudio
   const {
@@ -52,6 +63,119 @@ function PresencialConsultationContent() {
     doctorMicrophoneId,
     patientMicrophoneId
   });
+
+  // Monitorar níveis de áudio durante setup (antes de iniciar sessão)
+  useEffect(() => {
+    if (sessionStarted) {
+      // Se a sessão já começou, usar os níveis do hook
+      return;
+    }
+
+    const startLevelMonitoring = async () => {
+      // Limpar streams anteriores
+      if (doctorStreamRef.current) {
+        doctorStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+      if (patientStreamRef.current) {
+        patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+
+      if (!doctorMicrophoneId || !patientMicrophoneId) {
+        setDoctorMicLevel(0);
+        setPatientMicLevel(0);
+        return;
+      }
+
+      try {
+        // Obter streams de áudio
+        const doctorStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: doctorMicrophoneId ? { exact: doctorMicrophoneId } : undefined,
+            echoCancellation: false, // Desabilitar para melhor detecção de nível
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        const patientStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: patientMicrophoneId ? { exact: patientMicrophoneId } : undefined,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        doctorStreamRef.current = doctorStream;
+        patientStreamRef.current = patientStream;
+
+        // Criar AudioContext e AnalyserNodes
+        const audioContext = new AudioContext();
+        const doctorSource = audioContext.createMediaStreamSource(doctorStream);
+        const patientSource = audioContext.createMediaStreamSource(patientStream);
+
+        const doctorAnalyser = audioContext.createAnalyser();
+        const patientAnalyser = audioContext.createAnalyser();
+
+        doctorAnalyser.fftSize = 256;
+        patientAnalyser.fftSize = 256;
+
+        doctorSource.connect(doctorAnalyser);
+        patientSource.connect(patientAnalyser);
+
+        doctorAnalyserRef.current = doctorAnalyser;
+        patientAnalyserRef.current = patientAnalyser;
+
+        // Função para calcular nível de volume
+        const calculateVolumeLevel = (analyser: AnalyserNode): number => {
+          const bufferLength = analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          analyser.getByteFrequencyData(dataArray);
+          
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          
+          const average = sum / bufferLength;
+          return Math.min(average / 128, 1); // Normalizar para 0-1
+        };
+
+        // Atualizar níveis periodicamente
+        levelIntervalRef.current = setInterval(() => {
+          if (doctorAnalyserRef.current) {
+            const level = calculateVolumeLevel(doctorAnalyserRef.current);
+            setDoctorMicLevel(level);
+          }
+
+          if (patientAnalyserRef.current) {
+            const level = calculateVolumeLevel(patientAnalyserRef.current);
+            setPatientMicLevel(level);
+          }
+        }, 100);
+
+      } catch (error) {
+        console.error('Erro ao monitorar níveis de áudio:', error);
+        setDoctorMicLevel(0);
+        setPatientMicLevel(0);
+      }
+    };
+
+    startLevelMonitoring();
+
+    // Cleanup
+    return () => {
+      if (levelIntervalRef.current) {
+        clearInterval(levelIntervalRef.current);
+      }
+      if (doctorStreamRef.current) {
+        doctorStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+      if (patientStreamRef.current) {
+        patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+    };
+  }, [doctorMicrophoneId, patientMicrophoneId, sessionStarted]);
 
   // Timer de duração
   useEffect(() => {
@@ -163,6 +287,19 @@ function PresencialConsultationContent() {
           setSessionId(response.sessionId);
           setSessionStarted(true);
 
+          // Parar streams de monitoramento de nível
+          if (levelIntervalRef.current) {
+            clearInterval(levelIntervalRef.current);
+          }
+          if (doctorStreamRef.current) {
+            doctorStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+            doctorStreamRef.current = null;
+          }
+          if (patientStreamRef.current) {
+            patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+            patientStreamRef.current = null;
+          }
+
           // Aguardar um pouco para garantir que o estado foi atualizado
           await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -236,6 +373,8 @@ function PresencialConsultationContent() {
           <DualMicrophoneControl
             onMicrophonesSelected={handleMicrophonesSelected}
             disabled={!socketConnected}
+            doctorLevel={doctorMicLevel}
+            patientLevel={patientMicLevel}
           />
 
           <div className="actions">
@@ -301,11 +440,13 @@ function PresencialConsultationContent() {
             <DualMicrophoneControl
               onMicrophonesSelected={handleMicrophonesSelected}
               disabled={true}
+              doctorLevel={doctorLevel}
+              patientLevel={patientLevel}
             />
 
             <div className="finish-button">
               <button
-                onClick={handleEndSession}
+                onClick={() => setShowConfirmEndModal(true)}
                 className="btn btn-danger btn-lg"
               >
                 Finalizar Consulta
@@ -322,6 +463,18 @@ function PresencialConsultationContent() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmação para finalizar consulta */}
+      <ConfirmModal
+        isOpen={showConfirmEndModal}
+        onClose={() => setShowConfirmEndModal(false)}
+        onConfirm={handleEndSession}
+        title="Finalizar Consulta"
+        message="Tem certeza que deseja finalizar esta consulta? Esta ação não pode ser desfeita. A gravação será encerrada e a consulta será concluída."
+        confirmText="Sim, Finalizar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
 
       <style jsx>{`
         .presencial-page {

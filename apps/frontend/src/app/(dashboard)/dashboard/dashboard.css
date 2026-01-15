@@ -939,10 +939,11 @@ input[type="month"].year-select:focus {
 
 /* Calendário */
 .calendar-content {
-  padding: 0;
+  padding: 0 12px 0 0 !important;
   width: 100%;
   overflow: visible;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .dashboard-calendar {
@@ -1042,6 +1043,141 @@ input[type="month"].year-select:focus {
 
 .dark .calendar-card .calendar-cell-disabled .calendar-cell-number {
   color: #666666 !important;
+}
+
+/* Ajuste de margem e tamanho para telas entre 1280px e 1400px */
+@media (min-width: 1280px) and (max-width: 1400px) {
+  .calendar-content {
+    padding: 0 8px 0 0 !important;
+  }
+  
+  .calendar-card .calendar-cell {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  
+  .calendar-card .calendar-day-name {
+    width: 30px !important;
+    font-size: 11px !important;
+  }
+  
+  .calendar-card .calendar-cell-number {
+    font-size: 12px !important;
+  }
+  
+  .calendar-card .calendar-body {
+    gap: 4px !important;
+  }
+  
+  .calendar-card .calendar-days-header {
+    margin-bottom: 6px !important;
+  }
+  
+  .calendar-card .calendar-month-title {
+    font-size: 18px !important;
+  }
+}
+
+/* Ajustes responsivos do calendário para telas menores */
+@media (max-width: 1024px) {
+  .calendar-card .calendar-cell {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .calendar-card .calendar-day-name {
+    width: 32px;
+    font-size: 11px;
+  }
+  
+  .calendar-card .calendar-cell-number {
+    font-size: 12px;
+  }
+  
+  .calendar-card .calendar-body {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-content {
+    overflow: hidden !important;
+    padding: 0 8px;
+  }
+  
+  .dashboard-calendar {
+    overflow: hidden !important;
+  }
+  
+  .calendar-card {
+    overflow: hidden !important;
+  }
+  
+  .calendar-card .calendar-container {
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+  
+  .calendar-card .calendar-cell {
+    width: calc((100% - 24px) / 7) !important;
+    max-width: 32px;
+    height: 32px;
+    min-width: 0;
+  }
+  
+  .calendar-card .calendar-day-name {
+    width: calc((100% - 24px) / 7) !important;
+    max-width: 32px;
+    font-size: 10px;
+    min-width: 0;
+  }
+  
+  .calendar-card .calendar-cell-number {
+    font-size: 11px;
+  }
+  
+  .calendar-card .calendar-month-title {
+    font-size: 16px;
+  }
+  
+  .calendar-card .calendar-body {
+    gap: 4px;
+  }
+  
+  .calendar-card .calendar-days-header {
+    gap: 0;
+    margin-bottom: 6px;
+  }
+  
+  .calendar-card .calendar-week {
+    gap: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-card .calendar-cell {
+    width: calc((100% - 12px) / 7) !important;
+    max-width: 28px;
+    height: 28px;
+  }
+  
+  .calendar-card .calendar-day-name {
+    width: calc((100% - 12px) / 7) !important;
+    max-width: 28px;
+    font-size: 9px;
+  }
+  
+  .calendar-card .calendar-cell-number {
+    font-size: 10px;
+  }
+  
+  .calendar-card .calendar-month-title {
+    font-size: 14px;
+  }
+  
+  .calendar-card .calendar-body {
+    gap: 3px;
+  }
 }
 
 /* Bottom Row - Removido, agora usando grid de 12 colunas */

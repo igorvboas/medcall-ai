@@ -34,10 +34,10 @@ const menuItems = [
   { icon: User, label: 'Pacientes', href: '/pacientes' },
   { icon: Plus, label: 'Cadastrar Paciente', href: '/pacientes/cadastro' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
-  { icon: Building2, label: 'Administração', href: '/administracao' },
 ];
 
 const adminMenuItems = [
+  { icon: Building2, label: 'Administração', href: '/administracao' },
   { icon: ShieldCheck, label: 'Admin Sistema', href: '/consultas-admin' }
 ];
 

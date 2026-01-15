@@ -573,7 +573,8 @@
 
 .consultation-header .consultation-time {
   flex: 1;
-  min-width: 0;
+  min-width: fit-content;
+  flex-shrink: 0;
 }
 
 .consultation-time {
@@ -583,6 +584,9 @@
   font-size: 14px;
   font-weight: 600;
   color: #374151;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  line-height: 1;
 }
 
 /* Dark mode consultation time */

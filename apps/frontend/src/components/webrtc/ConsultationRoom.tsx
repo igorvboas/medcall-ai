@@ -3524,6 +3524,52 @@ export function ConsultationRoom({
 
   };
 
+  // Função para verificar o status da anamnese
+  const checkAnamneseStatus = async (consultationId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/consultations/${consultationId}`);
+      if (!response.ok) {
+        console.error('Erro ao verificar status da consulta');
+        return false;
+      }
+
+      const data = await response.json();
+      const consultation = data.consultation;
+
+      console.log('📊 Status da consulta:', consultation.status, '| Etapa:', consultation.etapa);
+
+      // Verificar se status=VALID_ANAMNESE (anamnese finalizada e pronta)
+      if (consultation.status === 'VALID_ANAMNESE') {
+        console.log('✅ Anamnese pronta! Status: VALID_ANAMNESE');
+        setCurrentConsultationId(consultationId);
+        setIsGeneratingAnamnese(false);
+        setAnamneseReady(true);
+        return true;
+      }
+      
+      // Se está em PROCESSING e etapa=ANAMNESE, significa que está sendo gerada
+      if (consultation.status === 'PROCESSING' && consultation.etapa === 'ANAMNESE') {
+        console.log('⏳ Anamnese ainda está sendo gerada... Status: PROCESSING');
+        setCurrentConsultationId(consultationId);
+        setIsGeneratingAnamnese(true);
+        setAnamneseReady(false);
+        return false;
+      }
+
+      // Se não está em PROCESSING e etapa=ANAMNESE, mas também não é VALID_ANAMNESE, resetar estados
+      if (consultation.etapa === 'ANAMNESE' && consultation.status !== 'VALID_ANAMNESE' && consultation.status !== 'PROCESSING') {
+        console.log('⚠️ Status inesperado para anamnese:', consultation.status);
+        setAnamneseReady(false);
+        setIsGeneratingAnamnese(false);
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao verificar status da consulta:', error);
+      return false;
+    }
+  };
+
   // Função para fazer polling do status da consulta quando anamnese está sendo gerada
   const startAnamnesePolling = (consultationId: string) => {
     // Limpar qualquer polling anterior
@@ -3540,39 +3586,21 @@ export function ConsultationRoom({
     console.log('🔄 Iniciando polling para verificar status da anamnese...');
 
     anamnesePollingRef.current = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/consultations/${consultationId}`);
-        if (!response.ok) {
-          console.error('Erro ao verificar status da consulta');
-          return;
+      const isReady = await checkAnamneseStatus(consultationId);
+      
+      if (isReady) {
+        // Anamnese está pronta, parar polling
+        if (anamnesePollingRef.current) {
+          clearInterval(anamnesePollingRef.current);
+          anamnesePollingRef.current = null;
+        }
+        if (anamneseTimeoutRef.current) {
+          clearTimeout(anamneseTimeoutRef.current);
+          anamneseTimeoutRef.current = null;
         }
 
-        const data = await response.json();
-        const consultation = data.consultation;
-
-        console.log('📊 Status da consulta:', consultation.status, '| Etapa:', consultation.etapa);
-
-        // ✅ NOVO: Verificar se status=VALIDATION e etapa=ANAMNESE
-        if (consultation.status === 'VALIDATION' && consultation.etapa === 'ANAMNESE') {
-          console.log('✅ Anamnese pronta! Atualizando botão...');
-
-          if (anamnesePollingRef.current) {
-            clearInterval(anamnesePollingRef.current);
-            anamnesePollingRef.current = null;
-          }
-          if (anamneseTimeoutRef.current) {
-            clearTimeout(anamneseTimeoutRef.current);
-            anamneseTimeoutRef.current = null;
-          }
-
-          setIsGeneratingAnamnese(false);
-          setAnamneseReady(true);
-
-          // Mostrar notificação na página atual (sem abrir nova aba automaticamente)
-          showSuccess('Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar.', 'Anamnese Gerada');
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status da consulta:', error);
+        // Mostrar notificação na página atual (sem abrir nova aba automaticamente)
+        showSuccess('Anamnese gerada com sucesso!\n\nClique em "Acessar Anamnese" para visualizar em uma nova guia.', 'Anamnese Gerada');
       }
     }, 3000); // Verificar a cada 3 segundos
 
@@ -3598,6 +3626,55 @@ export function ConsultationRoom({
       }
     };
   }, []);
+
+  // Verificar status inicial da anamnese quando a consulta carregar
+  useEffect(() => {
+    const checkInitialAnamneseStatus = async () => {
+      if (!roomId || userType !== 'doctor') return;
+
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        
+        // Tentar obter consultationId da call_sessions
+        const { data: callSession } = await supabase
+          .from('call_sessions')
+          .select('consultation_id')
+          .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+          .single();
+
+        if (callSession?.consultation_id) {
+          const consultationId = callSession.consultation_id;
+          const isReady = await checkAnamneseStatus(consultationId);
+          
+          // Se não está pronta, verificar se está em processamento e iniciar polling
+          if (!isReady) {
+            try {
+              const response = await fetch(`/api/consultations/${consultationId}`);
+              if (response.ok) {
+                const data = await response.json();
+                const consultation = data.consultation;
+                
+                // Se está em PROCESSING com etapa ANAMNESE, iniciar polling
+                if (consultation.status === 'PROCESSING' && consultation.etapa === 'ANAMNESE') {
+                  setIsGeneratingAnamnese(true);
+                  startAnamnesePolling(consultationId);
+                }
+              }
+            } catch (error) {
+              console.error('Erro ao verificar se anamnese está em processamento:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status inicial da anamnese:', error);
+      }
+    };
+
+    // Aguardar um pouco para garantir que os dados da sala foram carregados
+    const timeoutId = setTimeout(checkInitialAnamneseStatus, 2000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [roomId, userType]);
 
   // ✅ NOVO: Função para copiar link do paciente
   const handleCopyPatientLink = async () => {
@@ -4221,20 +4298,23 @@ export function ConsultationRoom({
                 </span>
               </button>
 
-              {/* Gerar Anamnese */}
+              {/* Gerar/Acessar Anamnese */}
               <button
                 className="patient-action-btn action-btn-primary"
                 onClick={async () => {
+                  // Se anamnese está pronta, abrir em nova aba
                   if (anamneseReady && currentConsultationId) {
                     const anamneseUrl = `${window.location.origin}/consultas?consulta_id=${currentConsultationId}&section=anamnese`;
                     window.open(anamneseUrl, '_blank');
                     return;
                   }
 
+                  // Se está gerando, não fazer nada
                   if (isGeneratingAnamnese) return;
 
                   try {
                     setIsGeneratingAnamnese(true);
+                    setAnamneseReady(false); // Garantir que o estado está limpo
 
                     const { supabase } = await import('@/lib/supabase');
                     const { data: { session } } = await supabase.auth.getSession();
@@ -4271,6 +4351,13 @@ export function ConsultationRoom({
                     if (!consultationId) {
                       showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
                       setIsGeneratingAnamnese(false);
+                      return;
+                    }
+
+                    // Verificar se a anamnese já está pronta antes de gerar
+                    const isAlreadyReady = await checkAnamneseStatus(consultationId);
+                    if (isAlreadyReady) {
+                      // Anamnese já está pronta, não precisa gerar novamente
                       return;
                     }
 
@@ -4313,9 +4400,14 @@ export function ConsultationRoom({
                     console.error('Erro ao gerar anamnese:', error);
                     showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
                     setIsGeneratingAnamnese(false);
+                    setAnamneseReady(false);
                   }
                 }}
                 disabled={isGeneratingAnamnese}
+                style={{
+                  opacity: isGeneratingAnamnese ? 0.7 : 1,
+                  cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
+                }}
               >
                 {isGeneratingAnamnese ? (
                   <div className="spinner-small"></div>
@@ -4442,10 +4534,12 @@ export function ConsultationRoom({
                   return;
                 }
 
+                // Se está gerando, não fazer nada
                 if (isGeneratingAnamnese) return;
 
                 try {
                   setIsGeneratingAnamnese(true);
+                  setAnamneseReady(false); // Garantir que o estado está limpo
 
                   // Obter consultationId e doctorId
                   const { supabase } = await import('@/lib/supabase');
@@ -4483,6 +4577,13 @@ export function ConsultationRoom({
                   if (!consultationId) {
                     showError('Não foi possível identificar a consulta. Tente novamente.', 'Erro');
                     setIsGeneratingAnamnese(false);
+                    return;
+                  }
+
+                  // Verificar se a anamnese já está pronta antes de gerar
+                  const isAlreadyReady = await checkAnamneseStatus(consultationId);
+                  if (isAlreadyReady) {
+                    // Anamnese já está pronta, não precisa gerar novamente
                     return;
                   }
 
@@ -4529,6 +4630,7 @@ export function ConsultationRoom({
                   console.error('Erro ao gerar anamnese:', error);
                   showError('Erro ao gerar anamnese. Tente novamente.', 'Erro ao Gerar');
                   setIsGeneratingAnamnese(false);
+                  setAnamneseReady(false);
                 }
               }}
               disabled={isGeneratingAnamnese}
@@ -4686,116 +4788,6 @@ export function ConsultationRoom({
           </div>
         </div>
 
-        {/* Sidebar direita - Transcrição (apenas para médicos) */}
-        {userType === 'doctor' && !isTranscriptionMinimized && (
-          <div className="video-sidebar transcription-sidebar">
-            <div className="transcription-box">
-
-              <div className="transcription-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsTranscriptionMinimized(!isTranscriptionMinimized)}>
-
-                <h6 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, flex: 1 }}>
-
-                  Transcrição
-
-                  <span className={`badge ${transcriptionStatus === 'Conectado' ? 'bg-success' : 'bg-secondary'}`}>
-
-                    {transcriptionStatus}
-
-                  </span>
-
-                </h6>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsTranscriptionMinimized(!isTranscriptionMinimized);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#6b7280',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '4px',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f3f4f6';
-                    e.currentTarget.style.color = '#374151';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#6b7280';
-                  }}
-                  title="Minimizar transcrição"
-                >
-                  <Minimize2 size={16} />
-                </button>
-
-              </div>
-
-              <textarea
-
-                className="transcription-textarea"
-
-                value={transcriptionText}
-
-                readOnly
-
-                placeholder="A transcrição aparecerá aqui..."
-
-              />
-
-              <div className="transcription-info">
-
-                {transcriptionStatus === 'Conectado' ? 'Fale algo... a transcrição aparecerá abaixo' : 'Aguardando conexão...'}
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )}
-
-        {/* Ícone flutuante da transcrição quando minimizada */}
-        {userType === 'doctor' && isTranscriptionMinimized && (
-          <button
-            onClick={() => setIsTranscriptionMinimized(false)}
-            className="transcription-floating-icon"
-            title="Expandir transcrição"
-          >
-            <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Mic size={24} />
-              {isTranscriptionActive && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-2px',
-                  right: '-2px',
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  backgroundColor: '#4caf50',
-                  border: '2px solid white',
-                  animation: 'pulse 2s infinite',
-                }}></span>
-              )}
-            </div>
-            {transcriptionText.length > 0 && (
-              <span className="transcription-badge">
-                {transcriptionText.split('\n').filter(line => line.trim().length > 0).length}
-              </span>
-            )}
-          </button>
-        )}
 
       </div>
 

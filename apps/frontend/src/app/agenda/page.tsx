@@ -350,7 +350,7 @@ export default function AgendaPage() {
       case 'VALIDATION':
         return 'Validação';
       case 'VALID_ANAMNESE':
-        return 'Anamnese Validada';
+        return 'Validação Análise';
       case 'VALID_DIAGNOSTICO':
         return 'Diagnóstico Validado';
       case 'VALID_SOLUCAO':
@@ -388,7 +388,13 @@ export default function AgendaPage() {
 
   // Função para abrir detalhes da consulta
   const handleViewConsultation = (consultation: ConsultationEvent) => {
-    router.push(`/consultas?consulta_id=${consultation.id}`);
+    // Se a consulta está agendada, redireciona para entrar na consulta (copiar link)
+    if (consultation.status === 'AGENDAMENTO') {
+      handleEnterConsultation(consultation);
+    } else {
+      // Para outros status, vai para os detalhes
+      router.push(`/consultas?consulta_id=${consultation.id}`);
+    }
   };
 
   // Função para abrir modal de edição

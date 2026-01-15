@@ -175,8 +175,17 @@ export default function PatientsPage() {
     return () => clearTimeout(timeoutId);
   }, [searchTerm, statusFilter]);
 
+  // Estado para controlar se está criando paciente
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+
   // Criar novo paciente
   const handleCreatePatient = async (patientData: CreatePatientData) => {
+    // Prevenir múltiplas requisições
+    if (isCreatingPatient) {
+      return;
+    }
+
+    setIsCreatingPatient(true);
     try {
       console.log('📤 Enviando dados do paciente:', patientData);
       
@@ -205,10 +214,14 @@ export default function PatientsPage() {
       console.log('✅ Paciente criado com sucesso:', result);
 
       setShowForm(false);
+      setIsCreatingPatient(false); // Reabilitar o botão após sucesso
       fetchPatients(pagination.page, searchTerm, statusFilter, false);
     } catch (err) {
       console.error('❌ Erro ao criar paciente:', err);
       setError(err instanceof Error ? err.message : 'Erro ao criar paciente');
+      throw err; // Re-throw para que o formulário saiba que houve erro
+    } finally {
+      setIsCreatingPatient(false);
     }
   };
 

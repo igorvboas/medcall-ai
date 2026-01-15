@@ -151,9 +151,9 @@ body {
   left: 37px;
   top: 50%;
   transform: translateY(-50%);
-  width: 52px;
+  width: 48px;
   height: auto;
-  min-height: 335px;
+  min-height: 300px;
   background: #FFFFFF;
   color: #171717;
   border-radius: 3px;
@@ -164,7 +164,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 26px 0;
+  padding: 20px 0;
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
@@ -177,8 +177,8 @@ body {
 
 .sidebar.expanded {
   width: auto;
-  min-width: 180px;
-  padding: 26px 16px;
+  min-width: 160px;
+  padding: 20px 12px;
   align-items: flex-start;
   overflow: visible;
 }
@@ -186,7 +186,7 @@ body {
 .nav { 
   display: flex; 
   flex-direction: column; 
-  gap: 28px; 
+  gap: 24px; 
   align-items: center;
   width: 100%;
   padding: 0;
@@ -195,13 +195,13 @@ body {
 
 .sidebar.expanded .nav {
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* Estado compacto da sidebar */
 .nav-btn { 
-  width: 52px; 
-  height: 26px; 
+  width: 48px; 
+  height: 24px; 
   border-radius: 0; 
   display: flex; 
   align-items: center; 
@@ -222,10 +222,10 @@ body {
 /* Estado expandido da sidebar */
 .sidebar.expanded .nav-btn {
   width: 100%;
-  height: 48px;
+  height: 44px;
   justify-content: flex-start;
-  padding: 0 16px;
-  gap: 12px;
+  padding: 0 12px;
+  gap: 10px;
   border-radius: 12px;
 }
 
@@ -390,8 +390,8 @@ body {
 
 /* Forçar centralização absoluta dos ícones no estado compacto */
 .sidebar:not(.expanded) .nav-btn {
-  width: 52px !important;
-  height: 26px !important;
+  width: 48px !important;
+  height: 24px !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
@@ -430,19 +430,19 @@ body {
   flex-direction: column; 
   gap: 0; 
   align-items: center; 
-  padding-top: 28px;
+  padding-top: 24px;
 }
 
 .sidebar.expanded .bottom {
   align-items: stretch;
-  padding-top: 8px;
-  gap: 8px;
+  padding-top: 6px;
+  gap: 6px;
 }
 
 /* Botão de logout segue o mesmo padrão dos nav-btn */
 .bottom .nav-btn {
-  width: 52px;
-  height: 26px;
+  width: 48px;
+  height: 24px;
 }
 
 /* ============================================
@@ -553,13 +553,13 @@ body {
 
 .sidebar.expanded .bottom .nav-btn {
   width: 100%;
-  height: 48px;
+  height: 44px;
 }
 
 /* Centralizar ícone do logout no estado compacto */
 .sidebar:not(.expanded) .bottom .nav-btn {
-  width: 52px !important;
-  height: 26px !important;
+  width: 48px !important;
+  height: 24px !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
@@ -587,6 +587,88 @@ body {
 .dark .bottom .nav-btn {
   color: #FFFFFF !important;
 }
+
+/* Ajustes responsivos do sidebar - altura pequena */
+@media (max-height: 700px) {
+  .sidebar:not(.top-menu) {
+    max-height: calc(100vh - 80px);
+    top: 40px;
+    transform: translateY(0);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  .sidebar:not(.top-menu) .nav {
+    overflow-y: visible;
+  }
+}
+
+@media (max-height: 600px) {
+  .sidebar:not(.top-menu) {
+    max-height: calc(100vh - 60px);
+    top: 30px;
+    padding: 16px 0;
+  }
+  
+  .sidebar:not(.top-menu).expanded {
+    padding: 16px 12px;
+  }
+  
+  .sidebar:not(.top-menu) .nav {
+    gap: 6px;
+  }
+  
+  .sidebar:not(.top-menu).expanded .nav {
+    gap: 6px;
+  }
+  
+  .sidebar:not(.top-menu) .nav-btn {
+    height: 24px;
+  }
+  
+  .sidebar:not(.top-menu).expanded .nav-btn {
+    height: 40px;
+  }
+  
+  .sidebar:not(.top-menu) .bottom {
+    padding-top: 12px;
+  }
+  
+  .sidebar:not(.top-menu).expanded .bottom {
+    padding-top: 6px;
+  }
+}
+
+/* Ajustes responsivos do sidebar - largura menor */
+@media (max-width: 1024px) {
+  .sidebar:not(.top-menu) {
+    left: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar:not(.top-menu) {
+    left: 16px;
+    width: 48px;
+    padding: 20px 0;
+  }
+  
+  .sidebar:not(.top-menu) .nav-btn {
+    width: 48px;
+    height: 24px;
+  }
+  
+  .sidebar:not(.top-menu):not(.expanded) .nav-btn {
+    width: 48px !important;
+    height: 24px !important;
+  }
+  
+  .sidebar:not(.top-menu).expanded {
+    min-width: 160px;
+    padding: 20px 12px;
+  }
+}
+
 .toggle-darkmode { 
   width: 46px; 
   height: 26px; 

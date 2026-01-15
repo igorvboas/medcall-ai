@@ -53,7 +53,7 @@ interface CreatePatientData {
 
 interface PatientFormProps {
   patient?: Patient;
-  onSubmit: (data: CreatePatientData) => void;
+  onSubmit: (data: CreatePatientData) => void | Promise<void>;
   onCancel: () => void;
   title: string;
 }
@@ -113,7 +113,30 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       });
       setProfilePicUrl(patient.profile_pic || null);
       setImagePreview(patient.profile_pic || null);
+    } else {
+      // Resetar formulário e estado quando for novo paciente
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        city: '',
+        state: '',
+        birth_date: '',
+        gender: undefined,
+        cpf: '',
+        address: '',
+        emergency_contact: '',
+        emergency_phone: '',
+        medical_history: '',
+        allergies: '',
+        current_medications: '',
+        status: 'active',
+      });
+      setProfilePicUrl(null);
+      setImagePreview(null);
     }
+    // Resetar estado de submissão quando o formulário é aberto
+    setIsSubmitting(false);
   }, [patient]);
 
   // Validação do formulário
@@ -158,6 +181,11 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevenir múltiplos envios
+    if (isSubmitting) {
+      return;
+    }
+    
     if (!validateForm()) {
       return;
     }
@@ -179,12 +207,18 @@ export function PatientForm({ patient, onSubmit, onCancel, title }: PatientFormP
       console.log('📋 Dados do formulário antes do envio:', formData);
       console.log('🧹 Dados limpos para envio:', cleanedData);
       
-      onSubmit(cleanedData);
+      // Aguardar a Promise retornada por onSubmit antes de reabilitar o botão
+      const result = onSubmit(cleanedData);
+      if (result instanceof Promise) {
+        await result;
+      }
     } catch (error) {
       console.error('Erro ao submeter formulário:', error);
-    } finally {
+      // Reabilitar o botão em caso de erro
       setIsSubmitting(false);
     }
+    // Se não houver erro, o botão permanece desabilitado até que o modal seja fechado
+    // Isso evita múltiplos cliques durante o processo de criação
   };
 
   // Formatar CPF

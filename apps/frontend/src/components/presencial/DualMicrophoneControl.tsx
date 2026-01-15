@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Stethoscope, User, AlertTriangle } from 'lucide-react';
-import { AudioLevelIndicator } from './AudioLevelIndicator';
 
 interface AudioDevice {
     deviceId: string;
@@ -140,11 +139,22 @@ export function DualMicrophoneControl({
                         </option>
                     ))}
                 </select>
-                <AudioLevelIndicator
-                    level={doctorLevel}
-                    label="Nível de Áudio"
-                    isSpeaking={doctorLevel > 0.02}
-                />
+                <div className="audio-level-section">
+                    <label className="audio-level-label">Nível de Áudio</label>
+                    <div className="audio-progress-container">
+                        <div className="audio-progress-bar">
+                            <div 
+                                className="audio-progress-fill" 
+                                style={{ width: `${Math.min(doctorLevel * 100, 100)}%` }}
+                            ></div>
+                        </div>
+                        <img 
+                            src="/muted-mic.svg" 
+                            alt={doctorLevel > 0.02 ? "Microfone ativo" : "Microfone mudo"} 
+                            className={`audio-mute-icon ${doctorLevel > 0.02 ? 'active' : 'muted'}`}
+                        />
+                    </div>
+                </div>
             </div>
 
             <div className="microphone-section">
@@ -164,11 +174,22 @@ export function DualMicrophoneControl({
                         </option>
                     ))}
                 </select>
-                <AudioLevelIndicator
-                    level={patientLevel}
-                    label="Nível de Áudio"
-                    isSpeaking={patientLevel > 0.02}
-                />
+                <div className="audio-level-section">
+                    <label className="audio-level-label">Nível de Áudio</label>
+                    <div className="audio-progress-container">
+                        <div className="audio-progress-bar">
+                            <div 
+                                className="audio-progress-fill" 
+                                style={{ width: `${Math.min(patientLevel * 100, 100)}%` }}
+                            ></div>
+                        </div>
+                        <img 
+                            src="/muted-mic.svg" 
+                            alt={patientLevel > 0.02 ? "Microfone ativo" : "Microfone mudo"} 
+                            className={`audio-mute-icon ${patientLevel > 0.02 ? 'active' : 'muted'}`}
+                        />
+                    </div>
+                </div>
             </div>
 
             {devices.length < 2 && (
@@ -289,6 +310,57 @@ export function DualMicrophoneControl({
         .warning-icon {
           color: #F59E0B;
           flex-shrink: 0;
+        }
+        
+        .audio-level-section {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        
+        .audio-level-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1B4266;
+        }
+        
+        .audio-progress-container {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+        }
+        
+        .audio-progress-bar {
+          flex: 1;
+          height: 4px;
+          background: #CFCFCF;
+          border-radius: 4px;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .audio-progress-fill {
+          height: 100%;
+          background: #16E5AD;
+          border-radius: 4px;
+          transition: width 0.1s ease;
+        }
+        
+        .audio-mute-icon {
+          width: 18.78px;
+          height: 19.52px;
+          object-fit: contain;
+          flex-shrink: 0;
+          transition: opacity 0.2s ease;
+        }
+        
+        .audio-mute-icon.muted {
+          opacity: 1;
+        }
+        
+        .audio-mute-icon.active {
+          opacity: 0.5;
         }
       `}</style>
         </div>

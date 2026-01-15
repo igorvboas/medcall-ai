@@ -6515,7 +6515,7 @@
 
 .consultation-details-info-card {
   flex: 1 1 calc(20% - 13px) !important;
-  min-width: 180px !important;
+  min-width: 200px !important;
   max-width: calc(20% - 13px) !important;
   background: #FFFFFF;
   border-radius: 8px;
@@ -6528,6 +6528,8 @@
   box-sizing: border-box !important;
   overflow-wrap: break-word;
   word-wrap: break-word;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .consultation-details-card-avatar {
@@ -6583,36 +6585,48 @@
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+  overflow: visible;
+  width: 100%;
 }
 
 .consultation-details-card-label {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   color: #666666;
-  line-height: 1.4;
+  line-height: 1.3;
   margin: 0;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .consultation-details-card-value {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   color: #000000;
-  line-height: 1.4;
+  line-height: 1.3;
   margin: 0;
-  display: flex;
-  align-items: center;
+  display: block;
   max-width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .consultation-details-card-phone {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 400;
   color: #666666;
-  line-height: 1.4;
+  line-height: 1.3;
   margin-top: 2px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* Container principal com dois cards grandes */
@@ -6836,4 +6850,188 @@
 
 .dark .consultation-details-actions-card {
   background: #1f2937;
+}
+
+/* Responsividade para cards de detalhes da consulta */
+@media (max-width: 1600px) {
+  .consultation-details-info-card {
+    min-width: 220px !important;
+  }
+}
+
+@media (max-width: 1400px) {
+  .consultation-details-info-card {
+    flex: 1 1 calc(25% - 12px) !important;
+    min-width: 220px !important;
+    max-width: calc(25% - 12px) !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .consultation-details-info-card {
+    flex: 1 1 calc(33.333% - 11px) !important;
+    min-width: 200px !important;
+    max-width: calc(33.333% - 11px) !important;
+  }
+  
+  .consultation-details-card-value {
+    font-size: 12px;
+  }
+  
+  .consultation-details-card-label {
+    font-size: 11px;
+  }
+  
+  .consultation-details-card-phone {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .consultation-details-info-card {
+    flex: 1 1 calc(33.333% - 11px) !important;
+    min-width: 180px !important;
+    max-width: calc(33.333% - 11px) !important;
+  }
+  
+  .consultation-details-card-value {
+    font-size: 12px;
+  }
+  
+  .consultation-details-card-label {
+    font-size: 11px;
+  }
+  
+  .consultation-details-card-phone {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .consultation-details-cards-row {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  
+  .consultation-details-info-card {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+  
+  .consultation-details-card-value {
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-word;
+    hyphens: auto;
+    display: block !important;
+  }
+  
+  .consultation-details-card-label {
+    font-size: 10px;
+    word-break: break-word;
+  }
+  
+  .consultation-details-card-phone {
+    font-size: 10px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .consultation-details-card-avatar img {
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-avatar-placeholder {
+    width: 50px;
+    height: 50px;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-card-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-card-icon-wrapper svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .consultation-details-card-content {
+    min-width: 0;
+    flex: 1;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .consultation-details-cards-row {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .consultation-details-info-card {
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  
+  .consultation-details-card-value {
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-word;
+    hyphens: auto;
+    display: block !important;
+  }
+  
+  .consultation-details-card-label {
+    font-size: 10px;
+    word-break: break-word;
+  }
+  
+  .consultation-details-card-phone {
+    font-size: 10px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .consultation-details-card-avatar img {
+    width: 45px;
+    height: 45px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-avatar-placeholder {
+    width: 45px;
+    height: 45px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-card-icon-wrapper {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  
+  .consultation-details-card-icon-wrapper svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .consultation-details-card-content {
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+    overflow: visible;
+  }
 }

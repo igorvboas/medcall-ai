@@ -4407,9 +4407,10 @@
 
 .sala-consulta-cards-row {
   display: flex;
-  gap: 30px;
+  gap: 20px;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .sala-consulta-card {
@@ -4417,8 +4418,9 @@
   border-radius: 3px;
   padding: 38px 50px 42px 50px;
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 350px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
   min-height: 317px;
   display: flex;
   flex-direction: column;
@@ -4602,16 +4604,74 @@
 /* Responsive */
 @media (max-width: 1024px) {
   .sala-consulta-cards-row {
-    flex-direction: column;
-    align-items: center;
+    gap: 16px;
   }
   
   .sala-consulta-card {
-    max-width: 100%;
+    padding: 32px 30px 36px 30px;
+    min-height: 280px;
   }
   
   .sala-consulta-patient-info {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .sala-consulta-cards-row {
+    gap: 12px;
+  }
+  
+  .sala-consulta-card {
+    padding: 24px 20px 28px 20px;
+    min-height: 260px;
+  }
+  
+  .sala-consulta-card-icon {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .sala-consulta-card-icon-permissions {
+    width: 180px;
+    height: 70px;
+  }
+  
+  .sala-consulta-card-icon-login {
+    width: 65px;
+    height: 65px;
+  }
+  
+  .sala-consulta-card-text,
+  .sala-consulta-card-text-permissions-main,
+  .sala-consulta-card-text-permissions-help {
+    font-size: 14px;
+  }
+  
+  .sala-consulta-btn-whatsapp,
+  .sala-consulta-btn-copy-link,
+  .sala-consulta-btn-enter {
+    font-size: 14px;
+    padding: 8px 0;
+  }
+  
+  .sala-consulta-warning-text {
+    font-size: 12px;
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sala-consulta-cards-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .sala-consulta-card {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-height: auto;
   }
 }
 
