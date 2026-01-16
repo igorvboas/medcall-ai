@@ -4694,16 +4694,24 @@ function ConsultasPageContent() {
   // Função para verificar se anamnese está preenchida (definida aqui para ser usada nos useEffects)
   const checkAnamnesePreenchida = useCallback(async (patientId: string): Promise<boolean> => {
     try {
+      console.log('🔍 Verificando anamnese para paciente:', patientId);
       const response = await fetch(`/api/patients/${patientId}`);
       if (!response.ok) {
-        console.error('Erro ao buscar dados do paciente');
+        console.error('❌ Erro ao buscar dados do paciente:', response.status);
         return false;
       }
       const data = await response.json();
       const patient = data.patient || data;
-      return patient?.anamnese?.status === 'preenchida';
+      const isPreenchida = patient?.anamnese?.status === 'preenchida';
+      console.log('📋 Status da anamnese:', {
+        pacienteId: patientId,
+        temAnamnese: !!patient?.anamnese,
+        status: patient?.anamnese?.status,
+        isPreenchida
+      });
+      return isPreenchida;
     } catch (error) {
-      console.error('Erro ao verificar anamnese:', error);
+      console.error('❌ Erro ao verificar anamnese:', error);
       return false;
     }
   }, []);
@@ -5117,7 +5125,7 @@ function ConsultasPageContent() {
     }
   }, [consultaId, sectionParam]);
 
-  // Verificar status da anamnese quando consulta for carregada
+  // Verificar status da anamnese quando consulta for carregada ou quando entrar na seção de diagnóstico
   useEffect(() => {
     const verifyAnamneseStatus = async () => {
       if (!consultaDetails?.patient_id) {
@@ -5133,11 +5141,44 @@ function ConsultasPageContent() {
         return;
       }
 
+      // Verificar quando entrar na seção de diagnóstico
+      if (selectedSection === 'DIAGNOSTICO') {
+        const isPreenchida = await checkAnamnesePreenchida(consultaDetails.patient_id);
+        setAnamnesePreenchida(isPreenchida);
+      }
+    };
+
+    verifyAnamneseStatus();
+  }, [consultaDetails?.patient_id, consultaDetails?.status, consultaDetails?.etapa, selectedSection, checkAnamnesePreenchida]);
+
+  // Verificar status inicial quando a consulta for carregada (apenas uma vez)
+  const hasCheckedInitialRef = useRef<string | null>(null);
+  useEffect(() => {
+    const verifyInitialStatus = async () => {
+      if (!consultaDetails?.patient_id) {
+        hasCheckedInitialRef.current = null;
+        return;
+      }
+
+      // Se já verificamos para este paciente, não verificar novamente
+      if (hasCheckedInitialRef.current === consultaDetails.patient_id) {
+        return;
+      }
+
+      // Se já tem solução, não precisa verificar
+      if (consultaDetails.status === 'VALID_SOLUCAO' || 
+          consultaDetails.status === 'COMPLETED' ||
+          consultaDetails.etapa === 'SOLUCAO') {
+        return;
+      }
+
+      // Verificar quando a consulta for carregada pela primeira vez
+      hasCheckedInitialRef.current = consultaDetails.patient_id;
       const isPreenchida = await checkAnamnesePreenchida(consultaDetails.patient_id);
       setAnamnesePreenchida(isPreenchida);
     };
 
-    verifyAnamneseStatus();
+    verifyInitialStatus();
   }, [consultaDetails?.patient_id, consultaDetails?.status, consultaDetails?.etapa, checkAnamnesePreenchida]);
 
   // Efeito para definir selectedSection automaticamente apenas quando houver parâmetro section=anamnese na URL
@@ -7449,10 +7490,40 @@ function ConsultasPageContent() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '8px'
+                marginBottom: '8px',
+                width: '100%',
+                maxWidth: '600px'
               }}>
                 <AlertTriangle size={18} />
-                <span>A anamnese do paciente não foi preenchida. Por favor, envie a anamnese inicial para o paciente na tela de Pacientes antes de gerar a solução.</span>
+                <span style={{ flex: 1 }}>A anamnese do paciente não foi preenchida. Por favor, envie a anamnese inicial para o paciente na tela de Pacientes antes de gerar a solução.</span>
+                <button
+                  onClick={async () => {
+                    if (consultaDetails?.patient_id) {
+                      const isPreenchida = await checkAnamnesePreenchida(consultaDetails.patient_id);
+                      setAnamnesePreenchida(isPreenchida);
+                      if (isPreenchida) {
+                        showSuccess('Anamnese verificada! O botão foi liberado.', 'Anamnese Verificada');
+                      } else {
+                        showWarning('A anamnese ainda não foi preenchida.', 'Anamnese Pendente');
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#F59E0B',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    marginLeft: '8px'
+                  }}
+                  title="Verificar novamente"
+                >
+                  Verificar Novamente
+                </button>
               </div>
             )}
             <button

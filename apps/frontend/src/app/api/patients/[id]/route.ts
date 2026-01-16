@@ -76,7 +76,25 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ patient });
+    // Buscar status da anamnese do paciente
+    let anamnese = null;
+    const { data: anamneseData } = await supabase
+      .from('a_cadastro_anamnese')
+      .select('paciente_id, status')
+      .eq('paciente_id', patientId)
+      .single();
+    
+    if (anamneseData) {
+      anamnese = { status: anamneseData.status };
+    }
+
+    // Adicionar dados da anamnese ao paciente
+    const patientWithAnamnese = {
+      ...patient,
+      anamnese: anamnese
+    };
+
+    return NextResponse.json({ patient: patientWithAnamnese });
 
   } catch (error) {
     if (error instanceof Error && error.message === 'Não autorizado') {

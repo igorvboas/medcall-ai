@@ -70,7 +70,34 @@ function AnamneseInicialContent() {
       }
       const data = await response.json();
       if (data.anamnese) {
-        setFormData(data.anamnese);
+        // Inverter a lógica ao carregar: se no banco está o que DESEJA,
+        // na interface mostramos o que NÃO DESEJA (inverso)
+        const loadedData = { ...data.anamnese };
+        
+        // Para cada categoria, calcular o inverso (todos - desejados = não desejados)
+        if (loadedData.proteinas) {
+          loadedData.proteinas = proteinasOptions.filter(item => !(data.anamnese.proteinas || []).includes(item));
+        }
+        if (loadedData.carboidratos) {
+          loadedData.carboidratos = carboidratosOptions.filter(item => !(data.anamnese.carboidratos || []).includes(item));
+        }
+        if (loadedData.vegetais) {
+          loadedData.vegetais = vegetaisOptions.filter(item => !(data.anamnese.vegetais || []).includes(item));
+        }
+        if (loadedData.legumes) {
+          loadedData.legumes = legumesOptions.filter(item => !(data.anamnese.legumes || []).includes(item));
+        }
+        if (loadedData.leguminosas) {
+          loadedData.leguminosas = leguminosasOptions.filter(item => !(data.anamnese.leguminosas || []).includes(item));
+        }
+        if (loadedData.gorduras) {
+          loadedData.gorduras = gordurasOptions.filter(item => !(data.anamnese.gorduras || []).includes(item));
+        }
+        if (loadedData.frutas) {
+          loadedData.frutas = frutasOptions.filter(item => !(data.anamnese.frutas || []).includes(item));
+        }
+        
+        setFormData(loadedData);
       }
     } catch (error) {
       console.error('Erro ao carregar anamnese:', error);
@@ -113,6 +140,33 @@ function AnamneseInicialContent() {
     setSaving(true);
 
     try {
+      // Inverter a lógica: o que o usuário selecionou são os que NÃO deseja
+      // Precisamos enviar os que NÃO foram selecionados (os que DESEJA)
+      const invertedFormData = { ...formData };
+      
+      // Para cada categoria, calcular o inverso (todos os alimentos - selecionados = desejados)
+      if (invertedFormData.proteinas) {
+        invertedFormData.proteinas = proteinasOptions.filter(item => !(formData.proteinas || []).includes(item));
+      }
+      if (invertedFormData.carboidratos) {
+        invertedFormData.carboidratos = carboidratosOptions.filter(item => !(formData.carboidratos || []).includes(item));
+      }
+      if (invertedFormData.vegetais) {
+        invertedFormData.vegetais = vegetaisOptions.filter(item => !(formData.vegetais || []).includes(item));
+      }
+      if (invertedFormData.legumes) {
+        invertedFormData.legumes = legumesOptions.filter(item => !(formData.legumes || []).includes(item));
+      }
+      if (invertedFormData.leguminosas) {
+        invertedFormData.leguminosas = leguminosasOptions.filter(item => !(formData.leguminosas || []).includes(item));
+      }
+      if (invertedFormData.gorduras) {
+        invertedFormData.gorduras = gordurasOptions.filter(item => !(formData.gorduras || []).includes(item));
+      }
+      if (invertedFormData.frutas) {
+        invertedFormData.frutas = frutasOptions.filter(item => !(formData.frutas || []).includes(item));
+      }
+
       const response = await fetch('/api/anamnese-inicial', {
         method: 'PUT',
         headers: {
@@ -120,7 +174,7 @@ function AnamneseInicialContent() {
         },
         body: JSON.stringify({
           paciente_id: pacienteId,
-          ...formData
+          ...invertedFormData
         }),
       });
 
