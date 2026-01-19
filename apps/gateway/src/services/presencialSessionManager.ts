@@ -1,5 +1,6 @@
 import { whisperService } from './whisperService';
 import { db, logError } from '../config/database';
+import fetch from 'node-fetch';
 
 /**
  * Interface para chunk de áudio em fila
@@ -208,7 +209,8 @@ class PresencialSessionManager {
             const result = await whisperService.transcribeAudioChunk(
                 audioBuffer,
                 speaker,
-                'pt'
+                'pt',
+                session.consultationId  // ✅ NOVO: Registrar custos vinculados à consulta
             );
 
             console.log(`✅ [PRESENCIAL] Whisper retornou: "${result.text}" (duração: ${result.duration}ms)`);
@@ -372,6 +374,69 @@ class PresencialSessionManager {
             .eq('id', session.consultationId);
 
         console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada (${session.totalTranscriptions} transcrições, ${durationMinutes.toFixed(2)} min)`);
+
+        // 💰 NOVO: Calcular e atualizar valor_consulta
+        try {
+            const { aiPricingService } = await import('./aiPricingService');
+            const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
+            if (totalCost !== null) {
+                console.log(`💰 [PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+            }
+        } catch (costError) {
+            console.error('❌ [PRESENCIAL] Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
+        }
+
+        // 📤 NOVO: Enviar webhook com dados da consulta finalizada
+        try {
+            // Montar transcrição completa formatada
+            const transcriptionText = session.transcriptions
+                .map(t => `[${t.speaker}]: ${t.text}`)
+                .join('\n');
+
+            // Configurar webhook
+            const webhookUrl = 'https://webhook.tc1.triacompany.com.br/webhook/usi-analise-v2';
+            const webhookHeaders = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Vc1mgGDEcnyqLH3LoHGUXoLTUg2BRVSu'
+            };
+
+            const webhookData = {
+                consultationId: session.consultationId,
+                doctorId: session.doctorId,
+                patientId: session.patientId,
+                transcription: transcriptionText,
+                consulta_finalizada: true,
+                paciente_entrou_sala: true, // Em consultas presenciais, sempre true
+                tipo_consulta: 'PRESENCIAL'
+            };
+
+            console.log(`📤 [PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
+            console.log(`📦 [PRESENCIAL] Dados: consultationId=${session.consultationId}, doctorId=${session.doctorId}, patientId=${session.patientId}`);
+
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: webhookHeaders,
+                body: JSON.stringify(webhookData)
+            });
+
+            if (response.ok) {
+                console.log(`✅ [PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
+            } else {
+                console.warn(`⚠️ [PRESENCIAL] Webhook retornou status ${response.status}`);
+            }
+        } catch (webhookError) {
+            // Não bloquear finalização se webhook falhar
+            console.error(`❌ [PRESENCIAL] Erro ao enviar webhook:`, webhookError);
+            logError(
+                'Erro ao enviar webhook de finalização de consulta presencial',
+                'warning',
+                session.consultationId,
+                {
+                    sessionId,
+                    error: webhookError instanceof Error ? webhookError.message : String(webhookError)
+                }
+            );
+        }
 
         // Remover da memória após 5 minutos
         setTimeout(() => {

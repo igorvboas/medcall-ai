@@ -41,6 +41,26 @@ class WhisperService {
     }
 
     /**
+     * Obtém a duração real do áudio usando ffprobe
+     * @param filePath Caminho do arquivo de áudio
+     * @returns Duração em milissegundos
+     */
+    private async getAudioDuration(filePath: string): Promise<number> {
+        return new Promise((resolve, reject) => {
+            ffmpeg.ffprobe(filePath, (err, metadata) => {
+                if (err) {
+                    console.error(`❌ [WHISPER] Erro ao obter duração do áudio:`, err);
+                    reject(err);
+                    return;
+                }
+                const duration = metadata.format.duration || 0;
+                console.log(`⏱️ [WHISPER] Duração real do áudio: ${duration.toFixed(2)}s`);
+                resolve(duration * 1000); // Converter para ms
+            });
+        });
+    }
+
+    /**
      * Converte WebM para WAV usando ffmpeg
      */
     private async convertWebMToWAV(inputPath: string, outputPath: string): Promise<void> {
@@ -162,10 +182,19 @@ class WhisperService {
                         const duration = Date.now() - startTime;
                         console.log(`✅ [WHISPER] Retry ${attempt} bem-sucedido!`);
 
-                        // Limpar arquivo temporário
+                        // ✅ NOVO: Usar duração REAL do áudio (ANTES de deletar o arquivo)
+                        try {
+                            const actualAudioDurationMs = await this.getAudioDuration(tempFilePath);
+                            await aiPricingService.logWhisperUsage(actualAudioDurationMs, consultaId);
+                        } catch (durationError) {
+                            // Fallback para estimativa se ffprobe falhar
+                            const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
+                            await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
+                        }
+
+                        // Limpar arquivo temporário DEPOIS de ler a duração
                         try { fs.unlinkSync(tempFilePath); } catch (e) { }
 
-                        await aiPricingService.logWhisperUsage(Math.max(1000, (audioBuffer.length / 16000) * 1000), consultaId);
                         this.transcriptionCache.set(cacheKey, text);
 
                         return { text, duration };
@@ -196,11 +225,18 @@ class WhisperService {
 
 
                     // 📊 Registrar uso do Whisper para monitoramento de custos
-                    // Estimar duração do áudio em ms baseado no tamanho do buffer (aproximação)
-                    // Para áudio WebM ~128kbps: 1 segundo ≈ 16KB
-                    const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
-                    await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
-                    console.log(`📊 [WHISPER] Uso registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio`);
+                    // ✅ NOVO: Usar duração REAL do áudio (via ffprobe) em vez de estimativa
+                    try {
+                        const actualAudioDurationMs = await this.getAudioDuration(tempFilePath);
+                        await aiPricingService.logWhisperUsage(actualAudioDurationMs, consultaId);
+                        console.log(`📊 [WHISPER] Uso registrado: ${(actualAudioDurationMs / 1000).toFixed(2)}s de áudio (duração real)`);
+                    } catch (durationError) {
+                        // Fallback: se ffprobe falhar, usar estimativa
+                        console.warn(`⚠️ [WHISPER] Erro ao obter duração real, usando estimativa:`, durationError);
+                        const estimatedAudioDurationMs = Math.max(1000, (audioBuffer.length / 16000) * 1000);
+                        await aiPricingService.logWhisperUsage(estimatedAudioDurationMs, consultaId);
+                        console.log(`📊 [WHISPER] Uso registrado: ~${Math.round(estimatedAudioDurationMs / 1000)}s de áudio (estimado)`);
+                    }
 
                     console.log(`✅ [WHISPER] Transcrito ${speaker} em ${duration}ms: "${text.substring(0, 50)}..."`);
 
