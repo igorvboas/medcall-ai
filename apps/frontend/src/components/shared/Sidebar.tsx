@@ -10,7 +10,6 @@ import {
   Calendar,
   User,
   Settings,
-  Plus,
   LogOut,
   ShieldCheck,
   LayoutDashboard,
@@ -32,7 +31,6 @@ const menuItems = [
   { icon: MessageCircle, label: 'Consultas', href: '/consultas' },
   { icon: Calendar, label: 'Agenda', href: '/agenda' },
   { icon: User, label: 'Pacientes', href: '/pacientes' },
-  { icon: Plus, label: 'Cadastrar Paciente', href: '/pacientes/cadastro' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
 ];
 

@@ -12,6 +12,8 @@ interface AnamneseFormData {
   email?: string;
   genero?: string;
   data_nascimento?: string;
+  idade?: string;
+  tipo_sanguineo?: string;
   estado_civil?: string;
   profissao?: string;
   altura?: string;
@@ -180,7 +182,11 @@ function AnamneseInicialContent() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao salvar anamnese');
+        const errorMessage = errorData.details 
+          ? `${errorData.error || 'Erro ao salvar anamnese'}: ${errorData.details}`
+          : errorData.error || 'Erro ao salvar anamnese';
+        console.error('Erro completo da API:', errorData);
+        throw new Error(errorMessage);
       }
 
       showSuccess('Anamnese salva com sucesso!', 'Sucesso');
@@ -304,6 +310,42 @@ function AnamneseInicialContent() {
                 maxLength={10}
                 required
               />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="idade" className="field-label">Idade *</label>
+              <input
+                id="idade"
+                type="number"
+                value={formData.idade || ''}
+                onChange={(e) => handleChange('idade', e.target.value)}
+                className="form-input"
+                placeholder="Ex: 30"
+                min="0"
+                max="150"
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="tipo_sanguineo" className="field-label">Tipo Sanguíneo *</label>
+              <select
+                id="tipo_sanguineo"
+                value={formData.tipo_sanguineo || ''}
+                onChange={(e) => handleChange('tipo_sanguineo', e.target.value)}
+                className="form-input"
+                required
+              >
+                <option value="">Selecione</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
             </div>
 
             <div className="form-field">

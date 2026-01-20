@@ -288,23 +288,25 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #bd986b 0%, #bd986b 100%);
+  background: linear-gradient(135deg, #2D6293 0%, #1B4266 100%) !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(166, 206, 57, 0.4);
+  box-shadow: 0 4px 12px rgba(45, 98, 147, 0.4) !important;
+  color: white !important;
 }
 
 /* Custom color for "Atualizar Paciente" button */
 .btn-update {
-  background: linear-gradient(135deg, #bd986b 0%, #bd986b 100%);
+  background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   color: #FFFFFF;
   border: 1px solid transparent; 
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 8px rgba(27, 66, 102, 0.3);
 }
 
 .btn-update:hover:not(:disabled) {
-  background: linear-gradient(135deg, #a3835b 0%, #a3835b 100%);
+  background: linear-gradient(135deg, #2D6293 0%, #1B4266 100%) !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 12px rgba(45, 98, 147, 0.4) !important;
+  color: white !important;
 }
 
 .btn-icon {

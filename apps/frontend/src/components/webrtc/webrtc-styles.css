@@ -248,7 +248,7 @@
 
 /* Texto de ajuda */
 .help-text {
-  font-size: 10px;
+  font-size: 13px;
   color: #6C6C6C;
   line-height: 1.4;
   margin: 0;
@@ -271,20 +271,21 @@
   width: 155px;
   height: 155px;
   border-radius: 50%;
-  background: #C3DEF6;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.icon-circle svg,
-.icon-circle img.microphone-icon {
+.icon-circle svg {
   width: 61px;
   height: 61px;
   color: #1B4266;
 }
 
 .icon-circle img.microphone-icon {
+  width: 155px;
+  height: 155px;
   object-fit: contain;
   filter: brightness(0) saturate(100%) invert(16%) sepia(44%) saturate(1000%) hue-rotate(175deg) brightness(0.95) contrast(1.1);
 }
@@ -295,6 +296,12 @@
   height: 155px;
   object-fit: contain;
   filter: none;
+}
+
+/* Remover filtros dos novos ícones no modo dark para manter cores originais */
+.dark .icon-circle img.cam-mic-icon,
+.dark .icon-circle img.microphone-icon {
+  filter: none !important;
 }
 
 .icon-circle.cam-mic-circle {
@@ -481,6 +488,7 @@
 .consultation-type-btn.active:hover:not(:disabled) {
   background: #153A5C;
   border-color: #153A5C;
+  color: #FFFFFF;
 }
 
 .consultation-type-btn:disabled {
@@ -3801,6 +3809,23 @@
   background: rgba(45, 98, 147, 0.2) !important;
 }
 
+/* Remover filtros dos ícones no modo dark para manter cores originais dos SVGs */
+.dark .icon-circle img.cam-mic-icon,
+.dark .icon-circle img.microphone-icon {
+  filter: none !important;
+}
+
+/* Remover background do círculo no modo dark */
+.dark .icon-circle {
+  background: transparent !important;
+}
+
+/* Ícone do microfone no modo dark - mesmo tamanho do display (155px) */
+.dark .icon-circle img.microphone-icon {
+  width: 155px !important;
+  height: 155px !important;
+}
+
 /* Dark mode consent-checkbox-figma */
 .dark .consent-checkbox-figma {
   background: #252525 !important;
@@ -3861,6 +3886,7 @@
 .dark .consultation-type-btn.active:hover:not(:disabled) {
   background: #1B4266 !important;
   border-color: #1B4266 !important;
+  color: #FFFFFF !important;
 }
 
 /* Dark mode patient info card */
@@ -4281,6 +4307,7 @@
 
 .btn-voltar-consulta {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
@@ -4304,6 +4331,9 @@
   width: 14.51px;
   height: 14.51px;
   filter: brightness(0) saturate(100%) invert(62%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(92%) contrast(89%);
+  order: -1 !important;
+  margin-right: 0;
+  transform: rotate(180deg);
 }
 
 .sala-consulta-main-card {

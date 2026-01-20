@@ -1,17 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 
 export function LandingHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
 
   return (
     <header className="landing-header">
       <div className="landing-header-container">
         {/* Logo */}
         <Link href="/" className="landing-logo">
-          <img src="/logo-eva.png" alt="Auton Health Logo" className="landing-logo-image" />
+          <img src={logoSrc} alt="Auton Health Logo" className="landing-logo-image" />
         </Link>
 
         {/* Desktop Navigation */}

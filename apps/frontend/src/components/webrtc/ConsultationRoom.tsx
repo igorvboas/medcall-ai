@@ -438,6 +438,11 @@ export function ConsultationRoom({
             const anamneseResponse = await fetch(`/api/cadastro-anamnese/${patientId}`);
             if (anamneseResponse.ok) {
               const anamneseResult = await anamneseResponse.json();
+              console.log('✅ ConsultationRoom: Dados da anamnese recebidos:', anamneseResult);
+              console.log('  - peso_atual:', anamneseResult?.peso_atual);
+              console.log('  - altura:', anamneseResult?.altura);
+              console.log('  - idade:', anamneseResult?.idade);
+              console.log('  - tipo_saguineo:', anamneseResult?.tipo_saguineo);
               setPatientAnamnese(anamneseResult);
             }
           } catch (err) {
@@ -4209,7 +4214,9 @@ export function ConsultationRoom({
                   <div className="data-content">
                     <div className="data-label">Idade</div>
                     <div className="data-value">
-                      {patientData?.birth_date
+                      {patientAnamnese?.idade
+                        ? `${patientAnamnese.idade} anos`
+                        : patientData?.birth_date
                         ? `${calculateAge(patientData.birth_date)} anos`
                         : 'N/A'}
                     </div>
@@ -4220,10 +4227,10 @@ export function ConsultationRoom({
                   <div className="data-icon">
                     <Scale size={14} />
                   </div>
-                  <div className="data-content">
+                    <div className="data-content">
                     <div className="data-label">Peso</div>
                     <div className="data-value">
-                      {patientAnamnese?.peso ? `${patientAnamnese.peso} kg` : 'N/A'}
+                      {patientAnamnese?.peso_atual ? `${patientAnamnese.peso_atual} kg` : 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -4247,7 +4254,7 @@ export function ConsultationRoom({
                   <div className="data-content">
                     <div className="data-label">Tipo sanguíneo</div>
                     <div className="data-value">
-                      {patientAnamnese?.tipo_sanguineo || 'N/A'}
+                      {patientAnamnese?.tipo_saguineo || patientAnamnese?.tipo_sanguineo || patientAnamnese?.tipo_sangue || 'N/A'}
                     </div>
                   </div>
                 </div>

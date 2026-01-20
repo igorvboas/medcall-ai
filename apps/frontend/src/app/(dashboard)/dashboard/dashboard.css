@@ -513,11 +513,23 @@
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.05);
   padding: 0;
   position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.consultation-row:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .dark .consultation-row {
   background: var(--table-row-bg, #252525);
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dark .consultation-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 
@@ -655,6 +667,41 @@
   background-size: 10px 5px;
 }
 
+/* Ajustes específicos para inputs de data (month, date) para tornar setas clicáveis */
+input[type="month"].year-select,
+input[type="date"].year-select {
+  padding-right: 8px !important; /* Reduzir padding direito para não bloquear as setas nativas */
+  padding-left: 8px;
+  cursor: pointer;
+  /* Remover background-image customizado para não sobrepor o ícone nativo do calendário */
+  background-image: none !important;
+  /* Garantir que a área das setas seja clicável */
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+/* Para navegadores WebKit (Chrome, Safari) - garantir clicabilidade do indicador de calendário */
+input[type="month"].year-select::-webkit-calendar-picker-indicator,
+input[type="date"].year-select::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Para Firefox */
+input[type="month"].year-select::-moz-calendar-picker-indicator,
+input[type="date"].year-select::-moz-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  padding: 0;
+  margin-left: 4px;
+}
+
 .dark .year-select,
 .dark .month-select,
 .dark input[type="date"].year-select,
@@ -663,6 +710,26 @@
   border: 0.946px solid rgba(255, 255, 255, 0.2) !important;
   color: #FFFFFF !important;
   background-image: none !important;
+}
+
+/* Dark mode - ajustar setas dos inputs de data */
+.dark input[type="month"].year-select,
+.dark input[type="date"].year-select {
+  padding-right: 8px !important;
+  padding-left: 8px;
+}
+
+.dark input[type="month"].year-select::-webkit-calendar-picker-indicator,
+.dark input[type="date"].year-select::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Inverter cor da seta para modo escuro */
+  cursor: pointer;
+  opacity: 1;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  padding: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .dark input[type="date"],

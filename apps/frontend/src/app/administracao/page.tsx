@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar as CalendarIcon, User, FileText, Clock, TrendingUp, TrendingDown, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from 'next-themes';
 import './administracao.css';
 
 interface DashboardData {
@@ -61,6 +62,8 @@ interface DashboardData {
 export default function AdministracaoPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [periodo, setPeriodo] = useState('semana');
   const [tipoConsulta, setTipoConsulta] = useState<'PRESENCIAL' | 'TELEMEDICINA' | 'TODAS'>('TODAS');
   const [filtrarPorClinica, setFiltrarPorClinica] = useState(false);
@@ -93,8 +96,25 @@ export default function AdministracaoPage() {
   });
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     fetchDashboardData();
   }, [periodo, tipoConsulta, mesAtualCalendario, filtrarPorClinica]);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
+
+  // Função para obter o ícone do card baseado no tema
+  const getCardIcon = useCallback((cardNumber: number) => {
+    const isDark = currentTheme === 'dark';
+    if (isDark) {
+      return `/card0${cardNumber}-black.svg`;
+    }
+    return `/card${cardNumber}.svg`;
+  }, [currentTheme]);
 
   const fetchDashboardData = async () => {
     try {
@@ -217,7 +237,7 @@ export default function AdministracaoPage() {
         : dashboardData.estatisticas.variacaoConsultas < 0 
         ? `${dashboardData.estatisticas.variacaoConsultas}` 
         : '0',
-      icone: '/card1.svg'
+      icone: getCardIcon(1)
     },
     {
       titulo: 'Pacientes cadastrados',
@@ -227,20 +247,20 @@ export default function AdministracaoPage() {
         : dashboardData.estatisticas.variacaoPacientes < 0 
         ? `${dashboardData.estatisticas.variacaoPacientes}` 
         : '0',
-      icone: '/card2.svg'
+      icone: getCardIcon(2)
     },
     {
       titulo: 'Tempo médio de consulta',
       valor: `${dashboardData.estatisticas.tempoMedioMinutos} min`,
       variacao: `Tempo médio: ${dashboardData.estatisticas.tempoMedioMinutos} minutos`,
-      icone: '/card3.svg'
+      icone: getCardIcon(3)
     },
     {
       titulo: 'Taxa de No-show',
       valor: `${dashboardData.estatisticas.taxaNoShow}%`,
       variacao: 'Meta: <5%',
       variacao_positiva: parseFloat(dashboardData.estatisticas.taxaNoShow) < 5,
-      icone: '/card4.svg'
+      icone: getCardIcon(4)
     }
   ] : [];
 
@@ -264,7 +284,7 @@ export default function AdministracaoPage() {
       {/* Header */}
       <div className="admin-header">
         <div className="header-logo">
-          <Image src="/logo-auton.png" alt="AUTON Health" width={300} height={60} />
+          <Image src={logoSrc} alt="AUTON Health" width={200} height={40} />
         </div>
       </div>
 

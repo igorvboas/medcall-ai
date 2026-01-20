@@ -35,14 +35,21 @@ export async function GET(request: NextRequest) {
     // Período alvo - MOVER PARA O INÍCIO para poder usar nas consultas
     const { searchParams } = new URL(request.url);
     const yearParam = searchParams.get('year');
-    const periodParam = searchParams.get('period'); // '7d' | '15d' | '30d'
+    const periodParam = searchParams.get('period'); // 'hoje' | '7d' | '15d' | '30d'
     const targetYear = yearParam ? Number(yearParam) : new Date().getFullYear();
 
     // Calcular período para filtros de estatísticas
     let startDateRange: Date;
     let endDateRange: Date;
 
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+    if (periodParam === 'hoje') {
+      // Filtrar apenas o dia atual
+      const hoje = new Date();
+      startDateRange = new Date(hoje);
+      startDateRange.setHours(0, 0, 0, 0);
+      endDateRange = new Date(hoje);
+      endDateRange.setHours(23, 59, 59, 999);
+    } else if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
       const days = Number(periodParam.replace('d', ''));
       endDateRange = new Date();
       startDateRange = new Date();
@@ -83,7 +90,7 @@ export async function GET(request: NextRequest) {
       .eq('doctor_id', medico.id)
       .eq('status', 'COMPLETED');
     
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+    if (periodParam === 'hoje' || periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
       // Se período informado, usar o período selecionado
       consultasConcluidasQuery = consultasConcluidasQuery
         .gte('created_at', startDateRange.toISOString())
@@ -110,51 +117,77 @@ export async function GET(request: NextRequest) {
     }
 
     // Duração média das consultas (geral e por tipo) - filtradas por período se informado
-    // Tentar ambos os campos: duration (em segundos) e duracao (em minutos ou segundos)
+    // Buscar consultas finalizadas (COMPLETED) ou em processamento (PROCESSING) que tenham duração
+    // Também calcular duração a partir de consulta_inicio e consulta_fim se não houver duration/duracao
     let consultasComDuracaoQuery = supabase
       .from('consultations')
-      .select('duration, duracao, consultation_type, created_at')
+      .select('id, duration, duracao, consultation_type, created_at, consulta_inicio, consulta_fim, status')
       .eq('doctor_id', medico.id)
-      .eq('status', 'COMPLETED')
-      .or('duration.not.is.null,duracao.not.is.null');
+      .in('status', ['COMPLETED', 'PROCESSING', 'VALID_SOLUCAO']);
     
     // Aplicar filtro de período se fornecido
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+    if (periodParam === 'hoje' || periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
       consultasComDuracaoQuery = consultasComDuracaoQuery
         .gte('created_at', startDateRange.toISOString())
         .lte('created_at', endDateRange.toISOString());
     }
     
-    const { data: consultasComDuracao, error: errorDuracao } = await consultasComDuracaoQuery;
+    const { data: todasConsultas, error: errorDuracao } = await consultasComDuracaoQuery;
 
     if (errorDuracao) {
       console.error('❌ [DASHBOARD] Erro ao buscar consultas com duração:', errorDuracao);
     }
 
-    // Normalizar duração: usar duration (em segundos) ou duracao (assumindo segundos também, ou converter se necessário)
+    // Filtrar e calcular duração: considerar duration, duracao ou calcular a partir de consulta_inicio/consulta_fim
     const calcularDuracaoEmSegundos = (c: any) => {
-      // Se tiver duration, usar (assumindo que está em segundos)
-      if (c.duration != null && c.duration !== undefined) {
+      // Prioridade 1: usar duration (em segundos)
+      if (c.duration != null && c.duration !== undefined && c.duration > 0) {
         return Number(c.duration);
       }
-      // Se tiver duracao, usar (pode estar em segundos ou minutos - assumindo segundos por padrão)
-      if (c.duracao != null && c.duracao !== undefined) {
+      
+      // Prioridade 2: usar duracao (pode estar em segundos ou minutos)
+      if (c.duracao != null && c.duracao !== undefined && c.duracao > 0) {
         const duracaoValue = Number(c.duracao);
         // Se o valor for muito pequeno (menos de 60), pode estar em minutos, converter
         return duracaoValue < 60 && duracaoValue > 0 ? duracaoValue * 60 : duracaoValue;
       }
+      
+      // Prioridade 3: calcular a partir de consulta_inicio e consulta_fim
+      if (c.consulta_inicio && c.consulta_fim) {
+        const inicio = new Date(c.consulta_inicio).getTime();
+        const fim = new Date(c.consulta_fim).getTime();
+        const diffSegundos = Math.max(0, Math.round((fim - inicio) / 1000));
+        if (diffSegundos > 0) {
+          return diffSegundos;
+        }
+      }
+      
       return 0;
     };
 
-    const duracaoMedia = consultasComDuracao && consultasComDuracao.length > 0
+    // Filtrar apenas consultas que têm duração válida (> 0)
+    const consultasComDuracao = todasConsultas?.filter(c => {
+      const duracao = calcularDuracaoEmSegundos(c);
+      return duracao > 0;
+    }) || [];
+
+    const duracaoMedia = consultasComDuracao.length > 0
       ? consultasComDuracao.reduce((acc, c) => acc + calcularDuracaoEmSegundos(c), 0) / consultasComDuracao.length
       : 0;
     
     console.log('⏱️ [DASHBOARD] Duração média calculada:', {
       periodParam,
-      totalConsultasComDuracao: consultasComDuracao?.length || 0,
-      duracaoMedia: Math.round(duracaoMedia),
-      duracaoMediaSegundos: duracaoMedia
+      totalConsultasEncontradas: todasConsultas?.length || 0,
+      totalConsultasComDuracao: consultasComDuracao.length,
+      duracaoMediaSegundos: Math.round(duracaoMedia),
+      duracaoMediaMinutos: Math.round(duracaoMedia / 60),
+        amostras: consultasComDuracao.slice(0, 5).map(c => ({
+        id: c.id || 'N/A',
+        duration: c.duration,
+        duracao: c.duracao,
+        calculada: calcularDuracaoEmSegundos(c),
+        status: c.status
+      })) // Primeiras 5 para debug
     });
 
     // Calcular duração média por tipo
@@ -176,7 +209,7 @@ export async function GET(request: NextRequest) {
       .eq('doctor_id', medico.id);
     
     // Aplicar filtro de período se fornecido
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+    if (periodParam === 'hoje' || periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
       consultasPorStatusQuery = consultasPorStatusQuery
         .gte('created_at', startDateRange.toISOString())
         .lte('created_at', endDateRange.toISOString());
@@ -196,7 +229,7 @@ export async function GET(request: NextRequest) {
       .eq('doctor_id', medico.id);
     
     // Aplicar filtro de período se fornecido
-    if (periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
+    if (periodParam === 'hoje' || periodParam === '7d' || periodParam === '15d' || periodParam === '30d') {
       consultasPorTipoQuery = consultasPorTipoQuery
         .gte('created_at', startDateRange.toISOString())
         .lte('created_at', endDateRange.toISOString());
@@ -325,19 +358,27 @@ export async function GET(request: NextRequest) {
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     // Taxa de sucesso (baseada nas consultas do período filtrado)
+    // Considerar como finalizadas: COMPLETED e VALID_SOLUCAO
     const totalConsultas = Object.values(statusCounts).reduce((acc, count) => acc + count, 0);
-    const consultasCompletas = statusCounts.COMPLETED || 0;
+    const consultasCompletas = (statusCounts.COMPLETED || 0) + (statusCounts.VALID_SOLUCAO || 0);
     const taxaSucesso = totalConsultas > 0 
       ? (consultasCompletas / totalConsultas) * 100 
       : 0;
     
     console.log('📊 [DASHBOARD] Estatísticas calculadas:', {
       periodParam,
+      periodoFiltrado: {
+        inicio: startDateRange.toISOString(),
+        fim: endDateRange.toISOString()
+      },
       totalConsultas,
       consultasCompletas,
+      consultasCOMPLETED: statusCounts.COMPLETED || 0,
+      consultasVALID_SOLUCAO: statusCounts.VALID_SOLUCAO || 0,
       taxaSucesso: taxaSucesso.toFixed(2) + '%',
       consultasConcluidasMes,
-      duracaoMedia: Math.round(duracaoMedia),
+      duracaoMediaSegundos: Math.round(duracaoMedia),
+      duracaoMediaMinutos: Math.round(duracaoMedia / 60),
       statusCounts
     });
 

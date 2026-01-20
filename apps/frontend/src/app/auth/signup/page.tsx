@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingScreen } from '@/components/shared/LoadingScreen';
+import { useTheme } from 'next-themes';
 import './signup.css';
 
 export default function SignUpPage() {
@@ -20,6 +21,8 @@ export default function SignUpPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   // ✅ NOVO: Estado para tipo de conta
   const [accountType, setAccountType] = useState<'doctor' | 'clinic'>('doctor');
@@ -27,6 +30,14 @@ export default function SignUpPage() {
 
   const { signUp, signInWithGoogle, user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
 
   // Redirecionar se já estiver logado
   useEffect(() => {
@@ -104,7 +115,7 @@ export default function SignUpPage() {
         <div className="signup-logo-section">
           <div className="signup-logo-wrapper">
             <Image
-              src="/logo-auton.png"
+              src={logoSrc}
               alt="TRIA Logo"
               width={180}
               height={180}

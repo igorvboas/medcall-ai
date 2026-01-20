@@ -3,13 +3,24 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 import './fail.css';
 
 function FailContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error') || 'unknown';
   const message = searchParams.get('message') || 'Ocorreu um erro durante a autenticação';
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
 
   // Mapear códigos de erro para mensagens amigáveis
   const getErrorTitle = (errorCode: string) => {
@@ -40,7 +51,7 @@ function FailContent() {
         <div className="fail-logo-section">
           <div className="fail-logo-wrapper">
             <Image
-              src="/logo-eva.png"
+              src={logoSrc}
               alt="TRIA Logo"
               width={48}
               height={48}

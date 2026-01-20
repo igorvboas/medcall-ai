@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from 'next-themes';
 import './forgot-password.css';
 
 export default function ForgotPasswordPage() {
@@ -13,9 +14,19 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   
   const { resetPassword } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +60,7 @@ export default function ForgotPasswordPage() {
         <div className="forgot-password-logo-section">
           <div className="forgot-password-logo-wrapper">
             <Image
-              src="/logo-eva.png"
+              src={logoSrc}
               alt="TRIA Logo"
               width={48}
               height={48}

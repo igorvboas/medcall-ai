@@ -35,6 +35,7 @@ const defaultData: StatusData = {
 };
 
 const periods = [
+  { value: 'hoje', label: 'Hoje' },
   { value: '7d', label: 'Últimos 7 dias' },
   { value: '15d', label: 'Últimos 15 dias' },
   { value: '30d', label: 'Últimos 30 dias' }
@@ -43,7 +44,7 @@ const periods = [
 export function ConsultationStatusChart({ 
   data = defaultData, 
   metrics = [],
-  selectedPeriod = '7d',
+  selectedPeriod = 'hoje',
   onPeriodChange,
   duracaoMedia = 0,
   taxaFinalizacao = 0

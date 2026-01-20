@@ -4,6 +4,7 @@ import { useNotifications } from '@/components/shared/NotificationSystem';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { getPatients } from '@/lib/supabase';
 import io, { Socket } from 'socket.io-client';
 
@@ -42,7 +43,18 @@ export function CreateConsultationRoom({
   preselectedConsultationType
 }: CreateConsultationRoomProps) {
   const router = useRouter();
+  const { theme, systemTheme } = useTheme();
   const { showError, showSuccess, showWarning } = useNotifications();
+  const [mounted, setMounted] = useState(false);
+  
+  // Determinar se está em modo dark
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  const currentTheme = theme === 'system' ? systemTheme : theme;
+  const isDarkMode = mounted && currentTheme === 'dark';
+  
   const [hostName, setHostName] = useState('');
   const [selectedPatient, setSelectedPatient] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -638,9 +650,14 @@ export function CreateConsultationRoom({
         <button 
           className="btn-voltar-consulta"
           onClick={() => {
-            setRoomCreated(false);
-            setRoomData(null);
-            if (onCancel) onCancel();
+            // Se a sala já foi criada, apenas voltar para o formulário (não chamar onCancel)
+            if (roomCreated) {
+              setRoomCreated(false);
+              setRoomData(null);
+            } else {
+              // Se ainda não criou a sala, chamar onCancel para voltar à página anterior
+              if (onCancel) onCancel();
+            }
           }}
         >
           <img src="/arrow-left.svg" alt="Voltar" className="btn-voltar-icon" />
@@ -828,7 +845,7 @@ export function CreateConsultationRoom({
             </select>
 
             <p className="help-text">
-              Selecione se o paciente está se consultado pela primeira vez ou se é retorno
+              Selecione se o paciente está sendo consultado pela primeira vez ou se é retorno
             </p>
           </div>
 
@@ -853,7 +870,7 @@ export function CreateConsultationRoom({
             <div className="icon-circle-container">
               <div className="icon-circle cam-mic-circle">
                 <img 
-                  src="/cam-mic.svg" 
+                  src={isDarkMode ? "/display.svg" : "/cam-mic.svg"} 
                   alt="Câmera e Microfone" 
                   className="cam-mic-icon"
                 />
@@ -957,7 +974,7 @@ export function CreateConsultationRoom({
                 <div className="icon-circle-container">
                   <div className="icon-circle">
                     <img 
-                      src="/microphone-2.svg" 
+                      src={isDarkMode ? "/mic.svg" : "/microphone-2.svg"} 
                       alt="Microfone" 
                       className="microphone-icon"
                     />

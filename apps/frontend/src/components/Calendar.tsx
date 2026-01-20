@@ -75,7 +75,7 @@ export function Calendar({
         const isSelected = selectedDate && isSameDay(day, selectedDate);
         const isHighlighted = highlightedDates.some(date => isSameDay(day, date));
         const dayOfWeek = day.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-        const isMonday = dayOfWeek === 1; // Segundas-feiras têm borda vermelha
+        const isSunday = dayOfWeek === 0; // Domingos têm borda vermelha
 
         days.push(
           <div
@@ -87,7 +87,7 @@ export function Calendar({
             } ${
               isHighlighted && !isSelected ? 'calendar-cell-highlighted' : ''
             } ${
-              isMonday && isCurrentMonth && !isSelected ? 'calendar-cell-monday' : ''
+              isSunday && isCurrentMonth && !isSelected ? 'calendar-cell-monday' : ''
             }`}
             onClick={() => {
               if (isCurrentMonth && onDateSelect) {

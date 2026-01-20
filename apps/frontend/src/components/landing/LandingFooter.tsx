@@ -1,9 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from "framer-motion";
+import { useTheme } from 'next-themes';
 
 export function LandingFooter() {
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -39,7 +51,7 @@ export function LandingFooter() {
           <div className="footer-main-refined">
             <motion.div className="footer-brand-refined" variants={itemVariants}>
               <div className="footer-logo-refined">
-                <img src="/logo-eva.png" alt="Auton Health Logo" className="footer-logo-image-refined" />
+                <img src={logoSrc} alt="Auton Health Logo" className="footer-logo-image-refined" />
                 <div className="footer-logo-text-refined">
                   <span className="footer-logo-title-refined">Auton Health</span>
                 </div>

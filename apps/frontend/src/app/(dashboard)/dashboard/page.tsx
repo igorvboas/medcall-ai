@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Users, 
   Calendar as CalendarIcon, 
@@ -192,6 +193,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [medicoName, setMedicoName] = useState<string>('');
@@ -211,15 +213,21 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('7d');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('hoje');
   const [chartPeriodType, setChartPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('year');
   const [chartSelectedDate, setChartSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [chartSelectedMonth, setChartSelectedMonth] = useState<string>(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
+  const [chartSelectedMonth, setChartSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
   const [chartSelectedYear, setChartSelectedYear] = useState<number>(new Date().getFullYear()); // Ano específico para o gráfico
   const isMock = process.env.NEXT_PUBLIC_MOCK === 'true' || process.env.MOCK_MODE === 'true';
   const [consultationDates, setConsultationDates] = useState<Date[]>([]);
   const [updatingPeriodData, setUpdatingPeriodData] = useState(false);
   const isUpdatingRef = useRef(false);
+  const monthInputRef = useRef<HTMLInputElement>(null);
 
   // Atualizar nome do médico e datas quando os dados do dashboard forem carregados
   useEffect(() => {
@@ -239,6 +247,115 @@ export default function DashboardPage() {
       setConsultationDates(uniqueDates);
     }
   }, [dashboardData]);
+
+  // Adicionar listener para capturar mudanças nas setas do input month
+  useEffect(() => {
+    const monthInput = monthInputRef.current;
+    if (!monthInput || chartPeriodType !== 'month') return;
+
+    let lastValue = chartSelectedMonth;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const handleInputEvent = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const newValue = target.value;
+      console.log('📅 [MONTH INPUT] Event listener capturado:', newValue);
+      if (newValue && newValue !== chartSelectedMonth) {
+        lastValue = newValue;
+        setChartSelectedMonth(newValue);
+      }
+    };
+
+    // Iniciar polling constante quando o input de mês estiver visível para capturar todas as mudanças
+    // Isso garante que mudanças feitas clicando nas setas sejam detectadas mesmo sem foco
+    intervalId = setInterval(() => {
+      if (!monthInput) return;
+      const currentValue = monthInput.value;
+      if (currentValue && currentValue !== lastValue && currentValue !== chartSelectedMonth) {
+        console.log('📅 [MONTH INPUT] Valor detectado via polling constante:', currentValue);
+        lastValue = currentValue;
+        setChartSelectedMonth(currentValue);
+      }
+    }, 100); // Verificar a cada 100ms constantemente quando o input está visível
+
+    // Handler para capturar cliques em qualquer parte do input (incluindo setas)
+    const handleClick = (e: MouseEvent) => {
+      // Forçar múltiplas verificações em intervalos para capturar mudanças das setas
+      const checkMultipleTimes = () => {
+        const delays = [10, 50, 100, 150, 200];
+        delays.forEach(delay => {
+          setTimeout(() => {
+            if (!monthInput) return;
+            const currentValue = monthInput.value;
+            if (currentValue && currentValue !== chartSelectedMonth) {
+              console.log('📅 [MONTH INPUT] Valor detectado após clique:', currentValue);
+              setChartSelectedMonth(currentValue);
+            }
+          }, delay);
+        });
+      };
+      checkMultipleTimes();
+    };
+
+    // Handler para capturar quando o mouse é pressionado/solto (ao clicar nas setas)
+    const handleMouseDown = () => {
+      // Quando mouse é pressionado, pode estar clicando na seta - verificar múltiplas vezes
+      const checkMultipleTimes = () => {
+        const delays = [10, 30, 50, 100, 150];
+        delays.forEach(delay => {
+          setTimeout(() => {
+            if (!monthInput) return;
+            const currentValue = monthInput.value;
+            if (currentValue && currentValue !== chartSelectedMonth) {
+              console.log('📅 [MONTH INPUT] Valor detectado após mousedown:', currentValue);
+              setChartSelectedMonth(currentValue);
+            }
+          }, delay);
+        });
+      };
+      checkMultipleTimes();
+    };
+
+    const handleMouseUp = () => {
+      // Quando mouse é solto, verificar novamente
+      const checkMultipleTimes = () => {
+        const delays = [10, 50, 100, 200];
+        delays.forEach(delay => {
+          setTimeout(() => {
+            if (!monthInput) return;
+            const currentValue = monthInput.value;
+            if (currentValue && currentValue !== chartSelectedMonth) {
+              console.log('📅 [MONTH INPUT] Valor detectado após mouseup:', currentValue);
+              setChartSelectedMonth(currentValue);
+            }
+          }, delay);
+        });
+      };
+      checkMultipleTimes();
+    };
+
+    // Adicionar múltiplos listeners para garantir que capture todas as mudanças
+    monthInput.addEventListener('input', handleInputEvent);
+    monthInput.addEventListener('change', handleInputEvent);
+    monthInput.addEventListener('keyup', handleInputEvent);
+    monthInput.addEventListener('click', handleClick);
+    monthInput.addEventListener('mousedown', handleMouseDown);
+    monthInput.addEventListener('mouseup', handleMouseUp);
+    monthInput.addEventListener('wheel', handleInputEvent); // Capturar scroll também
+
+    return () => {
+      monthInput.removeEventListener('input', handleInputEvent);
+      monthInput.removeEventListener('change', handleInputEvent);
+      monthInput.removeEventListener('keyup', handleInputEvent);
+      monthInput.removeEventListener('click', handleClick);
+      monthInput.removeEventListener('mousedown', handleMouseDown);
+      monthInput.removeEventListener('mouseup', handleMouseUp);
+      monthInput.removeEventListener('wheel', handleInputEvent);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [chartPeriodType, chartSelectedMonth]);
 
   // Carregar dados iniciais do dashboard (apenas na montagem)
   useEffect(() => {
@@ -351,11 +468,19 @@ export default function DashboardPage() {
 
   // Atualizar apenas o gráfico quando os filtros do gráfico mudarem (sem recarregar página)
   useEffect(() => {
-    if (isMock || !dashboardData || isUpdatingChartRef.current || isUpdatingRef.current) return;
+    if (isMock || !dashboardData || isUpdatingChartRef.current || isUpdatingRef.current) {
+      console.log('⏸️ [CHART UPDATE] Bloqueado:', { isMock, hasDashboardData: !!dashboardData, isUpdatingChart: isUpdatingChartRef.current, isUpdatingPeriod: isUpdatingRef.current });
+      return;
+    }
+    
+    console.log('🔄 [CHART UPDATE] Iniciando atualização do gráfico:', { chartPeriodType, chartSelectedMonth, chartSelectedDate, chartSelectedYear });
     
     // Usar um pequeno delay para evitar múltiplas chamadas rápidas
     const timeoutId = setTimeout(async () => {
-      if (isUpdatingChartRef.current || isUpdatingRef.current) return;
+      if (isUpdatingChartRef.current || isUpdatingRef.current) {
+        console.log('⏸️ [CHART UPDATE] Bloqueado durante timeout');
+        return;
+      }
       
       try {
         isUpdatingChartRef.current = true;
@@ -372,6 +497,8 @@ export default function DashboardPage() {
           chartParams = `&chartPeriod=year&chartYear=${encodeURIComponent(chartSelectedYear)}`;
         }
         
+        console.log('📊 [CHART UPDATE] Buscando dados:', chartParams);
+        
         const response = await fetch(`/api/dashboard?year=${encodeURIComponent(selectedYear)}&period=${encodeURIComponent(selectedPeriod)}${chartParams}`);
         
         if (!response.ok) {
@@ -379,6 +506,8 @@ export default function DashboardPage() {
         }
         
         const data = await response.json();
+        
+        console.log('✅ [CHART UPDATE] Dados recebidos:', data.graficos?.consultasPorDia?.length || 0, 'dias');
         
         // Atualizar apenas os dados do gráfico, mantendo o resto dos dados
         setDashboardData(prev => {
@@ -392,14 +521,16 @@ export default function DashboardPage() {
           };
         });
       } catch (err) {
-        console.error('Erro ao atualizar gráfico:', err);
+        console.error('❌ [CHART UPDATE] Erro ao atualizar gráfico:', err);
         // Não mostrar erro global, apenas logar
       } finally {
         isUpdatingChartRef.current = false;
       }
     }, 300);
     
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartPeriodType, chartSelectedDate, chartSelectedMonth, chartSelectedYear]); // Usar chartSelectedYear ao invés de selectedYear
 
@@ -780,10 +911,38 @@ export default function DashboardPage() {
               
               {chartPeriodType === 'month' && (
                 <input
+                  ref={monthInputRef}
                   type="month"
                   className="year-select"
                   value={chartSelectedMonth}
-                  onChange={(e) => setChartSelectedMonth(e.target.value)}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    console.log('📅 [MONTH INPUT] onChange:', newValue);
+                    if (newValue && newValue !== chartSelectedMonth) {
+                      setChartSelectedMonth(newValue);
+                    }
+                  }}
+                  onInput={(e) => {
+                    const newValue = (e.target as HTMLInputElement).value;
+                    console.log('📅 [MONTH INPUT] onInput:', newValue);
+                    if (newValue && newValue !== chartSelectedMonth) {
+                      setChartSelectedMonth(newValue);
+                    }
+                  }}
+                  onKeyUp={(e) => {
+                    const newValue = (e.target as HTMLInputElement).value;
+                    console.log('📅 [MONTH INPUT] onKeyUp:', newValue);
+                    if (newValue && newValue !== chartSelectedMonth) {
+                      setChartSelectedMonth(newValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const newValue = e.target.value;
+                    console.log('📅 [MONTH INPUT] onBlur:', newValue);
+                    if (newValue && newValue !== chartSelectedMonth) {
+                      setChartSelectedMonth(newValue);
+                    }
+                  }}
                   style={{ minWidth: '140px' }}
                 />
               )}
@@ -920,7 +1079,11 @@ export default function DashboardPage() {
                   : 'Presencial';
 
                 return (
-                  <div key={consulta.id} className="consultation-row">
+                  <div 
+                    key={consulta.id} 
+                    className="consultation-row"
+                    onClick={() => router.push(`/consultas?consulta_id=${consulta.id}`)}
+                  >
                     <div className="consultation-patient-col">
                       <div className="consultation-avatar">
                         {iniciais}

@@ -2591,6 +2591,38 @@
   opacity: 1;
 }
 
+/* Dark mode para botões de edição */
+.dark .edit-button-small {
+  color: #ffffff;
+}
+
+.dark .edit-button-small:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.dark .ai-button {
+  color: #ffffff;
+}
+
+.dark .ai-button:hover {
+  color: #ffffff;
+}
+
+.dark .edit-button {
+  color: #ffffff !important;
+}
+
+.dark .edit-button svg,
+.dark .edit-button .w-4 {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.dark .edit-button:hover {
+  color: #ffffff !important;
+}
+
 .edit-field {
   margin-top: 12px;
 }
@@ -6697,6 +6729,11 @@
 .consultation-details-data-icon svg {
   width: 24px;
   height: 24px;
+}
+
+/* Dark mode */
+.dark .consultation-details-data-icon {
+  color: #ffffff;
 }
 
 .consultation-details-data-content {

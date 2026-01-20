@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingScreen } from '@/components/shared/LoadingScreen';
+import { useTheme } from 'next-themes';
 import './signin.css';
 
 export default function SignInPage() {
@@ -16,9 +17,19 @@ export default function SignInPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const { theme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   
   const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determinar qual tema está ativo (considerando systemTheme)
+  const currentTheme = mounted ? (theme === 'system' ? systemTheme : theme) : 'light';
+  const logoSrc = currentTheme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
 
   // Redirecionar se já estiver logado
   useEffect(() => {
@@ -85,7 +96,7 @@ export default function SignInPage() {
         <div className="signin-logo-section">
           <div className="signin-logo-wrapper">
             <Image
-              src="/logo-auton.png"
+              src={logoSrc}
               alt="TRIA Logo"
               width={220}
               height={220}

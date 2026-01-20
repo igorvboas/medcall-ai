@@ -3932,10 +3932,50 @@ function ExamesSection({
     });
   };
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+  const formatDuration = (consulta: Consultation) => {
+    // Tentar usar duration primeiro (em segundos)
+    let durationInSeconds: number | null = null;
+    
+    // 1. Tentar campo duration (em segundos)
+    if (consulta.duration && consulta.duration > 0) {
+      durationInSeconds = consulta.duration;
+    } 
+    // 2. Tentar campo duracao (pode estar em minutos)
+    else if ((consulta as any).duracao && (consulta as any).duracao > 0) {
+      // Se duracao está em minutos, converter para segundos
+      const duracaoMinutos = Number((consulta as any).duracao);
+      if (duracaoMinutos > 0 && duracaoMinutos < 1440) { // Máximo 24 horas em minutos
+        durationInSeconds = Math.floor(duracaoMinutos * 60);
+      }
+    }
+    // 3. Calcular a partir de consulta_inicio e consulta_fim
+    else if (consulta.consulta_inicio && consulta.consulta_fim) {
+      try {
+        const inicio = new Date(consulta.consulta_inicio);
+        const fim = new Date(consulta.consulta_fim);
+        
+        // Validar se as datas são válidas
+        if (!isNaN(inicio.getTime()) && !isNaN(fim.getTime())) {
+          const diffMs = fim.getTime() - inicio.getTime();
+          durationInSeconds = Math.floor(diffMs / 1000);
+          
+          // Validar se a duração é positiva e razoável (menos de 24 horas)
+          if (durationInSeconds < 0 || durationInSeconds > 86400) {
+            durationInSeconds = null;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao calcular duração:', error);
+        durationInSeconds = null;
+      }
+    }
+    
+    if (!durationInSeconds || durationInSeconds <= 0) {
+      return 'N/A';
+    }
+    
+    const hours = Math.floor(durationInSeconds / 3600);
+    const minutes = Math.floor((durationInSeconds % 3600) / 60);
     
     if (hours > 0) {
       return `${hours}h ${minutes}min`;
@@ -4065,7 +4105,7 @@ function ExamesSection({
           </div>
           <div className="consultation-details-card-content">
             <div className="consultation-details-card-label">Duração</div>
-            <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+            <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
           </div>
         </div>
 
@@ -4166,8 +4206,10 @@ function ConsultationDetailsOverview({
           const data = await response.json();
           console.log('✅ ConsultationDetailsOverview: Dados do paciente recebidos:', data);
           console.log('✅ ConsultationDetailsOverview: data_nascimento:', data?.data_nascimento);
-          console.log('✅ ConsultationDetailsOverview: tipo_sanguineo:', data?.tipo_sanguineo);
-          console.log('✅ ConsultationDetailsOverview: tipo_sangue:', data?.tipo_sangue);
+          console.log('✅ ConsultationDetailsOverview: idade:', data?.idade);
+          console.log('✅ ConsultationDetailsOverview: tipo_saguineo:', data?.tipo_saguineo);
+          console.log('✅ ConsultationDetailsOverview: tipo_sanguineo (variante):', data?.tipo_sanguineo);
+          console.log('✅ ConsultationDetailsOverview: tipo_sangue (variante):', data?.tipo_sangue);
           setPatientData(data);
         } else {
           console.warn('⚠️ ConsultationDetailsOverview: Erro ao buscar dados do paciente:', response.status);
@@ -4201,10 +4243,50 @@ function ConsultationDetailsOverview({
     });
   };
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+  const formatDuration = (consulta: Consultation) => {
+    // Tentar usar duration primeiro (em segundos)
+    let durationInSeconds: number | null = null;
+    
+    // 1. Tentar campo duration (em segundos)
+    if (consulta.duration && consulta.duration > 0) {
+      durationInSeconds = consulta.duration;
+    } 
+    // 2. Tentar campo duracao (pode estar em minutos)
+    else if ((consulta as any).duracao && (consulta as any).duracao > 0) {
+      // Se duracao está em minutos, converter para segundos
+      const duracaoMinutos = Number((consulta as any).duracao);
+      if (duracaoMinutos > 0 && duracaoMinutos < 1440) { // Máximo 24 horas em minutos
+        durationInSeconds = Math.floor(duracaoMinutos * 60);
+      }
+    }
+    // 3. Calcular a partir de consulta_inicio e consulta_fim
+    else if (consulta.consulta_inicio && consulta.consulta_fim) {
+      try {
+        const inicio = new Date(consulta.consulta_inicio);
+        const fim = new Date(consulta.consulta_fim);
+        
+        // Validar se as datas são válidas
+        if (!isNaN(inicio.getTime()) && !isNaN(fim.getTime())) {
+          const diffMs = fim.getTime() - inicio.getTime();
+          durationInSeconds = Math.floor(diffMs / 1000);
+          
+          // Validar se a duração é positiva e razoável (menos de 24 horas)
+          if (durationInSeconds < 0 || durationInSeconds > 86400) {
+            durationInSeconds = null;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao calcular duração:', error);
+        durationInSeconds = null;
+      }
+    }
+    
+    if (!durationInSeconds || durationInSeconds <= 0) {
+      return 'N/A';
+    }
+    
+    const hours = Math.floor(durationInSeconds / 3600);
+    const minutes = Math.floor((durationInSeconds % 3600) / 60);
     
     if (hours > 0) {
       return `${hours}h ${minutes}min`;
@@ -4246,6 +4328,16 @@ function ConsultationDetailsOverview({
   };
 
   const getPatientAge = () => {
+    // Prioridade 1: usar campo idade da anamnese se existir
+    if (patientData?.idade) {
+      const idade = typeof patientData.idade === 'string' 
+        ? parseInt(patientData.idade.trim(), 10)
+        : patientData.idade;
+      if (!isNaN(idade) && idade > 0 && idade <= 150) {
+        return idade;
+      }
+    }
+    // Prioridade 2: calcular a partir de data_nascimento
     if (patientData?.data_nascimento) {
       const age = calculateAge(patientData.data_nascimento);
       // Verificar se a idade é válida (não é NaN)
@@ -4283,7 +4375,9 @@ function ConsultationDetailsOverview({
   };
 
   const getPatientBloodType = () => {
-    return patientData?.tipo_sanguineo || patientData?.tipo_sangue || null;
+    // Prioridade: usar tipo_saguineo (com 'g') da anamnese - nome correto da coluna no banco
+    // Também verificar variações comuns caso ainda existam
+    return patientData?.tipo_saguineo || patientData?.tipo_sanguineo || patientData?.tipo_sangue || null;
   };
 
   const patientAge = getPatientAge();
@@ -4382,7 +4476,7 @@ function ConsultationDetailsOverview({
           </div>
           <div className="consultation-details-card-content">
             <div className="consultation-details-card-label">Duração</div>
-            <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+            <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
           </div>
         </div>
 
@@ -4593,14 +4687,210 @@ function ConsultasPageContent() {
         throw new Error('Erro ao atualizar consulta');
       }
 
+      // Forçar mostrar a tela de seleção de soluções
+      setForceShowSolutionSelection(true);
+      setSelectedSection(null);
+      
       // Recarregar detalhes da consulta para atualizar a tela
       await fetchConsultaDetails(consultaId);
     } catch (error) {
       console.error('Erro ao voltar para seleção de soluções:', error);
       showError('Erro ao voltar para seleção de soluções. Tente novamente.', 'Erro');
+      // Mesmo em caso de erro, tentar forçar a tela de seleção
+      setForceShowSolutionSelection(true);
+      setSelectedSection(null);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Função para navegar para a solução anterior
+  const handleNavigateToPreviousSolution = async () => {
+    if (!consultaId || !consultaDetails?.solucao_etapa) return;
+    
+    const solutionOrder: Array<'MENTALIDADE' | 'SUPLEMENTACAO' | 'ALIMENTACAO' | 'ATIVIDADE_FISICA'> = [
+      'MENTALIDADE',
+      'SUPLEMENTACAO',
+      'ALIMENTACAO',
+      'ATIVIDADE_FISICA'
+    ];
+    
+    const currentIndex = solutionOrder.indexOf(consultaDetails.solucao_etapa);
+    if (currentIndex <= 0) return; // Já está na primeira
+    
+    const previousSolution = solutionOrder[currentIndex - 1];
+    
+    try {
+      setIsSaving(true);
+      
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: previousSolution
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao navegar para solução anterior');
+      }
+
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao navegar para solução anterior:', error);
+      showError('Erro ao navegar para solução anterior. Tente novamente.', 'Erro');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Função para navegar para a próxima solução
+  const handleNavigateToNextSolution = async () => {
+    if (!consultaId || !consultaDetails?.solucao_etapa) return;
+    
+    const solutionOrder: Array<'MENTALIDADE' | 'SUPLEMENTACAO' | 'ALIMENTACAO' | 'ATIVIDADE_FISICA'> = [
+      'MENTALIDADE',
+      'SUPLEMENTACAO',
+      'ALIMENTACAO',
+      'ATIVIDADE_FISICA'
+    ];
+    
+    const currentIndex = solutionOrder.indexOf(consultaDetails.solucao_etapa);
+    if (currentIndex >= solutionOrder.length - 1) return; // Já está na última
+    
+    const nextSolution = solutionOrder[currentIndex + 1];
+    
+    try {
+      setIsSaving(true);
+      
+      const response = await fetch(`/api/consultations/${consultaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solucao_etapa: nextSolution
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao navegar para próxima solução');
+      }
+
+      await fetchConsultaDetails(consultaId);
+    } catch (error) {
+      console.error('Erro ao navegar para próxima solução:', error);
+      showError('Erro ao navegar para próxima solução. Tente novamente.', 'Erro');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Função helper para renderizar botões de navegação entre soluções
+  const renderSolutionNavigationButtons = () => {
+    if (!consultaDetails?.solucao_etapa) return null;
+    
+    const solutionOrder: Array<'MENTALIDADE' | 'SUPLEMENTACAO' | 'ALIMENTACAO' | 'ATIVIDADE_FISICA'> = [
+      'MENTALIDADE',
+      'SUPLEMENTACAO',
+      'ALIMENTACAO',
+      'ATIVIDADE_FISICA'
+    ];
+    
+    const solutionNames: Record<string, string> = {
+      'MENTALIDADE': 'Livro da Vida',
+      'SUPLEMENTACAO': 'Suplementação',
+      'ALIMENTACAO': 'Alimentação',
+      'ATIVIDADE_FISICA': 'Atividade Física'
+    };
+    
+    const currentIndex = solutionOrder.indexOf(consultaDetails.solucao_etapa);
+    const hasPrevious = currentIndex > 0;
+    const hasNext = currentIndex < solutionOrder.length - 1;
+    
+    if (!hasPrevious && !hasNext) return null;
+    
+    return (
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'center',
+        marginLeft: 'auto'
+      }}>
+        {hasPrevious && (
+          <button
+            onClick={handleNavigateToPreviousSolution}
+            disabled={isSaving}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              color: '#374151',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              opacity: isSaving ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.background = '#e5e7eb';
+                e.currentTarget.style.borderColor = '#9ca3af';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.background = '#f3f4f6';
+                e.currentTarget.style.borderColor = '#d1d5db';
+              }
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Anterior
+          </button>
+        )}
+        {hasNext && (
+          <button
+            onClick={handleNavigateToNextSolution}
+            disabled={isSaving}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#1B4266',
+              border: '1px solid #1B4266',
+              borderRadius: '8px',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              opacity: isSaving ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.background = '#153350';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.background = '#1B4266';
+              }
+            }}
+          >
+            Próxima
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
   };
 
   // Função helper para renderizar o botão "Ver Todas as Soluções"
@@ -5553,8 +5843,10 @@ function ConsultasPageContent() {
       const data = await response.json();
       const newConsultation = data.consultation;
       
-      // Logs para debug de consulta_inicio e consulta_fim
-      console.log('📅 Dados da consulta recebidos:', {
+      // Logs para debug de consulta_inicio, consulta_fim e duration
+      console.log('📅 Dados da consulta recebidos (duração):', {
+        duration: newConsultation?.duration,
+        duracao: (newConsultation as any)?.duracao,
         consulta_inicio: newConsultation?.consulta_inicio,
         consulta_fim: newConsultation?.consulta_fim,
         created_at: newConsultation?.created_at,
@@ -5563,10 +5855,11 @@ function ConsultasPageContent() {
           k.toLowerCase().includes('inicio') || 
           k.toLowerCase().includes('fim') ||
           k.toLowerCase().includes('start') ||
-          k.toLowerCase().includes('end')
+          k.toLowerCase().includes('end') ||
+          k.toLowerCase().includes('duration') ||
+          k.toLowerCase().includes('duracao')
         )
       });
-      console.log('📅 Objeto completo da consulta (verificar consulta_fim):', newConsultation);
       
       // Log específico para debug de soluções
       console.log('🔍 [fetchConsultaDetails] Dados recebidos:', {
@@ -5759,43 +6052,65 @@ function ConsultasPageContent() {
     try {
       setIsSaving(true);
       
-      // Atualiza a etapa da consulta para DIAGNOSTICO SENDO PROCESSADO
+      // Verificar se já existe diagnóstico gerado - se sim, apenas avançar sem reprocessar
+      const shouldGenerate = !hasDiagnosticoData();
+      
+      // Atualiza a etapa da consulta para DIAGNOSTICO
+      // Se os dados já existem, apenas atualiza a etapa sem alterar o status
+      const updateData: any = {
+        etapa: 'DIAGNOSTICO'
+      };
+      
+      // Só altera o status se precisar gerar (não se já existe)
+      if (shouldGenerate) {
+        updateData.status = 'PROCESSING';
+      }
+      
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          etapa: 'DIAGNOSTICO',
-          status: 'PROCESSING'
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
         throw new Error('Erro ao atualizar consulta');
       }
 
-      // Disparar webhook para iniciar processamento do diagnóstico
-      try {
-        const webhookEndpoints = getWebhookEndpoints();
-        const webhookHeaders = getWebhookHeaders();
-        
-        await fetch(webhookEndpoints.diagnosticoPrincipal, {
-          method: 'POST',
-        headers: webhookHeaders,
-        body: JSON.stringify({
-            consultaId: consultaDetails.id,
-            medicoId: consultaDetails.doctor_id,
-            pacienteId: consultaDetails.patient_id
-          }),
-        });
-        //console.log('✅ Webhook de diagnóstico processando disparado com sucesso');
-      } catch (webhookError) {
-        console.warn('⚠️ Webhook de diagnóstico falhou, mas consulta foi atualizada:', webhookError);
+      // Disparar webhook apenas se precisar gerar (não se já existe)
+      if (shouldGenerate) {
+        try {
+          const webhookEndpoints = getWebhookEndpoints();
+          const webhookHeaders = getWebhookHeaders();
+          
+          await fetch(webhookEndpoints.diagnosticoPrincipal, {
+            method: 'POST',
+          headers: webhookHeaders,
+          body: JSON.stringify({
+              consultaId: consultaDetails.id,
+              medicoId: consultaDetails.doctor_id,
+              pacienteId: consultaDetails.patient_id
+            }),
+          });
+          console.log('✅ Webhook de diagnóstico disparado com sucesso');
+        } catch (webhookError) {
+          console.warn('⚠️ Webhook de diagnóstico falhou, mas consulta foi atualizada:', webhookError);
+        }
       }
 
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
+      
+      // Navegar automaticamente para a seção de Diagnóstico
+      setSelectedSection('DIAGNOSTICO');
+      
+      // Mensagem de sucesso apropriada
+      if (shouldGenerate) {
+        showSuccess('Diagnóstico em processamento!', 'Sucesso');
+      } else {
+        showSuccess('Avançando para Diagnóstico...', 'Sucesso');
+      }
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
@@ -5854,16 +6169,23 @@ function ConsultasPageContent() {
       }
       
       // Atualiza a etapa da consulta para SOLUCAO sem definir solucao_etapa (mostra tela de seleção)
+      // Se os dados já existem, apenas atualiza a etapa sem alterar o status
+      const updateData: any = {
+        etapa: 'SOLUCAO',
+        solucao_etapa: null
+      };
+      
+      // Só altera o status se precisar gerar (não se já existe)
+      if (shouldGenerate) {
+        updateData.status = 'PROCESSING';
+      }
+      
       const response = await fetch(`/api/consultations/${consultaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          etapa: 'SOLUCAO',
-          status: shouldGenerate ? 'PROCESSING' : 'VALID_SOLUCAO',
-          solucao_etapa: null
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -5894,9 +6216,16 @@ function ConsultasPageContent() {
       // Recarrega os dados da consulta
       await fetchConsultaDetails(consultaId);
       
-      // Redirecionar para a tela inicial (overview) após salvar
+      // Navegar automaticamente para a tela de seleção de soluções
+      setForceShowSolutionSelection(true);
       setSelectedSection(null);
-      showSuccess('Diagnóstico processado com sucesso!', 'Sucesso');
+      
+      // Mensagem de sucesso apropriada
+      if (shouldGenerate) {
+        showSuccess('Solução em processamento!', 'Sucesso');
+      } else {
+        showSuccess('Avançando para Solução...', 'Sucesso');
+      }
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       showError('Erro ao salvar alterações. Tente novamente.', 'Erro');
@@ -6928,10 +7257,37 @@ function ConsultasPageContent() {
         });
       };
 
-      const formatDuration = (seconds?: number) => {
-        if (!seconds) return 'N/A';
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
+      const formatDuration = (consulta: Consultation) => {
+        // Tentar usar duration primeiro
+        let durationInSeconds: number | null = null;
+        
+        if (consulta.duration && consulta.duration > 0) {
+          durationInSeconds = consulta.duration;
+        } 
+        // Se não tiver duration, calcular a partir de consulta_inicio e consulta_fim
+        else if (consulta.consulta_inicio && consulta.consulta_fim) {
+          try {
+            const inicio = new Date(consulta.consulta_inicio);
+            const fim = new Date(consulta.consulta_fim);
+            const diffMs = fim.getTime() - inicio.getTime();
+            durationInSeconds = Math.floor(diffMs / 1000);
+            
+            // Validar se a duração é positiva e razoável (menos de 24 horas)
+            if (durationInSeconds < 0 || durationInSeconds > 86400) {
+              durationInSeconds = null;
+            }
+          } catch (error) {
+            console.error('Erro ao calcular duração:', error);
+            durationInSeconds = null;
+          }
+        }
+        
+        if (!durationInSeconds || durationInSeconds <= 0) {
+          return 'N/A';
+        }
+        
+        const hours = Math.floor(durationInSeconds / 3600);
+        const minutes = Math.floor((durationInSeconds % 3600) / 60);
         
         if (hours > 0) {
           return `${hours}h ${minutes}min`;
@@ -7040,7 +7396,7 @@ function ConsultasPageContent() {
                 </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
                 </div>
               </div>
 
@@ -7092,10 +7448,10 @@ function ConsultasPageContent() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                requestAdvanceConfirmation(
-                  handleSaveAndContinue,
-                  'Você está prestes a avançar para a etapa de Diagnóstico. Esta ação iniciará o processamento do diagnóstico integrativo. Deseja continuar?'
-                );
+                const message = hasDiagnosticoData() 
+                  ? 'Avançar para a etapa de Diagnóstico?'
+                  : 'Você está prestes a avançar para a etapa de Diagnóstico. Esta ação iniciará o processamento do diagnóstico integrativo. Deseja continuar?';
+                requestAdvanceConfirmation(handleSaveAndContinue, message);
               }}
               disabled={isSaving}
               style={{
@@ -7323,10 +7679,37 @@ function ConsultasPageContent() {
         });
       };
 
-      const formatDuration = (seconds?: number) => {
-        if (!seconds) return 'N/A';
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
+      const formatDuration = (consulta: Consultation) => {
+        // Tentar usar duration primeiro
+        let durationInSeconds: number | null = null;
+        
+        if (consulta.duration && consulta.duration > 0) {
+          durationInSeconds = consulta.duration;
+        } 
+        // Se não tiver duration, calcular a partir de consulta_inicio e consulta_fim
+        else if (consulta.consulta_inicio && consulta.consulta_fim) {
+          try {
+            const inicio = new Date(consulta.consulta_inicio);
+            const fim = new Date(consulta.consulta_fim);
+            const diffMs = fim.getTime() - inicio.getTime();
+            durationInSeconds = Math.floor(diffMs / 1000);
+            
+            // Validar se a duração é positiva e razoável (menos de 24 horas)
+            if (durationInSeconds < 0 || durationInSeconds > 86400) {
+              durationInSeconds = null;
+            }
+          } catch (error) {
+            console.error('Erro ao calcular duração:', error);
+            durationInSeconds = null;
+          }
+        }
+        
+        if (!durationInSeconds || durationInSeconds <= 0) {
+          return 'N/A';
+        }
+        
+        const hours = Math.floor(durationInSeconds / 3600);
+        const minutes = Math.floor((durationInSeconds % 3600) / 60);
         
         if (hours > 0) {
           return `${hours}h ${minutes}min`;
@@ -7435,7 +7818,7 @@ function ConsultasPageContent() {
               </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
               </div>
             </div>
 
@@ -7539,10 +7922,10 @@ function ConsultasPageContent() {
                   );
                   return;
                 }
-                requestAdvanceConfirmation(
-                  handleSaveDiagnosticoAndContinue,
-                  'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?'
-                );
+                const message = hasSolucaoData() 
+                  ? 'Avançar para a etapa de Solução?'
+                  : 'Você está prestes a avançar para a etapa de Solução. Esta ação iniciará o processamento da solução integrativa. Deseja continuar?';
+                requestAdvanceConfirmation(handleSaveDiagnosticoAndContinue, message);
               }}
               disabled={isSaving || (!hasSolucaoData() && anamnesePreenchida === false)}
               style={{
@@ -8201,7 +8584,7 @@ function ConsultasPageContent() {
                 </div>
                 <div className="info-content">
                   <span className="info-label">Duração</span>
-                  <span className="info-value">{formatDuration(consultaDetails.duration)}</span>
+                  <span className="info-value">{formatDuration(consultaDetails)}</span>
                 </div>
               </div>
 
@@ -8525,10 +8908,37 @@ function ConsultasPageContent() {
         });
       };
 
-      const formatDuration = (seconds?: number) => {
-        if (!seconds) return 'N/A';
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
+      const formatDuration = (consulta: Consultation) => {
+        // Tentar usar duration primeiro
+        let durationInSeconds: number | null = null;
+        
+        if (consulta.duration && consulta.duration > 0) {
+          durationInSeconds = consulta.duration;
+        } 
+        // Se não tiver duration, calcular a partir de consulta_inicio e consulta_fim
+        else if (consulta.consulta_inicio && consulta.consulta_fim) {
+          try {
+            const inicio = new Date(consulta.consulta_inicio);
+            const fim = new Date(consulta.consulta_fim);
+            const diffMs = fim.getTime() - inicio.getTime();
+            durationInSeconds = Math.floor(diffMs / 1000);
+            
+            // Validar se a duração é positiva e razoável (menos de 24 horas)
+            if (durationInSeconds < 0 || durationInSeconds > 86400) {
+              durationInSeconds = null;
+            }
+          } catch (error) {
+            console.error('Erro ao calcular duração:', error);
+            durationInSeconds = null;
+          }
+        }
+        
+        if (!durationInSeconds || durationInSeconds <= 0) {
+          return 'N/A';
+        }
+        
+        const hours = Math.floor(durationInSeconds / 3600);
+        const minutes = Math.floor((durationInSeconds % 3600) / 60);
         
         if (hours > 0) {
           return `${hours}h ${minutes}min`;
@@ -8568,7 +8978,7 @@ function ConsultasPageContent() {
 
       return (
         <div className="consultas-container consultas-details-container anamnese-page-container">
-          <div className="consultation-details-overview-header">
+          <div className="consultation-details-overview-header" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
               className="back-button"
               onClick={handleBackToSolutionSelection}
@@ -8577,7 +8987,8 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultation-details-overview-title">Detalhes da Consulta - Livro da Vida</h1>
+            <h1 className="consultation-details-overview-title" style={{ flex: 1 }}>Detalhes da Consulta - Livro da Vida</h1>
+            {renderSolutionNavigationButtons()}
           </div>
 
           {/* Cards de Informação no Topo */}
@@ -8642,7 +9053,7 @@ function ConsultasPageContent() {
               </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
               </div>
             </div>
 
@@ -8763,7 +9174,7 @@ function ConsultasPageContent() {
     if (contentType === 'SOLUCAO_SUPLEMENTACAO') {
       return (
         <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
+          <div className="consultas-header" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
               className="back-button"
               onClick={handleBackToSolutionSelection}
@@ -8772,7 +9183,8 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title">Solução - Suplementação</h1>
+            <h1 className="consultas-title" style={{ flex: 1 }}>Solução - Suplementação</h1>
+            {renderSolutionNavigationButtons()}
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
@@ -8822,7 +9234,7 @@ function ConsultasPageContent() {
                 </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
                 </div>
               </div>
 
@@ -8873,7 +9285,7 @@ function ConsultasPageContent() {
       console.log('🔍 DEBUG [REFERENCIA] atividadeFisicaData length:', atividadeFisicaData.length);
       return (
         <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
+          <div className="consultas-header" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
               className="back-button"
               onClick={handleBackToSolutionSelection}
@@ -8882,7 +9294,8 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title">Solução - Atividade Física</h1>
+            <h1 className="consultas-title" style={{ flex: 1 }}>Solução - Atividade Física</h1>
+            {renderSolutionNavigationButtons()}
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
@@ -8932,7 +9345,7 @@ function ConsultasPageContent() {
               </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
               </div>
             </div>
 
@@ -9123,7 +9536,7 @@ function ConsultasPageContent() {
     if (contentType === 'SOLUCAO_ALIMENTACAO') {
       return (
         <div className="consultas-container consultas-details-container">
-          <div className="consultas-header">
+          <div className="consultas-header" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
               className="back-button"
               onClick={handleBackToSolutionSelection}
@@ -9132,7 +9545,8 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title">Solução - Alimentação</h1>
+            <h1 className="consultas-title" style={{ flex: 1 }}>Solução - Alimentação</h1>
+            {renderSolutionNavigationButtons()}
             {renderViewSolutionsButton && renderViewSolutionsButton()}
           </div>
 
@@ -9182,7 +9596,7 @@ function ConsultasPageContent() {
                 </div>
               <div className="consultation-details-card-content">
                 <div className="consultation-details-card-label">Duração</div>
-                <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+                <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
                 </div>
               </div>
 
@@ -9375,7 +9789,7 @@ function ConsultasPageContent() {
               </div>
             <div className="consultation-details-card-content">
               <div className="consultation-details-card-label">Duração</div>
-              <div className="consultation-details-card-value">{formatDuration(consultaDetails.duration)}</div>
+              <div className="consultation-details-card-value">{formatDuration(consultaDetails)}</div>
               </div>
             </div>
 
