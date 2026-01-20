@@ -557,6 +557,99 @@ class AIPricingService {
   }
 
   /**
+   * Calcula o custo total de uma consulta e atualiza o campo valor_consulta
+   * Soma todos os registros de ai_pricing para a consulta e atualiza a tabela consultations
+   * @param consultaId ID da consulta
+   * @returns Valor total calculado em USD
+   */
+  async calculateAndUpdateConsultationCost(consultaId: string): Promise<number | null> {
+    try {
+      console.log(`💰 [AI_PRICING] Calculando custo total da consulta ${consultaId}...`);
+
+      // Buscar todos os registros de AI pricing para esta consulta
+      const { data, error } = await supabase
+        .from('ai_pricing')
+        .select('*')
+        .eq('consulta_id', consultaId);
+
+      if (error) {
+        console.error('❌ Erro ao buscar registros de AI pricing:', error.message);
+        logError(
+          `Erro ao buscar registros de AI pricing para cálculo de custo`,
+          'error',
+          consultaId,
+          { error: error.message }
+        );
+        return null;
+      }
+
+      if (!data || data.length === 0) {
+        console.log(`ℹ️ [AI_PRICING] Nenhum registro de IA encontrado para consulta ${consultaId}`);
+        // Atualizar com valor 0
+        await supabase
+          .from('consultations')
+          .update({ valor_consulta: 0 })
+          .eq('id', consultaId);
+        return 0;
+      }
+
+      // Somar todos os preços
+      const totalCost = data.reduce((sum, record) => sum + (record.price || 0), 0);
+
+      // Log detalhado dos tokens (apenas se houver registros)
+      const summary = {
+        totalRecords: data.length,
+        totalCost: totalCost,
+        breakdown: data.map(r => ({
+          model: r.LLM,
+          etapa: r.etapa,
+          textIn: r.tokens_text_in || 0,
+          textOut: r.tokens_text_out || 0,
+          audioIn: r.tokens_audio_in || 0,
+          audioOut: r.tokens_audio_out || 0,
+          price: r.price || 0
+        }))
+      };
+
+      console.log(`💰 [AI_PRICING] Resumo da consulta ${consultaId}:`, {
+        totalRecords: summary.totalRecords,
+        totalCost: `$${totalCost.toFixed(6)}`,
+        models: [...new Set(data.map(r => r.LLM))].join(', ')
+      });
+
+      // Atualizar campo valor_consulta na tabela consultations
+      const { error: updateError } = await supabase
+        .from('consultations')
+        .update({ valor_consulta: totalCost })
+        .eq('id', consultaId);
+
+      if (updateError) {
+        console.error('❌ Erro ao atualizar valor_consulta:', updateError.message);
+        logError(
+          `Erro ao atualizar valor_consulta no banco`,
+          'error',
+          consultaId,
+          { error: updateError.message, totalCost }
+        );
+        return null;
+      }
+
+      console.log(`✅ [AI_PRICING] valor_consulta atualizado: $${totalCost.toFixed(6)}`);
+      return totalCost;
+
+    } catch (error) {
+      console.error('❌ Erro ao calcular e atualizar custo da consulta:', error);
+      logError(
+        `Exceção ao calcular e atualizar custo da consulta`,
+        'error',
+        consultaId,
+        { error: error instanceof Error ? error.message : String(error) }
+      );
+      return null;
+    }
+  }
+
+  /**
    * Habilitar/desabilitar o serviço
    */
   setEnabled(enabled: boolean): void {

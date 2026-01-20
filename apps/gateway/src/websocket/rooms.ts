@@ -1847,6 +1847,19 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         }
 
         console.log(`✅ Dados salvos no banco de dados com sucesso`);
+
+        // 💰 NOVO: Calcular e atualizar valor_consulta
+        if (consultationId) {
+          try {
+            const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(consultationId);
+            if (totalCost !== null) {
+              console.log(`💰 [CONSULTA] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+            }
+          } catch (costError) {
+            console.error('❌ Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
+          }
+        }
+
       } catch (error) {
         console.error('❌ Erro ao salvar no banco de dados:', error);
         saveResult.error = 'Erro ao salvar alguns dados no banco';
