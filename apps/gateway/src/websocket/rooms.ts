@@ -1230,8 +1230,34 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         try {
           const parsed = JSON.parse(message);
 
+          // ✅ NOVO: Capturar evento de transcrição de entrada e registrar tokens
           if (parsed.type === 'conversation.item.input_audio_transcription.completed') {
             console.log(`[${userName}] 📝 TRANSCRIÇÃO:`, parsed.transcript);
+
+            // ✅ Registrar tokens de transcrição de entrada se houver usage
+            if (parsed.usage) {
+              const room = rooms.get(roomId);
+              let consultaId = room?.consultationId || null;
+
+              (async () => {
+                try {
+                  // Se não tem consultaId na memória, tenta buscar
+                  if (!consultaId && roomId) {
+                    const { db } = await import('../config/database');
+                    consultaId = await db.getConsultationIdByRoomId(roomId);
+                    if (consultaId && room) room.consultationId = consultaId;
+                  }
+                  const { aiPricingService } = await import('../services/aiPricingService');
+                  await aiPricingService.logInputTranscriptionUsage({
+                    inputTokens: parsed.usage.input_tokens || 0,
+                    audioTokens: parsed.usage.input_token_details?.audio_tokens || 0,
+                    inputAudioTranscriptionJson: parsed // ✅ JSON completo do evento
+                  }, consultaId);
+                } catch (err) {
+                  console.error('Erro ao logar transcrição de entrada:', err);
+                }
+              })();
+            }
           }
 
           // ✅ CÁLCULO DE TOKENS: Capturar evento response.done
@@ -1280,7 +1306,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                   textOutputTokens: usage.output_token_details?.text_tokens || 0,
                   audioInputTokens: usage.input_token_details?.audio_tokens || 0,
                   audioOutputTokens: usage.output_token_details?.audio_tokens || 0,
-                  cachedTokens: usage.input_token_details?.cached_tokens || 0
+                  cachedTokens: usage.input_token_details?.cached_tokens || 0,
+                  responseDoneJson: parsed // ✅ NOVO: JSON completo do response.done
                 }, consultaId);
               } catch (err) {
                 console.error('Erro ao logar uso realtime por interação:', err);
@@ -1292,6 +1319,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         }
         socket.emit('transcription:message', data.toString());
       });
+
 
       openAIWs.on('error', (error: any) => {
         console.error(`❌ [TRANSCRIPTION] Erro OpenAI para ${userName}:`, error);

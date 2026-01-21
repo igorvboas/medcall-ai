@@ -27,6 +27,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutos de cache
 export type AIStage =
   | 'transcricao_whisper'       // Transcrição de áudio com Whisper
   | 'transcricao_realtime'      // Transcrição em tempo real (Realtime API)
+  | 'transcricao_input'         // Transcrição de áudio de entrada (conversation.item.input_audio_transcription.completed)
   | 'analise_contexto'          // Análise de contexto para sugestões
   | 'sugestoes_contextuais'     // Geração de sugestões contextuais
   | 'sugestoes_emergencia'      // Geração de sugestões de emergência
@@ -57,6 +58,11 @@ export interface AIPricingRecord {
   tokens_audio_in?: number;  // Tokens de áudio de entrada
   tokens_text_out?: number;  // Tokens de texto de saída
   tokens_audio_out?: number; // Tokens de áudio de saída
+  // ✅ NOVO: Token de transcrição de entrada
+  token_transcription?: number; // Tokens de transcrição de áudio de entrada
+  // ✅ NOVO: JSONs completos dos eventos OpenAI
+  response_done?: object;  // JSON completo do evento response.done
+  input_audio_transcription_completed?: object; // JSON completo do evento conversation.item.input_audio_transcription.completed
   price: number;          // Preço calculado em USD
   tester?: boolean;       // Se é ambiente de teste
   etapa: AIStage;         // Etapa onde foi usado
@@ -230,6 +236,11 @@ class AIPricingService {
           tokens_audio_in: record.tokens_audio_in || null,
           tokens_text_out: record.tokens_text_out || null,
           tokens_audio_out: record.tokens_audio_out || null,
+          // ✅ NOVO: Token de transcrição de entrada
+          token_transcription: record.token_transcription || null,
+          // ✅ NOVO: JSONs completos dos eventos OpenAI
+          response_done: record.response_done || null,
+          input_audio_transcription_completed: record.input_audio_transcription_completed || null,
           price: record.price,
           tester: isTester,
           etapa: record.etapa,
@@ -287,6 +298,8 @@ class AIPricingService {
   /**
    * Registra uso da Realtime API (transcrição em tempo real)
    * Agora suporta contagem exata de tokens de áudio e texto
+   * @param params Parâmetros de uso incluindo tokens e JSON do response.done
+   * @param consultaId ID da consulta (opcional)
    */
   async logRealtimeUsage(
     params: {
@@ -296,6 +309,7 @@ class AIPricingService {
       audioInputTokens?: number;
       audioOutputTokens?: number;
       cachedTokens?: number;
+      responseDoneJson?: object; // ✅ NOVO: JSON completo do evento response.done
     },
     consultaId?: string
   ): Promise<boolean> {
@@ -345,6 +359,7 @@ class AIPricingService {
       - Cached Tokens: ${cachedTokens}
       - Preço: $${price.toFixed(6)}
       - Consulta ID: ${consultaId || 'N/A'}
+      - Response Done JSON: ${params.responseDoneJson ? 'Sim' : 'Não'}
     `);
 
     return this.logUsage({
@@ -354,15 +369,59 @@ class AIPricingService {
       in_tokens_ia: inputTokens,
       out_tokens_ia: outputTokens,
       cached_tokens_ia: cachedTokens,
-      // ✅ NOVO: Campos granulares
+      // ✅ Campos granulares
       tokens_text_in: textIn,
       tokens_audio_in: audioIn,
       tokens_text_out: textOut,
       tokens_audio_out: audioOut,
+      // ✅ NOVO: JSON completo do response.done
+      response_done: params.responseDoneJson,
       price,
       etapa: 'transcricao_realtime',
     });
   }
+
+  /**
+   * Registra uso de transcrição de áudio de entrada (conversation.item.input_audio_transcription.completed)
+   * Este é cobrado separadamente do modelo de conversação
+   * @param params Parâmetros incluindo tokens e JSON do evento
+   * @param consultaId ID da consulta (opcional)
+   */
+  async logInputTranscriptionUsage(
+    params: {
+      inputTokens: number; // Tokens cobrados pela transcrição
+      audioTokens?: number; // Tokens de áudio (input_token_details.audio_tokens)
+      inputAudioTranscriptionJson?: object; // ✅ JSON completo do evento
+    },
+    consultaId?: string
+  ): Promise<boolean> {
+    // Preço do Whisper/transcription: $0.006 por minuto
+    // Mas quando vem via Realtime API, provavelmente segue outra tabela
+    // Por enquanto, vamos usar o mesmo pricing do Whisper como aproximação
+    // ~100 tokens de áudio = ~1 segundo ≈ 0.0001 por token
+    const transcriptionPricePerToken = 0.0001;
+    const price = params.inputTokens * transcriptionPricePerToken;
+
+    console.log(`[SUPABASE-AI TOKEN] Registrando transcrição de entrada:
+      - Input Tokens: ${params.inputTokens}
+      - Audio Tokens: ${params.audioTokens || 0}
+      - Preço: $${price.toFixed(6)}
+      - Consulta ID: ${consultaId || 'N/A'}
+    `);
+
+    return this.logUsage({
+      consulta_id: consultaId,
+      LLM: 'gpt-4o-mini-realtime-preview', // Usando o mesmo modelo da Realtime API
+      token: params.inputTokens,
+      token_transcription: params.inputTokens, // ✅ Campo específico para transcrição
+      tokens_audio_in: params.audioTokens || params.inputTokens, // Audio tokens
+      // ✅ NOVO: JSON completo do evento
+      input_audio_transcription_completed: params.inputAudioTranscriptionJson,
+      price,
+      etapa: 'transcricao_input', // ✅ Nova etapa específica
+    });
+  }
+
 
   /**
    * Registra uso de Chat Completion
