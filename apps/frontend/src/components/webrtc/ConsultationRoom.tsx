@@ -3551,7 +3551,7 @@ export function ConsultationRoom({
         setAnamneseReady(true);
         return true;
       }
-      
+
       // Se está em PROCESSING e etapa=ANAMNESE, significa que está sendo gerada
       if (consultation.status === 'PROCESSING' && consultation.etapa === 'ANAMNESE') {
         console.log('⏳ Anamnese ainda está sendo gerada... Status: PROCESSING');
@@ -3592,7 +3592,7 @@ export function ConsultationRoom({
 
     anamnesePollingRef.current = setInterval(async () => {
       const isReady = await checkAnamneseStatus(consultationId);
-      
+
       if (isReady) {
         // Anamnese está pronta, parar polling
         if (anamnesePollingRef.current) {
@@ -3639,7 +3639,7 @@ export function ConsultationRoom({
 
       try {
         const { supabase } = await import('@/lib/supabase');
-        
+
         // Tentar obter consultationId da call_sessions
         const { data: callSession } = await supabase
           .from('call_sessions')
@@ -3650,7 +3650,7 @@ export function ConsultationRoom({
         if (callSession?.consultation_id) {
           const consultationId = callSession.consultation_id;
           const isReady = await checkAnamneseStatus(consultationId);
-          
+
           // Se não está pronta, verificar se está em processamento e iniciar polling
           if (!isReady) {
             try {
@@ -3658,7 +3658,7 @@ export function ConsultationRoom({
               if (response.ok) {
                 const data = await response.json();
                 const consultation = data.consultation;
-                
+
                 // Se está em PROCESSING com etapa ANAMNESE, iniciar polling
                 if (consultation.status === 'PROCESSING' && consultation.etapa === 'ANAMNESE') {
                   setIsGeneratingAnamnese(true);
@@ -3677,7 +3677,7 @@ export function ConsultationRoom({
 
     // Aguardar um pouco para garantir que os dados da sala foram carregados
     const timeoutId = setTimeout(checkInitialAnamneseStatus, 2000);
-    
+
     return () => clearTimeout(timeoutId);
   }, [roomId, userType]);
 
@@ -3890,6 +3890,27 @@ export function ConsultationRoom({
     }, async (response: any) => {
 
       if (response.success) {
+
+        // ✅ NOVO: Atualizar call_sessions.status = 'ended' diretamente no banco
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const { error: updateError } = await supabase
+            .from('call_sessions')
+            .update({
+              status: 'ended',
+              ended_at: new Date().toISOString(),
+              webrtc_active: false
+            })
+            .eq('room_id', roomId);
+
+          if (updateError) {
+            console.error('❌ Erro ao atualizar call_sessions:', updateError);
+          } else {
+            console.log('✅ call_sessions atualizado para status: ended');
+          }
+        } catch (err) {
+          console.error('❌ Erro ao atualizar status da sessão:', err);
+        }
 
         // ✅ Enviar transcrição para o webhook ANTES do redirect (aguardar envio)
         try {
@@ -4217,8 +4238,8 @@ export function ConsultationRoom({
                       {patientAnamnese?.idade
                         ? `${patientAnamnese.idade} anos`
                         : patientData?.birth_date
-                        ? `${calculateAge(patientData.birth_date)} anos`
-                        : 'N/A'}
+                          ? `${calculateAge(patientData.birth_date)} anos`
+                          : 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -4227,7 +4248,7 @@ export function ConsultationRoom({
                   <div className="data-icon">
                     <Scale size={14} />
                   </div>
-                    <div className="data-content">
+                  <div className="data-content">
                     <div className="data-label">Peso</div>
                     <div className="data-value">
                       {patientAnamnese?.peso_atual ? `${patientAnamnese.peso_atual} kg` : 'N/A'}

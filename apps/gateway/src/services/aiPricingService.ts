@@ -258,10 +258,20 @@ class AIPricingService {
       }
 
       const testerLabel = isTester ? '[TESTER]' : '[PROD]';
-      const tokenInfo = record.in_tokens_ia !== undefined
-        ? `in:${record.in_tokens_ia} out:${record.out_tokens_ia || 0} cached:${record.cached_tokens_ia || 0}`
-        : `${record.token} ${AI_PRICING[record.LLM]?.unit || 'units'}`;
-      console.log(`📊 AI Pricing ${testerLabel}: ${record.etapa} - ${record.LLM} - ${tokenInfo} - $${record.price.toFixed(6)}`);
+
+      // ✅ Log unificado e detalhado para TODAS as transações
+      console.log(`[SUPABASE-AI TOKEN] Registrando uso (${record.etapa}):
+      - Modelo: ${record.LLM} ${testerLabel}
+      - Total Tokens/Min: ${record.token}
+      - Text In: ${record.tokens_text_in || record.in_tokens_ia || 0}
+      - Text Out: ${record.tokens_text_out || record.out_tokens_ia || 0}
+      - Audio In: ${record.tokens_audio_in || 0}
+      - Audio Out: ${record.tokens_audio_out || 0}
+      - Cached Tokens: ${record.cached_tokens_ia || 0}
+      - Preço: $${record.price.toFixed(6)}
+      - Consulta ID: ${record.consulta_id || 'N/A'}
+      `);
+
       return true;
     } catch (error) {
       console.error('❌ Erro ao registrar ai_pricing:', error);
@@ -350,17 +360,9 @@ class AIPricingService {
     inputTokens = textIn + audioIn;
     outputTokens = textOut + audioOut;
 
-    console.log(`[SUPABASE-AI TOKEN] Registrando uso Realtime API:
-      - Total Tokens: ${totalTokens}
-      - Text In: ${textIn}
-      - Text Out: ${textOut}
-      - Audio In: ${audioIn}
-      - Audio Out: ${audioOut}
-      - Cached Tokens: ${cachedTokens}
-      - Preço: $${price.toFixed(6)}
-      - Consulta ID: ${consultaId || 'N/A'}
-      - Response Done JSON: ${params.responseDoneJson ? 'Sim' : 'Não'}
-    `);
+    totalTokens = textIn + textOut + audioIn + audioOut;
+    inputTokens = textIn + audioIn;
+    outputTokens = textOut + audioOut;
 
     return this.logUsage({
       consulta_id: consultaId,
@@ -402,13 +404,6 @@ class AIPricingService {
     const transcriptionPricePerToken = 0.0001;
     const price = params.inputTokens * transcriptionPricePerToken;
 
-    console.log(`[SUPABASE-AI TOKEN] Registrando transcrição de entrada:
-      - Input Tokens: ${params.inputTokens}
-      - Audio Tokens: ${params.audioTokens || 0}
-      - Preço: $${price.toFixed(6)}
-      - Consulta ID: ${consultaId || 'N/A'}
-    `);
-
     return this.logUsage({
       consulta_id: consultaId,
       LLM: 'gpt-4o-mini-realtime-preview', // Usando o mesmo modelo da Realtime API
@@ -449,6 +444,9 @@ class AIPricingService {
       in_tokens_ia: inputTokens,
       out_tokens_ia: outputTokens,
       cached_tokens_ia: cachedTokens,
+      // ✅ Granular data for detailed logging
+      tokens_text_in: inputTokens,
+      tokens_text_out: outputTokens,
       price,
       etapa,
     });
@@ -473,6 +471,8 @@ class AIPricingService {
       token: tokens,
       in_tokens_ia: tokens,  // Embeddings só têm input tokens
       out_tokens_ia: 0,
+      // ✅ Granular data for detailed logging
+      tokens_text_in: tokens,
       price,
       etapa: 'embedding',
     });
