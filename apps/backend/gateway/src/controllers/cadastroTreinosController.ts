@@ -18,7 +18,6 @@ async function getDoctorId(userId: string) {
 export async function getTreinos(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
@@ -33,21 +32,17 @@ export async function getTreinos(req: AuthenticatedRequest, res: Response) {
       .eq('doctor_id', doctorId);
 
     if (search) {
-      query = query.or(`nome.ilike.%${search}%,categoria.ilike.%${search}%,grupo_muscular.ilike.%${search}%,equipamento.ilike.%${search}%`);
+      query = query.or(`nome.ilike.%${search}%,categoria.ilike.%${search}%,descricao.ilike.%${search}%`);
     }
-
     if (favoritosOnly) {
       query = query.eq('favorito', true);
     }
 
     query = query.order('created_at', { ascending: false });
-
     const from = (page - 1) * limit;
-    const to = from + limit - 1;
-    query = query.range(from, to);
+    query = query.range(from, from + limit - 1);
 
     const { data, error, count } = await query;
-
     if (error) {
       console.error('[CADASTRO-TREINOS] Erro ao buscar:', error);
       return res.status(500).json({ success: false, error: 'Erro ao buscar treinos' });
@@ -56,12 +51,7 @@ export async function getTreinos(req: AuthenticatedRequest, res: Response) {
     return res.json({
       success: true,
       treinos: data || [],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-      },
+      pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
     });
   } catch (err) {
     console.error('[CADASTRO-TREINOS] Erro:', err);
@@ -75,7 +65,6 @@ export async function getTreinos(req: AuthenticatedRequest, res: Response) {
 export async function getTreinoById(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
@@ -92,7 +81,21 @@ export async function getTreinoById(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ success: false, error: 'Treino não encontrado' });
     }
 
-    return res.json({ success: true, treino });
+    // Buscar exercícios do treino com dados do exercício
+    const { data: exercicios, error: exError } = await supabase
+      .from('cadastro_treino_exercicios')
+      .select('*, cadastro_exercicios(*)')
+      .eq('treino_id', id)
+      .order('ordem', { ascending: true });
+
+    if (exError) {
+      console.error('[CADASTRO-TREINOS] Erro ao buscar exercícios:', exError);
+    }
+
+    return res.json({
+      success: true,
+      treino: { ...treino, exercicios: exercicios || [] },
+    });
   } catch (err) {
     console.error('[CADASTRO-TREINOS] Erro:', err);
     return res.status(500).json({ success: false, error: 'Erro interno' });
@@ -105,12 +108,10 @@ export async function getTreinoById(req: AuthenticatedRequest, res: Response) {
 export async function createTreino(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
-    const { nome, categoria, descricao, grupo_muscular, series, repeticoes, descanso, equipamento, favorito, tags } = req.body;
-
+    const { nome, categoria, descricao, favorito, tags } = req.body;
     if (!nome?.trim()) {
       return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
     }
@@ -122,11 +123,6 @@ export async function createTreino(req: AuthenticatedRequest, res: Response) {
         nome: nome.trim(),
         categoria: categoria || null,
         descricao: descricao || null,
-        grupo_muscular: grupo_muscular || null,
-        series: series || null,
-        repeticoes: repeticoes || null,
-        descanso: descanso || null,
-        equipamento: equipamento || null,
         favorito: favorito || false,
         tags: tags || [],
       })
@@ -151,12 +147,11 @@ export async function createTreino(req: AuthenticatedRequest, res: Response) {
 export async function updateTreino(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
     const { id } = req.params;
-    const { nome, categoria, descricao, grupo_muscular, series, repeticoes, descanso, equipamento, favorito, tags } = req.body;
+    const { nome, categoria, descricao, favorito, tags } = req.body;
 
     const { data: existing } = await supabase
       .from('cadastro_treinos')
@@ -173,11 +168,6 @@ export async function updateTreino(req: AuthenticatedRequest, res: Response) {
     if (nome !== undefined) updateData.nome = nome.trim();
     if (categoria !== undefined) updateData.categoria = categoria;
     if (descricao !== undefined) updateData.descricao = descricao;
-    if (grupo_muscular !== undefined) updateData.grupo_muscular = grupo_muscular;
-    if (series !== undefined) updateData.series = series;
-    if (repeticoes !== undefined) updateData.repeticoes = repeticoes;
-    if (descanso !== undefined) updateData.descanso = descanso;
-    if (equipamento !== undefined) updateData.equipamento = equipamento;
     if (favorito !== undefined) updateData.favorito = favorito;
     if (tags !== undefined) updateData.tags = tags;
 
@@ -207,12 +197,10 @@ export async function updateTreino(req: AuthenticatedRequest, res: Response) {
 export async function deleteTreino(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
     const { id } = req.params;
-
     const { error } = await supabase
       .from('cadastro_treinos')
       .delete()
@@ -237,12 +225,10 @@ export async function deleteTreino(req: AuthenticatedRequest, res: Response) {
 export async function toggleFavoritoTreino(req: AuthenticatedRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
-
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
 
     const { id } = req.params;
-
     const { data: treino } = await supabase
       .from('cadastro_treinos')
       .select('favorito')
@@ -268,6 +254,164 @@ export async function toggleFavoritoTreino(req: AuthenticatedRequest, res: Respo
     }
 
     return res.json({ success: true, treino: data });
+  } catch (err) {
+    console.error('[CADASTRO-TREINOS] Erro:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+// ==================== EXERCÍCIOS DO TREINO ====================
+
+/**
+ * POST /cadastro-treinos/:treinoId/exercicios
+ */
+export async function addExercicioToTreino(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+    const doctorId = await getDoctorId(req.user.id);
+    if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
+
+    const { treinoId } = req.params;
+    const { exercicio_id, series, repeticoes, descanso, observacao } = req.body;
+
+    if (!exercicio_id) {
+      return res.status(400).json({ success: false, error: 'exercicio_id é obrigatório' });
+    }
+
+    // Verificar ownership do treino
+    const { data: treino } = await supabase
+      .from('cadastro_treinos')
+      .select('id')
+      .eq('id', treinoId)
+      .eq('doctor_id', doctorId)
+      .single();
+
+    if (!treino) {
+      return res.status(404).json({ success: false, error: 'Treino não encontrado' });
+    }
+
+    // Próxima ordem
+    const { data: lastItem } = await supabase
+      .from('cadastro_treino_exercicios')
+      .select('ordem')
+      .eq('treino_id', treinoId)
+      .order('ordem', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrdem = (lastItem?.ordem || 0) + 1;
+
+    const { data, error } = await supabase
+      .from('cadastro_treino_exercicios')
+      .insert({
+        treino_id: treinoId,
+        exercicio_id,
+        series: series || null,
+        repeticoes: repeticoes || null,
+        descanso: descanso || null,
+        observacao: observacao || null,
+        ordem: nextOrdem,
+      })
+      .select('*, cadastro_exercicios(*)')
+      .single();
+
+    if (error) {
+      console.error('[CADASTRO-TREINOS] Erro ao adicionar exercício:', error);
+      return res.status(500).json({ success: false, error: 'Erro ao adicionar exercício' });
+    }
+
+    return res.status(201).json({ success: true, exercicio: data });
+  } catch (err) {
+    console.error('[CADASTRO-TREINOS] Erro:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+/**
+ * PUT /cadastro-treinos/:treinoId/exercicios/:exercicioItemId
+ */
+export async function updateTreinoExercicio(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+    const doctorId = await getDoctorId(req.user.id);
+    if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
+
+    const { treinoId, exercicioItemId } = req.params;
+
+    // Verificar ownership
+    const { data: treino } = await supabase
+      .from('cadastro_treinos')
+      .select('id')
+      .eq('id', treinoId)
+      .eq('doctor_id', doctorId)
+      .single();
+
+    if (!treino) {
+      return res.status(404).json({ success: false, error: 'Treino não encontrado' });
+    }
+
+    const { series, repeticoes, descanso, observacao, ordem } = req.body;
+    const updateData: any = {};
+    if (series !== undefined) updateData.series = series;
+    if (repeticoes !== undefined) updateData.repeticoes = repeticoes;
+    if (descanso !== undefined) updateData.descanso = descanso;
+    if (observacao !== undefined) updateData.observacao = observacao;
+    if (ordem !== undefined) updateData.ordem = ordem;
+
+    const { data, error } = await supabase
+      .from('cadastro_treino_exercicios')
+      .update(updateData)
+      .eq('id', exercicioItemId)
+      .eq('treino_id', treinoId)
+      .select('*, cadastro_exercicios(*)')
+      .single();
+
+    if (error) {
+      console.error('[CADASTRO-TREINOS] Erro ao atualizar exercício:', error);
+      return res.status(500).json({ success: false, error: 'Erro ao atualizar exercício' });
+    }
+
+    return res.json({ success: true, exercicio: data });
+  } catch (err) {
+    console.error('[CADASTRO-TREINOS] Erro:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+/**
+ * DELETE /cadastro-treinos/:treinoId/exercicios/:exercicioItemId
+ */
+export async function deleteTreinoExercicio(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+    const doctorId = await getDoctorId(req.user.id);
+    if (!doctorId) return res.status(404).json({ success: false, error: 'Médico não encontrado' });
+
+    const { treinoId, exercicioItemId } = req.params;
+
+    const { data: treino } = await supabase
+      .from('cadastro_treinos')
+      .select('id')
+      .eq('id', treinoId)
+      .eq('doctor_id', doctorId)
+      .single();
+
+    if (!treino) {
+      return res.status(404).json({ success: false, error: 'Treino não encontrado' });
+    }
+
+    const { error } = await supabase
+      .from('cadastro_treino_exercicios')
+      .delete()
+      .eq('id', exercicioItemId)
+      .eq('treino_id', treinoId);
+
+    if (error) {
+      console.error('[CADASTRO-TREINOS] Erro ao remover exercício:', error);
+      return res.status(500).json({ success: false, error: 'Erro ao remover exercício' });
+    }
+
+    return res.json({ success: true, message: 'Exercício removido do treino' });
   } catch (err) {
     console.error('[CADASTRO-TREINOS] Erro:', err);
     return res.status(500).json({ success: false, error: 'Erro interno' });

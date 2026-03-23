@@ -95,6 +95,67 @@ const frutasOptions = [
 
 const TOTAL_STEPS = 8;
 
+function InputField({ icon: Icon, ...props }: any) {
+  return (
+    <div className="wizard-input-group">
+      <Icon className="wizard-input-icon" size={20} />
+      <input {...props} />
+    </div>
+  );
+}
+
+function SelectField({ icon: Icon, children, ...props }: any) {
+  return (
+    <div className="wizard-input-group">
+      <Icon className="wizard-input-icon" size={20} />
+      <div className="wizard-select-wrapper">
+        <select {...props}>{children}</select>
+        <ChevronDown className="wizard-select-arrow" />
+      </div>
+    </div>
+  );
+}
+
+function NavButtons({ isLast = false, onPrev, onNext, onSubmit, saving }: {
+  isLast?: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onSubmit: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="wizard-actions">
+      <button type="button" className="wizard-btn-secondary" onClick={onPrev}>
+        <ArrowLeft size={18} /> Voltar
+      </button>
+      {isLast ? (
+        <button type="button" className="wizard-btn-primary" onClick={onSubmit} disabled={saving}>
+          {saving ? (
+            <><div className="wizard-btn-spinner" /> Salvando...</>
+          ) : (
+            <><Save size={18} /> Salvar Anamnese</>
+          )}
+        </button>
+      ) : (
+        <button type="button" className="wizard-btn-primary" onClick={onNext}>
+          Próximo Passo <ArrowRight size={18} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StepPageHeader({ step }: { step: number }) {
+  return (
+    <div className="step-page-header">
+      <span className="step-page-badge">Passo {step} de {TOTAL_STEPS}</span>
+      <div className="step-progress-bar">
+        <div className="step-progress-fill" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function formatPhone(value: string) {
   const numbers = value.replace(/\D/g, '');
   if (numbers.length <= 2) return numbers;
@@ -360,53 +421,6 @@ function AnamneseInicialContent() {
     </div>
   );
 
-  const InputField = ({ icon: Icon, ...props }: any) => (
-    <div className="wizard-input-group">
-      <Icon className="wizard-input-icon" size={20} />
-      <input {...props} />
-    </div>
-  );
-
-  const SelectField = ({ icon: Icon, children, ...props }: any) => (
-    <div className="wizard-input-group">
-      <Icon className="wizard-input-icon" size={20} />
-      <div className="wizard-select-wrapper">
-        <select {...props}>{children}</select>
-        <ChevronDown className="wizard-select-arrow" />
-      </div>
-    </div>
-  );
-
-  const NavButtons = ({ isLast = false }: { isLast?: boolean }) => (
-    <div className="wizard-actions">
-      <button type="button" className="wizard-btn-secondary" onClick={prevStep}>
-        <ArrowLeft size={18} /> Voltar
-      </button>
-      {isLast ? (
-        <button type="button" className="wizard-btn-primary" onClick={handleSubmit} disabled={saving}>
-          {saving ? (
-            <><div className="wizard-btn-spinner" /> Salvando...</>
-          ) : (
-            <><Save size={18} /> Salvar Anamnese</>
-          )}
-        </button>
-      ) : (
-        <button type="button" className="wizard-btn-primary" onClick={nextStep}>
-          Próximo Passo <ArrowRight size={18} />
-        </button>
-      )}
-    </div>
-  );
-
-  const StepPageHeader = ({ step }: { step: number }) => (
-    <div className="step-page-header">
-      <span className="step-page-badge">Passo {step} de {TOTAL_STEPS}</span>
-      <div className="step-progress-bar">
-        <div className="step-progress-fill" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
-      </div>
-    </div>
-  );
-
   const renderStepContent = () => {
     switch (currentStep) {
       // === WELCOME ===
@@ -505,7 +519,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -595,7 +609,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -632,7 +646,7 @@ function AnamneseInicialContent() {
                 ))}
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -682,7 +696,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -792,7 +806,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -884,7 +898,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -1048,7 +1062,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -1164,7 +1178,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons isLast />
+              <NavButtons isLast onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />

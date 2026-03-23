@@ -256,7 +256,7 @@ export async function getAnamneseInicial(req: AuthenticatedRequest, res: Respons
         .maybeSingle(),
       supabase
         .from('patients')
-        .select('id, name, email, cpf, gender, birth_date, user_auth')
+        .select('id, name, email, cpf, gender, birth_date, phone, user_auth')
         .eq('id', patient_id)
         .maybeSingle(),
     ]);
@@ -269,6 +269,13 @@ export async function getAnamneseInicial(req: AuthenticatedRequest, res: Respons
       });
     }
 
+    // Mapear gender do DB (M/F/O) para label do form
+    const genderLabelMap: Record<string, string> = {
+      'M': 'Masculino',
+      'F': 'Feminino',
+      'O': 'Outro',
+    };
+
     // Se não houver anamnese ainda, pré-popular com dados do paciente
     let anamnese = anamneseResult.data;
     if (!anamnese && patientResult.data) {
@@ -277,9 +284,19 @@ export async function getAnamneseInicial(req: AuthenticatedRequest, res: Respons
         nome_completo: p.name || '',
         email: p.email || '',
         cpf: p.cpf || '',
-        genero: p.gender || '',
+        telefone: p.phone || '',
+        genero: genderLabelMap[p.gender] || p.gender || '',
         data_nascimento: p.birth_date || '',
       };
+    } else if (anamnese && patientResult.data) {
+      // Preencher campos vazios da anamnese com dados do paciente
+      const p = patientResult.data;
+      if (!anamnese.nome_completo && p.name) anamnese.nome_completo = p.name;
+      if (!anamnese.email && p.email) anamnese.email = p.email;
+      if (!anamnese.cpf && p.cpf) anamnese.cpf = p.cpf;
+      if (!anamnese.telefone && p.phone) anamnese.telefone = p.phone;
+      if (!anamnese.genero && p.gender) anamnese.genero = genderLabelMap[p.gender] || p.gender;
+      if (!anamnese.data_nascimento && p.birth_date) anamnese.data_nascimento = p.birth_date;
     }
 
     // Email bloqueado se já existe user auth criado para o paciente
@@ -320,11 +337,29 @@ export async function saveAnamneseInicial(req: AuthenticatedRequest, res: Respon
 
     // 1. Whitelist de campos permitidos para a_cadastro_anamnese
     const allowedAnamneseKeys = [
-      'nome_completo', 'cpf', 'email', 'genero', 'data_nascimento', 'idade', 'tipo_saguineo',
-      'estado_civil', 'profissao', 'altura', 'peso_atual', 'peso_antigo', 'peso_desejado',
-      'objetivo_principal', 'patrica_atividade_fisica', 'frequencia_deseja_treinar',
-      'restricao_movimento', 'informacoes_importantes', 'NecessidadeEnergeticaDiaria',
+      // Dados Pessoais
+      'nome_completo', 'cpf', 'email', 'telefone', 'genero', 'data_nascimento', 'idade',
+      'tipo_saguineo', 'estado_civil', 'profissao',
+      // Medidas
+      'altura', 'peso_atual', 'peso_antigo', 'peso_desejado',
+      // Fotos Corporais
+      'foto_frente', 'foto_costas', 'foto_lateral_esq', 'foto_lateral_dir',
+      // Preferências Alimentares
       'proteinas', 'carboidratos', 'vegetais', 'legumes', 'leguminosas', 'gorduras', 'frutas',
+      // Atividade Física e Saúde
+      'objetivo_principal', 'patrica_atividade_fisica', 'nivel_atividade', 'modalidades',
+      'frequencia_semanal', 'frequencia_deseja_treinar', 'periodo_treino',
+      'restricao_movimento', 'informacoes_importantes',
+      // Saúde e Medicamentos
+      'toma_medicamentos', 'medicamentos_detalhes', 'suplementos',
+      'condicoes_diagnosticadas', 'cirurgias_anteriores',
+      // Saúde Digestiva
+      'mastigacao', 'alergias_sensibilidades', 'desconfortos_intestinais',
+      'avaliacao_intestino', 'tipo_bristol',
+      // Sono, Água e Jejum
+      'avaliacao_sono', 'consumo_agua', 'cor_urina', 'pratica_jejum', 'duracao_jejum',
+      // Outros
+      'NecessidadeEnergeticaDiaria',
     ];
 
     const anamnesePayload: Record<string, unknown> = {
@@ -357,6 +392,7 @@ export async function saveAnamneseInicial(req: AuthenticatedRequest, res: Respon
     if (formData.nome_completo) patientUpdate.name = formData.nome_completo;
     if (formData.cpf) patientUpdate.cpf = formData.cpf;
     if (formData.email) patientUpdate.email = formData.email;
+    if (formData.telefone) patientUpdate.phone = formData.telefone;
     if (formData.genero) {
       // Mapear genero do form para o formato da tabela patients (M/F/O)
       const genderMap: Record<string, string> = {

@@ -132,21 +132,41 @@ interface RefeicaoResponse {
   };
 }
 
+interface Exercicio {
+  id: string;
+  doctor_id: string;
+  nome: string;
+  grupo_muscular?: string;
+  descricao?: string;
+  url_tutorial?: string;
+  equipamento?: string;
+  favorito: boolean;
+  tags: string[];
+}
+
+interface TreinoExercicio {
+  id: string;
+  treino_id: string;
+  exercicio_id: string;
+  series?: number;
+  repeticoes?: string;
+  descanso?: string;
+  observacao?: string;
+  ordem: number;
+  cadastro_exercicios?: Exercicio;
+}
+
 interface Treino {
   id: string;
   doctor_id: string;
   nome: string;
   categoria?: string;
   descricao?: string;
-  grupo_muscular?: string;
-  series?: number;
-  repeticoes?: string;
-  descanso?: string;
-  equipamento?: string;
   favorito: boolean;
   tags: string[];
   created_at: string;
   updated_at: string;
+  exercicios?: TreinoExercicio[];
 }
 
 interface TreinoResponse {
@@ -301,10 +321,20 @@ export default function CadastroTabContent() {
   const [treinoLoading, setTreinoLoading] = useState(false);
   const [treinoSearch, setTreinoSearch] = useState('');
   const [treinoPagination, setTreinoPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
+  const [selectedTreino, setSelectedTreino] = useState<Treino | null>(null);
   const [showTreinoModal, setShowTreinoModal] = useState(false);
   const [editingTreino, setEditingTreino] = useState<Treino | null>(null);
-  const [treinoFormData, setTreinoFormData] = useState({ nome: '', categoria: '', descricao: '', grupo_muscular: '', series: '', repeticoes: '', descanso: '', equipamento: '', tags: [] as string[] });
+  const [treinoFormData, setTreinoFormData] = useState({ nome: '', categoria: '', descricao: '', tags: [] as string[] });
   const [treinoTagInput, setTreinoTagInput] = useState('');
+  // Exercício search/edit state
+  const [exercicioSearch, setExercicioSearch] = useState('');
+  const [exercicioResults, setExercicioResults] = useState<Exercicio[]>([]);
+  const [exercicioSearchLoading, setExercicioSearchLoading] = useState(false);
+  const [showExercicioSearch, setShowExercicioSearch] = useState(false);
+  const [showCreateExercicio, setShowCreateExercicio] = useState(false);
+  const [newExercicioForm, setNewExercicioForm] = useState({ nome: '', grupo_muscular: '', equipamento: '', descricao: '', url_tutorial: '' });
+  const [editingExercicioId, setEditingExercicioId] = useState<string | null>(null);
+  const [exercicioFormData, setExercicioFormData] = useState({ series: '', repeticoes: '', descanso: '', observacao: '' });
   const [alimentoGrams, setAlimentoGrams] = useState<Record<string, string>>({});
   const { showSuccess, showError } = useNotifications();
   const { user } = useAuth();
@@ -361,6 +391,183 @@ export default function CadastroTabContent() {
       await handleUpdateAlimento(refeicaoId, alimentoId, { porcao_customizada: grams });
     }
   };
+
+  // ==================== TREINOS ====================
+  const fetchTreinos = async (page = 1, searchVal = '') => {
+    try {
+      setTreinoLoading(true);
+      const params = new URLSearchParams({ page: page.toString(), limit: treinoPagination.limit.toString() });
+      if (searchVal) params.append('search', searchVal);
+      if (showFavoritesOnly) params.append('favoritos', 'true');
+      const data = await gatewayClient.get<TreinoResponse>(`/cadastro-treinos?${params}`);
+      if (data.success) {
+        setTreinos(data.treinos);
+        setTreinoPagination(data.pagination);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar treinos:', err);
+    } finally {
+      setTreinoLoading(false);
+    }
+  };
+
+  const fetchTreinoDetail = async (id: string) => {
+    try {
+      const data = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${id}`);
+      if (data.success) {
+        setSelectedTreino(data.treino);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar detalhes do treino:', err);
+    }
+  };
+
+  const handleSaveTreino = async () => {
+    if (!treinoFormData.nome.trim()) { showError('Nome é obrigatório'); return; }
+    try {
+      if (editingTreino) {
+        const resp = await gatewayClient.put(`/cadastro-treinos/${editingTreino.id}`, treinoFormData);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Treino atualizado com sucesso');
+        setShowTreinoModal(false);
+        setEditingTreino(null);
+      } else {
+        const resp = await gatewayClient.post('/cadastro-treinos', treinoFormData);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Treino criado! Agora adicione os exercícios.');
+        const detail = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${resp.treino.id}`);
+        if (detail.success) {
+          setEditingTreino(detail.treino);
+          setTreinoFormData({ nome: detail.treino.nome, categoria: detail.treino.categoria || '', descricao: detail.treino.descricao || '', tags: detail.treino.tags || [] });
+        }
+      }
+      fetchTreinos(1, treinoSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao salvar treino');
+    }
+  };
+
+  const handleDeleteTreino = async (id: string) => {
+    try {
+      const resp = await gatewayClient.delete(`/cadastro-treinos/${id}`);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Treino removido com sucesso');
+      setSelectedTreino(null);
+      fetchTreinos(1, treinoSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao remover treino');
+    }
+  };
+
+  const handleToggleFavoritoTreino = async (id: string) => {
+    try {
+      await gatewayClient.patch(`/cadastro-treinos/${id}/favorito`, {});
+      fetchTreinos(treinoPagination.page, treinoSearch);
+    } catch (err) {
+      showError('Erro ao atualizar favorito');
+    }
+  };
+
+  // Buscar exercícios do catálogo
+  const searchExercicios = async (searchVal: string) => {
+    if (!searchVal.trim()) { setExercicioResults([]); return; }
+    try {
+      setExercicioSearchLoading(true);
+      const params = new URLSearchParams({ search: searchVal, limit: '15' });
+      const data = await gatewayClient.get<{ exercicios: Exercicio[] }>(`/cadastro-exercicios?${params}`);
+      if (data.success) setExercicioResults(data.exercicios || []);
+    } catch (err) {
+      console.error('Erro ao buscar exercícios:', err);
+    } finally {
+      setExercicioSearchLoading(false);
+    }
+  };
+
+  // Debounce busca de exercícios
+  useEffect(() => {
+    if (!showExercicioSearch) return;
+    const timeoutId = setTimeout(() => { searchExercicios(exercicioSearch); }, 400);
+    return () => clearTimeout(timeoutId);
+  }, [exercicioSearch, showExercicioSearch]);
+
+  const handleAddExercicioToTreino = async (treinoId: string, exercicioId: string) => {
+    try {
+      const resp = await gatewayClient.post(`/cadastro-treinos/${treinoId}/exercicios`, { exercicio_id: exercicioId });
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Exercício adicionado ao treino');
+      setExercicioSearch('');
+      setExercicioResults([]);
+      const detail = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${treinoId}`);
+      if (detail.success) {
+        if (selectedTreino?.id === treinoId) setSelectedTreino(detail.treino);
+        if (editingTreino?.id === treinoId) setEditingTreino(detail.treino);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao adicionar exercício');
+    }
+  };
+
+  const handleCreateAndAddExercicio = async (treinoId: string) => {
+    if (!newExercicioForm.nome.trim()) { showError('Nome do exercício é obrigatório'); return; }
+    try {
+      const createResp = await gatewayClient.post('/cadastro-exercicios', {
+        nome: newExercicioForm.nome.trim(),
+        grupo_muscular: newExercicioForm.grupo_muscular || null,
+        equipamento: newExercicioForm.equipamento || null,
+        descricao: newExercicioForm.descricao || null,
+        url_tutorial: newExercicioForm.url_tutorial || null,
+      });
+      if (!createResp.success) throw new Error(createResp.error);
+      await handleAddExercicioToTreino(treinoId, createResp.exercicio.id);
+      setShowCreateExercicio(false);
+      setNewExercicioForm({ nome: '', grupo_muscular: '', equipamento: '', descricao: '', url_tutorial: '' });
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao criar exercício');
+    }
+  };
+
+  const handleUpdateTreinoExercicio = async (treinoId: string, itemId: string, data: any) => {
+    try {
+      const resp = await gatewayClient.put(`/cadastro-treinos/${treinoId}/exercicios/${itemId}`, data);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Exercício atualizado');
+      setEditingExercicioId(null);
+      const detail = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${treinoId}`);
+      if (detail.success) {
+        if (selectedTreino?.id === treinoId) setSelectedTreino(detail.treino);
+        if (editingTreino?.id === treinoId) setEditingTreino(detail.treino);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao atualizar exercício');
+    }
+  };
+
+  const handleDeleteTreinoExercicio = async (treinoId: string, itemId: string) => {
+    try {
+      const resp = await gatewayClient.delete(`/cadastro-treinos/${treinoId}/exercicios/${itemId}`);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Exercício removido do treino');
+      const detail = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${treinoId}`);
+      if (detail.success) {
+        if (selectedTreino?.id === treinoId) setSelectedTreino(detail.treino);
+        if (editingTreino?.id === treinoId) setEditingTreino(detail.treino);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao remover exercício');
+    }
+  };
+
+  // Carregar treinos quando na aba treinos
+  useEffect(() => {
+    if (activeTab === 'treinos') fetchTreinos(1, '');
+  }, [activeTab]);
+
+  // Debounce busca de treinos
+  useEffect(() => {
+    if (activeTab !== 'treinos') return;
+    const timeoutId = setTimeout(() => { fetchTreinos(1, treinoSearch); }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [treinoSearch, showFavoritesOnly]);
 
   // Buscar pacientes da API
   const fetchPatients = async (page = 1, searchVal = '') => {
@@ -965,7 +1172,7 @@ export default function CadastroTabContent() {
         <div className="cadastro-tabs">
           {TABS.filter(tab => !tab.adminOnly || isClinicAdmin).map(tab => {
             const Icon = tab.icon;
-            const count = tab.key === 'pacientes' ? patientsPagination.total : tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'clinica' ? 0 : (data[tab.key]?.length || 0);
+            const count = tab.key === 'pacientes' ? patientsPagination.total : tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'treinos' ? treinoPagination.total : tab.key === 'clinica' ? 0 : (data[tab.key]?.length || 0);
             return (
               <Link
                 key={tab.key}
@@ -1880,6 +2087,436 @@ export default function CadastroTabContent() {
                     </button>
                     <button className="cadastro-btn-save" onClick={handleSaveRefeicao}>
                       {editingRefeicao ? 'Salvar alterações' : 'Cadastrar e adicionar alimentos'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'treinos' ? (
+          <div>
+            {/* Detalhe do treino selecionado */}
+            {selectedTreino ? (
+              <div>
+                <button onClick={() => setSelectedTreino(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#64748B', padding: '0', marginBottom: '16px', fontFamily: 'inherit', fontWeight: 500 }}>
+                  ← Voltar para lista
+                </button>
+                <div className="cadastro-card" style={{ marginBottom: '20px', cursor: 'default' }}>
+                  <div className="cadastro-card-header">
+                    <div>
+                      <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>{selectedTreino.nome}</h2>
+                      {selectedTreino.categoria && <span className="cadastro-card-category">{selectedTreino.categoria}</span>}
+                    </div>
+                    <div className="cadastro-card-actions">
+                      <button className="cadastro-card-btn" onClick={() => {
+                        setEditingTreino(selectedTreino);
+                        setTreinoFormData({ nome: selectedTreino.nome, categoria: selectedTreino.categoria || '', descricao: selectedTreino.descricao || '', tags: selectedTreino.tags || [] });
+                        setTreinoTagInput('');
+                        setShowTreinoModal(true);
+                      }} title="Editar"><Pencil size={16} /></button>
+                      <button className={`cadastro-card-btn ${selectedTreino.favorito ? 'favorite' : ''}`} onClick={() => handleToggleFavoritoTreino(selectedTreino.id)}>
+                        <Star size={16} fill={selectedTreino.favorito ? 'currentColor' : 'none'} />
+                      </button>
+                      <button className="cadastro-card-btn" onClick={() => { if (confirm('Remover este treino?')) handleDeleteTreino(selectedTreino.id); }} style={{ color: '#EF4444', borderColor: '#FECACA' }}><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                  {selectedTreino.descricao && <p style={{ color: '#4B5563', lineHeight: '1.6', fontSize: '14px' }}>{selectedTreino.descricao}</p>}
+                  {selectedTreino.tags && selectedTreino.tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {selectedTreino.tags.map((tag, i) => <span key={i} className="cadastro-card-tag highlight">{tag}</span>)}
+                    </div>
+                  )}
+                  <div className="cadastro-card-footer">
+                    <span className="cadastro-card-date">Criado em {new Date(selectedTreino.created_at).toLocaleDateString('pt-BR')}</span>
+                    {selectedTreino.favorito && <span className="cadastro-card-badge-fav"><Star size={12} fill="currentColor" /> Favorito</span>}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>Exercícios do treino</h3>
+                  <p style={{ fontSize: '13px', color: '#64748B' }}>{selectedTreino.exercicios?.length || 0} exercício(s)</p>
+                </div>
+
+                {selectedTreino.exercicios && selectedTreino.exercicios.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {selectedTreino.exercicios.map((item, idx) => {
+                      const ex = item.cadastro_exercicios;
+                      const isEditingEx = editingExercicioId === item.id;
+                      return (
+                        <div key={item.id} className="cadastro-card" style={{ cursor: 'default' }}>
+                          <div className="cadastro-card-header" style={{ marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#1A3D61', flexShrink: 0 }}>{idx + 1}</span>
+                              <div>
+                                <h3 className="cadastro-card-title" style={{ marginBottom: '2px' }}>{ex?.nome || 'Exercício'}</h3>
+                                {ex?.grupo_muscular && <span className="cadastro-card-category">{ex.grupo_muscular}</span>}
+                              </div>
+                            </div>
+                            <div className="cadastro-card-actions">
+                              <button className="cadastro-card-btn" onClick={() => {
+                                if (isEditingEx) { setEditingExercicioId(null); } else {
+                                  setEditingExercicioId(item.id);
+                                  setExercicioFormData({ series: item.series?.toString() || '', repeticoes: item.repeticoes || '', descanso: item.descanso || '', observacao: item.observacao || '' });
+                                }
+                              }}>{isEditingEx ? <X size={16} /> : <Pencil size={16} />}</button>
+                              <button className="cadastro-card-btn" onClick={() => { if (confirm('Remover este exercício?')) handleDeleteTreinoExercicio(selectedTreino.id, item.id); }} style={{ color: '#EF4444', borderColor: '#FECACA' }}><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                          <div className="cadastro-card-body" style={{ marginBottom: 0 }}>
+                            <div className="cadastro-card-info">
+                              {item.series && <span className="cadastro-card-tag highlight"><Dumbbell size={12} /> {item.series} séries</span>}
+                              {item.repeticoes && <span className="cadastro-card-tag">{item.repeticoes} reps</span>}
+                              {item.descanso && <span className="cadastro-card-tag"><Clock size={12} /> {item.descanso}</span>}
+                              {ex?.equipamento && <span className="cadastro-card-tag">{ex.equipamento}</span>}
+                            </div>
+                            {item.observacao && <p style={{ marginTop: '8px', fontSize: '13px', color: '#6B7280' }}><strong>Obs:</strong> {item.observacao}</p>}
+                            {isEditingEx && (
+                              <div style={{ marginTop: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Séries</label>
+                                    <input type="number" className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: 4" value={exercicioFormData.series} onChange={e => setExercicioFormData(p => ({ ...p, series: e.target.value }))} />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Repetições</label>
+                                    <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: 8-12" value={exercicioFormData.repeticoes} onChange={e => setExercicioFormData(p => ({ ...p, repeticoes: e.target.value }))} />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Descanso</label>
+                                    <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: 90s" value={exercicioFormData.descanso} onChange={e => setExercicioFormData(p => ({ ...p, descanso: e.target.value }))} />
+                                  </div>
+                                </div>
+                                <div style={{ marginBottom: '8px' }}>
+                                  <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Observação</label>
+                                  <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: Manter costas retas" value={exercicioFormData.observacao} onChange={e => setExercicioFormData(p => ({ ...p, observacao: e.target.value }))} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button className="cadastro-btn-cancel" style={{ flex: 'none', padding: '6px 16px', fontSize: '13px' }} onClick={() => setEditingExercicioId(null)}>Cancelar</button>
+                                  <button className="cadastro-btn-save" style={{ flex: 'none', padding: '6px 16px', fontSize: '13px' }} onClick={() => handleUpdateTreinoExercicio(selectedTreino.id, item.id, { series: exercicioFormData.series ? parseInt(exercicioFormData.series) : null, repeticoes: exercicioFormData.repeticoes || null, descanso: exercicioFormData.descanso || null, observacao: exercicioFormData.observacao || null })}>Salvar</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="cadastro-empty">
+                    <div className="cadastro-empty-icon"><Dumbbell size={28} /></div>
+                    <h3 className="cadastro-empty-title">Nenhum exercício</h3>
+                    <p className="cadastro-empty-text">Edite o treino para adicionar exercícios.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="cadastro-section-header">
+                  <div>
+                    <h2 className="cadastro-section-title">Treinos</h2>
+                    <p className="cadastro-section-subtitle">Cadastre treinos para montar protocolos</p>
+                  </div>
+                  <button className="cadastro-btn-add" onClick={() => {
+                    setEditingTreino(null);
+                    setTreinoFormData({ nome: '', categoria: '', descricao: '', tags: [] });
+                    setTreinoTagInput('');
+                    setShowTreinoModal(true);
+                  }}>
+                    <Plus size={18} /> Novo Treino
+                  </button>
+                </div>
+
+                <div className="cadastro-filters">
+                  <div className="cadastro-search">
+                    <Search />
+                    <input placeholder="Buscar treinos..." value={treinoSearch} onChange={e => setTreinoSearch(e.target.value)} />
+                  </div>
+                  <button className={`cadastro-filter-btn ${showFavoritesOnly ? 'active' : ''}`} onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}>
+                    <Star size={16} /> Favoritos
+                  </button>
+                </div>
+
+                {treinoLoading ? (
+                  <div className="cadastro-empty">
+                    <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
+                    <p className="cadastro-empty-text">Carregando treinos...</p>
+                  </div>
+                ) : treinos.length === 0 ? (
+                  <div className="cadastro-empty">
+                    <div className="cadastro-empty-icon"><Dumbbell size={28} /></div>
+                    <h3 className="cadastro-empty-title">{treinoSearch ? 'Nenhum treino encontrado' : 'Nenhum treino cadastrado'}</h3>
+                    <p className="cadastro-empty-text">{treinoSearch ? 'Tente buscar com outros termos.' : 'Comece cadastrando seus treinos.'}</p>
+                    {!treinoSearch && (
+                      <button className="cadastro-empty-btn" onClick={() => { setEditingTreino(null); setTreinoFormData({ nome: '', categoria: '', descricao: '', tags: [] }); setShowTreinoModal(true); }}>
+                        <Plus size={16} /> Cadastrar primeiro treino
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="cadastro-grid">
+                    {treinos.map(treino => (
+                      <div key={treino.id} className="cadastro-card" style={{ cursor: 'pointer' }} onClick={() => fetchTreinoDetail(treino.id)}>
+                        <div className="cadastro-card-header">
+                          <div>
+                            <h3 className="cadastro-card-title">{treino.nome}</h3>
+                            {treino.categoria && <span className="cadastro-card-category">{treino.categoria}</span>}
+                          </div>
+                          <div className="cadastro-card-actions" onClick={e => e.stopPropagation()}>
+                            <button className={`cadastro-card-btn ${treino.favorito ? 'favorite' : ''}`} onClick={() => handleToggleFavoritoTreino(treino.id)}>
+                              <Star size={16} fill={treino.favorito ? 'currentColor' : 'none'} />
+                            </button>
+                            <button className="cadastro-card-btn" onClick={async () => {
+                              setTreinoFormData({ nome: treino.nome, categoria: treino.categoria || '', descricao: treino.descricao || '', tags: treino.tags || [] });
+                              setTreinoTagInput('');
+                              setShowTreinoModal(true);
+                              try {
+                                const data = await gatewayClient.get<{ treino: Treino }>(`/cadastro-treinos/${treino.id}`);
+                                if (data.success) setEditingTreino(data.treino);
+                                else setEditingTreino(treino);
+                              } catch { setEditingTreino(treino); }
+                            }}><Pencil size={16} /></button>
+                            <button className="cadastro-card-btn" onClick={() => { if (confirm('Remover este treino?')) handleDeleteTreino(treino.id); }}><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                        <div className="cadastro-card-body">
+                          {treino.descricao && <p className="cadastro-card-description">{treino.descricao}</p>}
+                          {treino.tags && treino.tags.length > 0 && (
+                            <div className="cadastro-card-info">
+                              {treino.tags.map((tag, i) => <span key={i} className="cadastro-card-tag">{tag}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="cadastro-card-footer">
+                          <span className="cadastro-card-date">Criado em {new Date(treino.created_at).toLocaleDateString('pt-BR')}</span>
+                          {treino.favorito && <span className="cadastro-card-badge-fav"><Star size={12} fill="currentColor" /> Favorito</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {treinoPagination.totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '20px' }}>
+                    {Array.from({ length: treinoPagination.totalPages }, (_, i) => i + 1).map(page => (
+                      <button key={page} onClick={() => fetchTreinos(page, treinoSearch)} className={`cadastro-card-btn ${page === treinoPagination.page ? 'favorite' : ''}`} style={{ minWidth: '36px', padding: '6px 10px', borderRadius: '8px' }}>{page}</button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Modal criar/editar treino */}
+            {showTreinoModal && (
+              <div className="cadastro-modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowTreinoModal(false); setEditingTreino(null); } }}>
+                <div className="cadastro-modal" style={{ maxWidth: editingTreino ? '680px' : '560px' }}>
+                  <div className="cadastro-modal-header">
+                    <h3 className="cadastro-modal-title">{editingTreino ? 'Editar Treino' : 'Novo Treino'}</h3>
+                    <button className="cadastro-modal-close" onClick={() => { setShowTreinoModal(false); setEditingTreino(null); setShowExercicioSearch(false); setShowCreateExercicio(false); }}><X size={18} /></button>
+                  </div>
+                  {!editingTreino && (
+                    <p style={{ fontSize: '13px', color: '#64748B', padding: '0 24px', marginTop: '-8px', marginBottom: '8px' }}>
+                      Preencha os dados e clique em "Cadastrar" para depois adicionar os exercícios.
+                    </p>
+                  )}
+                  <div className="cadastro-modal-body">
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Nome *</label>
+                      <input className="cadastro-form-input" placeholder="Nome do treino (ex: Treino A - Peito e Tríceps)" value={treinoFormData.nome} onChange={e => setTreinoFormData(p => ({ ...p, nome: e.target.value }))} />
+                    </div>
+                    <div className="cadastro-form-row">
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Categoria</label>
+                        <select className="cadastro-form-select" value={treinoFormData.categoria} onChange={e => setTreinoFormData(p => ({ ...p, categoria: e.target.value }))}>
+                          <option value="">Selecione</option>
+                          {['Musculação', 'Funcional', 'Cardio', 'HIIT', 'Yoga', 'Pilates', 'Alongamento', 'Reabilitação'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </div>
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Favorito</label>
+                        <div className={`cadastro-form-toggle ${editingTreino?.favorito ? 'active' : ''}`}
+                          onClick={() => { if (editingTreino) { handleToggleFavoritoTreino(editingTreino.id); setEditingTreino({ ...editingTreino, favorito: !editingTreino.favorito }); } }}
+                          style={{ height: '42px', cursor: editingTreino ? 'pointer' : 'default' }}>
+                          <Star size={16} className="cadastro-form-toggle-star" fill={editingTreino?.favorito ? 'currentColor' : 'none'} />
+                          <span className="cadastro-form-toggle-text" style={{ fontSize: '13px' }}>{editingTreino?.favorito ? 'Favorito' : 'Não favorito'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Descrição</label>
+                      <textarea className="cadastro-form-textarea" placeholder="Descreva o treino..." value={treinoFormData.descricao} onChange={e => setTreinoFormData(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+
+                    {/* Tags */}
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Tags</label>
+                      {treinoFormData.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          {treinoFormData.tags.map((tag, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#EFF6FF', color: '#1A3D61', border: '1px solid #BFDBFE' }}>
+                              {tag}
+                              <button type="button" onClick={() => setTreinoFormData(p => ({ ...p, tags: p.tags.filter((_, idx) => idx !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', display: 'flex', color: '#64748B' }}><X size={12} /></button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <input className="cadastro-form-input" placeholder="Ex: Hipertrofia, Avançado" value={treinoTagInput} onChange={e => setTreinoTagInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && treinoTagInput.trim()) { e.preventDefault(); if (!treinoFormData.tags.includes(treinoTagInput.trim())) setTreinoFormData(p => ({ ...p, tags: [...p.tags, treinoTagInput.trim()] })); setTreinoTagInput(''); } }}
+                          style={{ flex: 1 }} />
+                        <button type="button" onClick={() => { if (treinoTagInput.trim() && !treinoFormData.tags.includes(treinoTagInput.trim())) { setTreinoFormData(p => ({ ...p, tags: [...p.tags, treinoTagInput.trim()] })); setTreinoTagInput(''); } }}
+                          style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#F8FAFC', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#1A3D61', fontFamily: 'inherit' }}>Adicionar</button>
+                      </div>
+                    </div>
+
+                    {/* Exercícios (somente no edit) */}
+                    {editingTreino && (
+                      <div style={{ marginTop: '8px' }}>
+                        <label className="cadastro-form-label" style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Dumbbell size={14} /> Exercícios ({editingTreino.exercicios?.length || 0})</span>
+                          <button type="button" onClick={() => { setShowExercicioSearch(!showExercicioSearch); setShowCreateExercicio(false); setExercicioSearch(''); setExercicioResults([]); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#1A3D61', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            <Plus size={14} /> Adicionar
+                          </button>
+                        </label>
+
+                        {/* Search exercício */}
+                        {showExercicioSearch && (
+                          <div style={{ marginBottom: '12px', padding: '12px', background: '#F1F5F9', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                            <div className="cadastro-search" style={{ maxWidth: '100%', marginBottom: '8px' }}>
+                              <Search />
+                              <input placeholder="Buscar exercício pelo nome..." value={exercicioSearch} onChange={e => setExercicioSearch(e.target.value)} autoFocus />
+                            </div>
+                            {exercicioSearchLoading && <div style={{ textAlign: 'center', padding: '8px' }}><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /></div>}
+                            {exercicioResults.length > 0 && (
+                              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {exercicioResults.map(ex => {
+                                  const alreadyAdded = editingTreino.exercicios?.some(e => e.exercicio_id === ex.id);
+                                  return (
+                                    <div key={ex.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', background: '#fff', border: '1px solid #E2E8F0', cursor: alreadyAdded ? 'default' : 'pointer', opacity: alreadyAdded ? 0.5 : 1 }}
+                                      onClick={() => !alreadyAdded && handleAddExercicioToTreino(editingTreino.id, ex.id)}>
+                                      <div>
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{ex.nome}</div>
+                                        <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '6px' }}>
+                                          {ex.grupo_muscular && <span>{ex.grupo_muscular}</span>}
+                                          {ex.equipamento && <span>{ex.equipamento}</span>}
+                                        </div>
+                                      </div>
+                                      {alreadyAdded ? <span style={{ fontSize: '11px', color: '#94A3B8' }}>Já adicionado</span> : <Plus size={16} style={{ color: '#1A3D61', flexShrink: 0 }} />}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {exercicioSearch.trim() && !exercicioSearchLoading && exercicioResults.length === 0 && (
+                              <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', padding: '8px 0' }}>Nenhum exercício encontrado.</p>
+                            )}
+                            <button type="button" onClick={() => setShowCreateExercicio(!showCreateExercicio)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', justifyContent: 'center', marginTop: '8px', background: 'transparent', border: '1px dashed #94A3B8', borderRadius: '8px', padding: '8px', fontSize: '12px', color: '#64748B', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+                              <Plus size={14} /> Criar novo exercício
+                            </button>
+
+                            {showCreateExercicio && (
+                              <div style={{ marginTop: '10px', padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                <div className="cadastro-form-group" style={{ marginBottom: '8px' }}>
+                                  <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Nome *</label>
+                                  <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Nome do exercício" value={newExercicioForm.nome} onChange={e => setNewExercicioForm(p => ({ ...p, nome: e.target.value }))} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Grupo muscular</label>
+                                    <select className="cadastro-form-select" style={{ padding: '6px 10px', fontSize: '13px' }} value={newExercicioForm.grupo_muscular} onChange={e => setNewExercicioForm(p => ({ ...p, grupo_muscular: e.target.value }))}>
+                                      <option value="">Selecione</option>
+                                      {['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Quadríceps', 'Posterior', 'Glúteos', 'Panturrilha', 'Abdômen', 'Core', 'Full body'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Equipamento</label>
+                                    <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: Halter, Barra" value={newExercicioForm.equipamento} onChange={e => setNewExercicioForm(p => ({ ...p, equipamento: e.target.value }))} />
+                                  </div>
+                                </div>
+                                <div className="cadastro-form-group" style={{ marginBottom: '8px' }}>
+                                  <label className="cadastro-form-label" style={{ fontSize: '11px' }}>URL Tutorial (YouTube)</label>
+                                  <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="https://youtube.com/..." value={newExercicioForm.url_tutorial} onChange={e => setNewExercicioForm(p => ({ ...p, url_tutorial: e.target.value }))} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                  <button className="cadastro-btn-cancel" style={{ flex: 'none', padding: '4px 12px', fontSize: '12px' }} onClick={() => setShowCreateExercicio(false)}>Cancelar</button>
+                                  <button className="cadastro-btn-save" style={{ flex: 'none', padding: '4px 12px', fontSize: '12px' }} onClick={() => handleCreateAndAddExercicio(editingTreino.id)}>Criar e adicionar</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Lista de exercícios do treino */}
+                        {editingTreino.exercicios && editingTreino.exercicios.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {editingTreino.exercicios.map((item, idx) => {
+                              const ex = item.cadastro_exercicios;
+                              const isEditingThis = editingExercicioId === item.id;
+                              return (
+                                <div key={item.id} style={{ padding: '10px 14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#1A3D61', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', marginBottom: '2px' }}>{ex?.nome || 'Exercício'}</div>
+                                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {ex?.grupo_muscular && <span style={{ fontSize: '11px', color: '#64748B' }}>{ex.grupo_muscular}</span>}
+                                        {item.series && <span style={{ fontSize: '11px', color: '#1A3D61', fontWeight: 600 }}>{item.series} séries</span>}
+                                        {item.repeticoes && <span style={{ fontSize: '11px', color: '#64748B' }}>{item.repeticoes} reps</span>}
+                                        {item.descanso && <span style={{ fontSize: '11px', color: '#64748B' }}>{item.descanso}</span>}
+                                      </div>
+                                      {item.observacao && <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>Obs: {item.observacao}</div>}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                      <button className="cadastro-card-btn" style={{ width: '28px', height: '28px' }} onClick={() => {
+                                        if (isEditingThis) { setEditingExercicioId(null); } else {
+                                          setEditingExercicioId(item.id);
+                                          setExercicioFormData({ series: item.series?.toString() || '', repeticoes: item.repeticoes || '', descanso: item.descanso || '', observacao: item.observacao || '' });
+                                        }
+                                      }}>{isEditingThis ? <X size={14} /> : <Pencil size={14} />}</button>
+                                      <button className="cadastro-card-btn" style={{ width: '28px', height: '28px', color: '#EF4444', borderColor: '#FECACA' }} onClick={() => { if (confirm('Remover este exercício?')) handleDeleteTreinoExercicio(editingTreino.id, item.id); }}><Trash2 size={14} /></button>
+                                    </div>
+                                  </div>
+                                  {isEditingThis && (
+                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #E2E8F0' }}>
+                                      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                        <div style={{ flex: 1 }}>
+                                          <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Séries</label>
+                                          <input type="number" className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="4" value={exercicioFormData.series} onChange={e => setExercicioFormData(p => ({ ...p, series: e.target.value }))} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Repetições</label>
+                                          <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="8-12" value={exercicioFormData.repeticoes} onChange={e => setExercicioFormData(p => ({ ...p, repeticoes: e.target.value }))} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Descanso</label>
+                                          <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="90s" value={exercicioFormData.descanso} onChange={e => setExercicioFormData(p => ({ ...p, descanso: e.target.value }))} />
+                                        </div>
+                                      </div>
+                                      <div style={{ marginBottom: '8px' }}>
+                                        <label className="cadastro-form-label" style={{ fontSize: '11px' }}>Observação</label>
+                                        <input className="cadastro-form-input" style={{ padding: '6px 10px', fontSize: '13px' }} placeholder="Ex: Manter costas retas" value={exercicioFormData.observacao} onChange={e => setExercicioFormData(p => ({ ...p, observacao: e.target.value }))} />
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                        <button className="cadastro-btn-cancel" style={{ flex: 'none', padding: '4px 12px', fontSize: '12px' }} onClick={() => setEditingExercicioId(null)}>Cancelar</button>
+                                        <button className="cadastro-btn-save" style={{ flex: 'none', padding: '4px 12px', fontSize: '12px' }} onClick={() => handleUpdateTreinoExercicio(editingTreino.id, item.id, { series: exercicioFormData.series ? parseInt(exercicioFormData.series) : null, repeticoes: exercicioFormData.repeticoes || null, descanso: exercicioFormData.descanso || null, observacao: exercicioFormData.observacao || null })}>Salvar</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="cadastro-modal-footer">
+                    <button className="cadastro-btn-cancel" onClick={() => { setShowTreinoModal(false); setEditingTreino(null); setShowExercicioSearch(false); setShowCreateExercicio(false); }}>
+                      {editingTreino ? 'Fechar' : 'Cancelar'}
+                    </button>
+                    <button className="cadastro-btn-save" onClick={handleSaveTreino}>
+                      {editingTreino ? 'Salvar alterações' : 'Cadastrar e adicionar exercícios'}
                     </button>
                   </div>
                 </div>

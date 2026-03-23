@@ -34,7 +34,7 @@ const menuItems = [
   { icon: MessageCircle, label: 'Consultas', href: '/consultas' },
   { icon: Calendar, label: 'Agenda', href: '/agenda' },
   { icon: User, label: 'Pacientes', href: '/pacientes' },
-  { icon: ClipboardList, label: 'Cadastro', href: '/cadastro' },
+  { icon: ClipboardList, label: 'Cadastro', href: '/cadastro/pacientes' },
   { icon: Smartphone, label: 'Conexão', href: '/conexao' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
 ];
@@ -162,7 +162,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
       <nav className="nav">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link key={item.href} href={item.href} className={`nav-btn ${isActive ? 'is-active' : ''}`}>
               <Icon size={24} />
@@ -174,7 +174,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
         {/* Menu Gestão de Clínica - visível apenas para administradores de clínica */}
         {isClinicAdmin && clinicMenuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.href}
@@ -190,7 +190,7 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
         {/* Menu Admin - visível apenas para administradores do sistema */}
         {isAdmin && adminMenuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.href}
