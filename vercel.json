@@ -3,6 +3,9 @@
   "name": "auton-health-frontend",
   "public": false,
   "regions": ["gru1"],
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": "apps/frontend/.next",
   "headers": [
     {
       "source": "/(.*)",
