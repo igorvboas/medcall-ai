@@ -64,6 +64,7 @@
   transition: all 0.2s ease;
   white-space: nowrap;
   font-family: inherit;
+  text-decoration: none;
 }
 
 .cadastro-tab:hover {
