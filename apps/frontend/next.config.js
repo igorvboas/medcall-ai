@@ -62,8 +62,6 @@ const nextConfig = {
   // Configurações de transpilação
   transpilePackages: [],
 
-  // Configurações de output para export estático
-  output: 'export',
   trailingSlash: true,
   
   // Configurações de compilação
