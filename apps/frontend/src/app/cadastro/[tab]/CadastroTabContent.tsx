@@ -825,7 +825,16 @@ export default function CadastroTabContent() {
       if (!createResp.success) throw new Error(createResp.error);
 
       // Adicionar à refeição
-      await handleAddAlimentoToRefeicao(refeicaoId, createResp.alimento.id);
+      const resp = await gatewayClient.post(`/cadastro-refeicoes/${refeicaoId}/alimentos`, { alimento_id: createResp.alimento.id });
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Alimento criado e adicionado à refeição');
+      setAlimentoSearch('');
+      setAlimentoResults([]);
+      const detail = await gatewayClient.get<{ refeicao: Refeicao }>(`/cadastro-refeicoes/${refeicaoId}`);
+      if (detail.success) {
+        if (selectedRefeicao?.id === refeicaoId) setSelectedRefeicao(detail.refeicao);
+        if (editingRefeicao?.id === refeicaoId) setEditingRefeicao(detail.refeicao);
+      }
       setShowCreateAlimento(false);
       setNewAlimentoForm({ nome: '', categoria: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '' });
     } catch (err) {
