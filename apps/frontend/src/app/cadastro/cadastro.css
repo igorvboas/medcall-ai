@@ -832,3 +832,32 @@
 .dark .cadastro-modal-overlay {
   background: rgba(0, 0, 0, 0.6);
 }
+
+/* Spinner */
+.cadastro-spinner {
+  animation: cadastro-spin 1s linear infinite;
+}
+@keyframes cadastro-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Filter select for suplemento tipo */
+.cadastro-filter-select {
+  padding: 10px 16px;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0F172A;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cadastro-filter-select:hover {
+  border-color: #1A3D61;
+}
+.dark .cadastro-filter-select {
+  background: #0F172A;
+  border-color: #334155;
+  color: #F1F5F9;
+}

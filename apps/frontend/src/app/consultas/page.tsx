@@ -3435,17 +3435,30 @@ function FavoritesPanel({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Buscar favoritos do localStorage (dados do Cadastro)
-    try {
-      const stored = localStorage.getItem('cadastro_data');
-      if (stored) {
-        const allData = JSON.parse(stored);
-        const items = allData[type] || [];
-        setFavorites(items.filter((item: any) => item.favorito));
+    // Buscar favoritos do banco via API
+    const loadFavorites = async () => {
+      try {
+        const apiType = type === 'fitoterapicos' ? 'suplementos' : type === 'refeicoes' ? 'alimentos' : type;
+        const params = new URLSearchParams({ favorito: 'true' });
+        if (type === 'fitoterapicos') params.set('tipo_suplemento', 'fitoterapico');
+        const res = await gatewayClient.get(`/cadastro/${apiType}?${params.toString()}`);
+        if (res.success) {
+          setFavorites(res.data || []);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar favoritos:', e);
+        // Fallback to localStorage
+        try {
+          const stored = localStorage.getItem('cadastro_data');
+          if (stored) {
+            const allData = JSON.parse(stored);
+            const items = allData[type] || [];
+            setFavorites(items.filter((item: any) => item.favorito));
+          }
+        } catch {}
       }
-    } catch (e) {
-      console.error('Erro ao carregar favoritos:', e);
-    }
+    };
+    loadFavorites();
   }, [type]);
 
   if (favorites.length === 0) return null;
