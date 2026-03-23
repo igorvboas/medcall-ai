@@ -89,6 +89,23 @@ export function Header() {
       <header className="header main-header">
         <div className="header-content main-header-content">
 
+          {/* Homolog Badge */}
+          {process.env.NEXT_PUBLIC_ENV === 'homolog' && (
+            <span style={{
+              background: '#dc2626',
+              color: '#fff',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 10px',
+              borderRadius: '4px',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+            }}>
+              HOMOLOG
+            </span>
+          )}
+
           {/* Right Side Actions */}
           <div className="header-actions">
 
