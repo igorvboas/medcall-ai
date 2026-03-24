@@ -17,8 +17,8 @@ export default function CTASection() {
         "Impossível justificar honorários premium"
       ]
     },
-    authon: {
-      title: "Você com Authon",
+    auton: {
+      title: "Você com Auton",
       items: [
         "Plataforma exclusiva com dashboard",
         "Planos atualizados em tempo real",
@@ -40,7 +40,7 @@ export default function CTASection() {
 
         {/* Subtítulo/Descrição */}
         <p className="text-[#4a5568] text-[16px] lg:text-[18px] text-center max-w-[800px] mx-auto mb-10 lg:mb-12 leading-relaxed">
-          Se você chegou até aqui, é porque sabe que <strong className="text-[#1a365d]">resolver a causa raiz</strong> é a única forma de curar de verdade. A medicina convencional prescreve medicação para controlar sintomas. Você, com o AUTHON, <strong className="text-[#1a365d]">identifica e resolve a causa</strong>.
+          Se você chegou até aqui, é porque sabe que <strong className="text-[#1a365d]">resolver a causa raiz</strong> é a única forma de curar de verdade. O modelo convencional prescreve medicação para controlar sintomas. Você, com a AUTON, <strong className="text-[#1a365d]">identifica e resolve a causa</strong>.
         </p>
 
         {/* Imagem Central */}
@@ -48,7 +48,7 @@ export default function CTASection() {
           <div className="relative w-full aspect-[4/3] overflow-hidden rounded-[20px] shadow-lg">
             <img
               src="/doctor-patient.png"
-              alt="Médico mostrando tablet para paciente"
+              alt="Profissional mostrando tablet para paciente"
               className="w-full h-full object-cover"
             />
           </div>
@@ -63,8 +63,8 @@ export default function CTASection() {
             index={0}
           />
           <ComparisonCard
-            title={comparison.authon.title}
-            items={comparison.authon.items}
+            title={comparison.auton.title}
+            items={comparison.auton.items}
             isHighlighted={true}
             isNegative={false}
             index={1}
@@ -87,7 +87,7 @@ export default function CTASection() {
               whileHover={{ scale: 1.05, boxShadow: "0 20px 50px rgba(0,0,0,0.2)" }}
               whileTap={{ scale: 0.98 }}
             >
-              Começar Teste de 14 Dias — Sem Cartão de Crédito
+              Inscreva-se agora
             </motion.button>
           </a>
         </div>
@@ -96,7 +96,7 @@ export default function CTASection() {
         <div className="text-center space-y-4">
           {/* Garantias */}
           <p className="text-[#4a5568] text-[14px] lg:text-[15px]">
-            Sem risco <span className="mx-2">|</span> Sem compromisso <span className="mx-2">|</span> Cancele quando quiser
+            Comece a transformar seu atendimento hoje
           </p>
 
           {/* Ainda tem dúvidas? */}

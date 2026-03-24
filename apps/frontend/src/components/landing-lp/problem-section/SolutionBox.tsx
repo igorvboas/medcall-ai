@@ -28,7 +28,7 @@ export default function SolutionBox() {
       <p className="text-[#4a5568] text-[17px] lg:text-[19px] leading-relaxed">
         O problema é que{' '}
         <strong className="text-[#1a365d] font-semibold">
-          a medicina moderna nunca criou um sistema
+          a saúde moderna nunca criou um sistema
         </strong>{' '}
         para integrar complexidade biológica e pensar a causa raiz em tempo real.
       </p>

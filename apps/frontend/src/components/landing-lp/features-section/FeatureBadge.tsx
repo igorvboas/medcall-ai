@@ -16,7 +16,7 @@ export default function FeatureBadge() {
       transition={{ duration: 0.5 }}
     >
       <span className="text-[13px] lg:text-[14px] text-[#1a365d] font-semibold tracking-wide">
-        DESENVOLVIDO POR MÉDICOS, PARA MÉDICOS
+        DESENVOLVIDO POR PROFISSIONAIS, PARA PROFISSIONAIS
       </span>
     </motion.div>
   )

@@ -103,17 +103,19 @@ export default function PricingCard({
       </ul>
 
       {/* Botão CTA */}
-      <motion.button
-        className={`w-full py-3.5 px-6 rounded-xl font-semibold text-[15px] transition-all ${
-          isPopular
-            ? 'bg-[#1a365d] text-white hover:bg-[#2c5282]'
-            : 'border-2 border-[#1a365d] text-[#1a365d] hover:bg-[#1a365d] hover:text-white'
-        }`}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        {buttonText}
-      </motion.button>
+      <a href={buttonAction} target="_blank" rel="noopener noreferrer">
+        <motion.button
+          className={`w-full py-3.5 px-6 rounded-xl font-semibold text-[15px] transition-all ${
+            isPopular
+              ? 'bg-[#1a365d] text-white hover:bg-[#2c5282]'
+              : 'border-2 border-[#1a365d] text-[#1a365d] hover:bg-[#1a365d] hover:text-white'
+          }`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          {buttonText}
+        </motion.button>
+      </a>
     </motion.div>
   )
 }

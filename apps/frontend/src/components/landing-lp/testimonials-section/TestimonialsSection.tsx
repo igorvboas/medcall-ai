@@ -8,7 +8,7 @@ export default function TestimonialsSection() {
     {
       imageSrc: "/doctor-1.png",
       role: "Médico Integrativo",
-      quote: "O AUTON mudou completamente minha segurança clínica. Hoje, casos que antes me travavam agora têm clareza."
+      quote: "A AUTON mudou completamente minha segurança clínica. Hoje, casos que antes me travavam agora têm clareza."
     },
     {
       imageSrc: "/doctor-2.png",
@@ -18,7 +18,7 @@ export default function TestimonialsSection() {
     {
       imageSrc: "/doctor-3.png",
       role: "Médico Especialista",
-      quote: "Depois do AUTON, meu consultório passou a ser referência em casos complexos."
+      quote: "Depois da AUTON, meu consultório passou a ser referência em casos complexos."
     }
   ]
 
@@ -27,7 +27,7 @@ export default function TestimonialsSection() {
       <div className="max-w-[1200px] mx-auto">
         {/* Título Principal */}
         <h2 className="text-[#1a365d] text-[28px] lg:text-[38px] font-bold text-center mb-12 lg:mb-16">
-          POR QUE OS MÉDICOS AMAM O AUTON
+          POR QUE OS MÉDICOS AMAM A AUTON
         </h2>
 
         {/* Grid de Cards */}
