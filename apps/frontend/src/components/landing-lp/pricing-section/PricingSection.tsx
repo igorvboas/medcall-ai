@@ -21,7 +21,7 @@ export default function PricingSection() {
         "Planos atualizados em tempo real",
         "Suporte por email (24h)"
       ],
-      buttonText: "Começar Teste",
+      buttonText: "Inscreva-se agora",
       buttonAction: "https://www.asaas.com/c/6klr6sf7r2wgkezn"
     },
     {
