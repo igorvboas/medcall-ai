@@ -179,103 +179,27 @@ interface TreinoResponse {
   };
 }
 
-type TabType = 'pacientes' | 'refeicoes' | 'treinos' | 'suplementos' | 'fitoterapicos' | 'clinica';
+type TabType = 'pacientes' | 'alimentos' | 'refeicoes' | 'treinos' | 'prescricoes' | 'clinica';
 
-const VALID_TABS: TabType[] = ['pacientes', 'refeicoes', 'treinos', 'suplementos', 'fitoterapicos', 'clinica'];
+const VALID_TABS: TabType[] = ['pacientes', 'alimentos', 'refeicoes', 'treinos', 'prescricoes', 'clinica'];
 
 const TABS: { key: TabType; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { key: 'pacientes', label: 'Pacientes', icon: UserPlus },
+  { key: 'alimentos', label: 'Alimentos', icon: UtensilsCrossed },
   { key: 'refeicoes', label: 'Refeicoes', icon: UtensilsCrossed },
   { key: 'treinos', label: 'Treinos', icon: Dumbbell },
-  { key: 'suplementos', label: 'Suplementos', icon: Pill },
-  { key: 'fitoterapicos', label: 'Fitoterapicos', icon: Leaf },
+  { key: 'prescricoes', label: 'Prescricoes', icon: Pill },
   { key: 'clinica', label: 'Gestao de Clinica', icon: Building2, adminOnly: true },
 ];
 
-// Mock data for demo - will be replaced by API calls
+// Empty initial data - all fetched from API
 const INITIAL_DATA: Record<TabType, CadastroItem[]> = {
   clinica: [],
   pacientes: [],
-  refeicoes: [
-    {
-      id: '1', nome: 'Frango grelhado com batata doce', categoria: 'Almoco',
-      descricao: 'Peito de frango grelhado com temperos naturais, acompanhado de batata doce assada e salada verde.',
-      favorito: true, created_at: '2026-03-15', tags: ['Alta proteina', 'Low carb'],
-      calorias: 420, proteinas: 45, carboidratos: 35, gorduras: 10, tempo_preparo: '30 min'
-    },
-    {
-      id: '2', nome: 'Omelete de claras com aveia', categoria: 'Cafe da manha',
-      descricao: 'Omelete feito com claras de ovo, aveia e espinafre. Rico em proteinas e fibras.',
-      favorito: false, created_at: '2026-03-14', tags: ['Cafe da manha', 'Proteico'],
-      calorias: 280, proteinas: 28, carboidratos: 22, gorduras: 8, tempo_preparo: '15 min'
-    },
-    {
-      id: '3', nome: 'Bowl de acai com granola', categoria: 'Lanche',
-      descricao: 'Acai puro batido com banana, coberto com granola caseira e frutas frescas.',
-      favorito: true, created_at: '2026-03-13', tags: ['Energia', 'Pre-treino'],
-      calorias: 350, proteinas: 8, carboidratos: 55, gorduras: 12, tempo_preparo: '10 min'
-    },
-  ],
-  treinos: [
-    {
-      id: '1', nome: 'Supino reto com halter', categoria: 'Peito',
-      descricao: 'Manter escapulas estabilizadas, amplitude total, controle na descida.',
-      favorito: true, created_at: '2026-03-15', tags: ['Intermediario', 'Hipertrofia'],
-      grupo_muscular: 'Peitoral', series: 4, repeticoes: '8-12', descanso: '90s', equipamento: 'Halter'
-    },
-    {
-      id: '2', nome: 'Agachamento livre', categoria: 'Pernas',
-      descricao: 'Descer ate paralelo ou abaixo, joelhos alinhados com os pes, tronco ereto.',
-      favorito: true, created_at: '2026-03-14', tags: ['Avancado', 'Forca'],
-      grupo_muscular: 'Quadriceps', series: 4, repeticoes: '6-10', descanso: '120s', equipamento: 'Barra'
-    },
-    {
-      id: '3', nome: 'Remada curvada', categoria: 'Costas',
-      descricao: 'Puxar a barra ate o abdomen, manter as costas retas, contrair escapulas.',
-      favorito: false, created_at: '2026-03-13', tags: ['Intermediario', 'Hipertrofia'],
-      grupo_muscular: 'Dorsal', series: 3, repeticoes: '10-12', descanso: '90s', equipamento: 'Barra'
-    },
-  ],
-  suplementos: [
-    {
-      id: '1', nome: 'Creatina Monohidratada', categoria: 'Performance',
-      descricao: 'Melhora a performance em exercicios de alta intensidade e auxilia no ganho de massa muscular.',
-      favorito: true, created_at: '2026-03-15', tags: ['Essencial', 'Diario'],
-      dosagem: '5g/dia', horario: 'Pos-treino', objetivo: 'Ganho de forca e massa muscular'
-    },
-    {
-      id: '2', nome: 'Whey Protein Isolado', categoria: 'Proteina',
-      descricao: 'Proteina de rapida absorcao para recuperacao muscular pos-treino.',
-      favorito: true, created_at: '2026-03-14', tags: ['Pos-treino', 'Proteico'],
-      dosagem: '30g', horario: 'Pos-treino imediato', objetivo: 'Recuperacao muscular'
-    },
-    {
-      id: '3', nome: 'Vitamina D3', categoria: 'Vitamina',
-      descricao: 'Fundamental para a saude ossea, imunidade e regulacao hormonal.',
-      favorito: false, created_at: '2026-03-13', tags: ['Saude', 'Imunidade'],
-      dosagem: '2000 UI/dia', horario: 'Com o cafe', objetivo: 'Saude geral e imunidade'
-    },
-  ],
-  fitoterapicos: [
-    {
-      id: '1', nome: 'Ashwagandha KSM-66', categoria: 'Adaptogeno',
-      descricao: 'Reducao do estresse cronico, suporte adaptogenico, melhora do padrao de exaustao.',
-      favorito: true, created_at: '2026-03-15', tags: ['Estresse', 'Adaptogeno'],
-      dosagem: '600mg/dia (2x 300mg)', horario: '08:00 e 15:00, com alimento', objetivo: 'Reducao de estresse e fadiga'
-    },
-    {
-      id: '2', nome: 'Rhodiola Rosea', categoria: 'Adaptogeno',
-      descricao: 'Apoio a resiliencia psiquica, melhora cognitiva e reducao de sintomas depressivos.',
-      favorito: false, created_at: '2026-03-14', tags: ['Cognitivo', 'Energia'],
-      dosagem: '200mg/dia', horario: '09:00-10:00, longe de cafe', objetivo: 'Resiliencia e foco mental'
-    },
-    {
-      id: '3', nome: 'Valeriana', categoria: 'Calmante',
-      descricao: 'Auxilia na qualidade do sono e reducao da ansiedade leve a moderada.',
-      favorito: true, created_at: '2026-03-13', tags: ['Sono', 'Relaxante'],
-      dosagem: '300-600mg', horario: '1h antes de dormir', objetivo: 'Melhora do sono'
-    },
-  ],
+  alimentos: [],
+  refeicoes: [],
+  treinos: [],
+  prescricoes: [],
 };
 
 export default function CadastroTabContent() {
@@ -336,6 +260,28 @@ export default function CadastroTabContent() {
   const [editingExercicioId, setEditingExercicioId] = useState<string | null>(null);
   const [exercicioFormData, setExercicioFormData] = useState({ series: '', repeticoes: '', descanso: '', observacao: '' });
   const [alimentoGrams, setAlimentoGrams] = useState<Record<string, string>>({});
+  // Prescricoes state (suplementos + fitoterapicos unificados)
+  const [prescricoes, setPrescricoes] = useState<any[]>([]);
+  const [prescricaoLoading, setPrescricaoLoading] = useState(false);
+  const [prescricaoSearch, setPrescricaoSearch] = useState('');
+  const [prescricaoSubFilter, setPrescricaoSubFilter] = useState<'todos' | 'suplementos' | 'fitoterapicos'>('todos');
+  const [showPrescricaoModal, setShowPrescricaoModal] = useState(false);
+  const [editingPrescricao, setEditingPrescricao] = useState<any | null>(null);
+  const [prescricaoFormData, setPrescricaoFormData] = useState({ catalogo_id: '', dosagem: '', horarios: [] as string[], descricao: '', tags: [] as string[], tipo: 'suplementos' as 'suplementos' | 'fitoterapicos' });
+  const [prescricaoTagInput, setPrescricaoTagInput] = useState('');
+  const [catalogoSearch, setCatalogoSearch] = useState('');
+  const [catalogoResults, setCatalogoResults] = useState<any[]>([]);
+  const [catalogoSearchLoading, setCatalogoSearchLoading] = useState(false);
+  const [showCatalogoSearch, setShowCatalogoSearch] = useState(false);
+  const [horarioInput, setHorarioInput] = useState('');
+  // Alimentos tab state
+  const [alimentosList, setAlimentosList] = useState<Alimento[]>([]);
+  const [alimentosLoading, setAlimentosLoading] = useState(false);
+  const [alimentosTabSearch, setAlimentosTabSearch] = useState('');
+  const [showAlimentoModal, setShowAlimentoModal] = useState(false);
+  const [editingAlimentoItem, setEditingAlimentoItem] = useState<Alimento | null>(null);
+  const [alimentoTabFormData, setAlimentoTabFormData] = useState({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] as string[] });
+  const [alimentoTabTagInput, setAlimentoTabTagInput] = useState('');
   const { showSuccess, showError } = useNotifications();
   const { user } = useAuth();
 
@@ -773,6 +719,210 @@ export default function CadastroTabContent() {
     return () => clearTimeout(timeoutId);
   }, [alimentoSearch, showAlimentoSearch]);
 
+  // ==================== PRESCRICOES (Suplementos + Fitoterapicos) ====================
+  const fetchPrescricoes = async (searchVal = '') => {
+    try {
+      setPrescricaoLoading(true);
+      const allPrescricoes: any[] = [];
+
+      // Buscar suplementos prescricoes
+      if (prescricaoSubFilter === 'todos' || prescricaoSubFilter === 'suplementos') {
+        const sparams = new URLSearchParams();
+        if (searchVal) sparams.append('search', searchVal);
+        if (showFavoritesOnly) sparams.append('favorito', 'true');
+        const sdata = await gatewayClient.get<any>(`/cadastro-prescricoes/suplementos?${sparams}`);
+        if (sdata.success && sdata.data) {
+          allPrescricoes.push(...sdata.data.map((p: any) => ({ ...p, _tipo: 'suplementos' })));
+        }
+      }
+
+      // Buscar fitoterapicos prescricoes
+      if (prescricaoSubFilter === 'todos' || prescricaoSubFilter === 'fitoterapicos') {
+        const fparams = new URLSearchParams();
+        if (searchVal) fparams.append('search', searchVal);
+        if (showFavoritesOnly) fparams.append('favorito', 'true');
+        const fdata = await gatewayClient.get<any>(`/cadastro-prescricoes/fitoterapicos?${fparams}`);
+        if (fdata.success && fdata.data) {
+          allPrescricoes.push(...fdata.data.map((p: any) => ({ ...p, _tipo: 'fitoterapicos' })));
+        }
+      }
+
+      // Ordenar por data
+      allPrescricoes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setPrescricoes(allPrescricoes);
+    } catch (err) {
+      console.error('Erro ao buscar prescricoes:', err);
+    } finally {
+      setPrescricaoLoading(false);
+    }
+  };
+
+  const handleSavePrescricao = async () => {
+    if (!prescricaoFormData.catalogo_id) { showError('Selecione um item do catalogo'); return; }
+    try {
+      const tipo = prescricaoFormData.tipo;
+      const payload = {
+        catalogo_id: prescricaoFormData.catalogo_id,
+        dosagem: prescricaoFormData.dosagem,
+        horarios: prescricaoFormData.horarios,
+        descricao: prescricaoFormData.descricao,
+        tags: prescricaoFormData.tags,
+      };
+
+      if (editingPrescricao) {
+        const resp = await gatewayClient.put(`/cadastro-prescricoes/${editingPrescricao._tipo}/${editingPrescricao.id}`, payload);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Prescricao atualizada');
+      } else {
+        const resp = await gatewayClient.post(`/cadastro-prescricoes/${tipo}`, payload);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Prescricao criada');
+      }
+      setShowPrescricaoModal(false);
+      setEditingPrescricao(null);
+      fetchPrescricoes(prescricaoSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao salvar prescricao');
+    }
+  };
+
+  const handleDeletePrescricao = async (prescricao: any) => {
+    if (!confirm('Excluir esta prescricao?')) return;
+    try {
+      const resp = await gatewayClient.delete(`/cadastro-prescricoes/${prescricao._tipo}/${prescricao.id}`);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Prescricao removida');
+      fetchPrescricoes(prescricaoSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao remover prescricao');
+    }
+  };
+
+  const handleToggleFavoritoPrescricao = async (prescricao: any) => {
+    try {
+      await gatewayClient.patch(`/cadastro-prescricoes/${prescricao._tipo}/${prescricao.id}/favorito`, {});
+      fetchPrescricoes(prescricaoSearch);
+    } catch (err) {
+      showError('Erro ao atualizar favorito');
+    }
+  };
+
+  // Buscar catalogo (suplementos ou fitoterapicos globais)
+  const searchCatalogo = async (searchVal: string, tipo: 'suplementos' | 'fitoterapicos') => {
+    if (!searchVal.trim()) { setCatalogoResults([]); return; }
+    try {
+      setCatalogoSearchLoading(true);
+      const params = new URLSearchParams({ search: searchVal });
+      const data = await gatewayClient.get<any>(`/cadastro/${tipo}?${params}`);
+      if (data.success) setCatalogoResults(data.data || []);
+    } catch (err) {
+      console.error('Erro ao buscar catalogo:', err);
+    } finally {
+      setCatalogoSearchLoading(false);
+    }
+  };
+
+  // Debounce busca catalogo
+  useEffect(() => {
+    if (!showCatalogoSearch) return;
+    const timeoutId = setTimeout(() => { searchCatalogo(catalogoSearch, prescricaoFormData.tipo); }, 400);
+    return () => clearTimeout(timeoutId);
+  }, [catalogoSearch, showCatalogoSearch, prescricaoFormData.tipo]);
+
+  // Carregar prescricoes quando na aba
+  useEffect(() => {
+    if (activeTab === 'prescricoes') {
+      fetchPrescricoes('');
+    }
+  }, [activeTab, prescricaoSubFilter, showFavoritesOnly]);
+
+  // Debounce busca prescricoes
+  useEffect(() => {
+    if (activeTab !== 'prescricoes') return;
+    const timeoutId = setTimeout(() => { fetchPrescricoes(prescricaoSearch); }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [prescricaoSearch]);
+
+  // ==================== ALIMENTOS TAB ====================
+  const fetchAlimentosTab = async (searchVal = '') => {
+    try {
+      setAlimentosLoading(true);
+      const params = new URLSearchParams();
+      if (searchVal) params.append('search', searchVal);
+      if (showFavoritesOnly) params.append('favorito', 'true');
+      const data = await gatewayClient.get<any>(`/cadastro/alimentos?${params}`);
+      if (data.success) setAlimentosList(data.data || []);
+    } catch (err) {
+      console.error('Erro ao buscar alimentos:', err);
+    } finally {
+      setAlimentosLoading(false);
+    }
+  };
+
+  const handleSaveAlimentoTab = async () => {
+    if (!alimentoTabFormData.nome.trim()) { showError('Nome e obrigatorio'); return; }
+    try {
+      const payload = {
+        ...alimentoTabFormData,
+        calorias: alimentoTabFormData.calorias ? parseFloat(alimentoTabFormData.calorias) : null,
+        proteinas: alimentoTabFormData.proteinas ? parseFloat(alimentoTabFormData.proteinas) : null,
+        carboidratos: alimentoTabFormData.carboidratos ? parseFloat(alimentoTabFormData.carboidratos) : null,
+        gorduras: alimentoTabFormData.gorduras ? parseFloat(alimentoTabFormData.gorduras) : null,
+        fibras: alimentoTabFormData.fibras ? parseFloat(alimentoTabFormData.fibras) : null,
+      };
+
+      if (editingAlimentoItem) {
+        const resp = await gatewayClient.put(`/cadastro/alimentos/${editingAlimentoItem.id}`, payload);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Alimento atualizado');
+      } else {
+        const resp = await gatewayClient.post('/cadastro/alimentos', payload);
+        if (!resp.success) throw new Error(resp.error);
+        showSuccess('Alimento criado');
+      }
+      setShowAlimentoModal(false);
+      setEditingAlimentoItem(null);
+      fetchAlimentosTab(alimentosTabSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao salvar alimento');
+    }
+  };
+
+  const handleDeleteAlimentoTab = async (id: string) => {
+    if (!confirm('Excluir este alimento?')) return;
+    try {
+      const resp = await gatewayClient.delete(`/cadastro/alimentos/${id}`);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Alimento removido');
+      fetchAlimentosTab(alimentosTabSearch);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao remover alimento');
+    }
+  };
+
+  const handleToggleFavoritoAlimento = async (id: string) => {
+    try {
+      await gatewayClient.patch(`/cadastro/alimentos/${id}/favorito`, {});
+      fetchAlimentosTab(alimentosTabSearch);
+    } catch (err) {
+      showError('Erro ao atualizar favorito');
+    }
+  };
+
+  // Carregar alimentos quando na aba
+  useEffect(() => {
+    if (activeTab === 'alimentos') {
+      fetchAlimentosTab('');
+    }
+  }, [activeTab, showFavoritesOnly]);
+
+  // Debounce busca alimentos tab
+  useEffect(() => {
+    if (activeTab !== 'alimentos') return;
+    const timeoutId = setTimeout(() => { fetchAlimentosTab(alimentosTabSearch); }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [alimentosTabSearch]);
+
   // Adicionar alimento nutricional à refeição (cria cadastro_alimentos a partir dos dados nutricionais)
   const handleAddAlimentoNutricionalToRefeicao = async (refeicaoId: string, alNutri: AlimentoNutricional) => {
     try {
@@ -968,7 +1118,7 @@ export default function CadastroTabContent() {
         descanso: formData.descanso,
         equipamento: formData.equipamento,
       }),
-      ...((activeTab === 'suplementos' || activeTab === 'fitoterapicos') && {
+      ...((activeTab === 'prescricoes') && {
         dosagem: formData.dosagem,
         horario: formData.horario,
         objetivo: formData.objetivo,
@@ -1005,10 +1155,10 @@ export default function CadastroTabContent() {
         return ['Cafe da manha', 'Lanche da manha', 'Almoco', 'Lanche da tarde', 'Jantar', 'Ceia', 'Pre-treino', 'Pos-treino'];
       case 'treinos':
         return ['Peito', 'Costas', 'Ombros', 'Biceps', 'Triceps', 'Pernas', 'Gluteos', 'Abdomen', 'Cardio', 'Funcional'];
-      case 'suplementos':
-        return ['Proteina', 'Aminoacido', 'Vitamina', 'Mineral', 'Performance', 'Saude', 'Recuperacao'];
-      case 'fitoterapicos':
-        return ['Adaptogeno', 'Calmante', 'Anti-inflamatorio', 'Digestivo', 'Imunidade', 'Hormonal', 'Cognitivo'];
+      case 'prescricoes':
+        return ['Proteina', 'Aminoacido', 'Vitamina', 'Mineral', 'Performance', 'Adaptogeno', 'Calmante', 'Digestivo'];
+      case 'alimentos':
+        return ['Proteinas', 'Carboidratos', 'Vegetais', 'Leguminosas', 'Gorduras', 'Frutas', 'Laticinios'];
       default:
         return [];
     }
@@ -1019,8 +1169,8 @@ export default function CadastroTabContent() {
       case 'pacientes': return 'Pacientes';
       case 'refeicoes': return 'Refeicoes';
       case 'treinos': return 'Exercicios';
-      case 'suplementos': return 'Suplementos';
-      case 'fitoterapicos': return 'Fitoterapicos';
+      case 'prescricoes': return 'Prescricoes';
+      case 'alimentos': return 'Alimentos';
     }
   };
 
@@ -1029,8 +1179,8 @@ export default function CadastroTabContent() {
       case 'pacientes': return 'Gerencie seus pacientes cadastrados';
       case 'refeicoes': return 'Cadastre refeicoes para usar nos planos alimentares';
       case 'treinos': return 'Cadastre exercicios para montar protocolos de treino';
-      case 'suplementos': return 'Cadastre suplementos para protocolos de suplementacao';
-      case 'fitoterapicos': return 'Cadastre fitoterapicos para protocolos naturais';
+      case 'prescricoes': return 'Suplementos e fitoterapicos com dosagens personalizadas';
+      case 'alimentos': return 'Cadastre alimentos individuais para montar refeicoes';
     }
   };
 
@@ -1057,7 +1207,7 @@ export default function CadastroTabContent() {
         </div>
       );
     }
-    if (activeTab === 'suplementos' || activeTab === 'fitoterapicos') {
+    if (activeTab === 'prescricoes') {
       return (
         <div className="cadastro-card-info">
           {item.dosagem && <span className="cadastro-card-tag highlight"><Pill size={12} /> {item.dosagem}</span>}
@@ -1140,7 +1290,7 @@ export default function CadastroTabContent() {
         </>
       );
     }
-    if (activeTab === 'suplementos' || activeTab === 'fitoterapicos') {
+    if (activeTab === 'prescricoes') {
       return (
         <>
           <div className="cadastro-form-group">
@@ -1181,7 +1331,7 @@ export default function CadastroTabContent() {
         <div className="cadastro-tabs">
           {TABS.filter(tab => !tab.adminOnly || isClinicAdmin).map(tab => {
             const Icon = tab.icon;
-            const count = tab.key === 'pacientes' ? patientsPagination.total : tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'treinos' ? treinoPagination.total : tab.key === 'clinica' ? 0 : (data[tab.key]?.length || 0);
+            const count = tab.key === 'pacientes' ? patientsPagination.total : tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'treinos' ? treinoPagination.total : tab.key === 'prescricoes' ? prescricoes.length : tab.key === 'alimentos' ? alimentosList.length : 0;
             return (
               <Link
                 key={tab.key}
@@ -2532,6 +2682,305 @@ export default function CadastroTabContent() {
               </div>
             )}
           </div>
+        ) : activeTab === 'prescricoes' ? (
+          <div>
+            {/* Sub-filter */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {(['todos', 'suplementos', 'fitoterapicos'] as const).map(f => (
+                <button key={f} onClick={() => setPrescricaoSubFilter(f)}
+                  style={{
+                    padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                    border: prescricaoSubFilter === f ? '2px solid #1A3D61' : '1.5px solid #E2E8F0',
+                    background: prescricaoSubFilter === f ? '#1A3D61' : 'transparent',
+                    color: prescricaoSubFilter === f ? '#fff' : '#64748B',
+                  }}
+                >
+                  {f === 'todos' ? 'Todos' : f === 'suplementos' ? 'Suplementos' : 'Fitoterapicos'}
+                </button>
+              ))}
+              <div style={{ flex: 1 }} />
+              <div style={{ position: 'relative', maxWidth: '300px', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                <input placeholder="Buscar prescricoes..." value={prescricaoSearch} onChange={e => setPrescricaoSearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }} />
+              </div>
+              <button className={`cadastro-filter-btn ${showFavoritesOnly ? 'active' : ''}`} onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}>
+                <Star size={16} /> Favoritos
+              </button>
+              <button className="cadastro-btn-save" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setEditingPrescricao(null); setShowPrescricaoModal(true); setShowCatalogoSearch(false); setCatalogoSearch(''); setCatalogoResults([]); }}>
+                <Plus size={16} /> Nova Prescricao
+              </button>
+            </div>
+
+            {prescricaoLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 size={24} className="animate-spin" style={{ margin: '0 auto' }} /></div>
+            ) : prescricoes.length === 0 ? (
+              <div className="cadastro-empty">
+                <div className="cadastro-empty-icon"><Pill size={28} /></div>
+                <h3 className="cadastro-empty-title">Nenhuma prescricao cadastrada</h3>
+                <p className="cadastro-empty-text">Adicione prescricoes de suplementos e fitoterapicos.</p>
+                <button className="cadastro-empty-btn" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setShowPrescricaoModal(true); }}>
+                  <Plus size={16} /> Nova Prescricao
+                </button>
+              </div>
+            ) : (
+              <div className="cadastro-grid">
+                {prescricoes.map(p => (
+                  <div key={p.id} className="cadastro-card">
+                    <div className="cadastro-card-header">
+                      <div>
+                        <h3 className="cadastro-card-title">{p.catalogo?.nome || 'Sem nome'}</h3>
+                        <span className="cadastro-card-category">
+                          {p._tipo === 'suplementos' ? 'Suplemento' : 'Fitoterapico'}
+                          {p.catalogo?.tipo ? ` - ${p.catalogo.tipo}` : ''}
+                        </span>
+                      </div>
+                      <div className="cadastro-card-actions">
+                        <button className={`cadastro-card-btn ${p.favorito ? 'favorite' : ''}`} onClick={() => handleToggleFavoritoPrescricao(p)} title={p.favorito ? 'Remover favorito' : 'Favoritar'}>
+                          <Star size={16} fill={p.favorito ? 'currentColor' : 'none'} />
+                        </button>
+                        <button className="cadastro-card-btn" onClick={() => {
+                          setEditingPrescricao(p);
+                          setPrescricaoFormData({
+                            catalogo_id: p.suplemento_id || p.fitoterapico_id || '',
+                            dosagem: p.dosagem || '',
+                            horarios: p.horarios || [],
+                            descricao: p.descricao || '',
+                            tags: p.tags || [],
+                            tipo: p._tipo,
+                          });
+                          setShowPrescricaoModal(true);
+                        }} title="Editar"><Pencil size={16} /></button>
+                        <button className="cadastro-card-btn" onClick={() => handleDeletePrescricao(p)} title="Excluir"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    <div className="cadastro-card-body">
+                      <div className="cadastro-card-info">
+                        {p.dosagem && <span className="cadastro-card-tag highlight"><Pill size={12} /> {p.dosagem}</span>}
+                        {p.horarios?.length > 0 && <span className="cadastro-card-tag"><Clock size={12} /> {p.horarios.join(', ')}</span>}
+                      </div>
+                      <p className="cadastro-card-description">{p.descricao || p.catalogo?.descricao}</p>
+                    </div>
+                    <div className="cadastro-card-footer">
+                      {p.tags?.map((t: string, i: number) => <span key={i} className="cadastro-card-tag" style={{ fontSize: '11px' }}>{t}</span>)}
+                      {p.favorito && <span className="cadastro-card-badge-fav"><Star size={12} fill="currentColor" /> Favorito</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Prescricao Modal */}
+            {showPrescricaoModal && (
+              <div className="cadastro-modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowPrescricaoModal(false); setEditingPrescricao(null); } }}>
+                <div className="cadastro-modal">
+                  <div className="cadastro-modal-header">
+                    <h3 className="cadastro-modal-title">{editingPrescricao ? 'Editar Prescricao' : 'Nova Prescricao'}</h3>
+                    <button className="cadastro-modal-close" onClick={() => { setShowPrescricaoModal(false); setEditingPrescricao(null); }}><X size={18} /></button>
+                  </div>
+                  <div className="cadastro-modal-body">
+                    {!editingPrescricao && (
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Tipo</label>
+                        <select className="cadastro-form-select" value={prescricaoFormData.tipo} onChange={e => { setPrescricaoFormData(p => ({ ...p, tipo: e.target.value as any, catalogo_id: '' })); setCatalogoResults([]); setCatalogoSearch(''); }}>
+                          <option value="suplementos">Suplemento</option>
+                          <option value="fitoterapicos">Fitoterapico</option>
+                        </select>
+                      </div>
+                    )}
+                    {!editingPrescricao && (
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Item do Catalogo *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input className="cadastro-form-input" placeholder={`Buscar ${prescricaoFormData.tipo}...`}
+                            value={catalogoSearch} onChange={e => { setCatalogoSearch(e.target.value); setShowCatalogoSearch(true); }}
+                            onFocus={() => setShowCatalogoSearch(true)} />
+                          {showCatalogoSearch && catalogoResults.length > 0 && (
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '200px', overflowY: 'auto', background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: '8px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                              {catalogoResults.map((c: any) => (
+                                <div key={c.id} onClick={() => { setPrescricaoFormData(p => ({ ...p, catalogo_id: c.id })); setCatalogoSearch(c.nome); setShowCatalogoSearch(false); setPrescricaoFormData(p => ({ ...p, catalogo_id: c.id, descricao: c.descricao || '' })); }}
+                                  style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')} onMouseLeave={e => (e.currentTarget.style.background = '#fff')}>
+                                  <div style={{ fontWeight: 600 }}>{c.nome}</div>
+                                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>{c.tipo} {c.objetivo ? `- ${c.objetivo}` : ''}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {catalogoSearchLoading && <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}><Loader2 size={16} className="animate-spin" /></div>}
+                        </div>
+                      </div>
+                    )}
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Dosagem</label>
+                      <input className="cadastro-form-input" placeholder="Ex: 5g/dia, 600mg 2x ao dia" value={prescricaoFormData.dosagem} onChange={e => setPrescricaoFormData(p => ({ ...p, dosagem: e.target.value }))} />
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Horarios</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        {prescricaoFormData.horarios.map((h, i) => (
+                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '16px', background: '#F1F5F9', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                            {h}
+                            <button onClick={() => setPrescricaoFormData(p => ({ ...p, horarios: p.horarios.filter((_, idx) => idx !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '14px' }}>x</button>
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input type="time" className="cadastro-form-input" value={horarioInput} onChange={e => setHorarioInput(e.target.value)} style={{ flex: 1 }} />
+                        <button className="cadastro-btn-save" style={{ padding: '8px 16px' }} onClick={() => { if (horarioInput) { setPrescricaoFormData(p => ({ ...p, horarios: [...p.horarios, horarioInput] })); setHorarioInput(''); } }}>+</button>
+                      </div>
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Descricao</label>
+                      <textarea className="cadastro-form-input" placeholder="Observacoes sobre a prescricao" rows={3} value={prescricaoFormData.descricao} onChange={e => setPrescricaoFormData(p => ({ ...p, descricao: e.target.value }))} style={{ resize: 'vertical' }} />
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Tags</label>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        {prescricaoFormData.tags.map((t, i) => (
+                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '16px', background: '#F1F5F9', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                            {t}
+                            <button onClick={() => setPrescricaoFormData(p => ({ ...p, tags: p.tags.filter((_, idx) => idx !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '14px' }}>x</button>
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input className="cadastro-form-input" placeholder="Adicionar tag" value={prescricaoTagInput} onChange={e => setPrescricaoTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && prescricaoTagInput.trim()) { setPrescricaoFormData(p => ({ ...p, tags: [...p.tags, prescricaoTagInput.trim()] })); setPrescricaoTagInput(''); } }} style={{ flex: 1 }} />
+                        <button className="cadastro-btn-save" style={{ padding: '8px 16px' }} onClick={() => { if (prescricaoTagInput.trim()) { setPrescricaoFormData(p => ({ ...p, tags: [...p.tags, prescricaoTagInput.trim()] })); setPrescricaoTagInput(''); } }}>+</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cadastro-modal-footer">
+                    <button className="cadastro-btn-cancel" onClick={() => { setShowPrescricaoModal(false); setEditingPrescricao(null); }}>Cancelar</button>
+                    <button className="cadastro-btn-save" onClick={handleSavePrescricao}>{editingPrescricao ? 'Salvar' : 'Cadastrar'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'alimentos' ? (
+          <div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', maxWidth: '400px', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                <input placeholder="Buscar alimentos..." value={alimentosTabSearch} onChange={e => setAlimentosTabSearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }} />
+              </div>
+              <button className={`cadastro-filter-btn ${showFavoritesOnly ? 'active' : ''}`} onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}>
+                <Star size={16} /> Favoritos
+              </button>
+              <button className="cadastro-btn-save" onClick={() => { setAlimentoTabFormData({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] }); setEditingAlimentoItem(null); setShowAlimentoModal(true); }}>
+                <Plus size={16} /> Novo Alimento
+              </button>
+            </div>
+
+            {alimentosLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 size={24} className="animate-spin" style={{ margin: '0 auto' }} /></div>
+            ) : alimentosList.length === 0 ? (
+              <div className="cadastro-empty">
+                <div className="cadastro-empty-icon"><UtensilsCrossed size={28} /></div>
+                <h3 className="cadastro-empty-title">Nenhum alimento cadastrado</h3>
+                <p className="cadastro-empty-text">Cadastre alimentos individuais para montar suas refeicoes.</p>
+                <button className="cadastro-empty-btn" onClick={() => setShowAlimentoModal(true)}><Plus size={16} /> Novo Alimento</button>
+              </div>
+            ) : (
+              <div className="cadastro-grid">
+                {alimentosList.map(a => (
+                  <div key={a.id} className="cadastro-card">
+                    <div className="cadastro-card-header">
+                      <div>
+                        <h3 className="cadastro-card-title">{a.nome}</h3>
+                        <span className="cadastro-card-category">{a.categoria || 'Sem categoria'}</span>
+                      </div>
+                      <div className="cadastro-card-actions">
+                        <button className={`cadastro-card-btn ${a.favorito ? 'favorite' : ''}`} onClick={() => handleToggleFavoritoAlimento(a.id)} title={a.favorito ? 'Remover favorito' : 'Favoritar'}>
+                          <Star size={16} fill={a.favorito ? 'currentColor' : 'none'} />
+                        </button>
+                        <button className="cadastro-card-btn" onClick={() => { setEditingAlimentoItem(a); setAlimentoTabFormData({ nome: a.nome, categoria: a.categoria || '', descricao: a.descricao || '', porcao: a.porcao || '', calorias: a.calorias?.toString() || '', proteinas: a.proteinas?.toString() || '', carboidratos: a.carboidratos?.toString() || '', gorduras: a.gorduras?.toString() || '', fibras: a.fibras?.toString() || '', tags: a.tags || [] }); setShowAlimentoModal(true); }} title="Editar"><Pencil size={16} /></button>
+                        <button className="cadastro-card-btn" onClick={() => handleDeleteAlimentoTab(a.id)} title="Excluir"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    <div className="cadastro-card-body">
+                      <div className="cadastro-card-info">
+                        {a.porcao && <span className="cadastro-card-tag highlight">{a.porcao}</span>}
+                        {a.calorias && <span className="cadastro-card-tag"><Flame size={12} /> {a.calorias} kcal</span>}
+                        {a.proteinas && <span className="cadastro-card-tag">P: {a.proteinas}g</span>}
+                        {a.carboidratos && <span className="cadastro-card-tag">C: {a.carboidratos}g</span>}
+                        {a.gorduras && <span className="cadastro-card-tag">G: {a.gorduras}g</span>}
+                      </div>
+                      {a.descricao && <p className="cadastro-card-description">{a.descricao}</p>}
+                    </div>
+                    <div className="cadastro-card-footer">
+                      {a.favorito && <span className="cadastro-card-badge-fav"><Star size={12} fill="currentColor" /> Favorito</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Alimento Modal */}
+            {showAlimentoModal && (
+              <div className="cadastro-modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowAlimentoModal(false); setEditingAlimentoItem(null); } }}>
+                <div className="cadastro-modal">
+                  <div className="cadastro-modal-header">
+                    <h3 className="cadastro-modal-title">{editingAlimentoItem ? 'Editar Alimento' : 'Novo Alimento'}</h3>
+                    <button className="cadastro-modal-close" onClick={() => { setShowAlimentoModal(false); setEditingAlimentoItem(null); }}><X size={18} /></button>
+                  </div>
+                  <div className="cadastro-modal-body">
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Nome *</label>
+                      <input className="cadastro-form-input" placeholder="Ex: Peito de frango grelhado" value={alimentoTabFormData.nome} onChange={e => setAlimentoTabFormData(p => ({ ...p, nome: e.target.value }))} />
+                    </div>
+                    <div className="cadastro-form-row">
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Categoria</label>
+                        <select className="cadastro-form-select" value={alimentoTabFormData.categoria} onChange={e => setAlimentoTabFormData(p => ({ ...p, categoria: e.target.value }))}>
+                          <option value="">Selecione</option>
+                          {['Proteinas', 'Carboidratos', 'Vegetais', 'Leguminosas', 'Gorduras', 'Frutas', 'Laticinios'].map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Porcao</label>
+                        <input className="cadastro-form-input" placeholder="Ex: 150g" value={alimentoTabFormData.porcao} onChange={e => setAlimentoTabFormData(p => ({ ...p, porcao: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="cadastro-form-row">
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Calorias (kcal)</label>
+                        <input type="number" className="cadastro-form-input" placeholder="248" value={alimentoTabFormData.calorias} onChange={e => setAlimentoTabFormData(p => ({ ...p, calorias: e.target.value }))} />
+                      </div>
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Proteinas (g)</label>
+                        <input type="number" className="cadastro-form-input" placeholder="46.5" value={alimentoTabFormData.proteinas} onChange={e => setAlimentoTabFormData(p => ({ ...p, proteinas: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="cadastro-form-row">
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Carboidratos (g)</label>
+                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.carboidratos} onChange={e => setAlimentoTabFormData(p => ({ ...p, carboidratos: e.target.value }))} />
+                      </div>
+                      <div className="cadastro-form-group">
+                        <label className="cadastro-form-label">Gorduras (g)</label>
+                        <input type="number" className="cadastro-form-input" placeholder="5.4" value={alimentoTabFormData.gorduras} onChange={e => setAlimentoTabFormData(p => ({ ...p, gorduras: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Fibras (g)</label>
+                      <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.fibras} onChange={e => setAlimentoTabFormData(p => ({ ...p, fibras: e.target.value }))} />
+                    </div>
+                    <div className="cadastro-form-group">
+                      <label className="cadastro-form-label">Descricao</label>
+                      <textarea className="cadastro-form-input" placeholder="Descricao do alimento" rows={2} value={alimentoTabFormData.descricao} onChange={e => setAlimentoTabFormData(p => ({ ...p, descricao: e.target.value }))} style={{ resize: 'vertical' }} />
+                    </div>
+                  </div>
+                  <div className="cadastro-modal-footer">
+                    <button className="cadastro-btn-cancel" onClick={() => { setShowAlimentoModal(false); setEditingAlimentoItem(null); }}>Cancelar</button>
+                    <button className="cadastro-btn-save" onClick={handleSaveAlimentoTab}>{editingAlimentoItem ? 'Salvar' : 'Cadastrar'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             {/* Section Header */}
@@ -2611,8 +3060,7 @@ export default function CadastroTabContent() {
                 <div className="cadastro-empty-icon">
                   {activeTab === 'refeicoes' && <UtensilsCrossed size={28} />}
                   {activeTab === 'treinos' && <Dumbbell size={28} />}
-                  {activeTab === 'suplementos' && <Pill size={28} />}
-                  {activeTab === 'fitoterapicos' && <Leaf size={28} />}
+                  {activeTab === 'prescricoes' && <Pill size={28} />}
                 </div>
                 <h3 className="cadastro-empty-title">
                   {search ? 'Nenhum resultado encontrado' : `Nenhum cadastro de ${getTabTitle()?.toLowerCase()}`}
@@ -2620,7 +3068,7 @@ export default function CadastroTabContent() {
                 <p className="cadastro-empty-text">
                   {search
                     ? 'Tente buscar com outros termos.'
-                    : `Comece cadastrando ${activeTab === 'refeicoes' ? 'suas refeicoes' : activeTab === 'treinos' ? 'seus exercicios' : activeTab === 'suplementos' ? 'seus suplementos' : 'seus fitoterapicos'}.`
+                    : `Comece cadastrando ${activeTab === 'refeicoes' ? 'suas refeicoes' : activeTab === 'treinos' ? 'seus exercicios' : 'seus itens'}.`
                   }
                 </p>
                 {!search && (

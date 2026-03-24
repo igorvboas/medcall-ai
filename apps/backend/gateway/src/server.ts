@@ -40,6 +40,7 @@ import cadastroAlimentosRoutes from './routes/cadastro-alimentos';
 import alimentosNutricionaisRoutes from './routes/alimentos-nutricionais';
 import cadastroTreinosRoutes from './routes/cadastro-treinos';
 import cadastroExerciciosRoutes from './routes/cadastro-exercicios';
+import cadastroPrescricoesRoutes from './routes/cadastro-prescricoes';
 
 // Rotas de Proxy
 import proxyRoutes from './routes/proxy';
@@ -196,6 +197,7 @@ app.use('/cadastro-alimentos', cadastroAlimentosRoutes);
 app.use('/alimentos-nutricionais', alimentosNutricionaisRoutes);
 app.use('/cadastro-treinos', cadastroTreinosRoutes);
 app.use('/cadastro-exercicios', cadastroExerciciosRoutes);
+app.use('/cadastro-prescricoes', cadastroPrescricoesRoutes);
 
 // Health check do Gateway (para Cloud Run e Docker)
 app.get('/health', (req, res) => {

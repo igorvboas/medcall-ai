@@ -1,6 +1,6 @@
 import CadastroTabContent from './CadastroTabContent';
 
-const VALID_TABS = ['pacientes', 'refeicoes', 'treinos', 'suplementos', 'fitoterapicos', 'clinica'];
+const VALID_TABS = ['pacientes', 'alimentos', 'refeicoes', 'treinos', 'prescricoes', 'clinica'];
 
 export function generateStaticParams() {
   return VALID_TABS.map((tab) => ({ tab }));

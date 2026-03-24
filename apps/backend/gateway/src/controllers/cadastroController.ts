@@ -7,7 +7,11 @@ const TABLE_MAP: Record<string, string> = {
   refeicoes: 'cadastro_refeicoes',
   treinos: 'cadastro_treinos',
   suplementos: 'cadastro_suplementos',
+  fitoterapicos: 'cadastro_fitoterapicos',
 };
+
+// Tabelas de catalogo global (sem doctor_id)
+const GLOBAL_TABLES = ['cadastro_suplementos', 'cadastro_fitoterapicos'];
 
 async function getDoctorId(userId: string): Promise<string | null> {
   const { data } = await supabase
@@ -37,11 +41,16 @@ export async function listItems(req: AuthenticatedRequest, res: Response) {
     const categoria = (req.query.categoria as string) || '';
     const tipoSuplemento = (req.query.tipo_suplemento as string) || '';
 
+    const isGlobal = GLOBAL_TABLES.includes(table);
+
     let query = supabase
       .from(table)
       .select('*')
-      .eq('doctor_id', doctorId)
       .order('created_at', { ascending: false });
+
+    if (!isGlobal) {
+      query = query.eq('doctor_id', doctorId);
+    }
 
     if (search) {
       query = query.or(`nome.ilike.%${search}%,descricao.ilike.%${search}%`);
@@ -108,9 +117,12 @@ export async function createItem(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ success: false, error: 'Nome e obrigatorio' });
     }
 
+    const isGlobal = GLOBAL_TABLES.includes(table);
+    const insertData = isGlobal ? { ...itemData } : { ...itemData, doctor_id: doctorId };
+
     const { data, error } = await supabase
       .from(table)
-      .insert({ ...itemData, doctor_id: doctorId })
+      .insert(insertData)
       .select()
       .single();
 
@@ -147,18 +159,22 @@ export async function updateItem(req: AuthenticatedRequest, res: Response) {
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Medico nao encontrado' });
 
+    const isGlobal = GLOBAL_TABLES.includes(table);
     const { alimento_ids, ...updateData } = req.body;
     delete updateData.id;
     delete updateData.doctor_id;
     delete updateData.created_at;
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from(table)
       .update(updateData)
-      .eq('id', id)
-      .eq('doctor_id', doctorId)
-      .select()
-      .single();
+      .eq('id', id);
+
+    if (!isGlobal) {
+      updateQuery = updateQuery.eq('doctor_id', doctorId);
+    }
+
+    const { data, error } = await updateQuery.select().single();
 
     if (error) throw error;
 
@@ -198,11 +214,17 @@ export async function deleteItem(req: AuthenticatedRequest, res: Response) {
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Medico nao encontrado' });
 
-    const { error } = await supabase
+    const isGlobal = GLOBAL_TABLES.includes(table);
+    let deleteQuery = supabase
       .from(table)
       .delete()
-      .eq('id', id)
-      .eq('doctor_id', doctorId);
+      .eq('id', id);
+
+    if (!isGlobal) {
+      deleteQuery = deleteQuery.eq('doctor_id', doctorId);
+    }
+
+    const { error } = await deleteQuery;
 
     if (error) throw error;
 
@@ -227,23 +249,24 @@ export async function toggleFavorito(req: AuthenticatedRequest, res: Response) {
     const doctorId = await getDoctorId(req.user.id);
     if (!doctorId) return res.status(404).json({ success: false, error: 'Medico nao encontrado' });
 
+    const isGlobal = GLOBAL_TABLES.includes(table);
+
     // Buscar valor atual
-    const { data: current } = await supabase
+    let selectQuery = supabase
       .from(table)
       .select('favorito')
-      .eq('id', id)
-      .eq('doctor_id', doctorId)
-      .single();
+      .eq('id', id);
+    if (!isGlobal) selectQuery = selectQuery.eq('doctor_id', doctorId);
+    const { data: current } = await selectQuery.single();
 
     if (!current) return res.status(404).json({ success: false, error: 'Item nao encontrado' });
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from(table)
       .update({ favorito: !current.favorito })
-      .eq('id', id)
-      .eq('doctor_id', doctorId)
-      .select()
-      .single();
+      .eq('id', id);
+    if (!isGlobal) updateQuery = updateQuery.eq('doctor_id', doctorId);
+    const { data, error } = await updateQuery.select().single();
 
     if (error) throw error;
 
