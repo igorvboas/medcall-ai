@@ -637,8 +637,11 @@
 }
 
 .cadastro-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 2;
-  padding: 10px;
+  padding: 10px 16px;
   border: none;
   border-radius: 10px;
   background: #1A3D61;
@@ -648,6 +651,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .cadastro-btn-save:hover {
