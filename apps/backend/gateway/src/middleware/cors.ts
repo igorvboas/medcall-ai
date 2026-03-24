@@ -32,7 +32,7 @@ function getAllowedOrigins(): string[] {
   if (envOrigins) {
     const parsedOrigins = envOrigins
       .split(',')
-      .map(origin => origin.trim())
+      .map(origin => origin.trim().replace(/\/+$/, ''))
       .filter(origin => origin.length > 0);
     origins.push(...parsedOrigins);
   }
