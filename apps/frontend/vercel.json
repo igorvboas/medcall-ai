@@ -1,8 +1,10 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "out",
-  "framework": null,
+  "framework": "nextjs",
   "regions": ["gru1"],
+  "trailingSlash": true,
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -13,8 +15,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/((?!_next|favicon|.*\\..*).*)", "destination": "/index.html" }
   ]
 }
