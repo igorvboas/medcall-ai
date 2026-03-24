@@ -309,13 +309,21 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
           .join('\n');
 
         const webhookUrl = 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const env = frontendUrl.includes('localhost')
+          ? 'localhost'
+          : frontendUrl.includes('homolog')
+            ? 'homolog'
+            : 'prod';
+
         const webhookData = {
           consultationId,
           doctorId: consultation?.doctor_id || null,
           patientId: consultation?.patient_id || room.patientId || 'unknown',
           transcription: transcriptionText,
           consulta_finalizada: true,
-          paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName)
+          paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
+          env
         };
 
         console.log(`📤 [FINALIZE-HTTP] Enviando webhook para ${webhookUrl}...`);

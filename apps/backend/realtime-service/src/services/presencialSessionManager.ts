@@ -464,6 +464,13 @@ class PresencialSessionManager {
                 'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
             };
 
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const env = frontendUrl.includes('localhost')
+              ? 'localhost'
+              : frontendUrl.includes('homolog')
+                ? 'homolog'
+                : 'prod';
+
             const webhookData = {
                 consultationId: session.consultationId,
                 doctorId: session.doctorId,
@@ -471,7 +478,8 @@ class PresencialSessionManager {
                 transcription: transcriptionText,
                 consulta_finalizada: true,
                 paciente_entrou_sala: true, // Em consultas presenciais, sempre true
-                tipo_consulta: 'PRESENCIAL'
+                tipo_consulta: 'PRESENCIAL',
+                env
             };
 
             console.log(`📤 [PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
