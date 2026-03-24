@@ -38,9 +38,10 @@ export default function PricingSection() {
         "Suporte prioritário via WhatsApp (4h)",
         "Onboarding personalizado (sessão 1h)"
       ],
-      buttonText: "Começar Teste",
-      buttonAction: "https://www.asaas.com/c/6klr6sf7r2wgkezn",
-      isPopular: true
+      buttonText: "Em breve",
+      buttonAction: "",
+      isPopular: true,
+      disabled: true
     },
     {
       name: "Clínica",
@@ -56,8 +57,9 @@ export default function PricingSection() {
         "Onboarding presencial (sessão 2h)",
         "API para integrações customizadas"
       ],
-      buttonText: "Começar Teste",
-      buttonAction: "https://www.asaas.com/c/6klr6sf7r2wgkezn"
+      buttonText: "Em breve",
+      buttonAction: "",
+      disabled: true
     },
     {
       name: "Enterprise",
@@ -74,8 +76,9 @@ export default function PricingSection() {
         "Treinamento completo da equipe",
         "Suporte premium 24/7"
       ],
-      buttonText: "Falar com Especialista",
-      buttonAction: "https://www.asaas.com/c/6klr6sf7r2wgkezn"
+      buttonText: "Em breve",
+      buttonAction: "",
+      disabled: true
     }
   ]
 
@@ -109,6 +112,7 @@ export default function PricingSection() {
               buttonText={plan.buttonText}
               buttonAction={plan.buttonAction}
               isPopular={plan.isPopular}
+              disabled={plan.disabled}
               index={index}
             />
           ))}

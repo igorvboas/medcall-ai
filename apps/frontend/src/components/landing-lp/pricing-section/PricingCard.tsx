@@ -12,6 +12,7 @@ interface PricingCardProps {
   buttonText: string
   buttonAction: string
   isPopular?: boolean
+  disabled?: boolean
   index?: number
 }
 
@@ -24,6 +25,7 @@ export default function PricingCard({
   buttonText,
   buttonAction,
   isPopular = false,
+  disabled = false,
   index = 0
 }: PricingCardProps) {
   return (
@@ -103,19 +105,28 @@ export default function PricingCard({
       </ul>
 
       {/* Botão CTA */}
-      <a href={buttonAction} target="_blank" rel="noopener noreferrer">
-        <motion.button
-          className={`w-full py-3.5 px-6 rounded-xl font-semibold text-[15px] transition-all ${
-            isPopular
-              ? 'bg-[#1a365d] text-white hover:bg-[#2c5282]'
-              : 'border-2 border-[#1a365d] text-[#1a365d] hover:bg-[#1a365d] hover:text-white'
-          }`}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+      {disabled ? (
+        <button
+          disabled
+          className="w-full py-3.5 px-6 rounded-xl font-semibold text-[15px] border-2 border-[#E2E8F0] text-[#94A3B8] cursor-not-allowed opacity-60"
         >
           {buttonText}
-        </motion.button>
-      </a>
+        </button>
+      ) : (
+        <a href={buttonAction} target="_blank" rel="noopener noreferrer">
+          <motion.button
+            className={`w-full py-3.5 px-6 rounded-xl font-semibold text-[15px] transition-all ${
+              isPopular
+                ? 'bg-[#1a365d] text-white hover:bg-[#2c5282]'
+                : 'border-2 border-[#1a365d] text-[#1a365d] hover:bg-[#1a365d] hover:text-white'
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {buttonText}
+          </motion.button>
+        </a>
+      )}
     </motion.div>
   )
 }
