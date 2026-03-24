@@ -2,7 +2,6 @@
 
 import React from 'react'
 import ApplicationCard from './ApplicationCard'
-import VideoSection from './VideoSection'
 import { HeartbeatIcon, MicroscopeIcon, PillIcon, BrainIcon, HeartIcon } from './ApplicationIcons'
 
 export default function ApplicationSection() {
@@ -45,9 +44,6 @@ export default function ApplicationSection() {
             />
           ))}
         </div>
-
-        {/* Seção de Vídeo */}
-        <VideoSection />
       </div>
     </section>
   )
