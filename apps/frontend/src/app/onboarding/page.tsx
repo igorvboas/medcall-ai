@@ -76,7 +76,7 @@ export default function OnboardingPage() {
         </h2>
         <div
           className="calendly-inline-widget rounded-2xl overflow-hidden"
-          data-url="https://calendly.com/ferramentas-triacompany/onboarding?primary_color=7c9dad"
+          data-url="https://calendly.com/ferramentas-triacompany/onboarding?hide_event_type_details=1&hide_gdpr_banner=1&primary_color=17355d"
           style={{ minWidth: '320px', height: '700px' }}
         />
       </section>
