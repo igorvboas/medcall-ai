@@ -226,19 +226,21 @@ export async function handleAsaasWebhook(req: Request, res: Response): Promise<v
       }
     }
 
-    const { event, payment } = req.body;
+    const { event, payment, subscription } = req.body;
+    // Asaas envia "payment" para eventos de pagamento e "subscription" para eventos de assinatura
+    const data = payment || subscription;
 
-    if (!event || !payment) {
-      res.status(400).json({ error: 'Payload inválido: event e payment são obrigatórios' });
+    if (!event || !data) {
+      res.status(400).json({ error: 'Payload inválido: event e payment/subscription são obrigatórios' });
       return;
     }
 
-    console.log(`🔔 [ASAAS] Webhook recebido: ${event} | Payment: ${payment.id} | Customer: ${payment.customer}`);
+    console.log(`🔔 [ASAAS] Webhook recebido: ${event} | ID: ${data.id} | Customer: ${data.customer}`);
 
     // ========== EVENTOS DE ATIVAÇÃO ==========
     if (ACTIVATION_EVENTS.includes(event)) {
       // Buscar dados do cliente na API do Asaas
-      const customer = await fetchAsaasCustomer(payment.customer);
+      const customer = await fetchAsaasCustomer(data.customer);
       if (!customer || !customer.email) {
         console.error('❌ [ASAAS] Não foi possível obter dados do cliente');
         res.status(500).json({ error: 'Falha ao buscar dados do cliente no Asaas' });
@@ -253,10 +255,10 @@ export async function handleAsaasWebhook(req: Request, res: Response): Promise<v
         .upsert(
           {
             email,
-            customer_id: payment.customer,
-            value: payment.value,
-            subscription_id: payment.subscription || null,
-            cycle: payment.cycle || null,
+            customer_id: data.customer,
+            value: data.value,
+            subscription_id: data.subscription || data.id || null,
+            cycle: data.cycle || null,
             event,
             assinatura_ativa: true,
             env: process.env.NODE_ENV || 'production',
@@ -269,10 +271,10 @@ export async function handleAsaasWebhook(req: Request, res: Response): Promise<v
         // Tentar insert se upsert falhar (sem unique constraint em email)
         const { error: insertError } = await supabase.from('assinaturas').insert({
           email,
-          customer_id: payment.customer,
-          value: payment.value,
-          subscription_id: payment.subscription || null,
-          cycle: payment.cycle || null,
+          customer_id: data.customer,
+          value: data.value,
+          subscription_id: data.subscription || data.id || null,
+          cycle: data.cycle || null,
           event,
           assinatura_ativa: true,
           env: process.env.NODE_ENV || 'production',
@@ -341,7 +343,7 @@ export async function handleAsaasWebhook(req: Request, res: Response): Promise<v
 
     // ========== EVENTOS DE DESATIVAÇÃO ==========
     if (DEACTIVATION_EVENTS.includes(event)) {
-      const customer = await fetchAsaasCustomer(payment.customer);
+      const customer = await fetchAsaasCustomer(data.customer);
       const email = customer?.email?.toLowerCase().trim();
 
       if (email) {
@@ -359,7 +361,7 @@ export async function handleAsaasWebhook(req: Request, res: Response): Promise<v
 
     // ========== EVENTOS DE REATIVAÇÃO ==========
     if (REACTIVATION_EVENTS.includes(event)) {
-      const customer = await fetchAsaasCustomer(payment.customer);
+      const customer = await fetchAsaasCustomer(data.customer);
       const email = customer?.email?.toLowerCase().trim();
 
       if (email) {
