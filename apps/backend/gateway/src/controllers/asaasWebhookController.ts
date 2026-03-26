@@ -14,7 +14,7 @@ function getResend(): Resend {
 }
 
 // Eventos que ativam a assinatura
-const ACTIVATION_EVENTS = ['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED', 'SUBSCRIPTION_CREATED'];
+const ACTIVATION_EVENTS = ['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'];
 // Eventos que desativam a assinatura
 const DEACTIVATION_EVENTS = [
   'PAYMENT_OVERDUE',
