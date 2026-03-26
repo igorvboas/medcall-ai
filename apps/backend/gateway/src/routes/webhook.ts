@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import axios from 'axios';
+import { handleAsaasWebhook } from '../controllers/asaasWebhookController';
 
 const router = Router();
 
@@ -45,5 +46,8 @@ router.post('/edicao-livro-da-vida', async (req, res) => {
         });
     }
 });
+
+// Webhook Asaas - recebe eventos de pagamento e cria usuários automaticamente
+router.post('/asaas', handleAsaasWebhook);
 
 export default router;
