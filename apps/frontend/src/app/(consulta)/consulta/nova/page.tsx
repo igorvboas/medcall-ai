@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { CreateConsultationRoom } from '@/components/webrtc/CreateConsultationRoom';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { NOVA_CONSULTA_STEPS } from '@/components/dashboard/tutorialSteps';
 import '@/components/webrtc/webrtc-styles.css';
 
 function NovaConsultaContent() {
@@ -26,15 +28,18 @@ function NovaConsultaContent() {
   };
 
   return (
-    <CreateConsultationRoom 
-      onRoomCreated={handleRoomCreated}
-      onCancel={handleCancel}
-      // Props para iniciar a partir de um agendamento
-      agendamentoId={agendamentoId}
-      preselectedPatientId={patientId}
-      preselectedPatientName={patientName}
-      preselectedConsultationType={consultationType === 'TELEMEDICINA' ? 'online' : consultationType === 'PRESENCIAL' ? 'presencial' : undefined}
-    />
+    <>
+      <CreateConsultationRoom
+        onRoomCreated={handleRoomCreated}
+        onCancel={handleCancel}
+        // Props para iniciar a partir de um agendamento
+        agendamentoId={agendamentoId}
+        preselectedPatientId={patientId}
+        preselectedPatientName={patientName}
+        preselectedConsultationType={consultationType === 'TELEMEDICINA' ? 'online' : consultationType === 'PRESENCIAL' ? 'presencial' : undefined}
+      />
+      <TutorialPopup steps={NOVA_CONSULTA_STEPS} pageKey="nova-consulta" showWelcome={false} />
+    </>
   );
 }
 

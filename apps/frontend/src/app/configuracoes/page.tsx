@@ -5,6 +5,8 @@ import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText } 
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { formatCPF, formatPhone, validateCPF, removeMask } from '@/lib/validations';
 import { supabase } from '@/lib/supabase';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { CONFIGURACOES_STEPS } from '@/components/dashboard/tutorialSteps';
 import './configuracoes.css';
 
 interface MedicoData {
@@ -410,6 +412,7 @@ export default function ConfiguracoesPage() {
           </div>
         </form>
       </div>
+      <TutorialPopup steps={CONFIGURACOES_STEPS} pageKey="configuracoes" showWelcome={false} />
     </div>
   );
 }

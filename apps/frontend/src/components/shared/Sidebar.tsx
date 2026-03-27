@@ -17,6 +17,7 @@ import {
   Building2,
   ClipboardList,
   Smartphone,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +38,7 @@ const menuItems = [
   { icon: ClipboardList, label: 'Cadastro', href: '/cadastro/pacientes' },
   { icon: Smartphone, label: 'Conexão', href: '/conexao' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
+  { icon: GraduationCap, label: 'Treinamento', href: '/treinamento' },
 ];
 
 const clinicMenuItems: { icon: any; label: string; href: string }[] = [];
@@ -164,7 +166,8 @@ export function Sidebar({ expanded, onExpandedChange, isTopMenu = false }: Sideb
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
-            <Link key={item.href} href={item.href} className={`nav-btn ${isActive ? 'is-active' : ''}`}>
+            <Link key={item.href} href={item.href} className={`nav-btn ${isActive ? 'is-active' : ''}`}
+              data-tutorial-nav={item.label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')}>
               <Icon size={24} />
               <span className="nav-label">{item.label}</span>
             </Link>

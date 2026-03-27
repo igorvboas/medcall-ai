@@ -22,6 +22,8 @@ import { fetchSolutionsFromGateway } from '@/lib/fetchSolutions';
 import { useAuth } from '@/hooks/useAuth';
 import './consultas.css';
 import '../../components/solutions/solutions.css';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { CONSULTAS_STEPS } from '@/components/dashboard/tutorialSteps';
 
 // Tipos para exercícios físicos
 interface ExercicioFisico {
@@ -12318,6 +12320,7 @@ function ConsultasPageContent() {
         </div>
       )}
 
+      <TutorialPopup steps={CONSULTAS_STEPS} pageKey="consultas" showWelcome={false} />
     </div>
   );
 }

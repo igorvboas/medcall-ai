@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn, RefreshCw, Check, X, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { gatewayClient } from '@/lib/gatewayClient';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { AGENDA_STEPS } from '@/components/dashboard/tutorialSteps';
 import './agenda.css';
 
 interface ConsultationEvent {
@@ -1064,6 +1066,7 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+      <TutorialPopup steps={AGENDA_STEPS} pageKey="agenda" showWelcome={false} />
     </div>
   );
 }

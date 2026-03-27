@@ -801,8 +801,8 @@ body {
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
-  z-index: 1000; /* Z-index alto mas menor que o dropdown */
-  overflow-x: hidden;
+  z-index: 1000;
+  overflow: visible;
 }
 
 .dark .header {
@@ -3324,4 +3324,41 @@ body {
 .dark .audio-level-indicator .level-bar.speaking {
   background: #2d6293 !important;
   box-shadow: 0 0 8px rgba(45, 98, 147, 0.4) !important;
+}
+/* =============================================
+   TUTORIAL SYSTEM
+   ============================================= */
+
+/* Bloqueia sidebar durante tutorial */
+.tutorial-active .sidebar {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Bloqueia scroll do body */
+.tutorial-active {
+  overflow: hidden !important;
+}
+
+/* Bloqueia scroll em containers internos */
+.tutorial-active .main-content,
+.tutorial-active .dashboard-exact,
+.tutorial-active .page-content {
+  overflow: hidden !important;
+}
+
+/* Header fica abaixo do tutorial overlay */
+.tutorial-active .header {
+  z-index: 1 !important;
+}
+
+/* KPIs e cards ficam abaixo do tutorial */
+.tutorial-active .kpi,
+.tutorial-active .status-card,
+.tutorial-active .chart-card,
+.tutorial-active .calendar-card,
+.tutorial-active .weekly-chart,
+.tutorial-active .consultations-table {
+  z-index: auto !important;
+  position: relative;
 }

@@ -7,6 +7,8 @@ import { Plus, Search, MoreVertical, Edit, Trash2, Phone, Mail, MapPin, Calendar
 import { PatientForm } from '@/components/patients/PatientForm';
 import { supabase } from '@/lib/supabase';
 import { gatewayClient } from '@/lib/gatewayClient';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { PACIENTES_STEPS } from '@/components/dashboard/tutorialSteps';
 import './pacientes.css';
 
 // Tipos locais para pacientes - apenas campos da tabela patients
@@ -1157,6 +1159,7 @@ export default function PatientsPage() {
           </div>
         </div>
       )}
+      <TutorialPopup steps={PACIENTES_STEPS} pageKey="pacientes" showWelcome={false} />
     </div>
   );
 }
