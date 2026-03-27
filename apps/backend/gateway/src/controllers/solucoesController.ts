@@ -439,6 +439,57 @@ export async function addSolucaoSuplementacaoItem(req: AuthenticatedRequest, res
 }
 
 /**
+ * POST /solucao-suplementacao/:consultaId/delete-item
+ * Remove um item de uma categoria de suplementação
+ * Body: { category: 'suplementos'|'fitoterapicos'|'homeopatia'|'florais_bach', index: number }
+ */
+export async function deleteSolucaoSuplementacaoItem(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Não autorizado' });
+    }
+
+    const { consultaId } = req.params;
+    const { category, index } = req.body;
+
+    if (!category || !SUPLEMENTACAO_CATEGORIES.includes(category)) {
+      return res.status(400).json({ success: false, error: 'category inválida' });
+    }
+    if (index === undefined || index < 0) {
+      return res.status(400).json({ success: false, error: 'index inválido' });
+    }
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('s_suplementacao2')
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (!existing) return res.status(404).json({ success: false, error: 'Registro não encontrado' });
+
+    const categoryArray = existing[category] || [];
+    if (index >= categoryArray.length) {
+      return res.status(400).json({ success: false, error: 'Índice fora do range' });
+    }
+
+    categoryArray.splice(index, 1);
+
+    const { error: updateError } = await supabase
+      .from('s_suplementacao2')
+      .update({ [category]: categoryArray })
+      .eq('consulta_id', consultaId);
+
+    if (updateError) throw updateError;
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[deleteSolucaoSuplementacaoItem] Erro:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao excluir item' });
+  }
+}
+
+/**
  * GET /alimentacao/:consultaId
  * Tabela s_refeicao usa paciente (uuid), não consulta_id
  */
@@ -495,17 +546,209 @@ export async function getAlimentacao(req: AuthenticatedRequest, res: Response) {
     }
 
     // Transformar dados para o formato esperado pelo frontend
-    const refeicoes = [
+    const allRefs = [
       { id: 'ref_1', nome: 'Refeição 1', data: data.ref_1 },
       { id: 'ref_2', nome: 'Refeição 2', data: data.ref_2 },
       { id: 'ref_3', nome: 'Refeição 3', data: data.ref_3 },
-      { id: 'ref_4', nome: 'Refeição 4', data: data.ref_4 }
+      { id: 'ref_4', nome: 'Refeição 4', data: data.ref_4 },
+      { id: 'ref_5', nome: 'Refeição 5', data: data.ref_5 },
+      { id: 'ref_6', nome: 'Refeição 6', data: data.ref_6 },
+      { id: 'ref_7', nome: 'Refeição 7', data: data.ref_7 },
+      { id: 'ref_8', nome: 'Refeição 8', data: data.ref_8 },
+      { id: 'ref_9', nome: 'Refeição 9', data: data.ref_9 },
+      { id: 'ref_10', nome: 'Refeição 10', data: data.ref_10 }
     ];
+    // Filtrar apenas refeicoes que tem dados
+    const refeicoes = allRefs.filter(r => r.data != null);
 
-    return res.json({ success: true, alimentacao_data: refeicoes });
+    return res.json({ success: true, alimentacao_data: refeicoes, s_refeicao_id: data.id });
   } catch (error: any) {
     console.error('[getAlimentacao] ❌ Erro geral:', error?.message || error);
     return res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+  }
+}
+
+/**
+ * POST /alimentacao/:consultaId/add-refeicao
+ * Adiciona uma refeicao ao protocolo (usa o proximo ref_ disponivel)
+ */
+export async function addRefeicaoToProtocol(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+    const { consultaId } = req.params;
+    const { refeicaoData, nome } = req.body;
+
+    // Buscar consulta para pegar paciente
+    const { data: consulta } = await supabase
+      .from('consultations').select('patient_id').eq('id', consultaId).maybeSingle();
+    if (!consulta) return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+
+    // Buscar registro existente
+    const { data: existing } = await supabase
+      .from('s_refeicao').select('*').eq('paciente', consulta.patient_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+    // Encontrar proximo slot disponivel (ref_1 a ref_4)
+    const slots = ['ref_1', 'ref_2', 'ref_3', 'ref_4', 'ref_5', 'ref_6', 'ref_7', 'ref_8', 'ref_9', 'ref_10'];
+    let targetSlot: string | null = null;
+
+    if (existing) {
+      for (const slot of slots) {
+        if (!existing[slot]) { targetSlot = slot; break; }
+      }
+      if (!targetSlot) {
+        return res.status(400).json({ success: false, error: 'Limite de 10 refeições atingido. Exclua uma antes de adicionar.' });
+      }
+      const { error } = await supabase
+        .from('s_refeicao').update({ [targetSlot]: refeicaoData }).eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      targetSlot = 'ref_1';
+      const { error } = await supabase
+        .from('s_refeicao').insert({ paciente: consulta.patient_id, [targetSlot]: refeicaoData });
+      if (error) throw error;
+    }
+
+    return res.json({ success: true, slot: targetSlot });
+  } catch (error: any) {
+    console.error('[addRefeicaoToProtocol] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+/**
+ * POST /alimentacao/:consultaId/remove-refeicao
+ * Remove uma refeicao do protocolo (limpa o ref_ especificado)
+ */
+export async function removeRefeicaoFromProtocol(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+    const { consultaId } = req.params;
+    const { refId } = req.body; // ex: 'ref_1'
+
+    if (!refId || !['ref_1', 'ref_2', 'ref_3', 'ref_4', 'ref_5', 'ref_6', 'ref_7', 'ref_8', 'ref_9', 'ref_10'].includes(refId)) {
+      return res.status(400).json({ success: false, error: 'refId inválido' });
+    }
+
+    const { data: consulta } = await supabase
+      .from('consultations').select('patient_id').eq('id', consultaId).maybeSingle();
+    if (!consulta) return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+
+    const { data: existing } = await supabase
+      .from('s_refeicao').select('id').eq('paciente', consulta.patient_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+    if (!existing) return res.status(404).json({ success: false, error: 'Registro não encontrado' });
+
+    const { error } = await supabase
+      .from('s_refeicao').update({ [refId]: null }).eq('id', existing.id);
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[removeRefeicaoFromProtocol] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+/**
+ * POST /alimentacao/:consultaId/add-alimento-to-meal
+ * Adiciona um alimento a uma refeicao existente
+ * Body: { refId: 'ref_1', alimento: { nome, gramas, kcal, categoria } }
+ */
+export async function addAlimentoToMeal(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+    const { consultaId } = req.params;
+    const { refId, alimento } = req.body;
+
+    if (!refId || !alimento) {
+      return res.status(400).json({ success: false, error: 'refId e alimento são obrigatórios' });
+    }
+
+    const { data: consulta } = await supabase
+      .from('consultations').select('patient_id').eq('id', consultaId).maybeSingle();
+    if (!consulta) return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+
+    const { data: existing } = await supabase
+      .from('s_refeicao').select('*').eq('paciente', consulta.patient_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!existing) return res.status(404).json({ success: false, error: 'Registro de refeição não encontrado' });
+
+    // Parse dados atuais do ref
+    let currentData = existing[refId];
+    if (typeof currentData === 'string') {
+      try { currentData = JSON.parse(currentData); } catch { currentData = { principal: [], substituicoes: {} }; }
+    }
+    if (!currentData) currentData = { principal: [], substituicoes: {} };
+
+    // Adicionar alimento ao principal
+    const principal = currentData.principal || [];
+    principal.push(alimento);
+    currentData.principal = principal;
+
+    // Salvar
+    const { error } = await supabase
+      .from('s_refeicao').update({ [refId]: currentData }).eq('id', existing.id);
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[addAlimentoToMeal] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+}
+
+/**
+ * POST /alimentacao/:consultaId/remove-alimento-from-meal
+ * Remove um alimento de uma refeicao pelo indice
+ * Body: { refId: 'ref_1', itemIndex: 0 }
+ */
+export async function removeAlimentoFromMeal(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+    const { consultaId } = req.params;
+    const { refId, itemIndex } = req.body;
+
+    if (!refId || itemIndex === undefined) {
+      return res.status(400).json({ success: false, error: 'refId e itemIndex são obrigatórios' });
+    }
+
+    const { data: consulta } = await supabase
+      .from('consultations').select('patient_id').eq('id', consultaId).maybeSingle();
+    if (!consulta) return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+
+    const { data: existing } = await supabase
+      .from('s_refeicao').select('*').eq('paciente', consulta.patient_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!existing) return res.status(404).json({ success: false, error: 'Registro não encontrado' });
+
+    let currentData = existing[refId];
+    if (typeof currentData === 'string') {
+      try { currentData = JSON.parse(currentData); } catch { currentData = { principal: [], substituicoes: {} }; }
+    }
+    if (!currentData) return res.status(404).json({ success: false, error: 'Refeição não encontrada' });
+
+    const principal = currentData.principal || [];
+    if (itemIndex < 0 || itemIndex >= principal.length) {
+      return res.status(400).json({ success: false, error: 'Índice inválido' });
+    }
+
+    principal.splice(itemIndex, 1);
+    currentData.principal = principal;
+
+    const { error } = await supabase
+      .from('s_refeicao').update({ [refId]: currentData }).eq('id', existing.id);
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[removeAlimentoFromMeal] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
   }
 }
 
@@ -642,6 +885,87 @@ export async function updateAtividadeFisicaField(req: AuthenticatedRequest, res:
   } catch (error) {
     console.error('Erro ao atualizar atividade física:', error);
     return res.status(500).json({ success: false, error: 'Erro ao atualizar' });
+  }
+}
+
+/**
+ * GET /lista-exercicios-fisicos
+ */
+export async function addExercicioToProtocol(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Não autorizado' });
+    }
+
+    const { consultaId } = req.params;
+    const { nome_exercicio, nome_treino, grupo_muscular, series, repeticoes, descanso, observacoes } = req.body;
+
+    console.log('[addExercicioToProtocol] ➕ Adicionando exercício à consulta:', consultaId);
+
+    const { data, error } = await supabase
+      .from('s_exercicios_fisicos')
+      .insert({
+        consulta_id: consultaId,
+        nome_exercicio,
+        nome_treino,
+        grupo_muscular,
+        series,
+        repeticoes,
+        descanso,
+        observacoes
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[addExercicioToProtocol] ❌ Erro:', error);
+      throw error;
+    }
+
+    console.log('[addExercicioToProtocol] ✅ Exercício adicionado:', data);
+    return res.json({ success: true, exercicio: data });
+  } catch (error: any) {
+    console.error('[addExercicioToProtocol] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+  }
+}
+
+/**
+ * POST /atividade-fisica/:consultaId/delete-item
+ * Remove um exercício do protocolo de atividade física
+ * Body: { exercicioId: number }
+ */
+export async function removeExercicioFromProtocol(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Não autorizado' });
+    }
+
+    const { consultaId } = req.params;
+    const { exercicioId } = req.body;
+
+    console.log('[removeExercicioFromProtocol] 🗑️ Removendo exercício:', { consultaId, exercicioId });
+
+    if (!exercicioId) {
+      return res.status(400).json({ success: false, error: 'exercicioId é obrigatório' });
+    }
+
+    const { error } = await supabase
+      .from('s_exercicios_fisicos')
+      .delete()
+      .eq('id', exercicioId)
+      .eq('consulta_id', consultaId);
+
+    if (error) {
+      console.error('[removeExercicioFromProtocol] ❌ Erro:', error);
+      throw error;
+    }
+
+    console.log('[removeExercicioFromProtocol] ✅ Exercício removido');
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[removeExercicioFromProtocol] Erro:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Erro interno do servidor' });
   }
 }
 

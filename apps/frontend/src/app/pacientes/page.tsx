@@ -75,6 +75,7 @@ export default function PatientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [anamneseStatus, setAnamneseStatus] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
@@ -121,6 +122,20 @@ export default function PatientsPage() {
       console.log('👤 Primeiro paciente (exemplo):', data.patients[0]);
       setPatients(data.patients);
       setPagination(data.pagination);
+
+      // Buscar status da anamnese para cada paciente
+      if (data.patients.length > 0) {
+        const patientIds = data.patients.map((p: Patient) => p.id);
+        const { data: anamneseData } = await supabase
+          .from('a_cadastro_anamnese')
+          .select('paciente_id, status')
+          .in('paciente_id', patientIds);
+        if (anamneseData) {
+          const statusMap: Record<string, string> = {};
+          anamneseData.forEach((a: any) => { statusMap[a.paciente_id] = a.status; });
+          setAnamneseStatus(statusMap);
+        }
+      }
     } catch (err) {
       console.error('❌ Erro ao buscar pacientes:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -734,38 +749,42 @@ export default function PatientsPage() {
                     <div className="table-cell-divider"></div>
                     <div className="table-cell table-cell-acoes">
                       <div className="patient-actions-table">
-                        <button
-                          className="action-btn-table email"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSendAnamneseEmailAndWhatsApp(patient.id);
-                          }}
-                          disabled={sendingAnamnese === patient.id}
-                          title="Enviar anamnese por email e WhatsApp"
-                        >
-                          {sendingAnamnese === patient.id ? (
-                            <>
-                              <Loader2 size={16} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
-                              <span>Enviando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Send size={16} />
-                              <span>Email e WhatsApp</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          className={`action-btn-table copy ${copySuccess === patient.id ? 'success' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyAnamneseLink(patient.id);
-                          }}
-                          title="Copiar link da anamnese inicial"
-                        >
-                          <Copy size={16} />
-                          <span>Copiar Link</span>
-                        </button>
+                        {anamneseStatus[patient.id] !== 'preenchida' && (
+                          <button
+                            className="action-btn-table email"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendAnamneseEmailAndWhatsApp(patient.id);
+                            }}
+                            disabled={sendingAnamnese === patient.id}
+                            title="Enviar anamnese por email e WhatsApp"
+                          >
+                            {sendingAnamnese === patient.id ? (
+                              <>
+                                <Loader2 size={16} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
+                                <span>Enviando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send size={16} />
+                                <span>Email e WhatsApp</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                        {anamneseStatus[patient.id] !== 'preenchida' && (
+                          <button
+                            className={`action-btn-table copy ${copySuccess === patient.id ? 'success' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyAnamneseLink(patient.id);
+                            }}
+                            title="Copiar link da anamnese inicial"
+                          >
+                            <Copy size={16} />
+                            <span>Copiar Link</span>
+                          </button>
+                        )}
                         <Link
                           href={`/pacientes/detalhes/?id=${patient.id}`}
                           className="action-btn-table details"

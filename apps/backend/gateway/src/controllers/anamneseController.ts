@@ -326,7 +326,7 @@ export async function getAnamneseInicial(req: AuthenticatedRequest, res: Respons
 export async function saveAnamneseInicial(req: AuthenticatedRequest, res: Response) {
   try {
     // Rota pública - paciente não está logado
-    const { paciente_id, ...formData } = req.body;
+    const { paciente_id, consulta_id, ...formData } = req.body;
 
     if (!paciente_id) {
       return res.status(400).json({
@@ -373,10 +373,37 @@ export async function saveAnamneseInicial(req: AuthenticatedRequest, res: Respon
       }
     }
 
-    // Upsert na a_cadastro_anamnese (insert se não existe, update se já existe)
-    const { error: anamneseError } = await supabase
-      .from('a_cadastro_anamnese')
-      .upsert(anamnesePayload, { onConflict: 'paciente_id' });
+    // Salvar anamnese: se tem consulta_id, insere nova; senao, upsert pela primeira
+    let anamneseError;
+    if (consulta_id) {
+      // Nova consulta: sempre insere um novo registro
+      anamnesePayload.consulta_id = consulta_id;
+      const result = await supabase
+        .from('a_cadastro_anamnese')
+        .insert(anamnesePayload);
+      anamneseError = result.error;
+    } else {
+      // Primeira consulta: atualiza se existe, senao insere
+      const { data: existing } = await supabase
+        .from('a_cadastro_anamnese')
+        .select('id')
+        .eq('paciente_id', paciente_id)
+        .is('consulta_id', null)
+        .maybeSingle();
+
+      if (existing) {
+        const result = await supabase
+          .from('a_cadastro_anamnese')
+          .update(anamnesePayload)
+          .eq('id', existing.id);
+        anamneseError = result.error;
+      } else {
+        const result = await supabase
+          .from('a_cadastro_anamnese')
+          .insert(anamnesePayload);
+        anamneseError = result.error;
+      }
+    }
 
     if (anamneseError) {
       console.error('[saveAnamneseInicial] Erro ao salvar anamnese:', anamneseError);

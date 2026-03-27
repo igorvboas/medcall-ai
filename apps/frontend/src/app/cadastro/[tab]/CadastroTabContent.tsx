@@ -236,6 +236,7 @@ export default function CadastroTabContent() {
   const [alimentoFormData, setAlimentoFormData] = useState({ porcao_customizada: '', observacao: '' });
   const [alimentoSearch, setAlimentoSearch] = useState('');
   const [alimentoResults, setAlimentoResults] = useState<AlimentoNutricional[]>([]);
+  const [cadastroAlimentoResults, setCadastroAlimentoResults] = useState<Alimento[]>([]);
   const [alimentoSearchLoading, setAlimentoSearchLoading] = useState(false);
   const [showAlimentoSearch, setShowAlimentoSearch] = useState(false);
   const [showCreateAlimento, setShowCreateAlimento] = useState(false);
@@ -695,13 +696,21 @@ export default function CadastroTabContent() {
 
   // Buscar alimentos da tabela nutricional (referência)
   const searchAlimentos = async (searchVal: string) => {
-    if (!searchVal.trim()) { setAlimentoResults([]); return; }
+    if (!searchVal.trim()) { setAlimentoResults([]); setCadastroAlimentoResults([]); return; }
     try {
       setAlimentoSearchLoading(true);
-      const params = new URLSearchParams({ search: searchVal, limit: '15' });
-      const data = await gatewayClient.get<{ alimentos: AlimentoNutricional[] }>(`/alimentos-nutricionais?${params}`);
-      if (data.success) {
-        setAlimentoResults(data.alimentos);
+      // Buscar em ambas as fontes em paralelo
+      const [nutricionaisRes, cadastroRes] = await Promise.all([
+        gatewayClient.get<{ alimentos: AlimentoNutricional[] }>(`/alimentos-nutricionais?${new URLSearchParams({ search: searchVal, limit: '15' })}`),
+        gatewayClient.get<{ alimentos: Alimento[] }>(`/cadastro-alimentos?${new URLSearchParams({ search: searchVal, limit: '15' })}`)
+      ]);
+      if (nutricionaisRes.success) {
+        setAlimentoResults(nutricionaisRes.alimentos);
+      }
+      if (cadastroRes.success && cadastroRes.alimentos) {
+        setCadastroAlimentoResults(cadastroRes.alimentos);
+      } else {
+        setCadastroAlimentoResults([]);
       }
     } catch (err) {
       console.error('Erro ao buscar alimentos:', err);
@@ -945,6 +954,25 @@ export default function CadastroTabContent() {
       setAlimentoSearch('');
       setAlimentoResults([]);
       // Refresh detail
+      const detail = await gatewayClient.get<{ refeicao: Refeicao }>(`/cadastro-refeicoes/${refeicaoId}`);
+      if (detail.success) {
+        if (selectedRefeicao?.id === refeicaoId) setSelectedRefeicao(detail.refeicao);
+        if (editingRefeicao?.id === refeicaoId) setEditingRefeicao(detail.refeicao);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao adicionar alimento');
+    }
+  };
+
+  // Adicionar alimento já cadastrado diretamente à refeição
+  const handleAddCadastroAlimentoToRefeicao = async (refeicaoId: string, alimento: Alimento) => {
+    try {
+      const resp = await gatewayClient.post(`/cadastro-refeicoes/${refeicaoId}/alimentos`, { alimento_id: alimento.id });
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Alimento adicionado à refeição');
+      setAlimentoSearch('');
+      setAlimentoResults([]);
+      setCadastroAlimentoResults([]);
       const detail = await gatewayClient.get<{ refeicao: Refeicao }>(`/cadastro-refeicoes/${refeicaoId}`);
       if (detail.success) {
         if (selectedRefeicao?.id === refeicaoId) setSelectedRefeicao(detail.refeicao);
@@ -2009,39 +2037,81 @@ export default function CadastroTabContent() {
                                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
                               </div>
                             )}
-                            {alimentoResults.length > 0 && (
-                              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {alimentoResults.map(al => {
-                                  const alreadyAdded = editingRefeicao.alimentos?.some(a => a.cadastro_alimentos?.nome === al.nome);
-                                  return (
-                                    <div key={al.table_id} style={{
-                                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                      padding: '8px 10px', borderRadius: '8px', background: '#fff',
-                                      border: '1px solid #E2E8F0', cursor: alreadyAdded ? 'default' : 'pointer',
-                                      opacity: alreadyAdded ? 0.5 : 1,
-                                    }}
-                                      onClick={() => !alreadyAdded && handleAddAlimentoNutricionalToRefeicao(editingRefeicao.id, al)}
-                                    >
-                                      <div>
-                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{al.nome}</div>
-                                        <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '6px' }}>
-                                          {al.categoria && <span>{al.categoria}</span>}
-                                          {al.energia_kcal && <span>{al.energia_kcal} kcal</span>}
-                                          {al.proteina_g && <span>P: {al.proteina_g}g</span>}
-                                          {al.carboidrato_g && <span>C: {al.carboidrato_g}g</span>}
+                            {/* Meus Alimentos Cadastrados */}
+                            {cadastroAlimentoResults.length > 0 && (
+                              <>
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#1A3D61', padding: '6px 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meus Alimentos</div>
+                                <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {cadastroAlimentoResults.map(al => {
+                                    const alreadyAdded = editingRefeicao.alimentos?.some(a => a.alimento_id === al.id || a.cadastro_alimentos?.nome === al.nome);
+                                    return (
+                                      <div key={al.id} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '8px 10px', borderRadius: '8px', background: '#F0F9FF',
+                                        border: '1px solid #BAE6FD', cursor: alreadyAdded ? 'default' : 'pointer',
+                                        opacity: alreadyAdded ? 0.5 : 1,
+                                      }}
+                                        onClick={() => !alreadyAdded && handleAddCadastroAlimentoToRefeicao(editingRefeicao.id, al)}
+                                      >
+                                        <div>
+                                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{al.nome}</div>
+                                          <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '6px' }}>
+                                            {al.categoria && <span>{al.categoria}</span>}
+                                            {al.calorias && <span>{al.calorias} kcal</span>}
+                                            {al.proteinas && <span>P: {al.proteinas}g</span>}
+                                            {al.carboidratos && <span>C: {al.carboidratos}g</span>}
+                                          </div>
                                         </div>
+                                        {alreadyAdded ? (
+                                          <span style={{ fontSize: '11px', color: '#94A3B8' }}>Já adicionado</span>
+                                        ) : (
+                                          <Plus size={16} style={{ color: '#1A3D61', flexShrink: 0 }} />
+                                        )}
                                       </div>
-                                      {alreadyAdded ? (
-                                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>Já adicionado</span>
-                                      ) : (
-                                        <Plus size={16} style={{ color: '#1A3D61', flexShrink: 0 }} />
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
                             )}
-                            {alimentoSearch.trim() && !alimentoSearchLoading && alimentoResults.length === 0 && (
+                            {/* Alimentos Nutricionais (TACO) */}
+                            {alimentoResults.length > 0 && (
+                              <>
+                                {cadastroAlimentoResults.length > 0 && (
+                                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', padding: '6px 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Base Nutricional</div>
+                                )}
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {alimentoResults.map(al => {
+                                    const alreadyAdded = editingRefeicao.alimentos?.some(a => a.cadastro_alimentos?.nome === al.nome);
+                                    return (
+                                      <div key={al.table_id} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '8px 10px', borderRadius: '8px', background: '#fff',
+                                        border: '1px solid #E2E8F0', cursor: alreadyAdded ? 'default' : 'pointer',
+                                        opacity: alreadyAdded ? 0.5 : 1,
+                                      }}
+                                        onClick={() => !alreadyAdded && handleAddAlimentoNutricionalToRefeicao(editingRefeicao.id, al)}
+                                      >
+                                        <div>
+                                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{al.nome}</div>
+                                          <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '6px' }}>
+                                            {al.categoria && <span>{al.categoria}</span>}
+                                            {al.energia_kcal && <span>{al.energia_kcal} kcal</span>}
+                                            {al.proteina_g && <span>P: {al.proteina_g}g</span>}
+                                            {al.carboidrato_g && <span>C: {al.carboidrato_g}g</span>}
+                                          </div>
+                                        </div>
+                                        {alreadyAdded ? (
+                                          <span style={{ fontSize: '11px', color: '#94A3B8' }}>Já adicionado</span>
+                                        ) : (
+                                          <Plus size={16} style={{ color: '#1A3D61', flexShrink: 0 }} />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                            {alimentoSearch.trim() && !alimentoSearchLoading && alimentoResults.length === 0 && cadastroAlimentoResults.length === 0 && (
                               <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', padding: '8px 0' }}>
                                 Nenhum alimento encontrado.
                               </p>

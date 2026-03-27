@@ -7,7 +7,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search, Send,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight, Copy, Loader2, ClipboardCheck
 } from 'lucide-react';
 import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -3536,6 +3536,15 @@ function SuplemementacaoSection({
   const [error, setError] = useState<string | null>(null);
 
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+  const [showAddPanel, setShowAddPanel] = useState<'suplementos' | 'fitoterapicos' | false>(false);
+  const [supSearchQuery, setSupSearchQuery] = useState('');
+  const [supSearchResults, setSupSearchResults] = useState<any[]>([]);
+  const [supSearchLoading, setSupSearchLoading] = useState(false);
+  const [favSupplementos, setFavSupplementos] = useState<any[]>([]);
+  const [favFitoterapicos, setFavFitoterapicos] = useState<any[]>([]);
+  const [showManualSup, setShowManualSup] = useState(false);
+  const [manualSupForm, setManualSupForm] = useState({ nome: '', dosagem: '', horario: '', objetivo: '' });
+  const { showSuccess } = useNotifications();
 
   const handleAddItem = async (category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach') => {
     try {
@@ -3556,13 +3565,13 @@ function SuplemementacaoSection({
 
   const handleDeleteItem = async (category: 'suplementos' | 'fitoterapicos' | 'homeopatia' | 'florais_bach', index: number) => {
     const key = `${category}-${index}`;
-    if (!confirm('Tem certeza que deseja excluir este item?')) return;
     try {
       setDeletingItem(key);
       const response = await gatewayClient.post(`/solucao-suplementacao/${consultaId}/delete-item`, { category, index });
       if (!response.success) {
         throw new Error((response as { error?: string }).error || 'Erro ao excluir item');
       }
+      showSuccess('Item excluído!');
       await loadSuplementacaoData();
     } catch (err) {
       console.error('Erro ao excluir item:', err);
@@ -3627,6 +3636,45 @@ function SuplemementacaoSection({
     }
   };
 
+  // Buscar favoritos de suplementos e fitoterapicos
+  useEffect(() => {
+    const loadFavs = async () => {
+      try {
+        const [supRes, fitoRes] = await Promise.all([
+          gatewayClient.get('/cadastro/suplementos?favorito=true&limit=50'),
+          gatewayClient.get('/cadastro/suplementos?favorito=true&tipo_suplemento=Fitoterápico&limit=50')
+        ]);
+        if (supRes.success) setFavSupplementos((supRes.data || []).filter((s: any) => s.tipo !== 'Fitoterápico'));
+        if (fitoRes.success) setFavFitoterapicos(fitoRes.data || []);
+      } catch (e) { console.error(e); }
+    };
+    loadFavs();
+  }, []);
+
+  // Busca de suplementos/fitoterapicos
+  useEffect(() => {
+    if (!showAddPanel) { setSupSearchResults([]); return; }
+    const searchVal = supSearchQuery.trim();
+    const timeout = setTimeout(async () => {
+      setSupSearchLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: '15' });
+        if (searchVal) params.set('search', searchVal);
+        if (showAddPanel === 'fitoterapicos') {
+          params.set('tipo_suplemento', 'Fitoterápico');
+        }
+        const res = await gatewayClient.get(`/cadastro/suplementos?${params}`);
+        let items = res.success ? (res.data || []) : [];
+        // Filtrar no frontend para garantir separacao
+        if (showAddPanel === 'suplementos') {
+          items = items.filter((s: any) => s.tipo !== 'Fitoterápico');
+        }
+        setSupSearchResults(items);
+      } catch (e) { console.error(e); setSupSearchResults([]); }
+      finally { setSupSearchLoading(false); }
+    }, searchVal ? 400 : 0);
+    return () => clearTimeout(timeout);
+  }, [supSearchQuery, showAddPanel]);
 
   // Mostrar loading no primeiro carregamento
   if (loading && !error) {
@@ -3711,12 +3759,7 @@ function SuplemementacaoSection({
     );
 
     if (items.length === 0) {
-      return (
-        <CollapsibleSection title={title} defaultOpen={true}>
-          <p className="suplementacao-empty-text">Nenhum item cadastrado</p>
-          {addButton}
-        </CollapsibleSection>
-      );
+      return null;
     }
 
     return (
@@ -3888,18 +3931,35 @@ function SuplemementacaoSection({
               </div>
             </div>
           ))}
-          {addButton}
         </div>
       </CollapsibleSection>
     );
   };
 
-  const handleAddFromFavorite = async (item: any, category: 'suplementos' | 'fitoterapicos') => {
+  // Adicionar suplemento manual
+  const handleAddManualSup = async (category: 'suplementos' | 'fitoterapicos') => {
+    if (!manualSupForm.nome.trim()) { showError('Nome é obrigatório.'); return; }
+    try {
+      setAddingCategory(category);
+      await gatewayClient.post(`/solucao-suplementacao/${consultaId}/add-item`, {
+        category,
+        item: manualSupForm,
+      });
+      showSuccess('Item adicionado!');
+      setShowManualSup(false);
+      setShowAddPanel(false);
+      setManualSupForm({ nome: '', dosagem: '', horario: '', objetivo: '' });
+      await loadSuplementacaoData();
+    } catch (err) { showError('Erro ao adicionar.'); }
+    finally { setAddingCategory(null); }
+  };
+
+  const handleAddFromFavoriteOrSearch = async (item: any, category: 'suplementos' | 'fitoterapicos') => {
     try {
       setAddingCategory(category);
       const response = await gatewayClient.post(`/solucao-suplementacao/${consultaId}/add-item`, {
         category,
-        prefill: {
+        item: {
           nome: item.nome,
           dosagem: item.dosagem || '',
           horario: item.horario || '',
@@ -3907,19 +3967,134 @@ function SuplemementacaoSection({
         }
       });
       if (response.success) {
+        showSuccess('Item adicionado!');
+        setShowAddPanel(false);
+        setSupSearchQuery('');
         await loadSuplementacaoData();
       }
     } catch (err) {
-      console.error('Erro ao adicionar favorito:', err);
+      console.error('Erro ao adicionar:', err);
     } finally {
       setAddingCategory(null);
     }
   };
 
+  const renderSupAddPanel = (category: 'suplementos' | 'fitoterapicos') => {
+    const isSuplemento = category === 'suplementos';
+    const label = isSuplemento ? 'Adicionar Suplemento' : 'Adicionar Fitoterápico';
+    const favs = isSuplemento ? favSupplementos : favFitoterapicos;
+    const borderColor = isSuplemento ? '#BAE6FD' : '#BBF7D0';
+    const accentColor = isSuplemento ? '#1A3D61' : '#166534';
+    const isOpen = showAddPanel === category;
+
+    return (
+      <div style={{ flex: 1 }}>
+        <button
+          onClick={() => { setShowAddPanel(isOpen ? false : category); setSupSearchQuery(''); setSupSearchResults([]); setShowManualSup(false); }}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '12px 16px', borderRadius: 10,
+            border: isOpen ? `2px solid ${accentColor}` : '1.5px dashed #94A3B8',
+            background: isOpen ? (isSuplemento ? '#EFF6FF' : '#F0FDF4') : 'transparent',
+            color: accentColor, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          {label}
+        </button>
+        {isOpen && (
+          <div style={{ marginTop: 8, border: `1.5px solid ${borderColor}`, borderRadius: 12, overflow: 'hidden', background: '#F8FAFC' }}>
+            {/* Favoritos */}
+            {favs.length > 0 && (
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  Favoritos
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {favs.map((item: any) => (
+                    <button key={item.id} onClick={() => handleAddFromFavoriteOrSearch(item, category)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, border: `1px solid ${borderColor}`, background: '#fff', fontSize: 12, fontWeight: 600, color: accentColor, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                      {item.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Busca */}
+            <div style={{ padding: '12px 16px' }}>
+              <input type="text" placeholder={`Buscar ${isSuplemento ? 'suplemento' : 'fitoterápico'} cadastrado...`}
+                value={supSearchQuery} onChange={e => setSupSearchQuery(e.target.value)} autoFocus
+                style={{ width: '100%', padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', marginBottom: 8 }} />
+              {supSearchLoading && <div style={{ textAlign: 'center', padding: 8 }}><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>}
+              {supSearchResults.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, textTransform: 'uppercase', padding: '4px 0 6px' }}>
+                    {supSearchQuery.trim() ? 'Resultados' : 'Meus Cadastrados'}
+                  </div>
+                  <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                    {supSearchResults.map((item: any) => (
+                      <div key={item.id} onClick={() => handleAddFromFavoriteOrSearch(item, category)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: '#fff', border: `1px solid ${borderColor}` }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                          <div style={{ fontSize: 11, color: '#64748B' }}>
+                            {item.dosagem || ''}{item.objetivo ? ` · ${item.objetivo}` : ''}
+                          </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {supSearchQuery.trim() && !supSearchLoading && supSearchResults.length === 0 && (
+                <p style={{ fontSize: 12, color: '#64748B', textAlign: 'center', padding: '4px 0' }}>Nenhum encontrado.</p>
+              )}
+              {/* Criar manual */}
+              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 10, marginTop: 4 }}>
+                {!showManualSup ? (
+                  <button onClick={() => setShowManualSup(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: accentColor, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    Criar manualmente
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input type="text" placeholder="Nome *" value={manualSupForm.nome} onChange={e => setManualSupForm(p => ({ ...p, nome: e.target.value }))}
+                      style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                    <input type="text" placeholder="Dosagem" value={manualSupForm.dosagem} onChange={e => setManualSupForm(p => ({ ...p, dosagem: e.target.value }))}
+                      style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <input type="text" placeholder="Horário" value={manualSupForm.horario} onChange={e => setManualSupForm(p => ({ ...p, horario: e.target.value }))}
+                        style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                      <input type="text" placeholder="Objetivo" value={manualSupForm.objetivo} onChange={e => setManualSupForm(p => ({ ...p, objetivo: e.target.value }))}
+                        style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => setShowManualSup(false)}
+                        style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={() => handleAddManualSup(category)}
+                        style={{ flex: 1, padding: 8, borderRadius: 8, border: 'none', background: accentColor, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Adicionar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="anamnese-sections">
-      <FavoritesPanel type="suplementos" onSelect={(item) => handleAddFromFavorite(item, 'suplementos')} />
-      <FavoritesPanel type="fitoterapicos" onSelect={(item) => handleAddFromFavorite(item, 'fitoterapicos')} />
+      {/* Botoes Adicionar Suplemento / Fitoterapico */}
+      <div style={{ marginTop: 20, marginBottom: 16, display: 'flex', gap: 10 }}>
+        {renderSupAddPanel('suplementos')}
+        {renderSupAddPanel('fitoterapicos')}
+      </div>
       {renderCategoryTable("1. Suplementos", "suplementos", effectiveSuplementacaoData.suplementos)}
       {renderCategoryTable("2. Fitoterápicos", "fitoterapicos", effectiveSuplementacaoData.fitoterapicos)}
       {renderCategoryTable("3. Homeopatia", "homeopatia", effectiveSuplementacaoData.homeopatia)}
@@ -3934,12 +4109,22 @@ function AlimentacaoSection({
 }: {
   consultaId: string;
 }) {
-  const { showError } = useNotifications();
+  const { showError, showSuccess } = useNotifications();
 
   const [alimentacaoData, setAlimentacaoData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deletingMeal, setDeletingMeal] = useState<string | null>(null);
+  const [showAddSearch, setShowAddSearch] = useState<'refeicao' | false>(false);
+  const [addSearchQuery, setAddSearchQuery] = useState('');
+  const [addSearchResults, setAddSearchResults] = useState<any[]>([]);
+  const [addSearchLoading, setAddSearchLoading] = useState(false);
+  const [addToMealId, setAddToMealId] = useState<string | null>(null);
+  const [mealAlimentoSearch, setMealAlimentoSearch] = useState('');
+  const [mealAlimentoResults, setMealAlimentoResults] = useState<any[]>([]);
+  const [mealAlimentoLoading, setMealAlimentoLoading] = useState(false);
+  const [favRefeicoes, setFavRefeicoes] = useState<any[]>([]);
+  const [favAlimentos, setFavAlimentos] = useState<any[]>([]);
 
   useEffect(() => {
     loadAlimentacaoData();
@@ -3957,6 +4142,165 @@ function AlimentacaoSection({
       window.removeEventListener('alimentacao-data-refresh', handleRefresh);
     };
   }, []);
+
+  // Buscar favoritos de refeicoes e alimentos
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const [refRes, alRes] = await Promise.all([
+          gatewayClient.get('/cadastro-refeicoes?favoritos=true&limit=50'),
+          gatewayClient.get('/cadastro-alimentos?favoritos=true&limit=50')
+        ]);
+        if (refRes.success && refRes.refeicoes) {
+          // Buscar detalhes de cada refeicao para ter os alimentos
+          const detailedRefeicoes = await Promise.all(
+            refRes.refeicoes.map(async (ref: any) => {
+              try {
+                const detail = await gatewayClient.get(`/cadastro-refeicoes/${ref.id}`);
+                return detail.success ? detail.refeicao : ref;
+              } catch { return ref; }
+            })
+          );
+          setFavRefeicoes(detailedRefeicoes);
+        }
+        if (alRes.success) setFavAlimentos(alRes.alimentos || []);
+      } catch (e) {
+        console.error('Erro ao carregar favoritos:', e);
+      }
+    };
+    loadFavorites();
+  }, []);
+
+  // Buscar alimentos e refeicoes para adicionar
+  useEffect(() => {
+    if (!showAddSearch || !addSearchQuery.trim()) { setAddSearchResults([]); return; }
+    const timeout = setTimeout(async () => {
+      setAddSearchLoading(true);
+      try {
+        const results: any[] = [];
+
+        // Buscar refeicoes se painel de refeicao
+        if (showAddSearch === 'refeicao') {
+          const refRes = await gatewayClient.get(`/cadastro-refeicoes?search=${encodeURIComponent(addSearchQuery)}&limit=10`);
+          if (refRes.success && refRes.refeicoes) {
+            const detailed = await Promise.all(
+              refRes.refeicoes.map(async (r: any) => {
+                try {
+                  const detail = await gatewayClient.get(`/cadastro-refeicoes/${r.id}`);
+                  return { ...(detail.success ? detail.refeicao : r), _type: 'refeicao' };
+                } catch { return { ...r, _type: 'refeicao' }; }
+              })
+            );
+            detailed.forEach((r: any) => results.push(r));
+          }
+        }
+
+        // Buscar alimentos se painel de alimento
+        if (showAddSearch === 'alimento') {
+          const alRes = await gatewayClient.get(`/cadastro-alimentos?search=${encodeURIComponent(addSearchQuery)}&limit=10`);
+          if (alRes.success && alRes.alimentos) {
+            alRes.alimentos.forEach((a: any) => results.push({ ...a, _type: 'alimento' }));
+          }
+        }
+        setAddSearchResults(results);
+      } catch (e) {
+        console.error('Erro ao buscar:', e);
+      } finally {
+        setAddSearchLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [addSearchQuery, showAddSearch]);
+
+  // Adicionar refeicao/alimento ao protocolo de alimentacao da consulta
+  const handleAddItemToProtocol = async (item: any) => {
+    try {
+      // Montar dados da refeicao no formato ref_X
+      let principalItems: any[] = [];
+
+      if (item._type === 'refeicao' && item.alimentos && item.alimentos.length > 0) {
+        // Refeicao com alimentos cadastrados - cada alimento vira um item principal
+        principalItems = item.alimentos.map((a: any) => {
+          const al = a.cadastro_alimentos || a;
+          return {
+            alimento: al.nome || 'Item',
+            gramas: parseFloat(a.porcao_customizada || al.porcao || '0') || 0,
+            kcal: parseFloat(String(al.calorias || '0')) || 0,
+            categoria: (al.categoria || '').toLowerCase(),
+          };
+        });
+      } else {
+        // Alimento individual
+        principalItems = [{
+          alimento: item.nome,
+          gramas: parseFloat(item.porcao || '0') || 0,
+          kcal: parseFloat(String(item.calorias || '0')) || 0,
+          categoria: (item.categoria || '').toLowerCase(),
+        }];
+      }
+
+      const refeicaoData = {
+        principal: principalItems,
+        substituicoes: {}
+      };
+
+      const resp = await gatewayClient.post(`/alimentacao/${consultaId}/add-refeicao`, {
+        refeicaoData: JSON.stringify(refeicaoData),
+        nome: item.nome
+      });
+
+      if (!resp.success) throw new Error(resp.error);
+
+      showSuccess('Refeição adicionada ao protocolo!');
+      setShowAddSearch(false);
+      setAddSearchQuery('');
+      setAddSearchResults([]);
+      // Recarregar dados
+      loadAlimentacaoData();
+    } catch (err: any) {
+      showError(err?.message || 'Erro ao adicionar item.');
+      console.error(err);
+    }
+  };
+
+  // Busca de alimentos para adicionar dentro de uma refeicao
+  useEffect(() => {
+    if (!addToMealId || !mealAlimentoSearch.trim()) { setMealAlimentoResults([]); return; }
+    const timeout = setTimeout(async () => {
+      setMealAlimentoLoading(true);
+      try {
+        const res = await gatewayClient.get(`/cadastro-alimentos?search=${encodeURIComponent(mealAlimentoSearch)}&limit=10`);
+        setMealAlimentoResults(res.success && res.alimentos ? res.alimentos : []);
+      } catch { setMealAlimentoResults([]); }
+      finally { setMealAlimentoLoading(false); }
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [mealAlimentoSearch, addToMealId]);
+
+  // Adicionar alimento dentro de uma refeicao existente
+  const handleAddAlimentoToMeal = async (mealId: string, mealIndex: number, alimento: any) => {
+    try {
+      const resp = await gatewayClient.post(`/alimentacao/${consultaId}/add-alimento-to-meal`, {
+        refId: mealId,
+        alimento: {
+          alimento: alimento.nome,
+          gramas: parseFloat(alimento.porcao || '0') || 0,
+          kcal: parseFloat(String(alimento.calorias || '0')) || 0,
+          categoria: (alimento.categoria || '').toLowerCase(),
+        }
+      });
+      if (!resp.success) throw new Error(resp.error);
+
+      showSuccess('Alimento adicionado!');
+      setAddToMealId(null);
+      setMealAlimentoSearch('');
+      setMealAlimentoResults([]);
+      loadAlimentacaoData();
+    } catch (err: any) {
+      console.error('Erro ao adicionar alimento:', err);
+      showError(err?.message || 'Erro ao adicionar alimento.');
+    }
+  };
 
   const loadAlimentacaoData = async () => {
     try {
@@ -4039,36 +4383,49 @@ function AlimentacaoSection({
   };
 
   const handleDeleteMeal = async (mealId: string, mealIndex: number) => {
-    if (!confirm('Tem certeza que deseja excluir esta refeicao?')) return;
+    if (!confirm('Tem certeza que deseja excluir esta refeição?')) return;
     try {
       setDeletingMeal(mealId || `meal-${mealIndex}`);
-      const response = await gatewayClient.post(`/alimentacao/${consultaId}/delete-meal`, {
-        mealId,
-        mealIndex
+      // mealId e 'ref_1', 'ref_2', etc.
+      const response = await gatewayClient.post(`/alimentacao/${consultaId}/remove-refeicao`, {
+        refId: mealId
       });
       if (response.success) {
+        showSuccess('Refeição excluída!');
         await loadAlimentacaoData();
       }
     } catch (error) {
       console.error('Erro ao excluir refeicao:', error);
+      showError('Erro ao excluir refeição.');
     } finally {
       setDeletingMeal(null);
     }
   };
 
   const handleDeletePrincipalItem = async (mealIndex: number, itemIndex: number) => {
-    if (!confirm('Tem certeza que deseja excluir este item?')) return;
     try {
-      const response = await gatewayClient.post(`/alimentacao/${consultaId}/delete-item`, {
-        mealIndex,
-        itemIndex,
-        type: 'principal'
+      const currentMeals = Array.isArray(alimentacaoData) ? alimentacaoData : [];
+      const meal = currentMeals[mealIndex];
+      console.log('🗑️ Excluindo alimento:', { mealIndex, itemIndex, mealId: meal?.id, meal });
+      if (!meal || !meal.id) {
+        showError('Refeição não encontrada.');
+        return;
+      }
+
+      const response = await gatewayClient.post(`/alimentacao/${consultaId}/remove-alimento-from-meal`, {
+        refId: meal.id,
+        itemIndex
       });
+      console.log('🗑️ Response:', response);
       if (response.success) {
+        showSuccess('Alimento excluído!');
         await loadAlimentacaoData();
+      } else {
+        showError(response.error || 'Erro ao excluir.');
       }
     } catch (error) {
       console.error('Erro ao excluir item:', error);
+      showError('Erro ao excluir alimento.');
     }
   };
 
@@ -4128,9 +4485,81 @@ function AlimentacaoSection({
 
   return (
     <div className="anamnese-sections">
-      <FavoritesPanel type="refeicoes" onSelect={(item) => {
-        console.log('Adicionar refeicao favorita:', item);
-      }} />
+      {/* Botao Adicionar Refeicao */}
+      <div style={{ marginTop: '20px', marginBottom: '16px' }}>
+        <button
+          onClick={() => { setShowAddSearch(showAddSearch ? false : 'refeicao'); setAddSearchQuery(''); setAddSearchResults([]); }}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            padding: '12px 16px', borderRadius: '10px',
+            border: showAddSearch ? '2px solid #1A3D61' : '1.5px dashed #94A3B8',
+            background: showAddSearch ? '#EFF6FF' : 'transparent',
+            color: '#1A3D61', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            transition: 'all 0.2s',
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Adicionar Refeição
+        </button>
+
+        {showAddSearch && (
+          <div style={{ marginTop: '8px', border: '1.5px solid #BAE6FD', borderRadius: '12px', overflow: 'hidden', background: '#F8FAFC' }}>
+            {/* Favoritos de refeicao */}
+            {favRefeicoes.length > 0 && (
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#1A3D61', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  Favoritos
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {favRefeicoes.map((item: any) => {
+                    const alimentosNomes = item.alimentos?.map((a: any) => a.cadastro_alimentos?.nome || a.nome).filter(Boolean) || [];
+                    return (
+                      <button key={item.id} onClick={() => { handleAddItemToProtocol({ ...item, _type: 'refeicao' }); setShowAddSearch(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '1px solid #BAE6FD', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A3D61" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '13px', color: '#0F172A' }}>{item.nome}</div>
+                          {alimentosNomes.length > 0 && (
+                            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alimentosNomes.join(', ')}</div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* Busca de refeicao */}
+            <div style={{ padding: '12px 16px' }}>
+              <input
+                type="text" placeholder="Buscar refeição cadastrada..."
+                value={addSearchQuery} onChange={e => setAddSearchQuery(e.target.value)} autoFocus
+                style={{ width: '100%', padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+              />
+              {addSearchLoading && <div style={{ textAlign: 'center', padding: '8px' }}><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>}
+              {addSearchResults.filter((r: any) => r._type === 'refeicao').length > 0 && (
+                <div style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {addSearchResults.filter((r: any) => r._type === 'refeicao').map((item: any) => (
+                    <div key={item.id} onClick={() => { handleAddItemToProtocol(item); setShowAddSearch(false); }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', background: '#fff', border: '1px solid #BAE6FD' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{item.alimentos?.map((a: any) => a.cadastro_alimentos?.nome || a.nome).filter(Boolean).join(', ') || 'Refeição'}</div>
+                      </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A3D61" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {addSearchQuery.trim() && !addSearchLoading && addSearchResults.filter((r: any) => r._type === 'refeicao').length === 0 && (
+                <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', padding: '8px 0' }}>Nenhuma refeição encontrada.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {mealsToRender.length === 0 ? (
         <div className="anamnese-sections">
           <p style={{ color: '#666', fontStyle: 'italic', padding: '20px' }}>
@@ -4221,6 +4650,80 @@ function AlimentacaoSection({
                         ))}
                       </div>
                     )}
+
+                    {/* Botao adicionar alimento dentro da refeicao */}
+                    <div style={{ marginTop: '10px' }}>
+                      {addToMealId === meal.id ? (
+                        <div style={{ border: '1.5px solid #BBF7D0', borderRadius: '10px', overflow: 'hidden', background: '#F8FAFC' }}>
+                          {/* Favoritos de alimentos */}
+                          {favAlimentos.length > 0 && (
+                            <div style={{ padding: '10px 12px', borderBottom: '1px solid #E2E8F0' }}>
+                              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                Favoritos
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {favAlimentos.map((al: any) => (
+                                  <button key={al.id} onClick={() => handleAddAlimentoToMeal(meal.id, index, al)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '16px', border: '1px solid #BBF7D0', background: '#fff', fontSize: '11px', fontWeight: 600, color: '#166534', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                    {al.nome}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Busca */}
+                          <div style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                              <input
+                                type="text" placeholder="Buscar alimento..."
+                                value={mealAlimentoSearch} onChange={e => setMealAlimentoSearch(e.target.value)} autoFocus
+                                style={{ flex: 1, padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px' }}
+                              />
+                              <button onClick={() => { setAddToMealId(null); setMealAlimentoSearch(''); setMealAlimentoResults([]); }}
+                                style={{ padding: '8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                              </button>
+                            </div>
+                            {mealAlimentoLoading && (
+                              <div style={{ textAlign: 'center', padding: '6px' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                              </div>
+                            )}
+                            {mealAlimentoResults.length > 0 && (
+                              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {mealAlimentoResults.map((al: any) => (
+                                  <div key={al.id} onClick={() => handleAddAlimentoToMeal(meal.id, index, al)}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', background: '#fff', border: '1px solid #E2E8F0' }}>
+                                    <div>
+                                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>{al.nome}</div>
+                                      <div style={{ fontSize: '10px', color: '#64748B' }}>{al.categoria || ''}{al.calorias ? ` · ${al.calorias} kcal` : ''}</div>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {mealAlimentoSearch.trim() && !mealAlimentoLoading && mealAlimentoResults.length === 0 && (
+                              <p style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', padding: '4px 0' }}>Nenhum alimento encontrado.</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setAddToMealId(meal.id); setMealAlimentoSearch(''); setMealAlimentoResults([]); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                            borderRadius: '8px', border: '1px dashed #94A3B8', background: 'transparent',
+                            color: '#64748B', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                          Adicionar alimento
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {hasSubstituicoes && (
@@ -5007,6 +5510,7 @@ function ConsultationDetailsOverview({
               <span>Evolução</span>
               <ArrowRight size={18} />
             </button>
+
           </div>
         </div>
       </div>
@@ -5045,6 +5549,12 @@ function ConsultasPageContent() {
 
   const [selectedSection, setSelectedSection] = useState<'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCOES' | 'EXAMES' | 'EVOLUCAO' | null>(null);
   const [forceShowSolutionSelection, setForceShowSolutionSelection] = useState(false);
+
+  // Estados para anamnese na lista de consultas
+  const [consultaAnamneseStatus, setConsultaAnamneseStatus] = useState<Record<string, string>>({});
+  const [firstConsultaByPatient, setFirstConsultaByPatient] = useState<Record<string, string>>({});
+  const [sendingAnamneseId, setSendingAnamneseId] = useState<string | null>(null);
+  const [copiedAnamneseId, setCopiedAnamneseId] = useState<string | null>(null);
   const [downloadingDocx, setDownloadingDocx] = useState(false);
 
   // Verificar se o usuário é admin
@@ -5346,6 +5856,16 @@ function ConsultasPageContent() {
   const [editingExercicio, setEditingExercicio] = useState<{ id: number, field: string } | null>(null);
   const [selectedTreino, setSelectedTreino] = useState<string | null>(null);
   const [videoHelpExercicio, setVideoHelpExercicio] = useState<string | null>(null);
+  const [showAddExercicio, setShowAddExercicio] = useState(false);
+  const [editingExercicioId, setEditingExercicioId] = useState<number | null>(null);
+  const [editExercicioForm, setEditExercicioForm] = useState<Record<string, string>>({});
+  const [addExercicioSearch, setAddExercicioSearch] = useState('');
+  const [addExercicioResults, setAddExercicioResults] = useState<any[]>([]);
+  const [addExercicioLoading, setAddExercicioLoading] = useState(false);
+  const [addExercicioTreino, setAddExercicioTreino] = useState<string>('Treino A');
+  const [favTreinos, setFavTreinos] = useState<any[]>([]);
+  const [showManualExercicio, setShowManualExercicio] = useState(false);
+  const [manualExercicioForm, setManualExercicioForm] = useState({ nome_exercicio: '', grupo_muscular: '', series: '', repeticoes: '', descanso: '', observacoes: '' });
 
   // Estado para autocomplete de exercícios
   const [exercicioSuggestions, setExercicioSuggestions] = useState<Array<{ id: number, atividade: string, grupo_muscular: string }>>([]);
@@ -5836,6 +6356,60 @@ function ConsultasPageContent() {
     }
   }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
 
+  // Buscar status de anamnese e primeira consulta por paciente
+  useEffect(() => {
+    if (!consultations || consultations.length === 0) return;
+    const fetchAnamneseStatuses = async () => {
+      try {
+        // Identificar pacientes unicos
+        const patientIds = Array.from(new Set(consultations.map(c => c.patient_id).filter(Boolean)));
+        if (patientIds.length === 0) return;
+
+        // Buscar primeira consulta de cada paciente direto do banco
+        const firstMap: Record<string, string> = {};
+        for (const pid of patientIds) {
+          const { data: firstConsulta } = await supabase
+            .from('consultations')
+            .select('id')
+            .eq('patient_id', pid)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (firstConsulta) {
+            firstMap[pid] = firstConsulta.id;
+          }
+        }
+        setFirstConsultaByPatient(firstMap);
+
+        // Buscar anamneses preenchidas (com consulta_id agora disponivel)
+        const { data: anamneseData } = await supabase
+          .from('a_cadastro_anamnese')
+          .select('paciente_id, consulta_id, status')
+          .in('paciente_id', patientIds);
+
+        if (anamneseData) {
+          const statusMap: Record<string, string> = {};
+          anamneseData.forEach((a: any) => {
+            if (a.consulta_id) {
+              // Anamnese vinculada a consulta especifica
+              statusMap[a.consulta_id] = a.status;
+            } else {
+              // Anamnese inicial (sem consulta_id) → vincular a primeira consulta
+              const firstId = firstMap[a.paciente_id];
+              if (firstId) {
+                statusMap[firstId] = a.status;
+              }
+            }
+          });
+          setConsultaAnamneseStatus(statusMap);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar status anamnese:', err);
+      }
+    };
+    fetchAnamneseStatuses();
+  }, [consultations]);
+
   // Efeito para cancelar automaticamente consultas de Telemedicina expiradas
   useEffect(() => {
     // Só executar se houver consultas carregadas
@@ -6178,6 +6752,243 @@ function ConsultasPageContent() {
     }
   };
 
+  // Buscar favoritos de treinos
+  useEffect(() => {
+    const loadFavTreinos = async () => {
+      try {
+        const res = await gatewayClient.get('/cadastro-treinos?favoritos=true&limit=50');
+        if (res.success) setFavTreinos(res.treinos || res.data || []);
+      } catch (e) { console.error(e); }
+    };
+    loadFavTreinos();
+  }, []);
+
+  // Busca de exercicios/treinos para adicionar
+  useEffect(() => {
+    if (!showAddExercicio) { setAddExercicioResults([]); return; }
+    const searchVal = addExercicioSearch.trim();
+    const timeout = setTimeout(async () => {
+      setAddExercicioLoading(true);
+      try {
+        const results: any[] = [];
+        // Buscar treinos cadastrados (meus treinos)
+        const treinosRes = await gatewayClient.get(`/cadastro-treinos?${searchVal ? `search=${encodeURIComponent(searchVal)}&` : ''}limit=15`);
+        if (treinosRes.success && (treinosRes.treinos || treinosRes.data)) {
+          (treinosRes.treinos || treinosRes.data).forEach((t: any) => results.push({ ...t, _source: 'cadastro' }));
+        }
+        // Buscar na base geral de exercicios
+        if (searchVal) {
+          const listaRes = await gatewayClient.get(`/lista-exercicios-fisicos?search=${encodeURIComponent(searchVal)}&limit=15`);
+          if (listaRes.success && listaRes.exercicios) {
+            listaRes.exercicios.forEach((e: any) => results.push({ ...e, _source: 'lista', nome: e.atividade || e.nome }));
+          }
+        }
+        setAddExercicioResults(results);
+      } catch (e) { console.error(e); }
+      finally { setAddExercicioLoading(false); }
+    }, searchVal ? 400 : 0);
+    return () => clearTimeout(timeout);
+  }, [addExercicioSearch, showAddExercicio]);
+
+  // Adicionar exercicio ao protocolo
+  const handleAddExercicioToProtocol = async (item: any, treino?: string) => {
+    try {
+      await gatewayClient.post(`/atividade-fisica/${consultaId}/add-item`, {
+        nome_exercicio: item.nome || item.atividade || '',
+        nome_treino: treino || addExercicioTreino || selectedTreino || 'Treino A',
+        grupo_muscular: item.grupo_muscular || '',
+        series: item.series || '',
+        repeticoes: item.repeticoes || '',
+        descanso: item.descanso || '',
+        observacoes: item.descricao || item.observacoes || '',
+      });
+      showSuccess('Exercício adicionado!');
+      setShowAddExercicio(false);
+      setAddExercicioSearch('');
+      setAddExercicioResults([]);
+      loadAtividadeFisicaData();
+    } catch (e) {
+      console.error(e);
+      showError('Erro ao adicionar exercício.');
+    }
+  };
+
+  // Adicionar exercicio manual
+  const handleAddManualExercicio = async () => {
+    if (!manualExercicioForm.nome_exercicio.trim()) {
+      showError('Nome do exercício é obrigatório.');
+      return;
+    }
+    try {
+      await gatewayClient.post(`/atividade-fisica/${consultaId}/add-item`, {
+        ...manualExercicioForm,
+        nome_treino: addExercicioTreino || selectedTreino || 'Treino A',
+      });
+      showSuccess('Exercício adicionado!');
+      setShowManualExercicio(false);
+      setShowAddExercicio(false);
+      setManualExercicioForm({ nome_exercicio: '', grupo_muscular: '', series: '', repeticoes: '', descanso: '', observacoes: '' });
+      loadAtividadeFisicaData();
+    } catch (e) {
+      console.error(e);
+      showError('Erro ao adicionar exercício.');
+    }
+  };
+
+  // Salvar edicao de exercicio
+  const handleSaveExercicioEdit = async (exercicioId: number) => {
+    try {
+      const fields = editExercicioForm;
+      for (const [field, value] of Object.entries(fields)) {
+        await gatewayClient.post(`/atividade-fisica/${consultaId}/update-field`, { id: exercicioId, field, value });
+      }
+      showSuccess('Exercício atualizado!');
+      setEditingExercicioId(null);
+      setEditExercicioForm({});
+      loadAtividadeFisicaData();
+    } catch (e) {
+      console.error(e);
+      showError('Erro ao salvar exercício.');
+    }
+  };
+
+  // Renderizar painel de adicionar exercicio/treino
+  // mode='treino' -> nivel 1 (adicionar treino novo), mode='exercicio' -> nivel 2 (adicionar exercicio dentro de treino)
+  const renderAddExercicioPanel = (targetTreino?: string, mode: 'treino' | 'exercicio' = 'exercicio') => {
+    const label = mode === 'treino' ? 'Adicionar Treino' : 'Adicionar Exercício';
+    const searchPlaceholder = mode === 'treino' ? 'Buscar treino cadastrado...' : 'Buscar exercício cadastrado...';
+    return (
+    <div style={{ marginTop: 20, marginBottom: 16 }}>
+      <button
+        onClick={() => { setShowAddExercicio(!showAddExercicio); setAddExercicioTreino(targetTreino || selectedTreino || 'Treino A'); setAddExercicioSearch(''); setAddExercicioResults([]); setShowManualExercicio(false); }}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '12px 16px', borderRadius: 10,
+          border: showAddExercicio ? '2px solid #1A3D61' : '1.5px dashed #94A3B8',
+          background: showAddExercicio ? '#EFF6FF' : 'transparent',
+          color: '#1A3D61', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        {label}
+      </button>
+
+      {showAddExercicio && (
+        <div style={{ marginTop: 8, border: '1.5px solid #BAE6FD', borderRadius: 12, overflow: 'hidden', background: '#F8FAFC' }}>
+          {/* Favoritos */}
+          {favTreinos.length > 0 && (
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#1A3D61', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Favoritos
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {favTreinos.map((t: any) => (
+                  <button key={t.id} onClick={() => handleAddExercicioToProtocol(t, targetTreino)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, border: '1px solid #BAE6FD', background: '#fff', fontSize: 12, fontWeight: 600, color: '#1A3D61', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    {t.nome}
+                    {t.grupo_muscular && <span style={{ fontSize: 10, color: '#64748B' }}>{t.grupo_muscular}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Busca */}
+          <div style={{ padding: '12px 16px' }}>
+            <input
+              type="text" placeholder={searchPlaceholder}
+              value={addExercicioSearch} onChange={e => setAddExercicioSearch(e.target.value)} autoFocus
+              style={{ width: '100%', padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const, marginBottom: 8 }}
+            />
+            {addExercicioLoading && <div style={{ textAlign: 'center', padding: 8 }}><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>}
+            {(() => {
+              const cadastroItems = addExercicioResults.filter((r: any) => r._source === 'cadastro');
+              const listaItems = addExercicioResults.filter((r: any) => r._source === 'lista');
+              if (addExercicioResults.length === 0 && !addExercicioLoading) {
+                return addExercicioSearch.trim() ? <p style={{ fontSize: 12, color: '#64748B', textAlign: 'center', padding: '4px 0' }}>Nenhum exercício encontrado.</p> : null;
+              }
+              return (
+                <div style={{ maxHeight: 250, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                  {cadastroItems.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#1A3D61', textTransform: 'uppercase' as const, padding: '6px 0 2px' }}>Meus Treinos</div>
+                      {cadastroItems.map((item: any, i: number) => (
+                        <div key={`c-${item.id || i}`} onClick={() => handleAddExercicioToProtocol(item, targetTreino)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: '#F0F9FF', border: '1px solid #BAE6FD' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                            <div style={{ fontSize: 11, color: '#64748B' }}>{item.grupo_muscular || item.categoria || ''}{item.series ? ` · ${item.series} séries` : ''}</div>
+                          </div>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A3D61" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {listaItems.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' as const, padding: '6px 0 2px' }}>Base de Exercícios</div>
+                      {listaItems.map((item: any, i: number) => (
+                        <div key={`l-${item.id || i}`} onClick={() => handleAddExercicioToProtocol(item, targetTreino)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: '#fff', border: '1px solid #E2E8F0' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                            <div style={{ fontSize: 11, color: '#64748B' }}>{item.grupo_muscular || ''}</div>
+                          </div>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A3D61" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Criar manual */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 10, marginTop: 4 }}>
+              {!showManualExercicio ? (
+                <button onClick={() => setShowManualExercicio(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#1A3D61', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  Criar exercício manualmente
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input type="text" placeholder="Nome do exercício *" value={manualExercicioForm.nome_exercicio} onChange={e => setManualExercicioForm(p => ({ ...p, nome_exercicio: e.target.value }))}
+                    style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                  <input type="text" placeholder="Grupo muscular" value={manualExercicioForm.grupo_muscular} onChange={e => setManualExercicioForm(p => ({ ...p, grupo_muscular: e.target.value }))}
+                    style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                    <input type="text" placeholder="Séries" value={manualExercicioForm.series} onChange={e => setManualExercicioForm(p => ({ ...p, series: e.target.value }))}
+                      style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                    <input type="text" placeholder="Repetições" value={manualExercicioForm.repeticoes} onChange={e => setManualExercicioForm(p => ({ ...p, repeticoes: e.target.value }))}
+                      style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                    <input type="text" placeholder="Descanso" value={manualExercicioForm.descanso} onChange={e => setManualExercicioForm(p => ({ ...p, descanso: e.target.value }))}
+                      style={{ padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                  </div>
+                  <input type="text" placeholder="Observações" value={manualExercicioForm.observacoes} onChange={e => setManualExercicioForm(p => ({ ...p, observacoes: e.target.value }))}
+                    style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 6, fontSize: 12 }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setShowManualExercicio(false)}
+                      style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      Cancelar
+                    </button>
+                    <button onClick={handleAddManualExercicio}
+                      style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: '#1A3D61', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+  };
+
   // Função para buscar exercícios da lista
   const searchExercicios = async (searchTerm: string) => {
     if (searchTerm.length < 2) {
@@ -6515,6 +7326,59 @@ function ConsultasPageContent() {
     e.stopPropagation(); // Previne a abertura da consulta
     setConsultationToDelete(consultation);
     setShowDeleteModal(true);
+  };
+
+  // Enviar anamnese por email/WhatsApp a partir da lista de consultas
+  const handleSendAnamneseFromList = async (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation();
+    setSendingAnamneseId(consultation.id);
+    try {
+      const pid = consultation.patient_id;
+      const isFirst = firstConsultaByPatient[pid] === consultation.id;
+      const anamneseLink = isFirst
+        ? `${window.location.origin}/anamnese-inicial?paciente_id=${pid}`
+        : `${window.location.origin}/anamnese-inicial?paciente_id=${pid}&consulta_id=${consultation.id}`;
+
+      const patientEmail = consultation.patients?.email;
+      const patientPhone = consultation.patients?.phone;
+      const patientName = consultation.patient_name || '';
+
+      if (!patientEmail && !patientPhone) {
+        showWarning('Paciente nao possui email nem telefone cadastrado.');
+        return;
+      }
+
+      if (patientEmail) {
+        await gatewayClient.post('/email/anamnese', { to: patientEmail, patientName, anamneseLink });
+      }
+      if (patientPhone) {
+        await gatewayClient.post('/whatsapp/send-anamnese', { phone: patientPhone, patientName, anamneseLink });
+      }
+      showSuccess('Anamnese enviada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao enviar anamnese:', err);
+      showError('Erro ao enviar anamnese.');
+    } finally {
+      setSendingAnamneseId(null);
+    }
+  };
+
+  // Copiar link da anamnese a partir da lista de consultas
+  const handleCopyAnamneseLinkFromList = async (e: React.MouseEvent, consultation: Consultation) => {
+    e.stopPropagation();
+    const pid = consultation.patient_id;
+    const isFirst = firstConsultaByPatient[pid] === consultation.id;
+    const link = isFirst
+      ? `${window.location.origin}/anamnese-inicial?paciente_id=${pid}`
+      : `${window.location.origin}/anamnese-inicial?paciente_id=${pid}&consulta_id=${consultation.id}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedAnamneseId(consultation.id);
+      showSuccess('Link da anamnese copiado!');
+      setTimeout(() => setCopiedAnamneseId(null), 2000);
+    } catch (err) {
+      showError('Erro ao copiar link.');
+    }
   };
 
   // Função para confirmar exclusão da consulta
@@ -9848,10 +10712,13 @@ function ConsultasPageContent() {
                   <p>Carregando exercicios fisicos...</p>
                 </div>
               ) : atividadeFisicaData.length === 0 ? (
-                <div className="no-data" style={{ padding: '40px', width: '100%', textAlign: 'center' }}>
-                  <Dumbbell style={{ width: 48, height: 48, color: '#94A3B8', marginBottom: '16px' }} />
-                  <h3 style={{ color: '#0F172A', marginBottom: 8 }}>Nenhum exercicio encontrado</h3>
-                  <p style={{ color: '#64748B' }}>Nao ha exercicios fisicos cadastrados para este paciente.</p>
+                <div>
+                  {renderAddExercicioPanel(undefined, 'treino')}
+                  <div className="no-data" style={{ padding: '40px', width: '100%', textAlign: 'center' }}>
+                    <Dumbbell style={{ width: 48, height: 48, color: '#94A3B8', marginBottom: '16px' }} />
+                    <h3 style={{ color: '#0F172A', marginBottom: 8 }}>Nenhum exercicio encontrado</h3>
+                    <p style={{ color: '#64748B' }}>Adicione exercícios usando o botão acima ou seus favoritos.</p>
+                  </div>
                 </div>
               ) : (() => {
                 const treinosAgrupados = atividadeFisicaData.reduce((acc, ex) => {
@@ -9900,12 +10767,35 @@ function ConsultasPageContent() {
                         </div>
                       </div>
 
+                      {renderAddExercicioPanel(selectedTreino || undefined)}
+
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {exercicios.map((exercicio, idx) => (
                           <div key={exercicio.id} style={{
                             background: '#FFFFFF', border: '1.5px solid #E2E8F0',
                             borderRadius: 14, padding: '20px 24px', position: 'relative'
                           }}>
+                            {/* Botao excluir exercicio */}
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await gatewayClient.post(`/atividade-fisica/${consultaId}/delete-item`, { exercicioId: exercicio.id });
+                                  loadAtividadeFisicaData();
+                                } catch (e) { console.error(e); }
+                              }}
+                              title="Excluir exercício"
+                              style={{
+                                position: 'absolute', top: 12, right: 12,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: 28, height: 28, borderRadius: 8,
+                                border: '1px solid #E2E8F0', background: 'transparent',
+                                color: '#94A3B8', cursor: 'pointer', transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
                             <div style={{
                               position: 'absolute', top: 20, left: 24,
                               width: 28, height: 28, borderRadius: '50%',
@@ -9916,56 +10806,130 @@ function ConsultasPageContent() {
                             </div>
 
                             <div style={{ marginLeft: 44 }}>
-                              <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5, marginBottom: 4 }}>
-                                Nome do Exercicio
-                              </div>
-                              <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', marginBottom: 16 }}>
-                                {exercicio.nome_exercicio || 'Sem nome'}
-                              </div>
+                              {editingExercicioId === exercicio.id ? (
+                                /* MODO EDICAO */
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Nome do Exercício</div>
+                                    <input type="text" value={editExercicioForm.nome_exercicio ?? exercicio.nome_exercicio ?? ''}
+                                      onChange={e => setEditExercicioForm(p => ({ ...p, nome_exercicio: e.target.value }))}
+                                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #BAE6FD', borderRadius: 8, fontSize: 14, fontWeight: 600, boxSizing: 'border-box' as const }} />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Grupo Muscular</div>
+                                    <input type="text" value={editExercicioForm.grupo_muscular ?? exercicio.grupo_muscular ?? ''}
+                                      onChange={e => setEditExercicioForm(p => ({ ...p, grupo_muscular: e.target.value }))}
+                                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const }} />
+                                  </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                                    <div>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Séries</div>
+                                      <input type="text" value={editExercicioForm.series ?? exercicio.series ?? ''}
+                                        onChange={e => setEditExercicioForm(p => ({ ...p, series: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const }} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Repetições</div>
+                                      <input type="text" value={editExercicioForm.repeticoes ?? exercicio.repeticoes ?? ''}
+                                        onChange={e => setEditExercicioForm(p => ({ ...p, repeticoes: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const }} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Descanso</div>
+                                      <input type="text" value={editExercicioForm.descanso ?? exercicio.descanso ?? ''}
+                                        onChange={e => setEditExercicioForm(p => ({ ...p, descanso: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const }} />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Observações</div>
+                                    <input type="text" value={editExercicioForm.observacoes ?? exercicio.observacoes ?? ''}
+                                      onChange={e => setEditExercicioForm(p => ({ ...p, observacoes: e.target.value }))}
+                                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' as const }} />
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                    <button onClick={() => { setEditingExercicioId(null); setEditExercicioForm({}); }}
+                                      style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                                      Cancelar
+                                    </button>
+                                    <button onClick={() => handleSaveExercicioEdit(exercicio.id)}
+                                      style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: '#1A3D61', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                                      Salvar
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* MODO VISUALIZACAO */
+                                <>
+                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5, marginBottom: 4 }}>
+                                    Nome do Exercicio
+                                  </div>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', marginBottom: 16 }}>
+                                    {exercicio.nome_exercicio || 'Sem nome'}
+                                  </div>
 
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-                                <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
-                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Series:</div>
-                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.series || '-'}</div>
-                                </div>
-                                <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
-                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Repeticoes:</div>
-                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.repeticoes || '-'}</div>
-                                </div>
-                                <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
-                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Descanso:</div>
-                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.descanso || '-'}</div>
-                                </div>
-                              </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+                                    <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Series:</div>
+                                      <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.series || '-'}</div>
+                                    </div>
+                                    <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Repeticoes:</div>
+                                      <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.repeticoes || '-'}</div>
+                                    </div>
+                                    <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px' }}>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>Descanso:</div>
+                                      <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{exercicio.descanso || '-'}</div>
+                                    </div>
+                                  </div>
 
-                              {/* Botao Ajuda */}
-                              <button
-                                onClick={() => setVideoHelpExercicio(exercicio.nome_exercicio || '')}
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                                  background: '#F1F5F9', border: '1.5px solid #E2E8F0',
-                                  borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
-                                  fontSize: 13, fontWeight: 600, color: '#1A3D61',
-                                  marginBottom: exercicio.observacoes ? 12 : 0,
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E8F0'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = '#F1F5F9'; }}
-                              >
-                                Ajuda
-                                <span style={{
-                                  width: 18, height: 18, borderRadius: '50%',
-                                  background: '#1A3D61', color: 'white',
-                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: 11, fontWeight: 700
-                                }}>?</span>
-                              </button>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    {/* Botao Editar */}
+                                    <button
+                                      onClick={() => { setEditingExercicioId(exercicio.id); setEditExercicioForm({}); }}
+                                      style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                                        background: '#F1F5F9', border: '1.5px solid #E2E8F0',
+                                        borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
+                                        fontSize: 13, fontWeight: 600, color: '#1A3D61',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E8F0'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = '#F1F5F9'; }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                      Editar
+                                    </button>
+                                    {/* Botao Ajuda */}
+                                    <button
+                                      onClick={() => setVideoHelpExercicio(exercicio.nome_exercicio || '')}
+                                      style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                                        background: '#F1F5F9', border: '1.5px solid #E2E8F0',
+                                        borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
+                                        fontSize: 13, fontWeight: 600, color: '#1A3D61',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E8F0'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = '#F1F5F9'; }}
+                                    >
+                                      Ajuda
+                                      <span style={{
+                                        width: 18, height: 18, borderRadius: '50%',
+                                        background: '#1A3D61', color: 'white',
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 11, fontWeight: 700
+                                      }}>?</span>
+                                    </button>
+                                  </div>
 
-                              {exercicio.observacoes && (
-                                <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px' }}>
-                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Observacoes:</div>
-                                  <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>{exercicio.observacoes}</div>
-                                </div>
+                                  {exercicio.observacoes && (
+                                    <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px', marginTop: 12 }}>
+                                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 4 }}>Observacoes:</div>
+                                      <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>{exercicio.observacoes}</div>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
@@ -9981,9 +10945,11 @@ function ConsultasPageContent() {
                     <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
                       Treinos da semana
                     </h2>
-                    <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24 }}>
+                    <p style={{ fontSize: 14, color: '#64748B', marginBottom: 16 }}>
                       Selecione um treino para ver os exercicios
                     </p>
+
+                    {renderAddExercicioPanel(undefined, 'treino')}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {treinoKeys.map((nomeTreino, idx) => {
@@ -11023,19 +11989,45 @@ function ConsultasPageContent() {
                           );
                         })()
                       )}
+                      {/* Botoes Anamnese - ocultos se já preenchida */}
+                      {consultaAnamneseStatus[consultation.id] !== 'preenchida' && (
+                        <button
+                          className="action-btn-table email"
+                          onClick={(e) => handleSendAnamneseFromList(e, consultation)}
+                          disabled={sendingAnamneseId === consultation.id}
+                          title="Enviar anamnese por email e WhatsApp"
+                          style={sendingAnamneseId === consultation.id ? { opacity: 0.5 } : {}}
+                        >
+                          <Send size={16} />
+                          <span>{sendingAnamneseId === consultation.id ? 'Enviando...' : 'Enviar Anamnese'}</span>
+                        </button>
+                      )}
+                      {consultaAnamneseStatus[consultation.id] !== 'preenchida' && (
+                        <button
+                          className={`action-btn-table copy`}
+                          onClick={(e) => handleCopyAnamneseLinkFromList(e, consultation)}
+                          title="Copiar link da anamnese"
+                          style={copiedAnamneseId === consultation.id ? { color: '#10b981' } : {}}
+                        >
+                          {copiedAnamneseId === consultation.id ? <ClipboardCheck size={16} /> : <Copy size={16} />}
+                          <span>{copiedAnamneseId === consultation.id ? 'Copiado!' : 'Copiar Anamnese'}</span>
+                        </button>
+                      )}
                       <button
-                        className="action-button edit-action"
+                        className="action-btn-table edit"
                         onClick={(e) => handleEditConsultation(e, consultation)}
                         title="Editar consulta"
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil size={16} />
+                        <span>Editar</span>
                       </button>
                       <button
-                        className="action-button delete-action"
+                        className="action-btn-table delete"
                         onClick={(e) => handleDeleteConsultation(e, consultation)}
                         title="Excluir consulta"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 size={16} />
+                        <span>Excluir</span>
                       </button>
                     </div>
                   </div>

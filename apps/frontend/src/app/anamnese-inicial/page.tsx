@@ -259,6 +259,7 @@ function AnamneseInicialContent() {
   const searchParams = useSearchParams();
   const { showSuccess, showError } = useNotifications();
   const pacienteId = searchParams.get('paciente_id') || searchParams.get('patient_id') || searchParams.get('pacienteId');
+  const consultaId = searchParams.get('consulta_id');
 
   const [formData, setFormData] = useState<AnamneseFormData>({});
   const [loading, setLoading] = useState(true);
@@ -269,12 +270,18 @@ function AnamneseInicialContent() {
 
   useEffect(() => {
     if (pacienteId) {
-      fetchAnamnese();
+      if (consultaId) {
+        // Nova consulta: formulario em branco (nao carregar anamnese anterior)
+        setLoading(false);
+      } else {
+        // Primeira consulta: carregar anamnese existente se houver
+        fetchAnamnese();
+      }
     } else {
       showError('ID do paciente não encontrado na URL', 'Erro');
       setLoading(false);
     }
-  }, [pacienteId]);
+  }, [pacienteId, consultaId]);
 
   const fetchAnamnese = async () => {
     try {
@@ -329,6 +336,7 @@ function AnamneseInicialContent() {
 
       const saveResponse = await gatewayClient.post('/anamnese/anamnese-inicial/save', {
         paciente_id: pacienteId,
+        ...(consultaId ? { consulta_id: consultaId } : {}),
         ...dataToSave,
       });
 

@@ -209,7 +209,7 @@
 /* Header da tabela */
 .table-header {
   display: grid;
-  grid-template-columns: auto 2px auto 2px auto 2px auto 2px auto;
+  grid-template-columns: 1fr 2px 1fr 2px 1fr 2px 1fr 2px 1fr;
   gap: 0;
   padding: 10px 23px;
   background: #FFFFFF;
@@ -220,7 +220,7 @@
 }
 
 .table-header.has-from-col {
-  grid-template-columns: auto 2px auto 2px auto 2px auto 2px auto 2px auto;
+  grid-template-columns: 1fr 2px 1fr 2px 1fr 2px 1fr 2px auto 2px 1fr;
 }
 
 .table-header-divider {
@@ -490,11 +490,13 @@
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;
+  justify-content: center;
 }
 
 /* Célula do tipo */
 .type-cell {
   padding: 0;
+  justify-content: center;
 }
 
 .consultation-type {
@@ -515,6 +517,7 @@
 /* Célula do status */
 .status-cell {
   padding: 0;
+  justify-content: center;
 }
 
 /* Status badges: usar StatusBadge.css como fonte única */
@@ -522,9 +525,7 @@
 /* Célula e tags de origem (from) */
 .from-cell {
   padding: 0;
-  display: flex;
   justify-content: center;
-  align-items: center;
 }
 
 .from-badge {
@@ -6065,16 +6066,57 @@
 }
 
 /* ===== BOTÕES DE AÇÃO (EDITAR/EXCLUIR) ===== */
-.actions-cell {
+
+.action-buttons {
   display: flex;
+  gap: 2px;
   align-items: center;
   justify-content: center;
 }
 
-.action-buttons {
+/* Botoes estilo tabela (igual pacientes) */
+.action-btn-table {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
   align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-width: 44px;
+}
+
+.action-btn-table.email { color: #3b82f6; }
+.action-btn-table.copy { color: #22c55e; }
+.action-btn-table.edit { color: #3b82f6; }
+.action-btn-table.delete { color: #ef4444; }
+
+.action-btn-table:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark .action-btn-table:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn-table span {
+  font-size: 9px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.action-btn-table svg {
+  width: 14px;
+  height: 14px;
+}
+
+.action-btn-table:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .action-button {

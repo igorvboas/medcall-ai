@@ -36,6 +36,11 @@ export async function getAlimentos(req: AuthenticatedRequest, res: Response) {
       query = query.or(`nome.ilike.%${search}%,categoria.ilike.%${search}%`);
     }
 
+    const favoritosOnly = req.query.favoritos === 'true';
+    if (favoritosOnly) {
+      query = query.eq('favorito', true);
+    }
+
     query = query.order('nome', { ascending: true });
 
     const from = (page - 1) * limit;
