@@ -4195,13 +4195,6 @@ function AlimentacaoSection({
           }
         }
 
-        // Buscar alimentos se painel de alimento
-        if (showAddSearch === 'alimento') {
-          const alRes = await gatewayClient.get(`/cadastro-alimentos?search=${encodeURIComponent(addSearchQuery)}&limit=10`);
-          if (alRes.success && alRes.alimentos) {
-            alRes.alimentos.forEach((a: any) => results.push({ ...a, _type: 'alimento' }));
-          }
-        }
         setAddSearchResults(results);
       } catch (e) {
         console.error('Erro ao buscar:', e);
