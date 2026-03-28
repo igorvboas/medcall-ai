@@ -989,7 +989,7 @@ export function CreateConsultationRoom({
           </label>
         </div>
 
-        {/* Card 3: Microfone do Médico ou Agendamento */}
+        {/* Card 3: Microfone do Profissional ou Agendamento */}
         <div className="consultation-card">
           {creationType === 'agendamento' ? (
             <>
@@ -1050,7 +1050,7 @@ export function CreateConsultationRoom({
           ) : consultationType === 'online' && creationType === 'instantanea' ? (
             <>
               <div className="card-title-wrapper">
-                <h2 className="card-title">Microfone do Médico</h2>
+                <h2 className="card-title">Microfone do Profissional</h2>
                 <span className="card-title-asterisk">*</span>
               </div>
 

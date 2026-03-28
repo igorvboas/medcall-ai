@@ -83,7 +83,7 @@ export async function sendAnamneseEmail(req: AuthenticatedRequest, res: Response
             </p>
             
             <p style="font-size: 16px; margin-bottom: 20px;">
-              Seu médico solicitou que você preencha sua <strong>Anamnese Inicial</strong>. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
+              Seu profissional solicitou que você preencha sua <strong>Anamnese Inicial</strong>. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
             </p>
             
             <p style="font-size: 16px; margin-bottom: 20px;">
@@ -106,7 +106,7 @@ export async function sendAnamneseEmail(req: AuthenticatedRequest, res: Response
             </div>
             
             <p style="font-size: 14px; color: #6b7280; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-              Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu médico.
+              Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu profissional.
             </p>
             
             <p style="font-size: 12px; color: #9ca3af; margin-top: 20px; text-align: center;">
@@ -237,7 +237,7 @@ export async function sendPatientCredentialsEmail(req: AuthenticatedRequest, res
 
             <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
               <p style="margin: 0; font-size: 14px; color: #92400e;">
-                <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo link ao seu médico.
+                <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo link ao seu profissional.
               </p>
             </div>
 
@@ -251,7 +251,7 @@ export async function sendPatientCredentialsEmail(req: AuthenticatedRequest, res
             </div>
 
             <p style="font-size: 14px; color: #6b7280; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-              Se você não solicitou esta conta ou tiver alguma dúvida, entre em contato com seu médico ou suporte.
+              Se você não solicitou esta conta ou tiver alguma dúvida, entre em contato com seu profissional ou suporte.
             </p>
 
             <p style="font-size: 12px; color: #9ca3af; margin-top: 20px; text-align: center;">
