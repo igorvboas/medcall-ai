@@ -64,6 +64,11 @@ const envSchema = z.object({
   EVO_INSTANCE_NAME: z.string().default(''),
   EVO_APIKEY: z.string().default(''),
 
+  // Asaas
+  ASAAS_API_KEY: z.string().default(''),
+  ASAAS_WEBHOOK_TOKEN: z.string().default(''),
+  ASAAS_API_URL: z.string().default('https://api.asaas.com/v3'),
+
   // AI & RAG Settings
 
 

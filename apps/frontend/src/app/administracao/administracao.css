@@ -1,3 +1,13 @@
+/* Admin tabs navigation - dark mode */
+.dark .admin-tabs-nav {
+  background: #1A1A1A !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .admin-tabs-nav a {
+  color: #CCCCCC !important;
+}
+
 .administracao-page {
   min-height: 100vh;
   background: #EBF3F6;

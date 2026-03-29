@@ -3614,6 +3614,23 @@ export function ConsultationRoom({
 
       console.log('✅ Processo de upload finalizado.');
 
+      // Disparar webhook de exames
+      const webhookConsultaId = currentConsultId || roomId;
+      if (webhookConsultaId) {
+        try {
+          const endpoints = getWebhookEndpoints();
+          const headers = getWebhookHeaders();
+          await fetch(endpoints.exames, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ consulta_id: webhookConsultaId })
+          });
+          console.log('✅ [WEBHOOK] Webhook de exames disparado para consulta:', webhookConsultaId);
+        } catch (webhookError) {
+          console.error('⚠️ [WEBHOOK] Erro ao disparar webhook de exames:', webhookError);
+        }
+      }
+
     } catch (error: any) {
       // ✅ Tratamento melhor de erros visuais
       // Se for erro de RLS do bucket mas o upload funcionou (pelo array), ignorar

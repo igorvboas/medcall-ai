@@ -3,51 +3,101 @@
 import React from 'react'
 import FAQItem from './FAQItem'
 
+interface FAQGroup {
+  category: string
+  items: { question: string; answer: string }[]
+}
+
 export default function FAQSection() {
-  const faqs = [
+  const faqGroups: FAQGroup[] = [
     {
-      question: "R$ 997/mês não é caro?",
-      answer: "Se você atende 30 pacientes por mês (plano Essencial), são apenas R$ 33 por consulta. Considerando que o AUTON economiza 2-3 horas do seu dia (que você pode usar para atender mais pacientes ou estudar), o retorno é imediato. Um único paciente particular que você consegue atender a mais no mês já paga o investimento."
+      category: "Sobre o investimento",
+      items: [
+        {
+          question: "A AUTON vale a pena para minha prática hoje?",
+          answer: "Se você busca mais clareza diagnóstica, otimizar seu tempo e entregar um atendimento mais preciso, a AUTON foi criada exatamente para isso. Ela reduz o tempo de análise, organiza o raciocínio clínico e eleva o nível da sua consulta."
+        },
+        {
+          question: "Como a AUTON impacta meu dia a dia?",
+          answer: "Você ganha velocidade na análise de exames, apoio na identificação de causa raiz e mais segurança nas decisões clínicas. Isso se traduz em consultas mais objetivas, pacientes mais confiantes e menos retrabalho."
+        }
+      ]
     },
     {
-      question: "Como justificar esse investimento para meu contador?",
-      answer: "O AUTON é uma ferramenta profissional essencial para sua prática médica, classificada como despesa operacional dedutível. Além disso, o aumento de produtividade e qualidade do atendimento resultam em maior faturamento, tornando o investimento facilmente justificável. Fornecemos nota fiscal e todos os documentos necessários."
+      category: "Sobre retorno e resultado",
+      items: [
+        {
+          question: "Em quanto tempo começo a ver resultado?",
+          answer: "A maioria dos profissionais percebe impacto nas primeiras semanas. Principalmente na redução do tempo por consulta e na clareza do raciocínio clínico."
+        },
+        {
+          question: "Preciso mudar minha forma de atender para usar a AUTON?",
+          answer: "Não. A AUTON se adapta ao seu fluxo atual. Ela funciona como um suporte inteligente, potencializando o que você já faz — não substituindo sua forma de atuação."
+        },
+        {
+          question: "A AUTON ajuda na retenção de pacientes?",
+          answer: "Sim. Quando o paciente percebe um atendimento mais aprofundado e direcionado à causa raiz, a confiança aumenta — e com isso, a adesão ao tratamento e as indicações."
+        }
+      ]
     },
     {
-      question: "E se eu não conseguir vender os planos personalizados?",
-      answer: "O AUTON não foi criado para você vender planos, mas para você oferecer medicina de excelência. Os pacientes percebem o diferencial na consulta: você terá mais clareza diagnóstica, planos mais personalizados e resultados melhores. Isso naturalmente atrai e retém pacientes. Muitos médicos relatam aumento de indicações espontâneas após começarem a usar."
+      category: "Sobre a experiência do paciente",
+      items: [
+        {
+          question: "O que meu paciente ganha com a AUTON?",
+          answer: "Seu paciente recebe acesso a um painel exclusivo onde acompanha sua evolução clínica, visualiza exames, planos de tratamento e orientações — tudo em um só lugar. Isso aumenta o engajamento, a adesão ao tratamento e a percepção de valor do seu atendimento."
+        }
+      ]
     },
     {
-      question: "Quanto tempo levo para ter retorno do investimento?",
-      answer: "A maioria dos médicos relata retorno em 30-60 dias. O ganho vem de três frentes: (1) redução de 70% do tempo de análise de exames, permitindo atender mais pacientes; (2) aumento da conversão de consultas por conta da confiança e clareza transmitidas; (3) redução de retrabalho e pacientes que abandonam o tratamento. Além disso, o tempo economizado pode ser usado para estudar, melhorando ainda mais seus resultados."
-    },
-    {
-      question: "E se meus pacientes não usarem a área exclusiva?",
-      answer: "A área do paciente é um diferencial, mas não é obrigatória. O maior valor do AUTON está na sua consulta: você terá acesso a análises automatizadas de exames, sugestões de protocolo, diagnóstico de causa raiz assistido por IA e muito mais. A área do paciente é apenas um bônus que aumenta o engajamento e facilita o acompanhamento, mas o AUTON entrega valor para VOCÊ, independentemente do paciente acessar ou não."
-    },
-    {
-      question: "Posso cancelar quando quiser?",
-      answer: "Sim, você pode cancelar a qualquer momento sem multas ou taxas extras. Não temos fidelidade nem burocracia. Acreditamos que você deve ficar porque vê valor real, não por contrato. Além disso, oferecemos 14 dias de teste grátis e 30 dias de garantia de reembolso total caso não veja resultado."
+      category: "Sobre segurança e decisão",
+      items: [
+        {
+          question: "Existe algum risco em testar?",
+          answer: "Não. Você pode testar sem compromisso e avaliar na prática como a AUTON se encaixa no seu atendimento."
+        },
+        {
+          question: "Posso cancelar quando quiser?",
+          answer: "Sim. Sem fidelidade, sem burocracia. Você continua apenas se fizer sentido para você."
+        }
+      ]
     }
   ]
+
+  let globalIndex = 0
 
   return (
     <section className="bg-[#F9FAFB] py-16 lg:py-24 px-6 lg:px-16">
       <div className="max-w-[900px] mx-auto">
         {/* Título Principal */}
         <h2 className="text-[#1a365d] text-[26px] lg:text-[36px] font-bold text-center mb-12 lg:mb-16">
-          Perguntas Sobre Investimento e Retorno
+          Perguntas Frequentes
         </h2>
 
-        {/* Lista de FAQs */}
-        <div className="flex flex-col gap-4 lg:gap-5">
-          {faqs.map((faq, index) => (
-            <FAQItem
-              key={index}
-              question={faq.question}
-              answer={faq.answer}
-              index={index}
-            />
+        {/* Grupos de FAQs */}
+        <div className="flex flex-col gap-10 lg:gap-12">
+          {faqGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              {/* Subtítulo da Categoria */}
+              <h3 className="text-[#1a365d] text-[18px] lg:text-[20px] font-semibold mb-4 lg:mb-5">
+                {group.category}
+              </h3>
+
+              {/* Items da Categoria */}
+              <div className="flex flex-col gap-4 lg:gap-5">
+                {group.items.map((faq, itemIndex) => {
+                  const currentIndex = globalIndex++
+                  return (
+                    <FAQItem
+                      key={currentIndex}
+                      question={faq.question}
+                      answer={faq.answer}
+                      index={currentIndex}
+                    />
+                  )
+                })}
+              </div>
+            </div>
           ))}
         </div>
       </div>

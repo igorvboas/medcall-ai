@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, supabaseConfigDebug } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit-helper';
 
 export interface AuthState {
   user: User | null;
@@ -189,6 +190,19 @@ export function useAuth(): AuthState & AuthActions {
             };
           }
         }
+      }
+
+      // Registrar login no audit_logs (fire-and-forget)
+      if (!error && authData?.user) {
+        logAudit({
+          user_id: authData.user.id,
+          user_email: authData.user.email || email,
+          action: 'LOGIN',
+          resource_type: 'auth',
+          resource_description: 'Login na plataforma',
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+          success: true,
+        }).catch(() => {});
       }
 
       // eslint-disable-next-line no-console

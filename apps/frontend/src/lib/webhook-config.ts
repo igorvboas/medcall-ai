@@ -52,6 +52,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
 
   const suffix = isDevelopment ? '-teste' : '';
 
+  const config = getWebhookConfig();
   const prodBase = 'https://triahook.gst.dev.br';
   const homologBase = 'https://webhook.tc1.triacompany.com.br';
 
@@ -77,16 +78,16 @@ export function getWebhookEndpoints(): WebhookEndpoints {
   }
 
   return {
-    anamnese: `${prodBase}/webhook/usi-anamnese-preenchimento-v2`,
-    edicaoAnamnese: `${prodBase}/webhook/usi-input-edicao-analise-v2`,
-    transcricao: `${prodBase}/webhook/usi-analise-v2`,
-    edicaoDiagnostico: `${prodBase}/webhook/usi-input-edicao-diagnostico-v2`,
-    diagnosticoPrincipal: `${prodBase}/webhook/diagnostico-principal-v2`,
-    edicaoSolucao: `${prodBase}/webhook/usi-input-edicao-solucao-v2`,
-    edicaoLivroDaVida: `${prodBase}/webhook/usi-solucao-livro-vida-v2`,
-    triggerSolucao: `${prodBase}/webhook/usi-trigger-solucao${suffix}`,
-    solucaoCriacaoEntregaveis: `${prodBase}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
-    exames: `${prodBase}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-v2`
+    anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,
+    edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-analise-v2`,
+    transcricao: `${config.baseUrl}/webhook/usi-analise-v2`,
+    edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico-v2`,
+    diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal-v2`,
+    edicaoSolucao: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
+    edicaoLivroDaVida: `${config.baseUrl}/webhook/usi-solucao-livro-vida-v2`,
+    triggerSolucao: `${config.baseUrl}/webhook/usi-trigger-solucao${suffix}`,
+    solucaoCriacaoEntregaveis: `${config.baseUrl}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
+    exames: `${config.baseUrl}/webhook/input-at-exames-usi-v2`
   };
 }
 

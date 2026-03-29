@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { supabase } from '@/lib/supabase';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 import { FileText, Loader2, Search, MoreHorizontal, Plus, FileCheck } from 'lucide-react';
 import { UploadedFile } from './FileUpload';
 import { ExamUploadModal } from './modals/ExamUploadModal';
@@ -101,7 +102,21 @@ export default function ExamesUploadSection({
       throw new Error(linkResponse.error || 'Erro ao vincular exames à consulta');
     }
 
-    // 3. Atualizar lista
+    // 3. Disparar webhook de exames
+    try {
+      const endpoints = getWebhookEndpoints();
+      const headers = getWebhookHeaders();
+      await fetch(endpoints.exames, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ consulta_id: consultaId })
+      });
+      console.log('✅ [WEBHOOK] Webhook de exames disparado para consulta:', consultaId);
+    } catch (webhookError) {
+      console.error('⚠️ [WEBHOOK] Erro ao disparar webhook de exames:', webhookError);
+    }
+
+    // 4. Atualizar lista
     fetchExames();
   };
 

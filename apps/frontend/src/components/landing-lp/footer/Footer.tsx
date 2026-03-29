@@ -27,7 +27,7 @@ export default function Footer() {
               Auton Health Ltda
             </h2>
             <p className="text-white/75 text-[14px] lg:text-[15px] max-w-[400px] leading-relaxed">
-              Tecnologia de ponta para medicina integrativa de elite
+              Tecnologia de ponta para saúde integrativa de elite
             </p>
           </motion.div>
 

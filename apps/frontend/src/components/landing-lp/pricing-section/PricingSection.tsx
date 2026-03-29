@@ -2,8 +2,6 @@
 
 import React from 'react'
 import PricingCard from './PricingCard'
-import PaymentTable from './PaymentTable'
-import GuaranteeCard from './GuaranteeCard'
 import DecorativeDots from '../hero/DecorativeDots'
 
 export default function PricingSection() {
@@ -23,8 +21,8 @@ export default function PricingSection() {
         "Planos atualizados em tempo real",
         "Suporte por email (24h)"
       ],
-      buttonText: "Começar Teste",
-      buttonAction: "/signup"
+      buttonText: "Inscreva-se agora",
+      buttonAction: "https://www.asaas.com/c/6klr6sf7r2wgkezn"
     },
     {
       name: "Professional",
@@ -36,13 +34,14 @@ export default function PricingSection() {
         "Análise automatizada de exames com IA",
         "Biblioteca de 500+ protocolos clínicos",
         "Relatórios de performance mensal",
-        "Integrações (iZoom, Google Calendar)",
+        "Integrações (Zoom, Google Calendar)",
         "Suporte prioritário via WhatsApp (4h)",
         "Onboarding personalizado (sessão 1h)"
       ],
-      buttonText: "Começar Teste",
-      buttonAction: "/signup",
-      isPopular: true
+      buttonText: "Em breve",
+      buttonAction: "",
+      isPopular: true,
+      disabled: true
     },
     {
       name: "Clínica",
@@ -58,8 +57,9 @@ export default function PricingSection() {
         "Onboarding presencial (sessão 2h)",
         "API para integrações customizadas"
       ],
-      buttonText: "Começar Teste",
-      buttonAction: "/signup"
+      buttonText: "Em breve",
+      buttonAction: "",
+      disabled: true
     },
     {
       name: "Enterprise",
@@ -76,23 +76,9 @@ export default function PricingSection() {
         "Treinamento completo da equipe",
         "Suporte premium 24/7"
       ],
-      buttonText: "Falar com Especialista",
-      buttonAction: "/contact"
-    }
-  ]
-
-  const guarantees = [
-    {
-      title: "Teste de 14 Dias",
-      description: "Sem risco. Não paga nada."
-    },
-    {
-      title: "Garantia de 30 Dias",
-      description: "Reembolso total se não economizar aolhires"
-    },
-    {
-      title: "Suporte na Implementação",
-      description: "Nossa equipe configura tudo para você"
+      buttonText: "Em breve",
+      buttonAction: "",
+      disabled: true
     }
   ]
 
@@ -126,27 +112,12 @@ export default function PricingSection() {
               buttonText={plan.buttonText}
               buttonAction={plan.buttonAction}
               isPopular={plan.isPopular}
+              disabled={plan.disabled}
               index={index}
             />
           ))}
         </div>
 
-        {/* Tabela de Formas de Pagamento */}
-        <div className="mb-16 lg:mb-20">
-          <PaymentTable />
-        </div>
-
-        {/* Cards de Garantias */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-[1000px] mx-auto">
-          {guarantees.map((guarantee, index) => (
-            <GuaranteeCard
-              key={index}
-              title={guarantee.title}
-              description={guarantee.description}
-              index={index}
-            />
-          ))}
-        </div>
       </div>
     </section>
   )

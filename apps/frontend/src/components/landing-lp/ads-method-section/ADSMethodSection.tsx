@@ -16,7 +16,7 @@ export default function ADSMethodSection() {
         "Anamnese inteligente adaptativa",
         "Análise de sintomas por sistemas",
         "Leitura e interpretação de exames laboratoriais",
-        "Análise de histórico médico e medicamentoso",
+        "Análise de histórico clínico e medicamentoso",
         "Avaliação de estilo de vida (sono, estresse, nutrição, atividade física)",
         "Análise de microbioma, inflamação, metabolismo, hormônios (quando disponível)"
       ]

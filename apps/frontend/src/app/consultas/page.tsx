@@ -7,7 +7,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search, Send,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight, Copy, Loader2, ClipboardCheck
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight, Copy, Loader2, ClipboardCheck, Eye
 } from 'lucide-react';
 import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -146,7 +146,8 @@ async function fetchConsultations(
   limit: number = 20,
   search: string = '',
   status: string = 'all',
-  dateFilter?: { type: 'day' | 'week' | 'month', date: string }
+  dateFilter?: { type: 'day' | 'week' | 'month', date: string },
+  doctorId?: string
 ): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -159,6 +160,7 @@ async function fetchConsultations(
     params.append('dateFilter', dateFilter.type);
     params.append('date', dateFilter.date);
   }
+  if (doctorId) params.append('doctor_id', doctorId);
 
   const queryParams: Record<string, string | number | boolean> = {};
   params.forEach((value, key) => {
@@ -1803,8 +1805,8 @@ function DiagnosticoSection({
     estado_mental,
     estado_fisiologico,
     diagnostico_principal,
-    integracao_diagnostica,
-    habitos_vida
+    agente_integracao_diagnostica: integracao_diagnostica,
+    agente_habitos_vida_sistemica: habitos_vida
   } = diagnosticoData || {};
 
   console.log('🔍 DiagnosticoSection - dados recebidos:', diagnosticoData);
@@ -2421,9 +2423,13 @@ function MentalidadeSection({
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Estado para dados de sono (pilar3) vindos de d_agente_habitos_vida_sistemica
+  const [sonoData, setSonoData] = useState<any>(null);
+
   // Carregar dados ao montar o componente
   useEffect(() => {
     loadMentalidadeData();
+    loadSonoData();
   }, [consultaId]);
 
   // Sync com a prop vinda do pai
@@ -2505,6 +2511,18 @@ function MentalidadeSection({
       setLoading(false);
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  // Carregar dados de sono (pilar3) de d_agente_habitos_vida_sistemica
+  const loadSonoData = async () => {
+    try {
+      const response = await gatewayClient.get(`/diagnostico/${consultaId}`);
+      if (response.success && response.agente_habitos_vida_sistemica) {
+        setSonoData(response.agente_habitos_vida_sistemica);
+      }
+    } catch (err) {
+      console.error('❌ [MentalidadeSection] Erro ao carregar dados de sono:', err);
     }
   };
 
@@ -2679,16 +2697,23 @@ function MentalidadeSection({
   // Função para salvar campo editado
   const handleSaveField = async (fieldPath: string, newValue: string, consultaId: string) => {
     try {
-      // Atualizar no Gateway
-      const response = await gatewayClient.post(`/solucao-mentalidade/${consultaId}/update-field`, {
-        fieldPath,
-        value: newValue,
-      });
-
-      if (!response.success) { throw new Error(response.error || "Erro na requisição"); }
-
-      // Recarregar dados após salvar
-      await loadMentalidadeData();
+      // Campos de d_agente_habitos_vida_sistemica vão para o endpoint de diagnóstico
+      if (fieldPath.startsWith('d_agente_habitos_vida_sistemica.')) {
+        const response = await gatewayClient.post(`/diagnostico/${consultaId}/update-field`, {
+          fieldPath,
+          value: newValue,
+        });
+        if (!response.success) { throw new Error(response.error || "Erro na requisição"); }
+        await loadSonoData();
+      } else {
+        // Atualizar no Gateway (mentalidade)
+        const response = await gatewayClient.post(`/solucao-mentalidade/${consultaId}/update-field`, {
+          fieldPath,
+          value: newValue,
+        });
+        if (!response.success) { throw new Error(response.error || "Erro na requisição"); }
+        await loadMentalidadeData();
+      }
     } catch (error) {
       console.error('❌ Erro ao salvar campo:', error);
       showError('Erro ao salvar alteração. Tente novamente.', 'Erro');
@@ -3056,112 +3081,97 @@ function MentalidadeSection({
 
   // Função para renderizar seção de Higiene e Sono usando DataField
   const renderHigieneSono = () => {
-    const higieneSono = livroVidaData.higiene_sono;
+    const p3 = sonoData || {};
+    const T = 'd_agente_habitos_vida_sistemica';
 
     return (
-      <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
+      <CollapsibleSection title="Higiene e Sono (Pilar 3)" defaultOpen={true}>
         <div className="anamnese-subsection">
-          <h4>Horários Recomendados</h4>
-          <DataField
-            label="Horário de Dormir Recomendado"
-            value={formatValueForDataField(higieneSono.horario_dormir_recomendado)}
-            fieldPath="mentalidade_data.higiene_sono.horario_dormir_recomendado"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
-          <DataField
-            label="Horário de Acordar Recomendado"
-            value={formatValueForDataField(higieneSono.horario_acordar_recomendado)}
-            fieldPath="mentalidade_data.higiene_sono.horario_acordar_recomendado"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
-          <DataField
-            label="Duração Alvo"
-            value={formatValueForDataField(higieneSono.duracao_alvo)}
-            fieldPath="mentalidade_data.higiene_sono.duracao_alvo"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Status e Score</h4>
+          <DataField label="Status Global" value={p3.pilar3_sono_status_global} fieldPath={`${T}.pilar3_sono_status_global`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Score" value={p3.pilar3_sono_score} fieldPath={`${T}.pilar3_sono_score`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Janelas de Sono</h4>
-          <DataField
-            label="Janela de Sono - Semana"
-            value={formatValueForDataField(higieneSono.janela_sono_semana)}
-            fieldPath="mentalidade_data.higiene_sono.janela_sono_semana"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
-          <DataField
-            label="Janela de Sono - Fins de Semana"
-            value={formatValueForDataField(higieneSono.janela_sono_fds)}
-            fieldPath="mentalidade_data.higiene_sono.janela_sono_fds"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
-          <DataField
-            label="Consistência de Horário"
-            value={formatValueForDataField(higieneSono.consistencia_horario)}
-            fieldPath="mentalidade_data.higiene_sono.consistencia_horario"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Padrão de Sono</h4>
+          <DataField label="Horário de Deitar" value={p3.pilar3_padrao_horario_deitar} fieldPath={`${T}.pilar3_padrao_horario_deitar`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Latência do Sono" value={p3.pilar3_padrao_latencia_sono} fieldPath={`${T}.pilar3_padrao_latencia_sono`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Horário Dormir Efetivo" value={p3.pilar3_padrao_horario_dormir_efetivo} fieldPath={`${T}.pilar3_padrao_horario_dormir_efetivo`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Despertares à Noite" value={p3.pilar3_padrao_despertares_noite} fieldPath={`${T}.pilar3_padrao_despertares_noite`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Horário de Despertar" value={p3.pilar3_padrao_horario_despertar} fieldPath={`${T}.pilar3_padrao_horario_despertar`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Duração Total" value={p3.pilar3_padrao_duracao_total} fieldPath={`${T}.pilar3_padrao_duracao_total`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Qualidade Subjetiva" value={p3.pilar3_padrao_qualidade_subjetiva} fieldPath={`${T}.pilar3_padrao_qualidade_subjetiva`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Acorda Como" value={p3.pilar3_padrao_acorda_como} fieldPath={`${T}.pilar3_padrao_acorda_como`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Rotina Pré-Sono</h4>
-          <DataField
-            label="Rotina Pré-Sono"
-            value={formatValueForDataField(higieneSono.rotina_pre_sono)}
-            fieldPath="mentalidade_data.higiene_sono.rotina_pre_sono"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Arquitetura do Sono</h4>
+          <DataField label="N1/N2" value={p3.pilar3_arquitetura_sono_n1_n2} fieldPath={`${T}.pilar3_arquitetura_sono_n1_n2`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="N3 (Profundo)" value={p3.pilar3_arquitetura_sono_n3} fieldPath={`${T}.pilar3_arquitetura_sono_n3`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="REM" value={p3.pilar3_arquitetura_sono_rem} fieldPath={`${T}.pilar3_arquitetura_sono_rem`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Fragmentação" value={p3.pilar3_arquitetura_sono_fragmentacao} fieldPath={`${T}.pilar3_arquitetura_sono_fragmentacao`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Gatilhos a Evitar</h4>
-          <DataField
-            label="Gatilhos a Evitar"
-            value={formatValueForDataField(higieneSono.gatilhos_evitar)}
-            fieldPath="mentalidade_data.higiene_sono.gatilhos_evitar"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Problemas Identificados</h4>
+          <DataField label="Insônia Inicial" value={p3.pilar3_problemas_insonia_inicial} fieldPath={`${T}.pilar3_problemas_insonia_inicial`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Insônia de Manutenção" value={p3.pilar3_problemas_insonia_manutencao} fieldPath={`${T}.pilar3_problemas_insonia_manutencao`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Noctúria" value={p3.pilar3_problemas_nocturia} fieldPath={`${T}.pilar3_problemas_nocturia`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Despertar Precoce" value={p3.pilar3_problemas_despertar_precoce} fieldPath={`${T}.pilar3_problemas_despertar_precoce`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Sono Não Reparador" value={p3.pilar3_problemas_sono_nao_reparador} fieldPath={`${T}.pilar3_problemas_sono_nao_reparador`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Pesadelos" value={p3.pilar3_problemas_pesadelos} fieldPath={`${T}.pilar3_problemas_pesadelos`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Ronco/Apneia" value={p3.pilar3_problemas_ronco_apneia} fieldPath={`${T}.pilar3_problemas_ronco_apneia`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Causas da Insônia" value={p3.pilar3_causas_insonia} fieldPath={`${T}.pilar3_causas_insonia`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Progressão e Ajustes</h4>
-          <DataField
-            label="Progressão de Ajuste"
-            value={formatValueForDataField(higieneSono.progressao_ajuste)}
-            fieldPath="mentalidade_data.higiene_sono.progressao_ajuste"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Higiene do Sono</h4>
+          <DataField label="Score Higiene" value={p3.pilar3_higiene_sono_score} fieldPath={`${T}.pilar3_higiene_sono_score`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Problemas de Higiene" value={p3.pilar3_higiene_sono_problemas} fieldPath={`${T}.pilar3_higiene_sono_problemas`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Horários Fixos" value={p3.pilar3_higiene_horarios_fixos} fieldPath={`${T}.pilar3_higiene_horarios_fixos`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Rotina Pré-Sono" value={p3.pilar3_higiene_rotina_pre_sono} fieldPath={`${T}.pilar3_higiene_rotina_pre_sono`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Atividades Durante o Dia" value={p3.pilar3_higiene_atividades_durante_dia} fieldPath={`${T}.pilar3_higiene_atividades_durante_dia`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Ajustes no Quarto" value={p3.pilar3_higiene_ajustes_quarto} fieldPath={`${T}.pilar3_higiene_ajustes_quarto`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Se Não Dorme em 20min" value={p3.pilar3_higiene_se_nao_dorme_20min} fieldPath={`${T}.pilar3_higiene_se_nao_dorme_20min`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
 
         <div className="anamnese-subsection">
-          <h4>Observações Clínicas</h4>
-          <DataField
-            label="Observações Clínicas"
-            value={formatValueForDataField(higieneSono.observacoes_clinicas)}
-            fieldPath="mentalidade_data.higiene_sono.observacoes_clinicas"
-            consultaId={consultaId}
-            onSave={handleSaveField}
-            onAIEdit={handleAIEdit}
-          />
+          <h4>Ambiente do Sono</h4>
+          <DataField label="Temperatura" value={p3.pilar3_ambiente_sono_temperatura} fieldPath={`${T}.pilar3_ambiente_sono_temperatura`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Luz" value={p3.pilar3_ambiente_sono_luz} fieldPath={`${T}.pilar3_ambiente_sono_luz`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Ruído" value={p3.pilar3_ambiente_sono_ruido} fieldPath={`${T}.pilar3_ambiente_sono_ruido`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Colchão" value={p3.pilar3_ambiente_sono_colchao} fieldPath={`${T}.pilar3_ambiente_sono_colchao`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Travesseiro" value={p3.pilar3_ambiente_sono_travesseiro} fieldPath={`${T}.pilar3_ambiente_sono_travesseiro`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Roupa de Cama" value={p3.pilar3_ambiente_sono_roupa_cama} fieldPath={`${T}.pilar3_ambiente_sono_roupa_cama`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+
+        <div className="anamnese-subsection">
+          <h4>Rotina de Sono Recomendada</h4>
+          <DataField label="Horário Dormir Recomendado" value={p3.pilar3_rotina_sono_horario_dormir_recomendado} fieldPath={`${T}.pilar3_rotina_sono_horario_dormir_recomendado`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Horário Acordar Recomendado" value={p3.pilar3_rotina_sono_horario_acordar_recomendado} fieldPath={`${T}.pilar3_rotina_sono_horario_acordar_recomendado`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Duração Alvo" value={p3.pilar3_rotina_sono_duracao_alvo} fieldPath={`${T}.pilar3_rotina_sono_duracao_alvo`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Janela Sono - Semana" value={p3.pilar3_rotina_sono_janela_semana} fieldPath={`${T}.pilar3_rotina_sono_janela_semana`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Janela Sono - Fim de Semana" value={p3.pilar3_rotina_sono_janela_fds} fieldPath={`${T}.pilar3_rotina_sono_janela_fds`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Consistência de Horário" value={p3.pilar3_rotina_sono_consistencia_horario} fieldPath={`${T}.pilar3_rotina_sono_consistencia_horario`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Rotina Pré-Sono" value={p3.pilar3_rotina_sono_rotina_pre_sono} fieldPath={`${T}.pilar3_rotina_sono_rotina_pre_sono`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Gatilhos a Evitar" value={p3.pilar3_rotina_sono_gatilhos_evitar} fieldPath={`${T}.pilar3_rotina_sono_gatilhos_evitar`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Progressão de Ajuste" value={p3.pilar3_rotina_sono_progressao_ajuste} fieldPath={`${T}.pilar3_rotina_sono_progressao_ajuste`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Observações Clínicas" value={p3.pilar3_rotina_sono_observacoes_clinicas} fieldPath={`${T}.pilar3_rotina_sono_observacoes_clinicas`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+
+        <div className="anamnese-subsection">
+          <h4>Intervenções</h4>
+          <DataField label="Intervenção Prioridade" value={p3.pilar3_intervencao_prioridade} fieldPath={`${T}.pilar3_intervencao_prioridade`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Suplementação Sono" value={p3.pilar3_suplementacao_sono} fieldPath={`${T}.pilar3_suplementacao_sono`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Fitoterápicos" value={p3.pilar3_fitoterapicos_sono} fieldPath={`${T}.pilar3_fitoterapicos_sono`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Técnicas Adicionais" value={p3.pilar3_tecnicas_adicionais} fieldPath={`${T}.pilar3_tecnicas_adicionais`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Tratar Causas" value={p3.pilar3_tratar_causas} fieldPath={`${T}.pilar3_tratar_causas`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+        </div>
+
+        <div className="anamnese-subsection">
+          <h4>Impacto e Avaliação</h4>
+          <DataField label="Impacto do Sono Ruim" value={p3.pilar3_impacto_sono_ruim} fieldPath={`${T}.pilar3_impacto_sono_ruim`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
+          <DataField label="Necessidades de Avaliação" value={p3.pilar3_necessidades_avaliacao} fieldPath={`${T}.pilar3_necessidades_avaliacao`} consultaId={consultaId} onSave={handleSaveField} onAIEdit={handleAIEdit} />
         </div>
       </CollapsibleSection>
     );
@@ -5522,6 +5532,13 @@ function ConsultasPageContent() {
   const { user } = useAuth();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminViewMode, setAdminViewMode] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
+  const [doctorSearchResults, setDoctorSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
+  const [searchingDoctors, setSearchingDoctors] = useState(false);
+  const doctorSearchRef = useRef<HTMLDivElement>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -5557,16 +5574,55 @@ function ConsultasPageContent() {
     const checkAdmin = async () => {
       if (!user?.id) return;
       try {
-        const { data } = await supabase
+        const { data, error: adminErr } = await supabase
           .from('medicos')
           .select('admin')
           .eq('user_auth', user.id)
           .maybeSingle();
+        console.log('[Admin Check]', { userId: user.id, data, adminErr });
         setIsAdmin(data?.admin === true);
-      } catch { /* silently fail */ }
+      } catch (e) {
+        console.error('[Admin Check] Exception:', e);
+      }
     };
     checkAdmin();
   }, [user?.id]);
+
+  // Buscar médicos quando admin digita no search
+  useEffect(() => {
+    if (!adminViewMode || doctorSearchTerm.length < 2) {
+      setDoctorSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSearchingDoctors(true);
+      try {
+        const response = await gatewayClient.get<{ doctors: Array<{ id: string; name: string; email: string }> }>('/admin/doctors/search', {
+          queryParams: { search: doctorSearchTerm }
+        });
+        if (response.success) {
+          setDoctorSearchResults(response.doctors || []);
+          setShowDoctorDropdown(true);
+        }
+      } catch { /* silently fail */ } finally {
+        setSearchingDoctors(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [doctorSearchTerm, adminViewMode]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (doctorSearchRef.current && !doctorSearchRef.current.contains(e.target as Node)) {
+        setShowDoctorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Função para voltar para a tela de seleção de soluções
   const handleBackToSolutionSelection = async () => {
@@ -6318,7 +6374,8 @@ function ConsultasPageContent() {
       }
       setError(null);
       const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
+      const adminDoctorId = adminViewMode && selectedDoctor ? selectedDoctor.id : undefined;
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter, adminDoctorId);
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -6349,7 +6406,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
+  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate, adminViewMode, selectedDoctor]);
 
   // Buscar status de anamnese e primeira consulta por paciente
   useEffect(() => {
@@ -11614,7 +11671,14 @@ function ConsultasPageContent() {
       <div className="consultas-header">
         <div className="consultas-header-content">
           <div>
-            <h1 className="consultas-title">Lista de Consulta</h1>
+            <h1 className="consultas-title">
+              Lista de Consulta
+              {adminViewMode && selectedDoctor && (
+                <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280', marginLeft: '8px' }}>
+                  — Dr(a). {selectedDoctor.name}
+                </span>
+              )}
+            </h1>
             <div className="consultas-stats-badge">
               <span>{totalConsultations} consultas encontradas</span>
             </div>
@@ -11628,6 +11692,167 @@ function ConsultasPageContent() {
           </button>
         </div>
       </div>
+
+      {/* Admin: Toggle para visualizar consultas de outro médico */}
+      {isAdmin && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '16px',
+          backgroundColor: '#f0f4ff',
+          border: '1px solid #c7d6f0',
+          borderRadius: '10px',
+          display: 'flex',
+          gap: '16px',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Eye size={18} style={{ color: '#1B4266' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B4266' }}>Visualizar como médico</span>
+            <button
+              onClick={() => {
+                const next = !adminViewMode;
+                setAdminViewMode(next);
+                if (!next) {
+                  setSelectedDoctor(null);
+                  setDoctorSearchTerm('');
+                  setDoctorSearchResults([]);
+                }
+              }}
+              style={{
+                position: 'relative',
+                width: '44px',
+                height: '24px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: adminViewMode ? '#1B4266' : '#d1d5db',
+                transition: 'background-color 0.2s ease',
+                padding: 0
+              }}
+            >
+              <span style={{
+                position: 'absolute',
+                top: '2px',
+                left: adminViewMode ? '22px' : '2px',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }} />
+            </button>
+          </div>
+
+          {adminViewMode && (
+            <div ref={doctorSearchRef} style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+              {selectedDoctor ? (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#fff',
+                  border: '1px solid #1B4266',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}>
+                  <User size={16} style={{ color: '#1B4266' }} />
+                  <span style={{ fontWeight: 500 }}>{selectedDoctor.name}</span>
+                  <span style={{ color: '#6b7280', fontSize: '12px' }}>({selectedDoctor.email})</span>
+                  <button
+                    onClick={() => {
+                      setSelectedDoctor(null);
+                      setDoctorSearchTerm('');
+                    }}
+                    style={{
+                      marginLeft: 'auto',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      color: '#9ca3af',
+                      display: 'flex'
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Search size={18} style={{
+                    position: 'absolute', left: '12px', top: '50%',
+                    transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none', zIndex: 1
+                  }} />
+                  <input
+                    type="text"
+                    placeholder="Buscar médico por nome ou email..."
+                    value={doctorSearchTerm}
+                    onChange={(e) => setDoctorSearchTerm(e.target.value)}
+                    onFocus={() => { if (doctorSearchResults.length > 0) setShowDoctorDropdown(true); }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px 10px 40px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff'
+                    }}
+                  />
+                  {showDoctorDropdown && doctorSearchResults.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0,
+                      backgroundColor: '#fff', border: '1px solid #e5e7eb',
+                      borderRadius: '8px', marginTop: '4px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      zIndex: 50, maxHeight: '240px', overflowY: 'auto'
+                    }}>
+                      {doctorSearchResults.map((doc) => (
+                        <button
+                          key={doc.id}
+                          onClick={() => {
+                            setSelectedDoctor(doc);
+                            setDoctorSearchTerm('');
+                            setShowDoctorDropdown(false);
+                            setCurrentPage(1);
+                          }}
+                          style={{
+                            width: '100%', padding: '10px 14px',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            border: 'none', background: 'none', cursor: 'pointer',
+                            textAlign: 'left', fontSize: '14px',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <User size={16} style={{ color: '#6b7280', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 500 }}>{doc.name}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{doc.email}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchingDoctors && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0,
+                      backgroundColor: '#fff', border: '1px solid #e5e7eb',
+                      borderRadius: '8px', marginTop: '4px', padding: '12px',
+                      textAlign: 'center', fontSize: '13px', color: '#6b7280',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50
+                    }}>
+                      Buscando médicos...
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filtros de Busca */}
       <div className="filters-section" style={{

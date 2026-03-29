@@ -1,14 +1,14 @@
 'use client';
 
 import { Layout } from '@/components/shared/Layout';
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BarChart3, Users, UserCheck } from 'lucide-react';
 
 const tabs = [
-  { label: 'Dashboard', href: '/administracao', icon: BarChart3 },
-  { label: 'Acompanhamento Médicos', href: '/administracao/acompanhamento-medicos', icon: Users },
-  { label: 'Liberação Médicos', href: '/administracao/liberacao-medicos', icon: UserCheck },
+  { href: '/administracao', label: 'Dashboard', icon: BarChart3, exact: true },
+  { href: '/administracao/acompanhamento-medicos', label: 'Acompanhamento Médicos', icon: Users },
+  { href: '/administracao/liberacao-medicos', label: 'Liberação Médicos', icon: UserCheck },
 ];
 
 export default function AdministracaoLayout({
@@ -20,42 +20,47 @@ export default function AdministracaoLayout({
 
   return (
     <Layout>
-      <div style={{
-        background: 'white',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '0 32px',
-        display: 'flex',
-        gap: '0',
-      }}>
-        {tabs.map((tab) => {
-          const isActive = pathname === tab.href ||
-            (tab.href !== '/administracao' && pathname.startsWith(tab.href));
-          const Icon = tab.icon;
-
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '16px 24px',
-                fontSize: '14px',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#2563eb' : '#6b7280',
-                textDecoration: 'none',
-                borderBottom: isActive ? '3px solid #2563eb' : '3px solid transparent',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Icon size={18} />
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div style={{ width: '100%' }}>
+        <nav style={{
+          display: 'flex',
+          gap: '0',
+          borderBottom: '2px solid #e5e7eb',
+          padding: '0 32px',
+          background: '#fff',
+        }}
+        className="admin-tabs-nav"
+        >
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = tab.exact
+              ? pathname === tab.href
+              : pathname.startsWith(tab.href);
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 20px',
+                  fontSize: '14px',
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? '#3b82f6' : '#666',
+                  textDecoration: 'none',
+                  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                  marginBottom: '-2px',
+                  transition: 'color 0.2s, border-color 0.2s',
+                }}
+              >
+                <Icon size={18} />
+                {tab.label}
+              </Link>
+            );
+          })}
+        </nav>
+        {children}
       </div>
-      {children}
     </Layout>
   );
 }

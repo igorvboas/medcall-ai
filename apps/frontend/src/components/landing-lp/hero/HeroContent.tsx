@@ -80,22 +80,6 @@ export default function HeroContent() {
         </motion.p>
       </motion.div>
 
-      {/* Texto de Credibilidade - Fora do bloco branco */}
-      <motion.p 
-        className="text-[13px] md:text-[16px] text-[#718096] mb-6 md:mb-8"
-        animate={{
-          x: mousePosition.x * 6,
-          y: mousePosition.y * 6,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 100,
-          damping: 10
-        }}
-      >
-        Mais de <strong className="text-[#1a365d] font-semibold">3.000 médicos</strong> já usam o AUTON AI para tomar decisões com mais <strong className="text-[#1a365d] font-semibold">segurança e autoridade</strong>.
-      </motion.p>
-
       {/* CTA Button */}
       <motion.div
         animate={{
@@ -110,7 +94,7 @@ export default function HeroContent() {
       >
         <a href="#checkout" className="block md:inline-block">
           <Button variant="primary" className="text-[14px] md:text-[16px] px-6 md:px-10 py-3 md:py-4 font-medium w-full md:w-auto">
-            Inscreva-se gratuitamente e veja o AUTON AI em ação
+            Inscreva-se agora
           </Button>
         </a>
       </motion.div>

@@ -20,7 +20,7 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, admin')
       .eq('user_auth', doctorAuthId)
       .single();
 
@@ -39,8 +39,15 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       dateFilter,
       date,
       page = '1',
-      limit = '20'
+      limit = '20',
+      doctor_id: queryDoctorId
     } = req.query;
+
+    // Se admin enviou doctor_id, usar o doctor_id do médico selecionado
+    let effectiveDoctorId = medico.id;
+    if (queryDoctorId && medico.admin === true) {
+      effectiveDoctorId = queryDoctorId as string;
+    }
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -57,7 +64,7 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
           profile_pic
         )
       `, { count: 'exact' })
-      .eq('doctor_id', medico.id)
+      .eq('doctor_id', effectiveDoctorId)
       .order('created_at', { ascending: false });
 
     // Aplicar filtros
@@ -168,7 +175,7 @@ export async function getConsultationById(req: AuthenticatedRequest, res: Respon
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, admin')
       .eq('user_auth', doctorAuthId)
       .single();
 
@@ -180,7 +187,7 @@ export async function getConsultationById(req: AuthenticatedRequest, res: Respon
     }
 
     // Buscar consulta
-    const { data: consultation, error } = await supabase
+    let query = supabase
       .from('consultations')
       .select(`
         *,
@@ -192,9 +199,14 @@ export async function getConsultationById(req: AuthenticatedRequest, res: Respon
           profile_pic
         )
       `)
-      .eq('id', id)
-      .eq('doctor_id', medico.id)
-      .single();
+      .eq('id', id);
+
+    // Admin pode ver consultas de qualquer médico
+    if (medico.admin !== true) {
+      query = query.eq('doctor_id', medico.id);
+    }
+
+    const { data: consultation, error } = await query.single();
 
     if (error || !consultation) {
       return res.status(404).json({
