@@ -81,6 +81,11 @@ export function CreateConsultationRoom({
   // Estado para tipo de retorno (Novo/Retorno)
   const [patientReturnType, setPatientReturnType] = useState<'novo' | 'retorno'>('novo');
 
+  // Estado para searchbox de pacientes
+  const [patientSearch, setPatientSearch] = useState('');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const patientSearchRef = useRef<HTMLDivElement>(null);
+
   // Estados para captura de áudio em tempo real
   const [audioLevel, setAudioLevel] = useState(0);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
@@ -229,10 +234,7 @@ export function CreateConsultationRoom({
         const patientsData = await getPatients();
         setPatients(patientsData);
 
-        // Selecionar primeiro paciente por padrão, EXCETO se vier de um agendamento
-        if (patientsData.length > 0 && !preselectedPatientId) {
-          setSelectedPatient(patientsData[0].id);
-        }
+        // Não pré-selecionar nenhum paciente — o searchbox inicia vazio
       } catch (error) {
         console.error('Erro ao carregar pacientes:', error);
       } finally {
@@ -242,6 +244,25 @@ export function CreateConsultationRoom({
 
     loadPatients();
   }, [preselectedPatientId]);
+
+  // Fechar dropdown de pacientes ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (patientSearchRef.current && !patientSearchRef.current.contains(e.target as Node)) {
+        setShowPatientDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Preencher o search quando paciente é pré-selecionado (agendamento)
+  useEffect(() => {
+    if (selectedPatient && patients.length > 0) {
+      const patient = patients.find((p) => p.id === selectedPatient);
+      if (patient) setPatientSearch(patient.name);
+    }
+  }, [selectedPatient, patients]);
 
   // Carregar dispositivos de áudio (microfones)
   useEffect(() => {
@@ -896,22 +917,89 @@ export function CreateConsultationRoom({
             <span className="card-title-asterisk">*</span>
           </div>
 
-          <select
-            value={selectedPatient}
-            onChange={(e) => setSelectedPatient(e.target.value)}
-            className="form-select-figma"
-            required
-            disabled={loadingPatients || loadingDoctor || isFromAgendamento}
-          >
-            <option value="">
-              {loadingPatients ? 'Carregando pacientes...' : 'Selecione um paciente'}
-            </option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
+          <div className="patient-search-container" ref={patientSearchRef}>
+            <div className="patient-search-box">
+              <svg className="patient-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                type="text"
+                className="patient-search-input"
+                placeholder={loadingPatients ? 'Carregando pacientes...' : 'Digite o nome do paciente...'}
+                value={patientSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPatientSearch(val);
+                  setShowPatientDropdown(true);
+                  if (selectedPatient) {
+                    setSelectedPatient('');
+                  }
+                }}
+                onFocus={() => setShowPatientDropdown(true)}
+                disabled={loadingPatients || loadingDoctor || isFromAgendamento}
+                autoComplete="off"
+              />
+              {patientSearch && (
+                <button
+                  type="button"
+                  className="patient-search-clear"
+                  onClick={() => {
+                    setPatientSearch('');
+                    setSelectedPatient('');
+                    setShowPatientDropdown(false);
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            {showPatientDropdown && !selectedPatient && (() => {
+              const filtered = patientSearch
+                ? patients.filter((p) => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                : patients;
+              if (filtered.length === 0) {
+                return (
+                  <ul className="patient-search-dropdown">
+                    <li className="patient-search-item patient-search-empty">
+                      Nenhum paciente encontrado
+                    </li>
+                  </ul>
+                );
+              }
+              return (
+                <ul className="patient-search-dropdown">
+                  {filtered.map((patient) => {
+                    // Highlight do texto que deu match
+                    const name = patient.name;
+                    const idx = patientSearch ? name.toLowerCase().indexOf(patientSearch.toLowerCase()) : -1;
+                    return (
+                      <li
+                        key={patient.id}
+                        className="patient-search-item"
+                        onMouseDown={() => {
+                          setSelectedPatient(patient.id);
+                          setPatientSearch(patient.name);
+                          setShowPatientDropdown(false);
+                        }}
+                      >
+                        {idx >= 0 ? (
+                          <>
+                            {name.slice(0, idx)}
+                            <strong>{name.slice(idx, idx + patientSearch.length)}</strong>
+                            {name.slice(idx + patientSearch.length)}
+                          </>
+                        ) : (
+                          name
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              );
+            })()}
+            <input type="hidden" name="selectedPatient" value={selectedPatient} required />
+          </div>
 
           {/* Foto do paciente */}
           <div className="patient-photo-container">

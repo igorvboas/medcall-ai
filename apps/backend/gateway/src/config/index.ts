@@ -10,7 +10,7 @@ dotenv.config({
 // Schema de validação das variáveis de ambiente
 const envSchema = z.object({
   // App Settings
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test', 'homolog']).default('development'),
   PORT: z.coerce.number().default(process.env.PORT ? parseInt(process.env.PORT) : 8080),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
 
@@ -110,6 +110,7 @@ export const config = validateEnv();
 export const isDevelopment = config.NODE_ENV === 'development';
 export const isProduction = config.NODE_ENV === 'production';
 export const isTest = config.NODE_ENV === 'test';
+export const isHomolog = config.NODE_ENV === 'homolog';
 
 // Configurações específicas por ambiente
 export const corsOrigins = isDevelopment

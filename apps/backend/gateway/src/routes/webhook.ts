@@ -4,7 +4,7 @@ import axios from 'axios';
 const router = Router();
 
 // Configuration for webhooks
-const WEBHOOK_BASE_URL = 'https://triahook.gst.dev.br';
+const isHomolog = process.env.NODE_ENV === 'homolog';
 const WEBHOOK_AUTH_HEADER = process.env.WEBHOOK_AUTH_HEADER || '';
 
 router.post('/edicao-livro-da-vida', async (req, res) => {
@@ -18,7 +18,9 @@ router.post('/edicao-livro-da-vida', async (req, res) => {
             pacienteId
         };
 
-        const webhookUrl = `${WEBHOOK_BASE_URL}/webhook/usi-solucao-v2`;
+        const webhookUrl = isHomolog
+            ? 'https://triahook.gst.dev.br/webhook/usi-solucao-homolog'
+            : 'https://triahook.gst.dev.br/webhook/usi-solucao-v2';
 
         console.log(`🔄 [WEBHOOK PROXY] Forwarding to: ${webhookUrl}`);
 

@@ -308,12 +308,15 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
           .map((t: any) => `[${t.speaker}]: ${t.text}`)
           .join('\n');
 
-        const webhookUrl = 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
+        const isHomolog = process.env.NODE_ENV === 'homolog';
+        const webhookUrl = isHomolog
+          ? 'https://webhook.tc1.triacompany.com.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
+          : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const env = frontendUrl.includes('localhost')
-          ? 'localhost'
-          : frontendUrl.includes('homolog')
-            ? 'homolog'
+        const env = isHomolog
+          ? 'homolog'
+          : frontendUrl.includes('localhost')
+            ? 'localhost'
             : 'prod';
 
         const webhookData = {

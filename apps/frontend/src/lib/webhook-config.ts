@@ -21,16 +21,23 @@ export interface WebhookEndpoints {
 }
 
 /**
+ * Detecta o ambiente atual (homolog, development, production)
+ */
+function getEnvironment(): string {
+  return process.env.NEXT_PUBLIC_ENV || process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV || 'production';
+}
+
+/**
  * Retorna a configuração de webhook baseada no ambiente
  */
 export function getWebhookConfig(): WebhookConfig {
-  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
-  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
-  const isDevelopment = nodeEnv === 'development';
+  const env = getEnvironment();
+  const isHomolog = env === 'homolog';
 
   return {
-    baseUrl: 'https://triahook.gst.dev.br',
-    //baseUrl: 'https://webhook.tc1.triacompany.com.br',
+    baseUrl: isHomolog
+      ? 'https://webhook.tc1.triacompany.com.br'
+      : 'https://triahook.gst.dev.br',
     authHeader: process.env.NEXT_PUBLIC_WEBHOOK_AUTH_HEADER || ''
   };
 }
@@ -39,31 +46,47 @@ export function getWebhookConfig(): WebhookConfig {
  * Retorna os endpoints de webhook baseados no ambiente
  */
 export function getWebhookEndpoints(): WebhookEndpoints {
-  const config = getWebhookConfig();
-  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
-  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
-  const isDevelopment = nodeEnv === 'development';
+  const env = getEnvironment();
+  const isHomolog = env === 'homolog';
+  const isDevelopment = env === 'development';
 
   const suffix = isDevelopment ? '-teste' : '';
 
+  const prodBase = 'https://triahook.gst.dev.br';
+  const homologBase = 'https://webhook.tc1.triacompany.com.br';
+
   console.log('🔗🔗 Webhook endpoints configurados:', {
-    baseUrl: config.baseUrl,
-    suffix,
-    isDevelopment,
-    nodeEnv
+    env,
+    isHomolog,
+    isDevelopment
   });
 
+  if (isHomolog) {
+    return {
+      anamnese: `${homologBase}/webhook/usi-anamnese-preenchimento-homolog`,
+      edicaoAnamnese: `${homologBase}/webhook/usi-input-edicao-analise-homolog`,
+      transcricao: `${homologBase}/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog`,
+      edicaoDiagnostico: `${homologBase}/webhook/usi-input-edicao-diagnostico-homolog`,
+      diagnosticoPrincipal: `${homologBase}/webhook/diagnostico-principal-homolog`,
+      edicaoSolucao: `${homologBase}/webhook/usi-input-edicao-solucao-homolog`,
+      edicaoLivroDaVida: `${prodBase}/webhook/usi-solucao-homolog`,
+      triggerSolucao: `${homologBase}/webhook/usi-trigger-solucao-homolog`,
+      solucaoCriacaoEntregaveis: `${homologBase}/webhook/usi-solucao-criacao-entregaveis-homolog`,
+      exames: `${homologBase}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-homolog`
+    };
+  }
+
   return {
-    anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,
-    edicaoAnamnese: `${config.baseUrl}/webhook/usi-input-edicao-analise-v2`,
-    transcricao: `${config.baseUrl}/webhook/usi-analise-v2`,
-    edicaoDiagnostico: `${config.baseUrl}/webhook/usi-input-edicao-diagnostico-v2`,
-    diagnosticoPrincipal: `${config.baseUrl}/webhook/diagnostico-principal-v2`,
-    edicaoSolucao: `${config.baseUrl}/webhook/usi-input-edicao-solucao-v2`,
-    edicaoLivroDaVida: `${config.baseUrl}/webhook/usi-solucao-livro-vida-v2`,
-    triggerSolucao: `${config.baseUrl}/webhook/usi-trigger-solucao${suffix}`,
-    solucaoCriacaoEntregaveis: `${config.baseUrl}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
-    exames: `${config.baseUrl}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-v2`
+    anamnese: `${prodBase}/webhook/usi-anamnese-preenchimento-v2`,
+    edicaoAnamnese: `${prodBase}/webhook/usi-input-edicao-analise-v2`,
+    transcricao: `${prodBase}/webhook/usi-analise-v2`,
+    edicaoDiagnostico: `${prodBase}/webhook/usi-input-edicao-diagnostico-v2`,
+    diagnosticoPrincipal: `${prodBase}/webhook/diagnostico-principal-v2`,
+    edicaoSolucao: `${prodBase}/webhook/usi-input-edicao-solucao-v2`,
+    edicaoLivroDaVida: `${prodBase}/webhook/usi-solucao-livro-vida-v2`,
+    triggerSolucao: `${prodBase}/webhook/usi-trigger-solucao${suffix}`,
+    solucaoCriacaoEntregaveis: `${prodBase}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
+    exames: `${prodBase}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-v2`
   };
 }
 
