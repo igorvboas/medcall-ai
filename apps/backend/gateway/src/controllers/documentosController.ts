@@ -288,7 +288,7 @@ export async function signDocumento(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const zapsignData = await zapsignResponse.json();
+    const zapsignData = await zapsignResponse.json() as any;
     console.log('[signDocumento] Documento criado no ZapSign:', zapsignData.token);
 
     const signerToken = zapsignData.signers?.[0]?.token || null;
@@ -374,7 +374,7 @@ export async function getSignStatus(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const zapsignData = await zapsignResponse.json();
+    const zapsignData = await zapsignResponse.json() as any;
 
     // Mapear status do ZapSign
     let newStatus = doc.zapsign_status;
