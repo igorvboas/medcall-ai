@@ -10,7 +10,7 @@ export interface VADConfig {
 }
 
 export const DEFAULT_VAD_CONFIG: VADConfig = {
-    threshold: 0.02,
+    threshold: 0.08, // 0.08 para filtrar ruído ambiente (era 0.02 - muito sensível)
     minSpeechDuration: 1500, // 1.5s
     analysisInterval: 100 // 100ms
 };

@@ -29,7 +29,7 @@ export interface AudioProcessorEvents {
 export class AudioProcessor extends EventEmitter {
   private buffers: Map<string, Float32Array[]> = new Map();
   // 🎯 OTIMIZADO PARA TRANSCRIÇÃO DE QUALIDADE
-  private vadThreshold = 0.05; // Mais sensível para captar voz baixa (era 0.08)
+  private vadThreshold = 0.08; // Threshold balanceado: evita ruído ambiente mas capta voz normal
   private bufferDuration = 1000; // Duração do buffer em ms
   private maxBufferSize = 44100; // Máximo de samples no buffer (1 segundo a 44.1kHz)
   private minVoiceDurationMs = 800; // Reduzido para captar frases curtas importantes (era 2000)

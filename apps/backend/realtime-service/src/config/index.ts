@@ -76,6 +76,10 @@ const envSchema = z.object({
   RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
   RAG_MAX_RESULTS: z.coerce.number().default(5),
 
+  // Deepgram
+  DEEPGRAM_API_KEY: z.string().default(''),
+  DEEPGRAM_ENABLED: z.coerce.boolean().default(true),
+
   // Development
   DEBUG_AUDIO: z.coerce.boolean().default(false),
   MOCK_ASR: z.coerce.boolean().default(false),
@@ -195,6 +199,10 @@ export const aiConfig = {
   mocks: {
     asr: config.MOCK_ASR,
     llm: config.MOCK_LLM,
+  },
+  deepgram: {
+    apiKey: config.DEEPGRAM_API_KEY,
+    enabled: config.DEEPGRAM_ENABLED,
   },
 };
 

@@ -7,7 +7,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search, Send,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, Eye
 } from 'lucide-react';
 import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -143,7 +143,8 @@ async function fetchConsultations(
   limit: number = 20,
   search: string = '',
   status: string = 'all',
-  dateFilter?: { type: 'day' | 'week' | 'month', date: string }
+  dateFilter?: { type: 'day' | 'week' | 'month', date: string },
+  doctorId?: string
 ): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -156,6 +157,7 @@ async function fetchConsultations(
     params.append('dateFilter', dateFilter.type);
     params.append('date', dateFilter.date);
   }
+  if (doctorId) params.append('doctor_id', doctorId);
 
   const queryParams: Record<string, string | number | boolean> = {};
   params.forEach((value, key) => {
@@ -4758,6 +4760,13 @@ function ConsultasPageContent() {
   const { user } = useAuth();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminViewMode, setAdminViewMode] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
+  const [doctorSearchResults, setDoctorSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
+  const [searchingDoctors, setSearchingDoctors] = useState(false);
+  const doctorSearchRef = useRef<HTMLDivElement>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -4787,16 +4796,55 @@ function ConsultasPageContent() {
     const checkAdmin = async () => {
       if (!user?.id) return;
       try {
-        const { data } = await supabase
+        const { data, error: adminErr } = await supabase
           .from('medicos')
           .select('admin')
           .eq('user_auth', user.id)
           .maybeSingle();
+        console.log('[Admin Check]', { userId: user.id, data, adminErr });
         setIsAdmin(data?.admin === true);
-      } catch { /* silently fail */ }
+      } catch (e) {
+        console.error('[Admin Check] Exception:', e);
+      }
     };
     checkAdmin();
   }, [user?.id]);
+
+  // Buscar médicos quando admin digita no search
+  useEffect(() => {
+    if (!adminViewMode || doctorSearchTerm.length < 2) {
+      setDoctorSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSearchingDoctors(true);
+      try {
+        const response = await gatewayClient.get<{ doctors: Array<{ id: string; name: string; email: string }> }>('/admin/doctors/search', {
+          queryParams: { search: doctorSearchTerm }
+        });
+        if (response.success) {
+          setDoctorSearchResults(response.doctors || []);
+          setShowDoctorDropdown(true);
+        }
+      } catch { /* silently fail */ } finally {
+        setSearchingDoctors(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [doctorSearchTerm, adminViewMode]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (doctorSearchRef.current && !doctorSearchRef.current.contains(e.target as Node)) {
+        setShowDoctorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Função para voltar para a tela de seleção de soluções
   const handleBackToSolutionSelection = async () => {
@@ -5536,7 +5584,8 @@ function ConsultasPageContent() {
       }
       setError(null);
       const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
+      const adminDoctorId = adminViewMode && selectedDoctor ? selectedDoctor.id : undefined;
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter, adminDoctorId);
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -5567,7 +5616,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
+  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate, adminViewMode, selectedDoctor]);
 
   // Efeito para cancelar automaticamente consultas de Telemedicina expiradas
   useEffect(() => {
@@ -10188,7 +10237,14 @@ function ConsultasPageContent() {
       <div className="consultas-header">
         <div className="consultas-header-content">
           <div>
-            <h1 className="consultas-title">Lista de Consulta</h1>
+            <h1 className="consultas-title">
+              Lista de Consulta
+              {adminViewMode && selectedDoctor && (
+                <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280', marginLeft: '8px' }}>
+                  — Dr(a). {selectedDoctor.name}
+                </span>
+              )}
+            </h1>
             <div className="consultas-stats-badge">
               <span>{totalConsultations} consultas encontradas</span>
             </div>
@@ -10202,6 +10258,167 @@ function ConsultasPageContent() {
           </button>
         </div>
       </div>
+
+      {/* Admin: Toggle para visualizar consultas de outro médico */}
+      {isAdmin && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '16px',
+          backgroundColor: '#f0f4ff',
+          border: '1px solid #c7d6f0',
+          borderRadius: '10px',
+          display: 'flex',
+          gap: '16px',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Eye size={18} style={{ color: '#1B4266' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B4266' }}>Visualizar como médico</span>
+            <button
+              onClick={() => {
+                const next = !adminViewMode;
+                setAdminViewMode(next);
+                if (!next) {
+                  setSelectedDoctor(null);
+                  setDoctorSearchTerm('');
+                  setDoctorSearchResults([]);
+                }
+              }}
+              style={{
+                position: 'relative',
+                width: '44px',
+                height: '24px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: adminViewMode ? '#1B4266' : '#d1d5db',
+                transition: 'background-color 0.2s ease',
+                padding: 0
+              }}
+            >
+              <span style={{
+                position: 'absolute',
+                top: '2px',
+                left: adminViewMode ? '22px' : '2px',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }} />
+            </button>
+          </div>
+
+          {adminViewMode && (
+            <div ref={doctorSearchRef} style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+              {selectedDoctor ? (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#fff',
+                  border: '1px solid #1B4266',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}>
+                  <User size={16} style={{ color: '#1B4266' }} />
+                  <span style={{ fontWeight: 500 }}>{selectedDoctor.name}</span>
+                  <span style={{ color: '#6b7280', fontSize: '12px' }}>({selectedDoctor.email})</span>
+                  <button
+                    onClick={() => {
+                      setSelectedDoctor(null);
+                      setDoctorSearchTerm('');
+                    }}
+                    style={{
+                      marginLeft: 'auto',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      color: '#9ca3af',
+                      display: 'flex'
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Search size={18} style={{
+                    position: 'absolute', left: '12px', top: '50%',
+                    transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none', zIndex: 1
+                  }} />
+                  <input
+                    type="text"
+                    placeholder="Buscar médico por nome ou email..."
+                    value={doctorSearchTerm}
+                    onChange={(e) => setDoctorSearchTerm(e.target.value)}
+                    onFocus={() => { if (doctorSearchResults.length > 0) setShowDoctorDropdown(true); }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px 10px 40px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff'
+                    }}
+                  />
+                  {showDoctorDropdown && doctorSearchResults.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0,
+                      backgroundColor: '#fff', border: '1px solid #e5e7eb',
+                      borderRadius: '8px', marginTop: '4px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      zIndex: 50, maxHeight: '240px', overflowY: 'auto'
+                    }}>
+                      {doctorSearchResults.map((doc) => (
+                        <button
+                          key={doc.id}
+                          onClick={() => {
+                            setSelectedDoctor(doc);
+                            setDoctorSearchTerm('');
+                            setShowDoctorDropdown(false);
+                            setCurrentPage(1);
+                          }}
+                          style={{
+                            width: '100%', padding: '10px 14px',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            border: 'none', background: 'none', cursor: 'pointer',
+                            textAlign: 'left', fontSize: '14px',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <User size={16} style={{ color: '#6b7280', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 500 }}>{doc.name}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{doc.email}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchingDoctors && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0,
+                      backgroundColor: '#fff', border: '1px solid #e5e7eb',
+                      borderRadius: '8px', marginTop: '4px', padding: '12px',
+                      textAlign: 'center', fontSize: '13px', color: '#6b7280',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50
+                    }}>
+                      Buscando médicos...
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filtros de Busca */}
       <div className="filters-section" style={{

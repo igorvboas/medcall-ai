@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { aiConfig } from '../config';
 import FormData from 'form-data';
 import { aiPricingService } from './aiPricingService';
+import { filterWhisperResponse, isValidTranscriptionText, calculateConfidence, WhisperVerboseResponse } from '../utils/antiHallucinationFilter';
 
 export interface TranscriptionResult {
   id: string;
@@ -42,7 +43,6 @@ class ASRService {
   };
 
   private isEnabled = false;
-  private enableSimulation = false; // Flag para controlar simulação - PERMANENTEMENTE DESABILITADA
 
   // Azure OpenAI config
   private azureEndpoint: string = '';
@@ -136,173 +136,7 @@ class ASRService {
     }
   }
 
-  // Simular transcrição para desenvolvimento
-  private async simulateTranscription(audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
-    // Verificar se há atividade de voz suficiente no chunk
-    if (!audioChunk.hasVoiceActivity) {
-      // Não gerar transcrição para silêncio ou ruído baixo
-      return null;
-    }
 
-    // Simular delay de processamento realista
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
-
-    // Gerar texto simulado baseado no speaker e contexto
-    const simulatedTexts = {
-      doctor: [
-        'Como você está se sentindo hoje?',
-        'Pode me contar mais sobre os sintomas?',
-        'Há quanto tempo isso está acontecendo?',
-        'Você tem alguma alergia a medicamentos?',
-        'Vamos examinar os sintomas que você mencionou.',
-        'Baseado no que você me disse, acredito que seja...',
-        'Vou prescrever um medicamento para ajudar.',
-        'Preciso que você tome este medicamento conforme prescrito.',
-        'Vamos agendar um retorno em duas semanas.',
-        'Tem alguma pergunta sobre o tratamento?',
-        'Muito bem, vamos prosseguir.',
-        'Entendo a sua preocupação.'
-      ],
-      patient: [
-        'Doutor, estou sentindo uma dor no peito.',
-        'A dor começou ontem à noite.',
-        'Está doendo mais quando respiro fundo.',
-        'Sim, já tomei este medicamento antes.',
-        'Não, não tenho alergia a medicamentos.',
-        'Entendi, vou seguir as instruções.',
-        'Quando devo retornar?',
-        'Obrigado, doutor.',
-        'Posso fazer exercícios normalmente?',
-        'E se a dor não melhorar?',
-        'Estou preocupado com isso.',
-        'Muito obrigado pela consulta.'
-      ]
-    };
-
-    // Calcular probabilidade de gerar transcrição baseada na duração e intensidade
-    const probabilityFactor = Math.min(audioChunk.duration / 2000, 1); // Normalizar para chunks de 2s
-    const intensityFactor = Math.min(audioChunk.averageVolume / 0.1, 1); // Normalizar volume
-    const shouldGenerate = Math.random() < (probabilityFactor * intensityFactor * 0.7); // 70% chance max
-
-    if (!shouldGenerate) {
-      return null;
-    }
-
-    const texts = simulatedTexts[audioChunk.channel];
-    const randomText = texts[Math.floor(Math.random() * texts.length)];
-
-    // Ajustar confiança baseada na qualidade do áudio simulada
-    const baseConfidence = 0.75 + (intensityFactor * 0.2); // 75-95% baseado no volume
-    const confidence = Math.min(baseConfidence + Math.random() * 0.1, 0.99);
-
-    // Criar resultado de transcrição
-    const transcriptionResult: TranscriptionResult = {
-      id: randomUUID(), // Gerar UUID válido
-      sessionId: audioChunk.sessionId,
-      speaker: audioChunk.channel,
-      text: randomText,
-      confidence: Math.round(confidence * 100) / 100,
-      timestamp: new Date().toISOString(),
-      startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
-      endTime: Math.round(audioChunk.timestamp),
-      is_final: true
-    };
-
-    // Salvar no banco de dados
-    try {
-      await this.saveTranscription(transcriptionResult);
-      console.log(`📝 Transcrição simulada: [${audioChunk.channel}] "${randomText}" (conf: ${Math.round(confidence * 100)}%)`);
-    } catch (error) {
-      console.error('Erro ao salvar transcrição:', error);
-    }
-
-    return transcriptionResult;
-  }
-
-  // Gerar transcrição baseada em análise real do áudio
-  private async generateRealBasedTranscription(audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
-    // Verificar se há atividade de voz suficiente no chunk
-    if (!audioChunk.hasVoiceActivity) {
-      return null;
-    }
-
-    // Simular delay de processamento realista
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 800));
-
-    // Analisar características do áudio para gerar texto mais realista
-    const intensity = audioChunk.averageVolume;
-    const duration = audioChunk.duration;
-
-    // Gerar texto baseado na duração e intensidade do áudio
-    let transcribedText = '';
-
-    if (duration < 1000) {
-      // Falas curtas (< 1s) - palavras simples
-      const shortPhrases = ['Sim', 'Não', 'Certo', 'Entendi', 'Obrigado', 'Por favor', 'Desculpe'];
-      transcribedText = shortPhrases[Math.floor(Math.random() * shortPhrases.length)];
-    } else if (duration < 3000) {
-      // Falas médias (1-3s) - frases curtas
-      const mediumPhrases = [
-        'Está bem, doutor',
-        'Muito obrigado',
-        'Não tenho certeza',
-        'Pode repetir?',
-        'Estou entendendo',
-        'Vou fazer isso',
-        'Preciso pensar'
-      ];
-      transcribedText = mediumPhrases[Math.floor(Math.random() * mediumPhrases.length)];
-    } else {
-      // Falas longas (> 3s) - frases complexas
-      const longPhrases = [
-        'Estou sentindo uma dor aqui do lado direito',
-        'Doutor, preciso falar sobre os medicamentos',
-        'Não estou me sentindo muito bem ultimamente',
-        'Gostaria de saber sobre os resultados dos exames',
-        'Tem alguma coisa que posso fazer para melhorar?',
-        'Essa dor começou há alguns dias e não passa'
-      ];
-      transcribedText = longPhrases[Math.floor(Math.random() * longPhrases.length)];
-    }
-
-    // Adicionar indicador de intensidade
-    if (intensity > 0.1) {
-      transcribedText += ' [voz alta]';
-    } else if (intensity < 0.05) {
-      transcribedText += ' [voz baixa]';
-    }
-
-    // Ajustar confiança baseada na duração e intensidade
-    const durationFactor = Math.min(duration / 2000, 1); // Normalizar para 2s
-    const intensityFactor = Math.min(intensity / 0.1, 1); // Normalizar para 0.1
-    const confidence = 0.6 + (durationFactor * 0.2) + (intensityFactor * 0.2);
-
-    // Criar resultado de transcrição
-    const transcriptionResult: TranscriptionResult = {
-      id: randomUUID(),
-      sessionId: audioChunk.sessionId,
-      speaker: audioChunk.channel,
-      text: transcribedText,
-      confidence: Math.min(confidence, 0.95),
-      timestamp: new Date().toISOString(),
-      startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
-      endTime: Math.round(audioChunk.timestamp),
-      is_final: true
-    };
-
-    // Salvar no banco de dados
-    try {
-      await this.saveTranscription(transcriptionResult);
-      console.log(`🎯 Transcrição baseada em análise real: [${audioChunk.channel}] "${transcribedText}" (${duration}ms, vol: ${intensity.toFixed(3)}, conf: ${Math.round(confidence * 100)}%)`);
-
-      // Trigger geração de sugestões após salvar transcrição
-      await this.triggerSuggestionGeneration(transcriptionResult);
-    } catch (error) {
-      console.error('Erro ao salvar transcrição:', error);
-    }
-
-    return transcriptionResult;
-  }
 
   // Salvar transcrição no banco de dados (usando array único)
   private async saveTranscription(transcription: TranscriptionResult): Promise<void> {
@@ -361,7 +195,6 @@ class ASRService {
     }
   }
 
-  // Processar resposta do Whisper
   private async processWhisperResponse(result: any, audioChunk: ProcessedAudioChunk): Promise<TranscriptionResult | null> {
     // Verificar se há texto transcrito
     if (!result.text || result.text.trim().length === 0) {
@@ -369,15 +202,15 @@ class ASRService {
       return null;
     }
 
-    // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
-    const rawText = result.text.trim();
-
-    // ✅ Filtrar textos inválidos ANTES de processar
-    if (!this.filterInvalidTranscriptions(rawText)) {
-      console.log(`🔇 [ASR] Texto inválido descartado: "${rawText}"`);
+    // 🛡️ FILTRO ANTI-ALUCINAÇÃO CENTRALIZADO (métricas + texto)
+    const filterResult = filterWhisperResponse(result as WhisperVerboseResponse);
+    if (!filterResult.isValid) {
+      console.log(`🛡️ [ASR] Transcrição descartada pelo filtro anti-alucinação: ${filterResult.reason}`);
       return null;
     }
 
+    // 🔧 PÓS-PROCESSAMENTO do texto para melhorar qualidade
+    const rawText = result.text.trim();
     const cleanedText = this.postProcessTranscription(rawText);
 
     // Verificar se texto limpo não ficou vazio
@@ -386,14 +219,14 @@ class ASRService {
       return null;
     }
 
-    // ✅ Validação adicional: verificar se o texto faz sentido para consulta médica
-    if (!this.filterInvalidTranscriptions(cleanedText)) {
+    // ✅ Validação adicional com filtro centralizado
+    if (!isValidTranscriptionText(cleanedText)) {
       console.log(`🔇 [ASR] Texto limpo ainda inválido, descartando: "${cleanedText}"`);
       return null;
     }
 
     // ✅ Mapear speaker para valores aceitos pelo schema ('doctor', 'patient')
-    let speaker: 'doctor' | 'patient' = 'patient'; // Default para patient
+    let speaker: 'doctor' | 'patient' = 'patient';
     const channelLower = audioChunk.channel?.toLowerCase() || '';
     if (channelLower.includes('doctor') || channelLower.includes('médico') || channelLower.includes('medico') || channelLower.includes('host')) {
       speaker = 'doctor';
@@ -401,13 +234,22 @@ class ASRService {
       speaker = 'patient';
     }
 
+    // ✅ Calcular confiança usando módulo centralizado
+    const confidence = calculateConfidence(result as WhisperVerboseResponse);
+
+    // 🛡️ Filtrar por confiança mínima
+    if (confidence < 0.45) {
+      console.log(`🛡️ [ASR] Transcrição descartada por baixa confiança: ${(confidence * 100).toFixed(0)}% - "${cleanedText.substring(0, 40)}..."`);
+      return null;
+    }
+
     // Criar resultado de transcrição
     const transcriptionResult: TranscriptionResult = {
       id: randomUUID(),
       sessionId: audioChunk.sessionId,
-      speaker: speaker, // ✅ Usar valor mapeado (sempre 'doctor' ou 'patient')
+      speaker: speaker,
       text: cleanedText,
-      confidence: this.calculateWhisperConfidence(result),
+      confidence,
       timestamp: new Date().toISOString(),
       startTime: Math.round(audioChunk.timestamp - audioChunk.duration),
       endTime: Math.round(audioChunk.timestamp),
@@ -419,6 +261,7 @@ class ASRService {
       sessionId: transcriptionResult.sessionId,
       speaker: speaker,
       textLength: cleanedText.length,
+      confidence: (confidence * 100).toFixed(0) + '%',
       textPreview: cleanedText.substring(0, 50) + '...'
     });
 
@@ -436,11 +279,10 @@ class ASRService {
         transcriptionResult.sessionId,
         { speaker, textLength: cleanedText?.length || 0, error: saveError instanceof Error ? saveError.message : String(saveError) }
       );
-      // Não bloquear o fluxo se o salvamento falhar
     }
 
     // 🎯 LOG DETALHADO DA TRANSCRIÇÃO
-    console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(transcriptionResult.confidence * 100)}%)`);
+    console.log(`🎯 Whisper transcreveu: [${audioChunk.channel}] "${result.text.trim()}" (conf: ${Math.round(confidence * 100)}%)`);
     console.log(`📝 [${audioChunk.channel}] [Transcrição]: ${cleanedText}`);
 
     return transcriptionResult;
@@ -662,85 +504,14 @@ class ASRService {
     return processed;
   }
 
-  // ✅ Filtrar textos estranhos que não fazem sentido em consultas médicas
   private filterInvalidTranscriptions(text: string): boolean {
-    const invalidPatterns = [
-      /se inscreva/i,
-      /inscreva-se/i,
-      /se inscrevam/i,
-      /no nosso canal/i,
-      /no canal/i,
-      /curtam o vídeo/i,
-      /deixe seu like/i,
-      /compartilhe/i,
-      /subscribe/i,
-      /youtube/i,
-      /canal do youtube/i,
-      /tchau.*tchau/i,
-      /oi.*tudo bem.*tchau/i
-    ];
-
-    for (const pattern of invalidPatterns) {
-      if (pattern.test(text)) {
-        console.warn(`⚠️ [ASR] Texto inválido filtrado: "${text}" (padrão: ${pattern})`);
-        return false; // Texto inválido
-      }
-    }
-
-    return true; // Texto válido
+    return isValidTranscriptionText(text);
   }
 
-  // Calcular confiança baseada na resposta do Whisper
   private calculateWhisperConfidence(response: any): number {
-    // Se tem informações de segmentos, calcular média
-    if (response.segments && response.segments.length > 0) {
-      const avgConfidence = response.segments.reduce((sum: number, segment: any) => {
-        return sum + (segment.avg_logprob || -0.5);
-      }, 0) / response.segments.length;
-
-      // Converter logprob para probabilidade (aproximada)
-      const baseConfidence = Math.max(0.3, Math.min(0.95, Math.exp(avgConfidence)));
-
-      // Ajustar confiança baseada na qualidade do texto
-      const textQuality = this.assessTextQuality(response.text);
-      return Math.min(0.95, baseConfidence * textQuality);
-    }
-
-    // Baseado no tamanho e qualidade do texto
-    const textLength = response.text.trim().length;
-    const textQuality = this.assessTextQuality(response.text);
-
-    let baseConfidence = 0.6;
-    if (textLength > 50) baseConfidence = 0.9;
-    else if (textLength > 20) baseConfidence = 0.8;
-    else if (textLength > 10) baseConfidence = 0.7;
-
-    return Math.min(0.95, baseConfidence * textQuality);
+    return calculateConfidence(response as WhisperVerboseResponse);
   }
 
-  // Avaliar qualidade do texto transcrito
-  private assessTextQuality(text: string): number {
-    if (!text) return 0.1;
-
-    let quality = 1.0;
-
-    // Penalizar texto muito repetitivo
-    const words = text.toLowerCase().split(/\s+/);
-    const uniqueWords = new Set(words);
-    const repetitionRatio = uniqueWords.size / words.length;
-    if (repetitionRatio < 0.5) quality *= 0.7; // Muito repetitivo
-
-    // Penalizar se só tem uma palavra repetida
-    if (uniqueWords.size === 1 && words.length > 2) quality *= 0.3;
-
-    // Bonificar se tem pontuação apropriada
-    if (/[.!?]/.test(text)) quality *= 1.1;
-
-    // Penalizar ruídos óbvios
-    if (/\b(ah|eh|uh|hm|hmm)\b/gi.test(text)) quality *= 0.8;
-
-    return Math.max(0.1, Math.min(1.0, quality));
-  }
 
   // Integração com Google Speech-to-Text (futuro)
   private async transcribeWithGoogleSpeech(audioBuffer: Buffer): Promise<string> {
@@ -781,21 +552,7 @@ class ASRService {
     console.log(`🎤 ASR Service ${enabled ? 'habilitado' : 'desabilitado'}`);
   }
 
-  // Habilitar/desabilitar simulação (para desenvolvimento)
-  // ✅ DESABILITADO PERMANENTEMENTE - não usar simulação em produção
-  public setSimulationEnabled(enabled: boolean): void {
-    // ✅ FORÇAR sempre desabilitado
-    this.enableSimulation = false;
-    if (enabled) {
-      console.warn(`⚠️ [ASR] Tentativa de habilitar simulação foi bloqueada - simulação está permanentemente desabilitada`);
-    }
-    console.log(`🔇 [ASR] Simulação está permanentemente desabilitada`);
-  }
 
-  // Verificar se simulação está habilitada
-  public isSimulationEnabled(): boolean {
-    return this.enableSimulation;
-  }
 
   /**
    * Trigger geração de sugestões após nova transcrição
