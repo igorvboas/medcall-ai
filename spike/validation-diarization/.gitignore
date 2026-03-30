@@ -1,0 +1,5 @@
+audio/
+node_modules/
+dist/
+.env
+results/
