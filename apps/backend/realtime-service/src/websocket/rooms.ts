@@ -1522,6 +1522,62 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           }
         }
 
+        // 📤 CORREÇÃO: Enviar webhook com dados da consulta finalizada para n8n
+        if (consultationId) {
+          try {
+            const { supabase } = await import('../config/database');
+            const { data: consultation } = await supabase
+              .from('consultations')
+              .select('doctor_id, patient_id')
+              .eq('id', consultationId)
+              .single();
+
+            const transcriptionText = (room.transcriptions || [])
+              .map((t: any) => `[${t.speaker}]: ${t.text}`)
+              .join('\n');
+
+            const isHomolog = process.env.NODE_ENV === 'homolog';
+            const webhookUrl = isHomolog
+              ? 'https://webhook.tc1.triacompany.com.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
+              : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const env = isHomolog
+              ? 'homolog'
+              : frontendUrl.includes('localhost')
+                ? 'localhost'
+                : 'prod';
+
+            const webhookData = {
+              consultationId,
+              doctorId: consultation?.doctor_id || null,
+              patientId: consultation?.patient_id || room.patientId || 'unknown',
+              transcription: transcriptionText,
+              consulta_finalizada: true,
+              paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
+              env
+            };
+
+            console.log(`📤 [ENDROOM] Enviando webhook para ${webhookUrl}...`);
+
+            const webhookRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
+              },
+              body: JSON.stringify(webhookData)
+            });
+
+            if (webhookRes.ok) {
+              console.log(`✅ [ENDROOM] Webhook enviado com sucesso (${webhookRes.status})`);
+            } else {
+              console.warn(`⚠️ [ENDROOM] Webhook retornou ${webhookRes.status}`);
+            }
+          } catch (webhookError) {
+            console.error('❌ [ENDROOM] Erro ao enviar webhook (não bloqueia finalização):', webhookError);
+          }
+        }
+
       } catch (error) {
         console.error('❌ Erro ao salvar no banco de dados:', error);
         saveResult.error = 'Erro ao salvar alguns dados no banco';

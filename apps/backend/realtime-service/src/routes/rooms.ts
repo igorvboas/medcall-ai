@@ -283,6 +283,12 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
           saveResult.transcriptionId = transcription.id;
           console.log(`📝 [FINALIZE-HTTP] Transcrição salva: ${transcription.id}`);
         }
+
+        // ✅ CORREÇÃO: Salvar também na coluna 'transcricao' da tabela 'consultations'
+        await db.updateConsultation(consultationId, {
+          transcricao: rawText
+        });
+        console.log(`📝 [FINALIZE-HTTP] Transcrição salva na consulta ${consultationId} (coluna transcricao)`);
       }
 
       if (consultationId) {
