@@ -2754,31 +2754,28 @@ export default function CadastroTabContent() {
           </div>
         ) : activeTab === 'prescricoes' ? (
           <div>
-            {/* Sub-filter */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="cadastro-section-header">
+              <div>
+                <h2 className="cadastro-section-title">Prescricoes</h2>
+                <p className="cadastro-section-subtitle">Suplementos e fitoterapicos com dosagens personalizadas</p>
+              </div>
+              <button className="cadastro-btn-add" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setEditingPrescricao(null); setShowPrescricaoModal(true); setShowCatalogoSearch(false); setCatalogoSearch(''); setCatalogoResults([]); }}>
+                <Plus size={18} /> Nova Prescricao
+              </button>
+            </div>
+
+            <div className="cadastro-filters">
+              <div className="cadastro-search">
+                <Search />
+                <input placeholder="Buscar prescricoes..." value={prescricaoSearch} onChange={e => setPrescricaoSearch(e.target.value)} />
+              </div>
               {(['todos', 'suplementos', 'fitoterapicos'] as const).map(f => (
-                <button key={f} onClick={() => setPrescricaoSubFilter(f)}
-                  style={{
-                    padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                    border: prescricaoSubFilter === f ? '2px solid #1A3D61' : '1.5px solid #E2E8F0',
-                    background: prescricaoSubFilter === f ? '#1A3D61' : 'transparent',
-                    color: prescricaoSubFilter === f ? '#fff' : '#64748B',
-                  }}
-                >
+                <button key={f} className={`cadastro-filter-btn ${prescricaoSubFilter === f ? 'active' : ''}`} onClick={() => setPrescricaoSubFilter(f)}>
                   {f === 'todos' ? 'Todos' : f === 'suplementos' ? 'Suplementos' : 'Fitoterapicos'}
                 </button>
               ))}
-              <div style={{ flex: 1 }} />
-              <div style={{ position: 'relative', maxWidth: '300px', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                <input placeholder="Buscar prescricoes..." value={prescricaoSearch} onChange={e => setPrescricaoSearch(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }} />
-              </div>
               <button className={`cadastro-filter-btn ${showFavoritesOnly ? 'active' : ''}`} onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}>
                 <Star size={16} /> Favoritos
-              </button>
-              <button className="cadastro-btn-save" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setEditingPrescricao(null); setShowPrescricaoModal(true); setShowCatalogoSearch(false); setCatalogoSearch(''); setCatalogoResults([]); }}>
-                <Plus size={16} /> Nova Prescricao
               </button>
             </div>
 
@@ -2930,17 +2927,22 @@ export default function CadastroTabContent() {
           </div>
         ) : activeTab === 'alimentos' ? (
           <div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', maxWidth: '400px', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                <input placeholder="Buscar alimentos..." value={alimentosTabSearch} onChange={e => setAlimentosTabSearch(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit' }} />
+            <div className="cadastro-section-header">
+              <div>
+                <h2 className="cadastro-section-title">Alimentos</h2>
+                <p className="cadastro-section-subtitle">Cadastre alimentos individuais para montar refeicoes</p>
+              </div>
+              <button className="cadastro-btn-add" onClick={() => { setAlimentoTabFormData({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] }); setEditingAlimentoItem(null); setShowAlimentoModal(true); }}>
+                <Plus size={18} /> Novo Alimento
+              </button>
+            </div>
+            <div className="cadastro-filters">
+              <div className="cadastro-search">
+                <Search />
+                <input placeholder="Buscar alimentos..." value={alimentosTabSearch} onChange={e => setAlimentosTabSearch(e.target.value)} />
               </div>
               <button className={`cadastro-filter-btn ${showFavoritesOnly ? 'active' : ''}`} onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}>
                 <Star size={16} /> Favoritos
-              </button>
-              <button className="cadastro-btn-save" onClick={() => { setAlimentoTabFormData({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] }); setEditingAlimentoItem(null); setShowAlimentoModal(true); }}>
-                <Plus size={16} /> Novo Alimento
               </button>
             </div>
 
@@ -3061,7 +3063,7 @@ export default function CadastroTabContent() {
               </div>
               <button className="cadastro-btn-add" onClick={openAddModal}>
                 <Plus size={18} />
-                Novo {getTabTitle()?.slice(0, -1)}
+                {activeTab === 'prescricoes' ? 'Nova Prescricao' : activeTab === 'alimentos' ? 'Novo Alimento' : 'Novo'}
               </button>
             </div>
 
@@ -3115,7 +3117,7 @@ export default function CadastroTabContent() {
                       <p className="cadastro-card-description">{item.descricao}</p>
                     </div>
                     <div className="cadastro-card-footer">
-                      <span className="cadastro-card-date">Criado em {item.created_at}</span>
+                      <span className="cadastro-card-date">Criado em {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : '-'}</span>
                       {item.favorito && (
                         <span className="cadastro-card-badge-fav">
                           <Star size={12} fill="currentColor" /> Favorito

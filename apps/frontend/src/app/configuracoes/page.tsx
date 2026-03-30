@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText } from 'lucide-react';
+import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText, Smartphone } from 'lucide-react';
+import Link from 'next/link';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { formatCPF, formatPhone, validateCPF, removeMask } from '@/lib/validations';
 import { supabase } from '@/lib/supabase';
@@ -412,6 +413,32 @@ export default function ConfiguracoesPage() {
           </div>
         </form>
       </div>
+      {/* Card Conexao WhatsApp */}
+      <Link href="/conexao" style={{ textDecoration: 'none', display: 'block', marginTop: 24 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 16,
+          padding: '20px 24px', borderRadius: 12,
+          background: 'var(--card-bg, #fff)', border: '1.5px solid var(--border-color, #E2E8F0)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#1B4266'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(27,66,102,0.1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: 10,
+            background: '#EBF3F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Smartphone size={22} style={{ color: '#1B4266' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #0F172A)' }}>Conexao WhatsApp</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>Conecte seu dispositivo para envio de mensagens</div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary, #94A3B8)" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </Link>
+
       <TutorialPopup steps={CONFIGURACOES_STEPS} pageKey="configuracoes" showWelcome={false} />
     </div>
   );

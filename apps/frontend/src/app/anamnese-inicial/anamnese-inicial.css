@@ -1316,21 +1316,45 @@
   }
 
   .wizard-photos-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
   }
 
   .wizard-urine-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
 
   .wizard-bristol-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .wizard-bristol-item {
+    padding: 8px 4px;
+  }
+
+  .wizard-bristol-desc {
+    font-size: 8px;
+  }
+
+  .wizard-scale {
+    gap: 4px;
   }
 
   .wizard-scale-item {
-    width: 36px;
-    height: 36px;
-    font-size: 13px;
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .wizard-chips {
+    gap: 6px;
+  }
+
+  .wizard-chip {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 
   .wizard-actions {
@@ -1345,5 +1369,43 @@
   .wizard-actions-right .wizard-btn-primary {
     min-width: unset;
     flex: 1;
+  }
+
+  .wizard-yesno-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .wizard-level-chips {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .wizard-radio-group {
+    gap: 6px;
+  }
+
+  .measure-cards {
+    gap: 12px;
+  }
+
+  .measure-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .wizard-scale-item {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .wizard-urine-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wizard-bristol-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

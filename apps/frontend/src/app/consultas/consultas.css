@@ -2491,6 +2491,7 @@
 }
 
 .ai-button {
+  display: none !important;
   background: linear-gradient(135deg, rgba(27, 66, 102, 0.3) 0%, rgba(27, 66, 102, 0.5) 100%);
   border: 1px solid rgba(27, 66, 102, 0.4);
   color: #1B4266;

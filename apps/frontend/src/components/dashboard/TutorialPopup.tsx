@@ -240,33 +240,6 @@ export function TutorialPopup({
     [steps]
   );
 
-  // --- Navigate to step ---
-  const goToStep = useCallback(
-    (index: number) => {
-      if (index < 0 || index >= steps.length) return;
-      const step = steps[index];
-
-      if (step.expandSidebar) {
-        expandSidebar(true);
-      } else {
-        expandSidebar(false);
-      }
-
-      const delay = step.expandSidebar ? SIDEBAR_ANIMATION_DELAY : 0;
-      setTimeout(() => {
-        const el = document.querySelector(step.selector);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        setTimeout(() => {
-          setCurrentStep(index);
-          updatePosition(index);
-        }, 100);
-      }, delay);
-    },
-    [steps, expandSidebar, updatePosition]
-  );
-
   // --- Complete tutorial ---
   const completeTutorial = useCallback(() => {
     unblockScroll();
@@ -278,14 +251,59 @@ export function TutorialPopup({
     setPhase('hidden');
   }, [pageKey, unblockScroll, expandSidebar]);
 
-  // --- Skip tutorial ---
-  const skipTutorial = useCallback(() => {
-    unblockScroll();
-    expandSidebar(false);
-    setTutorialActive(false);
-    ALL_PAGE_KEYS.forEach((key) => markPageDone(key));
-    setPhase('hidden');
-  }, [unblockScroll, expandSidebar]);
+  // --- Find next valid step (element exists in DOM) ---
+  const findNextValidStep = useCallback(
+    (startIndex: number, direction: 1 | -1 = 1): number => {
+      let idx = startIndex;
+      while (idx >= 0 && idx < steps.length) {
+        const el = document.querySelector(steps[idx].selector);
+        if (el) return idx;
+        idx += direction;
+      }
+      return -1; // no valid step found
+    },
+    [steps]
+  );
+
+  // --- Navigate to step ---
+  const goToStep = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= steps.length) {
+        // No more steps, complete tutorial
+        completeTutorial();
+        return;
+      }
+
+      const step = steps[index];
+
+      if (step.expandSidebar) {
+        expandSidebar(true);
+      } else {
+        expandSidebar(false);
+      }
+
+      const delay = step.expandSidebar ? SIDEBAR_ANIMATION_DELAY : 0;
+      setTimeout(() => {
+        const el = document.querySelector(step.selector);
+        if (!el) {
+          // Element not found, skip to next valid step
+          const nextValid = findNextValidStep(index + 1, 1);
+          if (nextValid === -1) {
+            completeTutorial();
+          } else {
+            goToStep(nextValid);
+          }
+          return;
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          setCurrentStep(index);
+          updatePosition(index);
+        }, 100);
+      }, delay);
+    },
+    [steps, expandSidebar, updatePosition, findNextValidStep, completeTutorial]
+  );
 
   // --- Start tour ---
   const startTour = useCallback(() => {
@@ -311,12 +329,15 @@ export function TutorialPopup({
     }
   }, [pageKey, showWelcome, startTour]);
 
-  // --- Mount logic ---
+  // --- Mount logic: tutorial only on first access ---
   useEffect(() => {
-    if (showWelcome && !isTutorialActive() && !isPageDone(pageKey)) {
-      setPhase('welcome');
-    } else if (isTutorialActive() && !isPageDone(pageKey)) {
-      startTour();
+    if (!isPageDone(pageKey)) {
+      if (showWelcome && !isTutorialActive()) {
+        setPhase('welcome');
+      } else {
+        setTutorialActive(true);
+        startTour();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -395,178 +416,67 @@ export function TutorialPopup({
             position: 'relative',
           }}
         >
-          {!showSkipConfirm ? (
-            <>
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #1B4266, #2a6a9e)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                }}
-              >
-                <GraduationCap size={32} color="#fff" />
-              </div>
-              <h2
-                style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: '#1B4266',
-                  margin: '0 0 12px',
-                }}
-              >
-                Bem-vindo ao Auton Health!
-              </h2>
-              <p
-                style={{
-                  fontSize: 15,
-                  color: '#555',
-                  lineHeight: 1.6,
-                  margin: '0 0 28px',
-                }}
-              >
-                Vamos fazer um tour r&aacute;pido pela plataforma para que
-                voc&ecirc; conhe&ccedil;a todas as funcionalidades dispon&iacute;veis.
-              </p>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  justifyContent: 'center',
-                }}
-              >
-                <button
-                  onClick={() => {
-                    setTutorialActive(true);
-                    startTour();
-                  }}
-                  style={{
-                    padding: '12px 28px',
-                    borderRadius: 10,
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #1B4266, #2a6a9e)',
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
-                    boxShadow: '0 4px 14px rgba(27, 66, 102, 0.3)',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.target as HTMLElement).style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.target as HTMLElement).style.transform = 'translateY(0)';
-                  }}
-                >
-                  Iniciar Tutorial
-                </button>
-                <button
-                  onClick={() => setShowSkipConfirm(true)}
-                  style={{
-                    padding: '12px 28px',
-                    borderRadius: 10,
-                    border: '2px solid #EF4444',
-                    background: 'transparent',
-                    color: '#EF4444',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.target as HTMLElement).style.background = '#FEF2F2';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.target as HTMLElement).style.background = 'transparent';
-                  }}
-                >
-                  Pular Tutorial
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  background: '#FEF3C7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  fontSize: 28,
-                }}
-              >
-                <span style={{ color: '#D97706' }}>&#9888;</span>
-              </div>
-              <h3
-                style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: '#1B4266',
-                  margin: '0 0 10px',
-                }}
-              >
-                Tem certeza?
-              </h3>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: '#666',
-                  lineHeight: 1.5,
-                  margin: '0 0 24px',
-                }}
-              >
-                Voc&ecirc; pode reiniciar o tutorial a qualquer momento nas
-                configura&ccedil;&otilde;es.
-              </p>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  justifyContent: 'center',
-                }}
-              >
-                <button
-                  onClick={() => setShowSkipConfirm(false)}
-                  style={{
-                    padding: '10px 24px',
-                    borderRadius: 10,
-                    border: '2px solid #1B4266',
-                    background: 'transparent',
-                    color: '#1B4266',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={skipTutorial}
-                  style={{
-                    padding: '10px 24px',
-                    borderRadius: 10,
-                    border: 'none',
-                    background: '#EF4444',
-                    color: '#fff',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Sim, Pular
-                </button>
-              </div>
-            </>
-          )}
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1B4266, #2a6a9e)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}
+          >
+            <GraduationCap size={32} color="#fff" />
+          </div>
+          <h2
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: '#1B4266',
+              margin: '0 0 12px',
+            }}
+          >
+            Bem-vindo ao Auton Health!
+          </h2>
+          <p
+            style={{
+              fontSize: 15,
+              color: '#555',
+              lineHeight: 1.6,
+              margin: '0 0 28px',
+            }}
+          >
+            Vamos fazer um tour rapido pela plataforma para que
+            voce conheca todas as funcionalidades disponiveis.
+          </p>
+          <button
+            onClick={() => {
+              setTutorialActive(true);
+              startTour();
+            }}
+            style={{
+              padding: '12px 36px',
+              borderRadius: 10,
+              border: 'none',
+              background: 'linear-gradient(135deg, #1B4266, #2a6a9e)',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'transform 0.15s, box-shadow 0.15s',
+              boxShadow: '0 4px 14px rgba(27, 66, 102, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.transform = 'translateY(0)';
+            }}
+          >
+            Iniciar Tutorial
+          </button>
         </div>
       </div>
     );

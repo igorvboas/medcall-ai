@@ -174,6 +174,9 @@ export function ConsultationRoom({
 
   // ✅ UPLOAD EXAMES: Estado para modal de upload
   const [showExamUploadModal, setShowExamUploadModal] = useState(false);
+  const [showAnamnesePopup, setShowAnamnesePopup] = useState(false);
+  const [allAnamneses, setAllAnamneses] = useState<any[]>([]);
+  const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
   // ✅ GRAVAÇÃO: Estados para controle de gravação da consulta
   const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
@@ -447,19 +450,30 @@ export function ConsultationRoom({
             setPatientData(patientResponse.patient);
           }
 
-          // Buscar dados do cadastro de anamnese (peso, altura, tipo sanguíneo)
+          // Buscar TODAS as anamneses do paciente (historico)
           try {
-            const anamneseResponse = await gatewayClient.get(`/cadastro-anamnese/${patientId}`);
-            if (anamneseResponse.success) {
-              console.log('✅ ConsultationRoom: Dados da anamnese recebidos:', anamneseResponse.cadastro);
-              console.log('  - peso_atual:', anamneseResponse.cadastro?.peso_atual);
-              console.log('  - altura:', anamneseResponse.cadastro?.altura);
-              console.log('  - idade:', anamneseResponse.cadastro?.idade);
-              console.log('  - tipo_saguineo:', anamneseResponse.cadastro?.tipo_saguineo);
-              setPatientAnamnese(anamneseResponse.cadastro);
+            const { supabase } = await import('@/lib/supabase');
+            const { data: anamneseList } = await supabase
+              .from('a_cadastro_anamnese')
+              .select('*')
+              .eq('paciente_id', patientId)
+              .order('created_at', { ascending: false });
+
+            if (anamneseList && anamneseList.length > 0) {
+              setAllAnamneses(anamneseList);
+              setPatientAnamnese(anamneseList[0]); // mais recente como padrao
+              setSelectedAnamneseIndex(0);
             }
           } catch (err) {
-            console.warn('⚠️ Não foi possível buscar cadastro de anamnese:', err);
+            console.warn('Nao foi possivel buscar anamneses:', err);
+            // Fallback: buscar via API
+            try {
+              const anamneseResponse = await gatewayClient.get(`/cadastro-anamnese/${patientId}`);
+              if (anamneseResponse.success && anamneseResponse.cadastro) {
+                setPatientAnamnese(anamneseResponse.cadastro);
+                setAllAnamneses([anamneseResponse.cadastro]);
+              }
+            } catch {}
           }
         } catch (error) {
           console.error('Erro ao buscar dados do paciente:', error);
@@ -4749,7 +4763,18 @@ export function ConsultationRoom({
               </button>
 
               {/* Gerar/Acessar Anamnese */}
+              {/* Botao Ver Anamnese */}
               <button
+                className="patient-action-btn action-btn-primary"
+                onClick={() => { setSelectedAnamneseIndex(-1); setShowAnamnesePopup(true); }}
+                disabled={allAnamneses.length === 0}
+                style={{ opacity: allAnamneses.length > 0 ? 1 : 0.5 }}
+              >
+                <FileText size={14} />
+                <span style={{ fontSize: '13px' }}>Ver Anamnese</span>
+              </button>
+
+              {false && <button
                 className="patient-action-btn action-btn-primary"
                 onClick={async () => {
                   // Se anamnese está pronta, abrir em nova aba
@@ -4863,7 +4888,7 @@ export function ConsultationRoom({
                 <span style={{ fontSize: '13px' }}>
                   {isGeneratingAnamnese ? 'Gerando...' : anamneseReady ? 'Acessar Anamnese' : 'Gerar Anamnese'}
                 </span>
-              </button>
+              </button>}
 
               {/* Anexar Exame */}
               <button
@@ -5072,6 +5097,7 @@ export function ConsultationRoom({
               }}
               disabled={isGeneratingAnamnese}
               style={{
+                display: 'none',
                 opacity: isGeneratingAnamnese ? 0.7 : 1,
                 cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
                 color: anamneseReady ? '#3b82f6' : '#1B4266',
@@ -5253,9 +5279,165 @@ export function ConsultationRoom({
         onUpload={handleUploadExam}
       />
 
+      {/* Popup Anamnese do Paciente */}
+      {showAnamnesePopup && (
+        <div onClick={() => { setShowAnamnesePopup(false); setSelectedAnamneseIndex(-1); }} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, backdropFilter: 'blur(4px)',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 700,
+            maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
+              background: '#F8FAFC',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={18} color="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Historico de Anamneses</div>
+                  <div style={{ fontSize: 12, color: '#64748B' }}>{patientData?.name || patientAnamnese?.nome_completo || ''} - {allAnamneses.length} anamnese{allAnamneses.length !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+              <button onClick={() => { setShowAnamnesePopup(false); setSelectedAnamneseIndex(-1); }} style={{
+                width: 32, height: 32, borderRadius: 8, border: 'none',
+                background: '#F1F5F9', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#64748B',
+              }}>
+                <X size={18} />
+              </button>
+            </div>
 
+            {/* Layout: sidebar de datas + conteudo */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Lista de anamneses (sidebar esquerda) */}
+              <div style={{ width: 200, borderRight: '1px solid #E2E8F0', overflowY: 'auto', background: '#F8FAFC', flexShrink: 0 }}>
+                <div style={{ padding: '12px 14px', fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selecione uma data</div>
+                {allAnamneses.map((an, idx) => (
+                  <button key={idx} onClick={() => setSelectedAnamneseIndex(idx)}
+                    style={{
+                      display: 'flex', flexDirection: 'column', width: '100%', padding: '12px 14px',
+                      border: 'none', borderLeft: selectedAnamneseIndex === idx ? '3px solid #1B4266' : '3px solid transparent',
+                      background: selectedAnamneseIndex === idx ? '#fff' : 'transparent',
+                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, fontWeight: 700, color: selectedAnamneseIndex === idx ? '#1B4266' : '#0F172A' }}>
+                      {an.created_at ? new Date(an.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : `Anamnese ${idx + 1}`}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                      {idx === 0 ? 'Mais recente' : `Anamnese ${allAnamneses.length - idx}`}
+                    </span>
+                    {an.status === 'preenchida' && (
+                      <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, marginTop: 4 }}>Preenchida</span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-      {/* 🤖 Painel de Sugestões de IA - Apenas para médicos - Só aparece se estiver habilitado e visível */}
+              {/* Conteudo da anamnese selecionada */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                {selectedAnamneseIndex < 0 || !allAnamneses[selectedAnamneseIndex] ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94A3B8', gap: 12 }}>
+                    <FileText size={40} style={{ opacity: 0.3 }} />
+                    <span style={{ fontSize: 14 }}>Selecione uma anamnese ao lado</span>
+                  </div>
+                ) : (() => {
+                  const a = allAnamneses[selectedAnamneseIndex];
+                  const sections = [
+                    { title: 'Dados Pessoais', items: [
+                      { label: 'Nome', value: a.nome_completo },
+                      { label: 'Email', value: a.email },
+                      { label: 'Telefone', value: a.telefone },
+                      { label: 'Data de Nascimento', value: a.data_nascimento },
+                      { label: 'Sexo', value: a.genero },
+                      { label: 'Profissao', value: a.profissao },
+                      { label: 'CPF', value: a.cpf },
+                      { label: 'Tipo Sanguineo', value: a.tipo_saguineo },
+                    ]},
+                    { title: 'Medidas', items: [
+                      { label: 'Peso Atual', value: a.peso_atual ? `${a.peso_atual} kg` : null },
+                      { label: 'Altura', value: a.altura ? `${a.altura} cm` : null },
+                      { label: 'Peso Desejado', value: a.peso_desejado ? `${a.peso_desejado} kg` : null },
+                    ]},
+                    { title: 'Sono, Agua e Jejum', items: [
+                      { label: 'Avaliacao do Sono', value: a.avaliacao_sono ? `${a.avaliacao_sono}/10` : null },
+                      { label: 'Consumo de Agua', value: a.consumo_agua },
+                      { label: 'Cor da Urina', value: a.cor_urina },
+                      { label: 'Pratica Jejum', value: a.pratica_jejum },
+                      { label: 'Duracao Jejum', value: a.duracao_jejum },
+                    ]},
+                    { title: 'Objetivo e Atividade Fisica', items: [
+                      { label: 'Objetivo Principal', value: a.objetivo_principal },
+                      { label: 'Pratica Atividade', value: a.patrica_atividade_fisica },
+                      { label: 'Nivel', value: a.nivel_atividade },
+                      { label: 'Modalidades', value: Array.isArray(a.modalidades) ? a.modalidades.join(', ') : a.modalidades },
+                      { label: 'Frequencia', value: a.frequencia_semanal },
+                      { label: 'Periodo', value: a.periodo_treino },
+                    ]},
+                    { title: 'Preferencias Alimentares', items: [
+                      { label: 'Proteinas', value: Array.isArray(a.proteinas) ? a.proteinas.join(', ') : null },
+                      { label: 'Carboidratos', value: Array.isArray(a.carboidratos) ? a.carboidratos.join(', ') : null },
+                      { label: 'Vegetais', value: Array.isArray(a.vegetais) ? a.vegetais.join(', ') : null },
+                      { label: 'Leguminosas', value: Array.isArray(a.leguminosas) ? a.leguminosas.join(', ') : null },
+                      { label: 'Gorduras', value: Array.isArray(a.gorduras) ? a.gorduras.join(', ') : null },
+                      { label: 'Frutas', value: Array.isArray(a.frutas) ? a.frutas.join(', ') : null },
+                    ]},
+                    { title: 'Saude e Medicamentos', items: [
+                      { label: 'Toma Medicamentos', value: a.toma_medicamentos },
+                      { label: 'Medicamentos', value: a.medicamentos_detalhes },
+                      { label: 'Suplementos', value: Array.isArray(a.suplementos) ? a.suplementos.join(', ') : a.suplementos },
+                      { label: 'Condicoes', value: Array.isArray(a.condicoes_diagnosticadas) ? a.condicoes_diagnosticadas.join(', ') : a.condicoes_diagnosticadas },
+                      { label: 'Cirurgias', value: a.cirurgias_anteriores },
+                    ]},
+                    { title: 'Saude Digestiva', items: [
+                      { label: 'Mastigacao', value: a.mastigacao },
+                      { label: 'Alergias', value: Array.isArray(a.alergias_sensibilidades) ? a.alergias_sensibilidades.join(', ') : a.alergias_sensibilidades },
+                      { label: 'Desconfortos', value: Array.isArray(a.desconfortos_intestinais) ? a.desconfortos_intestinais.join(', ') : a.desconfortos_intestinais },
+                      { label: 'Avaliacao Intestino', value: a.avaliacao_intestino ? `${a.avaliacao_intestino}/10` : null },
+                      { label: 'Escala Bristol', value: a.tipo_bristol ? `Tipo ${a.tipo_bristol}` : null },
+                    ]},
+                  ];
+
+                  return (
+                    <>
+                      {sections.map((section) => {
+                        const validItems = section.items.filter(i => i.value);
+                        if (validItems.length === 0) return null;
+                        return (
+                          <div key={section.title} style={{ marginBottom: 20 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 10, paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                              {section.title}
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
+                              {validItems.map((item) => (
+                                <div key={item.label} style={{ padding: '6px 0' }}>
+                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
+                                  <div style={{ fontSize: 13, color: '#0F172A', fontWeight: 500, lineHeight: 1.4 }}>{item.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Painel de Sugestoes de IA */}
 
       {userType === 'doctor' && suggestionsEnabled && suggestionsPanelVisible && aiSuggestions.length > 0 && (
 

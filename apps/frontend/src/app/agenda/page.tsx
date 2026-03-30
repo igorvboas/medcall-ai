@@ -72,11 +72,88 @@ export default function AgendaPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [consultationToDelete, setConsultationToDelete] = useState<ConsultationEvent | null>(null);
 
+  // Estados do Modal de Novo Agendamento
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    patient_id: '',
+    patient_name: '',
+    date: '',
+    time: '',
+    type: 'TELEMEDICINA' as 'PRESENCIAL' | 'TELEMEDICINA',
+  });
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [patientsList, setPatientsList] = useState<Array<{ id: string; name: string }>>([]);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientsLoading, setPatientsLoading] = useState(false);
+
   const today = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
 
   // Carregar status do Google Calendar
+  // Buscar pacientes para o dropdown
+  const searchPatients = async (search: string) => {
+    setPatientsLoading(true);
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '20' });
+      if (search) params.set('search', search);
+      const res = await gatewayClient.get(`/patients?${params}`);
+      if (res.success) {
+        setPatientsList((res.patients || []).map((p: any) => ({ id: p.id, name: p.name })));
+      }
+    } catch (e) { console.error(e); }
+    finally { setPatientsLoading(false); }
+  };
+
+  // Debounce busca de pacientes
+  useEffect(() => {
+    if (!scheduleModalOpen) return;
+    const timeout = setTimeout(() => searchPatients(patientSearch), 300);
+    return () => clearTimeout(timeout);
+  }, [patientSearch, scheduleModalOpen]);
+
+  // Abrir modal de agendamento
+  const openScheduleModal = () => {
+    const dateStr = selectedDate
+      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+      : '';
+    setScheduleForm({ patient_id: '', patient_name: '', date: dateStr, time: '09:00', type: 'TELEMEDICINA' });
+    setPatientSearch('');
+    setPatientsList([]);
+    setScheduleModalOpen(true);
+  };
+
+  // Criar agendamento
+  const handleCreateSchedule = async () => {
+    if (!scheduleForm.patient_id || !scheduleForm.date || !scheduleForm.time) {
+      setNotification({ type: 'error', message: 'Preencha paciente, data e horario.' });
+      return;
+    }
+    setIsScheduling(true);
+    try {
+      const scheduled_date = new Date(`${scheduleForm.date}T${scheduleForm.time}:00`).toISOString();
+      const res = await gatewayClient.post('/consultations/schedule', {
+        patient_id: scheduleForm.patient_id,
+        patient_name: scheduleForm.patient_name,
+        consultation_type: scheduleForm.type,
+        scheduled_date,
+        duration_minutes: 60,
+      });
+      if (res.success) {
+        setNotification({ type: 'success', message: 'Consulta agendada com sucesso!' });
+        setScheduleModalOpen(false);
+        // Forcar reload das consultas mudando o mes e voltando
+        setCurrentDate(new Date(currentDate));
+      } else {
+        setNotification({ type: 'error', message: res.error || 'Erro ao agendar.' });
+      }
+    } catch (e: any) {
+      setNotification({ type: 'error', message: e?.message || 'Erro ao agendar consulta.' });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
   const loadGoogleCalendarStatus = async () => {
     try {
       const response = await gatewayClient.get('/api/auth/google-calendar/status');
@@ -609,10 +686,10 @@ export default function AgendaPage() {
             )}
           </div>
 
-          <Link href="/consulta/nova" className="btn btn-primary">
+          <button onClick={openScheduleModal} className="btn btn-primary">
             <Plus className="btn-icon" />
-            Nova Consulta
-          </Link>
+            Agendar Consulta
+          </button>
         </div>
       </div>
 
@@ -1066,6 +1143,98 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+      {/* Modal de Novo Agendamento */}
+      {scheduleModalOpen && (
+        <div className="modal-overlay" onClick={() => setScheduleModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <h3>Agendar Consulta</h3>
+              <button className="modal-close" onClick={() => setScheduleModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {/* Paciente */}
+              <div className="form-group">
+                <label className="form-label">Paciente *</label>
+                {scheduleForm.patient_id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#F1F5F9', borderRadius: 8, border: '1.5px solid #E2E8F0' }}>
+                    <User size={16} style={{ color: '#1B4266' }} />
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{scheduleForm.patient_name}</span>
+                    <button onClick={() => setScheduleForm(p => ({ ...p, patient_id: '', patient_name: '' }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="text" placeholder="Buscar paciente..."
+                      value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
+                      className="form-input" autoFocus
+                    />
+                    {patientsLoading && <div style={{ textAlign: 'center', padding: 8 }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /></div>}
+                    {patientsList.length > 0 && (
+                      <div style={{ maxHeight: 150, overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: 8, marginTop: 4 }}>
+                        {patientsList.map(p => (
+                          <button key={p.id} onClick={() => { setScheduleForm(prev => ({ ...prev, patient_id: p.id, patient_name: p.name })); setPatientsList([]); setPatientSearch(''); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', borderBottom: '1px solid #F1F5F9', background: 'transparent', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <User size={14} style={{ color: '#94A3B8' }} /> {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Data e Hora */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Data *</label>
+                  <input type="date" value={scheduleForm.date} onChange={e => setScheduleForm(p => ({ ...p, date: e.target.value }))} className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Horario *</label>
+                  <input type="time" value={scheduleForm.time} onChange={e => setScheduleForm(p => ({ ...p, time: e.target.value }))} className="form-input" />
+                </div>
+              </div>
+
+              {/* Tipo */}
+              <div className="form-group">
+                <label className="form-label">Tipo de Consulta</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['TELEMEDICINA', 'PRESENCIAL'] as const).map(t => (
+                    <button key={t} onClick={() => setScheduleForm(p => ({ ...p, type: t }))}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        border: scheduleForm.type === t ? '2px solid #1B4266' : '1.5px solid #E2E8F0',
+                        background: scheduleForm.type === t ? '#EBF3F6' : 'transparent',
+                        color: scheduleForm.type === t ? '#1B4266' : '#64748B',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      {t === 'TELEMEDICINA' ? <Video size={16} /> : <User size={16} />}
+                      {t === 'TELEMEDICINA' ? 'Telemedicina' : 'Presencial'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setScheduleModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleCreateSchedule} disabled={isScheduling}>
+                {isScheduling ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Agendando...</> : <><Calendar size={16} /> Agendar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TutorialPopup steps={AGENDA_STEPS} pageKey="agenda" showWelcome={false} />
     </div>
   );

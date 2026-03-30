@@ -67,27 +67,47 @@ interface AnamneseFormData {
 
 // Opções para seleções múltiplas (simplificadas)
 const proteinasOptions = [
-  'Frango', 'Carne Bovina', 'Peixe', 'Ovos', 'Tofu', 'Porco', 'Frutos do Mar',
-  'Ovo', 'Atum/Sardinha', 'Queijo', 'Iogurte'
+  'Linguado', 'Merluza', 'Pintado', 'Robalo', 'Dourado', 'Ovos de codorna',
+  'Ovo caipira inteiro', 'Sardinha', 'Salmão selvagem', 'Atum fresco', 'Cavala',
+  'Anchova', 'Frango caipira', 'Peru', 'Spirulina', 'Clorela', 'Edamame'
 ];
 const carboidratosOptions = [
-  'Arroz Branco', 'Arroz Integral', 'Batata Doce', 'Mandioca', 'Macarrão', 'Cuscuz',
-  'Aveia', 'Pão Integral', 'Inhame', 'Tapioca'
+  'Arroz integral', 'Batata doce (incluindo roxa)', 'Mandioca (aipim)', 'Inhame',
+  'Inhame roxo', 'Mandioquinha (batata-baroa)', 'Banana-da-terra', 'Plantain (banana verde)',
+  'Quinoa em grãos', 'Trigo sarraceno (buckwheat)', 'Abóbora', 'Aveia sem glúten',
+  'Ervilha verde', 'Amaranto', 'Sorgo', 'Painço', 'Teff', 'Batata yacon'
 ];
 const vegetaisOptions = [
-  'Brócolis', 'Espinafre', 'Cenoura', 'Abobrinha', 'Alface', 'Tomate', 'Beterraba',
-  'Pepino', 'Vagem', 'Couve-flor'
+  'Acelga', 'Aspargos', 'Brócolis', 'Chuchu', 'Cogumelos (shiitake, champignon, portobello)',
+  'Couve', 'Escarola', 'Espinafre', 'Folhas de beterraba', 'Maxixe', 'Nirá',
+  'Ora-pro-nóbis (folhas)', 'Palmito', 'Peixinho-da-horta', 'Quiabo', 'Radicchio',
+  'Vagem', 'Agrião', 'Alface', 'Almeirão', 'Capuchinha (folhas e flores)', 'Chicória',
+  'Coentro', 'Endívia', 'Hortelã', 'Manjericão', 'Rúcula', 'Salsa', 'Alcachofra',
+  'Alho-poró', 'Beterraba', 'Broto de girassol', 'Cebolinha', 'Couve-de-bruxelas',
+  'Couve-flor', 'Nabo', 'Pepino', 'Repolho roxo', 'Cenoura', 'Abobrinha',
+  'Topinambur', 'Alho', 'Cebola'
 ];
 const leguminosasOptions = [
-  'Feijão Preto', 'Feijão Carioca', 'Grão de Bico', 'Lentilha', 'Ervilha', 'Soja', 'Edamame'
+  'Feijão branco', 'Feijão carioca', 'Feijão-de-corda', 'Feijão fradinho',
+  'Feijão jalo', 'Feijão manteiguinha', 'Feijão preto', 'Feijão rosinha',
+  'Feijão vermelho (azuki)', 'Lentilha vermelha', 'Lentilha verde',
+  'Lentilha beluga (preta)', 'Ervilha seca', 'Ervilha torta', 'Grão-de-bico',
+  'Soja orgânica (grãos)', 'Feijão mungo', 'Ervilha proteica'
 ];
 const gordurasOptions = [
-  'Azeite de Oliva', 'Abacate', 'Castanhas', 'Pasta de Amendoim', 'Nozes',
-  'Sementes (Chia/Linhaça)', 'Óleo de Coco'
+  'Abacate', 'Azeite de oliva', 'Castanha de caju', 'Castanha-do-pará', 'Nozes',
+  'Amêndoa', 'Noz-pecã', 'Macadâmia', 'Avelã', 'Pistache', 'Pasta de amêndoas',
+  'Pasta de tahine', 'Azeitona', 'Chia', 'Linhaça', 'Semente de abóbora',
+  'Semente de girassol', 'Semente de gergelim', 'Semente de cânhamo',
+  'Semente de romã', 'Gema do ovo', 'Óleo de coco virgem', 'Óleo TCM', 'Manteiga ghee'
 ];
 const frutasOptions = [
-  'Banana', 'Maçã', 'Mamão', 'Morango', 'Melancia', 'Laranja', 'Manga', 'Uva',
-  'Abacaxi', 'Pêra', 'Kiwi'
+  'Abacaxi', 'Ameixa', 'Carambola', 'Cereja', 'Caju', 'Coco', 'Figo', 'Framboesa',
+  'Goiaba', 'Jabuticaba', 'Kiwi', 'Laranja', 'Maçã', 'Mamão', 'Manga', 'Maracujá',
+  'Melancia', 'Melão', 'Mirtilo', 'Morango', 'Nectarina', 'Pera', 'Pêssego',
+  'Pitaya', 'Romã', 'Tangerina', 'Uva', 'Açaí', 'Acerola', 'Banana (madura)',
+  'Cranberry', 'Groselha', 'Limão', 'Lima', 'Caqui', 'Cupuaçu', 'Graviola',
+  'Buriti', 'Tâmara'
 ];
 
 // Seleção direta: UI armazena o que o paciente QUER (= mesmo formato do DB)
@@ -267,6 +287,7 @@ function AnamneseInicialContent() {
   const [submitted, setSubmitted] = useState(false);
   const [emailLocked, setEmailLocked] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [step1Error, setStep1Error] = useState('');
 
   useEffect(() => {
     if (pacienteId) {
@@ -490,44 +511,56 @@ function AnamneseInicialContent() {
 
               <div className="wizard-form-grid">
                 <div className="wizard-form-field">
-                  <label className="wizard-field-label">Nome completo</label>
+                  <label className="wizard-field-label">Nome completo <span style={{ color: '#ef4444' }}>*</span></label>
                   <InputField icon={User} type="text" value={formData.nome_completo || ''} onChange={(e: any) => handleChange('nome_completo', e.target.value)} placeholder="Digite seu nome completo" />
                 </div>
 
                 <div className="wizard-form-field">
-                  <label className="wizard-field-label">E-mail</label>
+                  <label className="wizard-field-label">E-mail <span style={{ color: '#ef4444' }}>*</span></label>
                   <InputField icon={Mail} type="email" value={formData.email || ''} onChange={(e: any) => handleChange('email', e.target.value)} placeholder="seuemail@exemplo.com" disabled={emailLocked} />
                 </div>
 
                 <div className="wizard-form-row">
                   <div className="wizard-form-field">
-                    <label className="wizard-field-label">WhatsApp/Telefone</label>
+                    <label className="wizard-field-label">WhatsApp/Telefone <span style={{ color: '#ef4444' }}>*</span></label>
                     <InputField icon={Phone} type="tel" value={formData.telefone || ''} onChange={(e: any) => handleChange('telefone', formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} />
                   </div>
                   <div className="wizard-form-field">
-                    <label className="wizard-field-label">Data de nascimento</label>
+                    <label className="wizard-field-label">Data de nascimento <span style={{ color: '#ef4444' }}>*</span></label>
                     <InputField icon={Calendar} type="text" value={formData.data_nascimento || ''} onChange={(e: any) => handleChange('data_nascimento', formatDate(e.target.value))} placeholder="DD/MM/AAAA" maxLength={10} />
                   </div>
                 </div>
 
                 <div className="wizard-form-row">
                   <div className="wizard-form-field">
-                    <label className="wizard-field-label">Gênero</label>
+                    <label className="wizard-field-label">Sexo <span style={{ color: '#ef4444' }}>*</span></label>
                     <SelectField icon={Users} value={formData.genero || ''} onChange={(e: any) => handleChange('genero', e.target.value)}>
                       <option value="">Selecione</option>
                       <option value="Masculino">Masculino</option>
                       <option value="Feminino">Feminino</option>
-                      <option value="Outro">Outro</option>
                     </SelectField>
                   </div>
                   <div className="wizard-form-field">
-                    <label className="wizard-field-label">Profissão</label>
+                    <label className="wizard-field-label">Profissao <span style={{ color: '#ef4444' }}>*</span></label>
                     <InputField icon={Briefcase} type="text" value={formData.profissao || ''} onChange={(e: any) => handleChange('profissao', e.target.value)} placeholder="Sua ocupação" />
                   </div>
                 </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              {step1Error && (
+                <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, textAlign: 'center', marginTop: 12 }}>{step1Error}</p>
+              )}
+
+              <NavButtons onPrev={prevStep} onNext={() => {
+                if (!formData.nome_completo?.trim()) { setStep1Error('Preencha o nome completo.'); return; }
+                if (!formData.email?.trim()) { setStep1Error('Preencha o e-mail.'); return; }
+                if (!formData.telefone?.trim()) { setStep1Error('Preencha o telefone.'); return; }
+                if (!formData.data_nascimento?.trim()) { setStep1Error('Preencha a data de nascimento.'); return; }
+                if (!formData.genero) { setStep1Error('Selecione o sexo.'); return; }
+                if (!formData.profissao?.trim()) { setStep1Error('Preencha a profissao.'); return; }
+                setStep1Error('');
+                nextStep();
+              }} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -536,11 +569,11 @@ function AnamneseInicialContent() {
           </>
         );
 
-      // === STEP 2: Medidas ===
-      case 2:
+      // === STEP 4: Medidas ===
+      case 4:
         return (
           <>
-            <StepPageHeader step={2} />
+            <StepPageHeader step={4} />
             <div className="step-content">
               <h1 className="step-title">Medidas</h1>
               <p className="step-description">Informe seu peso e altura para o cálculo do IMC e definição de metas.</p>
@@ -632,8 +665,19 @@ function AnamneseInicialContent() {
           <>
             <StepPageHeader step={3} />
             <div className="step-content">
-              <h1 className="step-title">Fotos Corporais</h1>
-              <p className="step-description">Envie 4 fotos do seu corpo para acompanhamento da evolucao. Este passo e opcional.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h1 className="step-title">Fotos Corporais</h1>
+                  <p className="step-description">Envie 4 fotos do seu corpo para acompanhamento da evolucao. Este passo e opcional.</p>
+                </div>
+                <button type="button" onClick={nextStep} style={{
+                  padding: '8px 20px', borderRadius: 8, border: '1.5px solid #94A3B8',
+                  background: 'transparent', color: '#64748B', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+                }}>
+                  Pular
+                </button>
+              </div>
 
               <div className="wizard-photos-grid">
                 {([
@@ -663,11 +707,11 @@ function AnamneseInicialContent() {
           </>
         );
 
-      // === STEP 4: Preferências e Hábitos ===
-      case 4:
+      // === STEP 5: Preferências e Hábitos ===
+      case 5:
         return (
           <>
-            <StepPageHeader step={4} />
+            <StepPageHeader step={5} />
             <div className="step-content">
               <h1 className="step-title">Preferências e Hábitos</h1>
               <p className="step-description">Selecione os alimentos que você consome habitualmente ou prefere incluir na sua dieta.</p>
@@ -713,92 +757,20 @@ function AnamneseInicialContent() {
           </>
         );
 
-      // === STEP 5: Atividade Física e Saúde ===
-      case 5:
+      // === STEP 6: Atividade Física e Saúde ===
+      case 6:
         return (
           <>
-            <StepPageHeader step={5} />
+            <StepPageHeader step={6} />
             <div className="step-content">
               <h1 className="step-title">Atividade Física e Saúde</h1>
-              <p className="step-description">Conte-nos sobre sua rotina e histórico médico para personalizarmos seu plano.</p>
+              <p className="step-description">Conte-nos sobre sua rotina e historico para personalizarmos seu plano.</p>
 
               <div className="wizard-form-grid">
-                {/* Nível de atividade */}
+                {/* Objetivo Principal - PRIMEIRO */}
                 <div className="wizard-section-label">
-                  <Dumbbell className="wizard-section-label-icon" /> Atividade Física
+                  <ClipboardList className="wizard-section-label-icon" /> Objetivo Principal
                 </div>
-                <div className="wizard-level-chips">
-                  {['Sedentário', 'Leve', 'Moderado', 'Intenso'].map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      className={`wizard-level-chip ${formData.nivel_atividade === level ? 'selected' : ''}`}
-                      onClick={() => handleChange('nivel_atividade', level)}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Modalidades */}
-                <div className="wizard-subsection-label">Modalidades</div>
-                <div className="wizard-chips">
-                  {['Musculação', 'Corrida', 'Caminhada', 'Natação', 'Ciclismo', 'Pilates', 'Yoga', 'Esporte coletivo', 'Dança', 'Funcional'].map((mod) => {
-                    const isSelected = ((formData.modalidades as string[]) || []).includes(mod);
-                    return (
-                      <button
-                        key={mod}
-                        type="button"
-                        className={`wizard-chip ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleMultiSelect('modalidades', mod, !isSelected)}
-                      >
-                        {mod}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Frequência semanal */}
-                <div className="wizard-form-field" style={{ marginTop: 20 }}>
-                  <label className="wizard-field-label">Frequência semanal</label>
-                  <SelectField icon={Calendar} value={formData.frequencia_semanal || ''} onChange={(e: any) => handleChange('frequencia_semanal', e.target.value)}>
-                    <option value="">Selecione</option>
-                    <option value="1x">1x por semana</option>
-                    <option value="2x">2x por semana</option>
-                    <option value="3x">3x por semana</option>
-                    <option value="4x">4x por semana</option>
-                    <option value="5x">5x por semana</option>
-                    <option value="6x">6x por semana</option>
-                    <option value="7x">Todos os dias</option>
-                  </SelectField>
-                </div>
-
-                {/* Período de treino */}
-                <div className="wizard-form-field" style={{ marginTop: 8 }}>
-                  <label className="wizard-field-label">Período de treino</label>
-                  <div className="wizard-radio-group">
-                    {['Manhã', 'Tarde', 'Noite', 'Varia'].map((periodo) => (
-                      <label key={periodo} className="wizard-radio-item">
-                        <input
-                          type="radio"
-                          name="periodo_treino"
-                          checked={formData.periodo_treino === periodo}
-                          onChange={() => handleChange('periodo_treino', periodo)}
-                        />
-                        <span>{periodo}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Restrições ou dores */}
-                <div className="wizard-form-field" style={{ marginTop: 8 }}>
-                  <label className="wizard-field-label">Restrições ou dores</label>
-                  <textarea className="wizard-textarea" value={formData.restricao_movimento || ''} onChange={(e) => handleChange('restricao_movimento', e.target.value)} rows={3} placeholder="Descreva se houver..." />
-                </div>
-
-                {/* Objetivo Principal */}
-                <h3 className="wizard-form-section-title">Objetivo Principal</h3>
                 <div className="wizard-form-field">
                   <SelectField icon={ClipboardList} value={formData.objetivo_principal || ''} onChange={(e: any) => handleChange('objetivo_principal', e.target.value)}>
                     <option value="">Qual seu principal objetivo?</option>
@@ -812,6 +784,94 @@ function AnamneseInicialContent() {
                     <option value="Outro">Outro</option>
                   </SelectField>
                 </div>
+
+                {/* Pratica atividade fisica? */}
+                <div className="wizard-section-label" style={{ marginTop: 24 }}>
+                  <Dumbbell className="wizard-section-label-icon" /> Voce pratica atividade fisica?
+                </div>
+                <div className="wizard-radio-group">
+                  {['Sim', 'Não'].map((opt) => (
+                    <label key={opt} className={`wizard-radio-item ${formData.patrica_atividade_fisica === opt ? 'selected' : ''}`}>
+                      <input type="radio" name="patrica_atividade_fisica" checked={formData.patrica_atividade_fisica === opt} onChange={() => handleChange('patrica_atividade_fisica', opt)} />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Campos condicionais - so aparecem se respondeu Sim */}
+                {formData.patrica_atividade_fisica === 'Sim' && (
+                  <>
+                    {/* Nível de atividade */}
+                    <div className="wizard-subsection-label" style={{ marginTop: 16 }}>Nivel de atividade</div>
+                    <div className="wizard-level-chips">
+                      {['Sedentário', 'Leve', 'Moderado', 'Intenso'].map((level) => (
+                        <button key={level} type="button" className={`wizard-level-chip ${formData.nivel_atividade === level ? 'selected' : ''}`} onClick={() => handleChange('nivel_atividade', level)}>
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Modalidades */}
+                    <div className="wizard-subsection-label">Modalidades</div>
+                    <div className="wizard-chips">
+                      {['Musculação', 'Corrida', 'Caminhada', 'Natação', 'Ciclismo', 'Pilates', 'Yoga', 'Esporte coletivo', 'Dança', 'Funcional'].map((mod) => {
+                        const isSelected = ((formData.modalidades as string[]) || []).includes(mod);
+                        return (
+                          <button key={mod} type="button" className={`wizard-chip ${isSelected ? 'selected' : ''}`} onClick={() => handleMultiSelect('modalidades', mod, !isSelected)}>
+                            {mod}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Frequência semanal */}
+                    <div className="wizard-form-field" style={{ marginTop: 20 }}>
+                      <label className="wizard-field-label">Frequencia semanal</label>
+                      <SelectField icon={Calendar} value={formData.frequencia_semanal || ''} onChange={(e: any) => handleChange('frequencia_semanal', e.target.value)}>
+                        <option value="">Selecione</option>
+                        <option value="1x">1x por semana</option>
+                        <option value="2x">2x por semana</option>
+                        <option value="3x">3x por semana</option>
+                        <option value="4x">4x por semana</option>
+                        <option value="5x">5x por semana</option>
+                        <option value="6x">6x por semana</option>
+                        <option value="7x">Todos os dias</option>
+                      </SelectField>
+                    </div>
+
+                    {/* Período de treino */}
+                    <div className="wizard-form-field" style={{ marginTop: 8 }}>
+                      <label className="wizard-field-label">Periodo de treino</label>
+                      <div className="wizard-radio-group">
+                        {['Manhã', 'Tarde', 'Noite', 'Varia'].map((periodo) => (
+                          <label key={periodo} className="wizard-radio-item">
+                            <input type="radio" name="periodo_treino" checked={formData.periodo_treino === periodo} onChange={() => handleChange('periodo_treino', periodo)} />
+                            <span>{periodo}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Sente algum tipo de dor ou desconforto? */}
+                <div className="wizard-section-label" style={{ marginTop: 24 }}>
+                  <Heart className="wizard-section-label-icon" /> Sente algum tipo de dor ou desconforto?
+                </div>
+                <div className="wizard-radio-group">
+                  {['Sim', 'Não'].map((opt) => (
+                    <label key={opt} className={`wizard-radio-item ${formData.restricao_movimento === opt ? 'selected' : ''}`}>
+                      <input type="radio" name="restricao_dor" checked={formData.restricao_movimento === opt || (opt === 'Não' && !formData.restricao_movimento)} onChange={() => handleChange('restricao_movimento', opt)} />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.restricao_movimento === 'Sim' && (
+                  <div className="wizard-form-field" style={{ marginTop: 8 }}>
+                    <label className="wizard-field-label">Descreva as dores ou desconfortos</label>
+                    <textarea className="wizard-textarea" value={formData.informacoes_importantes || ''} onChange={(e) => handleChange('informacoes_importantes', e.target.value)} rows={3} placeholder="Ex: dor no joelho direito, desconforto lombar..." />
+                  </div>
+                )}
               </div>
 
               <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
@@ -823,11 +883,11 @@ function AnamneseInicialContent() {
           </>
         );
 
-      // === STEP 6: Saúde e Medicamentos ===
-      case 6:
+      // === STEP 7: Saúde e Medicamentos ===
+      case 7:
         return (
           <>
-            <StepPageHeader step={6} />
+            <StepPageHeader step={7} />
             <div className="step-content">
               <h1 className="step-title">Saúde e medicamentos</h1>
               <p className="step-description">Informações importantes para o seu plano personalizado.</p>
@@ -863,46 +923,52 @@ function AnamneseInicialContent() {
                 <div className="wizard-form-field" style={{ marginTop: 8 }}>
                   <label className="wizard-field-label" style={{ fontWeight: 700 }}>Suplementos que utiliza</label>
                   <div className="wizard-chips">
-                    {['Whey', 'Creatina', 'Vitamina D', 'Omega 3', 'Colágeno', 'Magnésio', 'B12', 'Ferro', 'Nenhum'].map((sup) => {
+                    {['Whey', 'Creatina', 'Vitamina D', 'Omega 3', 'Colágeno', 'Magnésio', 'B12', 'Ferro', 'Nenhum', 'Outros'].map((sup) => {
                       const isSelected = ((formData.suplementos as string[]) || []).includes(sup);
                       return (
-                        <button
-                          key={sup}
-                          type="button"
-                          className={`wizard-chip ${isSelected ? 'selected' : ''}`}
-                          onClick={() => handleMultiSelect('suplementos', sup, !isSelected)}
-                        >
+                        <button key={sup} type="button" className={`wizard-chip ${isSelected ? 'selected' : ''}`} onClick={() => handleMultiSelect('suplementos', sup, !isSelected)}>
                           {sup}
                         </button>
                       );
                     })}
                   </div>
+                  {((formData.suplementos as string[]) || []).includes('Outros') && (
+                    <textarea className="wizard-textarea" style={{ marginTop: 8 }} value={formData.informacoes_importantes || ''} onChange={(e) => handleChange('informacoes_importantes', e.target.value)} rows={2} placeholder="Quais outros suplementos?" />
+                  )}
                 </div>
 
                 {/* Condições diagnosticadas */}
                 <div className="wizard-form-field" style={{ marginTop: 8 }}>
-                  <label className="wizard-field-label" style={{ fontWeight: 700 }}>Condições diagnosticadas</label>
+                  <label className="wizard-field-label" style={{ fontWeight: 700 }}>Condicoes diagnosticadas</label>
                   <div className="wizard-chips">
-                    {['Diabetes T1', 'Diabetes T2', 'Hipertensão', 'Hipotireoidismo', 'SOP', 'Dislipidemia', 'Cardiopatia', 'Esteatose', 'Nenhuma'].map((cond) => {
+                    {['Diabetes T1', 'Diabetes T2', 'Hipertensão', 'Hipotireoidismo', 'SOP', 'Dislipidemia', 'Cardiopatia', 'Esteatose', 'Nenhuma', 'Outras'].map((cond) => {
                       const isSelected = ((formData.condicoes_diagnosticadas as string[]) || []).includes(cond);
                       return (
-                        <button
-                          key={cond}
-                          type="button"
-                          className={`wizard-chip ${isSelected ? 'selected' : ''}`}
-                          onClick={() => handleMultiSelect('condicoes_diagnosticadas', cond, !isSelected)}
-                        >
+                        <button key={cond} type="button" className={`wizard-chip ${isSelected ? 'selected' : ''}`} onClick={() => handleMultiSelect('condicoes_diagnosticadas', cond, !isSelected)}>
                           {cond}
                         </button>
                       );
                     })}
                   </div>
+                  {((formData.condicoes_diagnosticadas as string[]) || []).includes('Outras') && (
+                    <textarea className="wizard-textarea" style={{ marginTop: 8 }} value={formData.NecessidadeEnergeticaDiaria || ''} onChange={(e) => handleChange('NecessidadeEnergeticaDiaria', e.target.value)} rows={2} placeholder="Quais outras condicoes?" />
+                  )}
                 </div>
 
-                {/* Cirurgias anteriores */}
+                {/* Ja fez algum tipo de cirurgia? */}
                 <div className="wizard-form-field" style={{ marginTop: 8 }}>
-                  <label className="wizard-field-label" style={{ fontWeight: 700 }}>Cirurgias anteriores</label>
-                  <textarea className="wizard-textarea" value={formData.cirurgias_anteriores || ''} onChange={(e) => handleChange('cirurgias_anteriores', e.target.value)} rows={2} placeholder="Descreva cirurgias relevantes e o ano" />
+                  <label className="wizard-field-label" style={{ fontWeight: 700 }}>Ja fez algum tipo de cirurgia?</label>
+                  <div className="wizard-yesno-group">
+                    {['Sim', 'Não'].map((opt) => (
+                      <label key={opt} className={`wizard-yesno-item ${(formData.cirurgias_anteriores === opt || (opt === 'Não' && !formData.cirurgias_anteriores)) ? 'selected' : ''}`}>
+                        <input type="radio" name="cirurgia" checked={formData.cirurgias_anteriores === opt || (opt === 'Não' && !formData.cirurgias_anteriores)} onChange={() => handleChange('cirurgias_anteriores', opt)} />
+                        <span>{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {formData.cirurgias_anteriores === 'Sim' && (
+                    <textarea className="wizard-textarea" style={{ marginTop: 8 }} value={formData.restricao_movimento || ''} onChange={(e) => handleChange('restricao_movimento', e.target.value)} rows={2} placeholder="Quais cirurgias e em que ano?" />
+                  )}
                 </div>
               </div>
 
@@ -915,11 +981,11 @@ function AnamneseInicialContent() {
           </>
         );
 
-      // === STEP 7: Saúde Digestiva ===
-      case 7:
+      // === STEP 8: Saúde Digestiva (ultimo) ===
+      case 8:
         return (
           <>
-            <StepPageHeader step={7} />
+            <StepPageHeader step={8} />
             <div className="step-content">
               <h1 className="step-title">Saúde Digestiva</h1>
               <p className="step-description">Informações importantes para o seu plano personalizado.</p>
@@ -947,7 +1013,7 @@ function AnamneseInicialContent() {
                   <Shield className="wizard-section-label-icon" /> Alergias ou sensibilidades
                 </div>
                 <div className="wizard-chips">
-                  {['Lactose', 'Glúten', 'Amendoim', 'Frutos do mar', 'Ovo', 'Nenhuma'].map((item) => {
+                  {['Lactose', 'Glúten', 'Amendoim', 'Frutos do mar', 'Ovo', 'Nenhuma', 'Outras'].map((item) => {
                     const isSelected = ((formData.alergias_sensibilidades as string[]) || []).includes(item);
                     return (
                       <button key={item} type="button" className={`wizard-chip ${isSelected ? 'selected' : ''}`} onClick={() => handleMultiSelect('alergias_sensibilidades', item, !isSelected)}>
@@ -956,13 +1022,16 @@ function AnamneseInicialContent() {
                     );
                   })}
                 </div>
+                {((formData.alergias_sensibilidades as string[]) || []).includes('Outras') && (
+                  <textarea className="wizard-textarea" style={{ marginTop: 8 }} value={(formData as any).alergias_outras || ''} onChange={(e) => handleChange('alergias_sensibilidades' as any, [...((formData.alergias_sensibilidades as string[]) || []).filter(a => a !== 'Outras'), 'Outras'])} rows={2} placeholder="Quais outras alergias ou sensibilidades?" />
+                )}
 
                 {/* Desconfortos intestinais */}
                 <div className="wizard-section-label" style={{ marginTop: 28 }}>
                   <MessageSquare className="wizard-section-label-icon" /> Desconfortos intestinais
                 </div>
                 <div className="wizard-chips">
-                  {['Gases', 'Inchaço', 'Constipação', 'Diarreia', 'Refluxo', 'Náusea', 'Nenhum'].map((item) => {
+                  {['Gases', 'Inchaço', 'Constipação', 'Diarreia', 'Refluxo', 'Náusea', 'Nenhum', 'Outros'].map((item) => {
                     const isSelected = ((formData.desconfortos_intestinais as string[]) || []).includes(item);
                     return (
                       <button key={item} type="button" className={`wizard-chip ${isSelected ? 'selected' : ''}`} onClick={() => handleMultiSelect('desconfortos_intestinais', item, !isSelected)}>
@@ -971,6 +1040,9 @@ function AnamneseInicialContent() {
                     );
                   })}
                 </div>
+                {((formData.desconfortos_intestinais as string[]) || []).includes('Outros') && (
+                  <textarea className="wizard-textarea" style={{ marginTop: 8 }} value={formData.avaliacao_intestino?.startsWith('outros:') ? formData.avaliacao_intestino.replace('outros:', '') : ''} onChange={(e) => handleChange('avaliacao_intestino' as any, 'outros:' + e.target.value)} rows={2} placeholder="Quais outros desconfortos?" />
+                )}
 
                 {/* Avaliação do intestino 0-10 */}
                 <div style={{ marginTop: 28 }}>
@@ -1068,22 +1140,49 @@ function AnamneseInicialContent() {
                     ))}
                   </div>
                 </div>
+
+                {/* Cor da urina habitual */}
+                <div style={{ marginTop: 28 }}>
+                  <div className="wizard-section-label">
+                    <Droplets className="wizard-section-label-icon" /> Cor da urina habitual
+                  </div>
+                  <div className="wizard-urine-grid">
+                    {[
+                      { value: 'Transparente', color: '#E8ECF0', fill: '#F0F4F8', label: 'Transparente', hint: 'Excesso de agua' },
+                      { value: 'Amarelo-claro', color: '#F5E6A3', fill: '#FDF8E8', label: 'Amarelo claro', hint: 'Ideal' },
+                      { value: 'Amarelo', color: '#E8C840', fill: '#FDF0C0', label: 'Amarelo', hint: 'Normal' },
+                      { value: 'Amarelo escuro', color: '#D4A017', fill: '#F0D878', label: 'Amarelo escuro', hint: 'Beba mais agua' },
+                      { value: 'Laranjada', color: '#E07020', fill: '#F0A060', label: 'Laranjada', hint: 'Desidratacao' },
+                      { value: 'Marrom', color: '#8B5E3C', fill: '#B8845C', label: 'Marrom', hint: 'Procure um medico' },
+                    ].map((opt) => (
+                      <button key={opt.value} type="button" className={`wizard-urine-item ${formData.cor_urina === opt.value ? 'selected' : ''}`} onClick={() => handleChange('cor_urina', opt.value)}>
+                        <svg viewBox="0 0 48 64" className="wizard-urine-svg">
+                          <path d="M12 8 L12 48 C12 54, 18 58, 24 58 C30 58, 36 54, 36 48 L36 8 Z" fill={opt.fill} stroke="#D1D5DB" strokeWidth="1.5"/>
+                          <path d="M12 24 L36 24 L36 48 C36 54, 30 58, 24 58 C18 58, 12 54, 12 48 Z" fill={opt.color} opacity="0.7"/>
+                          <line x1="10" y1="8" x2="38" y2="8" stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        <span className="wizard-urine-label">{opt.label}</span>
+                        <span className="wizard-urine-hint">{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons isLast onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
-              <span className="wizard-footer-text">Seus dados estão seguros e protegidos.</span>
+              <span className="wizard-footer-text">Seus dados estao seguros e protegidos.</span>
             </div>
           </>
         );
 
-      // === STEP 8: Sono, água e jejum (último) ===
-      case 8:
+      // === STEP 2: Sono, agua e jejum ===
+      case 2:
         return (
           <>
-            <StepPageHeader step={8} />
+            <StepPageHeader step={2} />
             <div className="step-content">
               <h1 className="step-title">Sono, água e jejum</h1>
               <p className="step-description">Entender seus hábitos de recuperação e hidratação nos ajuda a otimizar sua performance metabólica.</p>
@@ -1124,38 +1223,6 @@ function AnamneseInicialContent() {
                   </div>
                 </div>
 
-                {/* Cor da urina habitual */}
-                <div style={{ marginTop: 24 }}>
-                  <div className="wizard-section-label">
-                    <Droplets className="wizard-section-label-icon" /> Cor da urina habitual
-                  </div>
-                  <div className="wizard-urine-grid">
-                    {[
-                      { value: 'Transparente', color: '#E8ECF0', fill: '#F0F4F8', label: 'Transparente', hint: 'Excesso de agua' },
-                      { value: 'Amarelo-claro', color: '#F5E6A3', fill: '#FDF8E8', label: 'Amarelo claro', hint: 'Ideal' },
-                      { value: 'Amarelo', color: '#E8C840', fill: '#FDF0C0', label: 'Amarelo', hint: 'Normal' },
-                      { value: 'Amarelo escuro', color: '#D4A017', fill: '#F0D878', label: 'Amarelo escuro', hint: 'Beba mais agua' },
-                      { value: 'Laranjada', color: '#E07020', fill: '#F0A060', label: 'Laranjada', hint: 'Desidratacao' },
-                      { value: 'Marrom', color: '#8B5E3C', fill: '#B8845C', label: 'Marrom', hint: 'Procure um medico' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={`wizard-urine-item ${formData.cor_urina === opt.value ? 'selected' : ''}`}
-                        onClick={() => handleChange('cor_urina', opt.value)}
-                      >
-                        <svg viewBox="0 0 48 64" className="wizard-urine-svg">
-                          <path d="M12 8 L12 48 C12 54, 18 58, 24 58 C30 58, 36 54, 36 48 L36 8 Z" fill={opt.fill} stroke="#D1D5DB" strokeWidth="1.5"/>
-                          <path d="M12 24 L36 24 L36 48 C36 54, 30 58, 24 58 C18 58, 12 54, 12 48 Z" fill={opt.color} opacity="0.7"/>
-                          <line x1="10" y1="8" x2="38" y2="8" stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                        <span className="wizard-urine-label">{opt.label}</span>
-                        <span className="wizard-urine-hint">{opt.hint}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Pratica jejum intermitente? */}
                 <div style={{ marginTop: 24 }}>
                   <div className="wizard-section-label">
@@ -1186,7 +1253,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons isLast onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />

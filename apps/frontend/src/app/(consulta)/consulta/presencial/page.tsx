@@ -513,12 +513,7 @@ function PresencialConsultationContent() {
                 </span>
               </div>
 
-              {pendingChunks > 0 && (
-                <div className="status-item">
-                  <span className="status-label">Buffer:</span>
-                  <span className="status-value">{pendingChunks} chunks</span>
-                </div>
-              )}
+              {/* Buffer oculto */}
             </div>
 
             <DualMicrophoneControl
@@ -540,12 +535,33 @@ function PresencialConsultationContent() {
             </div>
           </div>
 
-          <div className="transcription-panel">
-            <PresencialTranscription
-              transcriptions={transcriptions}
-              doctorName={doctorName}
-              patientName={patientName}
-            />
+          {/* Visualizador de Audio */}
+          <div className="audio-visualizer-panel">
+            <div className="audio-viz-row">
+              {[
+                { label: 'Profissional', level: doctorLevel || 0, color: '#1B4266' },
+                { label: 'Paciente', level: patientLevel || 0, color: '#22c55e' },
+              ].map((mic) => {
+                const bars = [0.3, 0.5, 0.7, 0.85, 0.95, 1, 0.9, 0.75, 0.6, 0.8, 1, 0.85, 0.7, 0.55, 0.9, 1, 0.8, 0.65, 0.5, 0.35, 0.6, 0.75, 0.9, 0.7, 0.45, 0.8, 0.95, 0.6, 0.4, 0.55];
+                const isActive = mic.level > 0.03;
+                return (
+                  <div key={mic.label} className="audio-viz-card">
+                    <div className="audio-viz-label" style={{ color: isActive ? mic.color : '#94A3B8' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? mic.color : '#E2E8F0', display: 'inline-block', marginRight: 6 }} />
+                      {mic.label}
+                    </div>
+                    <div className="audio-viz-bars">
+                      {bars.map((factor, i) => {
+                        const h = isActive ? Math.max(6, mic.level * factor * 100) : 6;
+                        return (
+                          <div key={i} className="audio-viz-bar" style={{ height: `${h}%`, background: isActive ? mic.color : '#E2E8F0' }} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -672,7 +688,8 @@ function PresencialConsultationContent() {
           max-width: 1400px;
           margin: 0 auto;
           width: 100%;
-          align-items: start;
+          align-items: stretch;
+          flex: 1;
         }
         
         .consultation-controls {
@@ -759,6 +776,57 @@ function PresencialConsultationContent() {
           overflow-y: auto;
           display: flex;
           flex-direction: column;
+        }
+
+        .audio-visualizer-panel {
+          padding: 8px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .audio-viz-row {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          flex: 1;
+        }
+
+        .audio-viz-card {
+          background: #fff;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 12px 16px;
+          text-align: center;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .audio-viz-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0F172A;
+          margin-bottom: 8px;
+          flex-shrink: 0;
+        }
+
+        .audio-viz-bars {
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 3px;
+          flex: 1;
+          min-height: 150px;
+          padding: 0 4px;
+        }
+
+        .audio-viz-bar {
+          flex: 1;
+          max-width: 10px;
+          min-height: 4px;
+          border-radius: 4px;
+          transition: height 0.1s ease;
         }
 
         .finish-button {

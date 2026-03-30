@@ -18,7 +18,6 @@ import {
   ClipboardList,
   Smartphone,
   GraduationCap,
-  FolderOpen,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -37,8 +36,6 @@ const menuItems = [
   { icon: Calendar, label: 'Agenda', href: '/agenda' },
   { icon: User, label: 'Pacientes', href: '/pacientes' },
   { icon: ClipboardList, label: 'Cadastro', href: '/cadastro/pacientes' },
-  { icon: FolderOpen, label: 'Documentos', href: '/documentos' },
-  { icon: Smartphone, label: 'Conexão', href: '/conexao' },
   { icon: Settings, label: 'Configurações', href: '/configuracoes' },
   { icon: GraduationCap, label: 'Treinamento', href: '/treinamento' },
 ];

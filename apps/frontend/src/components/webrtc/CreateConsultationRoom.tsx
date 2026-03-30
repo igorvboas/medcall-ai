@@ -71,7 +71,7 @@ export function CreateConsultationRoom({
   const [socketConnected, setSocketConnected] = useState(false);
 
   // Novos estados para agendamento
-  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento'>('instantanea');
+  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento' | ''>('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
 
@@ -1185,7 +1185,7 @@ export function CreateConsultationRoom({
             </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#A3A3A3', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-              Clique em Criar Consulta para configurar os microfones que serão usados na consulta
+              Selecione o tipo de consulta abaixo para continuar
             </div>
           )}
         </div>
@@ -1195,62 +1195,82 @@ export function CreateConsultationRoom({
       {!isFromAgendamento && (
         <div style={{
           display: 'flex',
-          gap: '12px',
+          gap: '16px',
           justifyContent: 'center',
-          marginTop: '30px',
-          marginBottom: '20px'
+          alignItems: 'flex-end',
+          marginTop: '16px',
+          marginBottom: '16px'
         }}>
-          <button
-            type="button"
-            onClick={() => {
-              setCreationType('instantanea');
-              setScheduledDate('');
-              setScheduledTime('');
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#1B4266' }}>Tipo de Consulta</label>
+            <select
+            value={creationType}
+            onChange={(e) => {
+              const val = e.target.value as 'instantanea' | 'agendamento';
+              setCreationType(val);
+              if (val === 'instantanea') { setScheduledDate(''); setScheduledTime(''); }
+              if (val === 'agendamento') { setSelectedMicrophone(''); }
             }}
-            className={creationType === 'instantanea' ? 'consultation-type-btn active' : 'consultation-type-btn'}
             disabled={isCreatingRoom}
-          >
-            Consulta Imediata
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCreationType('agendamento');
-              setSelectedMicrophone('');
+            style={{
+              padding: '12px 20px',
+              borderRadius: 10,
+              border: '2px solid #1B4266',
+              background: '#EBF3F6',
+              color: '#1B4266',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              minWidth: 220,
             }}
-            className={creationType === 'agendamento' ? 'consultation-type-btn active' : 'consultation-type-btn'}
-            disabled={isCreatingRoom}
           >
-            <img src="/calendar.svg" alt="Calendário" className="btn-icon-calendar" />
-            Agendar Consulta
+            <option value="" disabled>Selecione o tipo</option>
+            <option value="instantanea">Consulta Imediata</option>
+            <option value="agendamento">Agendar Consulta</option>
+          </select>
+          </div>
+
+          <button
+            type="submit"
+            form="consultation-form"
+            onClick={(e) => {
+              e.preventDefault();
+              handleCreateRoom();
+            }}
+            disabled={
+              isCreatingRoom ||
+              loadingPatients ||
+              loadingDoctor ||
+              !selectedPatient ||
+              !consent ||
+              !creationType ||
+              (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
+              (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
+            }
+            style={{
+              padding: '12px 28px',
+              borderRadius: 10,
+              border: 'none',
+              background: '#22c55e',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.2s',
+              opacity: (isCreatingRoom || !selectedPatient || !consent || !creationType) ? 0.5 : 1,
+              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+            }}
+            onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#16a34a'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#22c55e'; }}
+          >
+            {isCreatingRoom ? 'Criando...' : 'Iniciar Consulta'}
           </button>
         </div>
       )}
-
-      {/* Botões de ação */}
-      <div className="action-buttons-container">
-        <button
-          type="submit"
-          form="consultation-form"
-          onClick={(e) => {
-            e.preventDefault();
-            handleCreateRoom();
-          }}
-          className="btn-criar"
-          disabled={
-            isCreatingRoom ||
-            loadingPatients ||
-            loadingDoctor ||
-            !selectedPatient ||
-            !consent ||
-            (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
-            (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
-          }
-        >
-          Criar Consulta
-          <img src="/arrow-left.svg" alt="Seta" className="btn-arrow" />
-        </button>
-      </div>
 
       {isCreatingRoom && (
         <div className="loading-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>
