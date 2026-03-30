@@ -4,11 +4,13 @@ import path from 'path';
 import os from 'os';
 import { createClient } from '@deepgram/sdk';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import ffmpeg from 'fluent-ffmpeg';
 import { ChunkResult, DeepgramUtterance, SpikeResult } from './types';
 
-// Set ffmpeg binary path from @ffmpeg-installer/ffmpeg
+// Set ffmpeg and ffprobe binary paths
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 // ── Configuration ──────────────────────────────────────────────────────────
 

@@ -87,21 +87,35 @@ This will:
 
 ## Results
 
-| Chunk Size | Utterances | Accuracy | Avg Confidence | High-Conf Accuracy | Single-Speaker Chunks |
-|------------|-----------|----------|----------------|--------------------|-----------------------|
-| _Run spike and analysis to fill this table_ | | | | | |
+| Chunk Size | Total Utterances | Unique Speakers | Distribution | Speaker Detection |
+|------------|-----------------|-----------------|--------------|-------------------|
+| 5s | 102 | 1 | S0:102 (100%) | FAIL — no diarization |
+| 30s | 85 | 2 | S0:56, S1:29 | PARTIAL — 7/12 chunks detect 2 speakers |
+| 60s | 74 | 2 | S0:31, S1:43 | PASS — all 6 chunks detect 2 speakers |
+| full (342s) | 74 | 2 | S0:48, S1:26 | PASS — best possible result |
+
+**Key observations:**
+- 5s chunks: Deepgram cannot diarize with only 5s of context — returns only speaker_0
+- 30s chunks: Diarization starts working but inconsistent (chunks 1,2,5,9 still single-speaker)
+- 60s chunks: Reliable diarization in all chunks
+- Full file: Best diarization, consistent speaker separation throughout
 
 ## Decision
 
-**Status:** PENDING
+**Status:** CONDITIONAL GO
 
-**Date:** _TBD_
+**Date:** 2026-03-30
 
-**Decision:** _GO / NO-GO / CONDITIONAL GO_
+**Decision:** CONDITIONAL GO — diarization works with chunk sizes >= 60s
 
-**Rationale:** _Fill after running analysis_
+**Rationale:** nova-2 with pt-BR successfully identifies 2 distinct speakers when given sufficient audio context (60s+). The 5s chunk approach used in the current dual-mic system is incompatible with diarization — it requires accumulating chunks to at least 60s before sending to Deepgram. 30s is a borderline minimum (works in ~60% of chunks). 60s provides reliable detection in 100% of tested chunks.
 
-**Optimal chunk size (if GO):** _TBD_
+**Optimal chunk size (if GO):** 60s minimum recommended. Consider 90s-120s for safety margin. Full-file processing gives best results but introduces latency proportional to consultation duration.
+
+**Impact on architecture:**
+- Backend must accumulate 5s client chunks into 60s+ batches before Deepgram API call
+- This introduces ~60s latency for first transcription result (acceptable for presencial)
+- Alternatively, use hybrid approach: show unattributed text during accumulation, then attribute speakers once 60s batch is processed
 
 ## Notes
 
