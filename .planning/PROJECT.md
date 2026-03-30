@@ -13,11 +13,12 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 **Goal:** Eliminar a necessidade de 2 microfones na consulta presencial, usando diarização do Deepgram para identificar médico vs paciente com apenas 1 microfone.
 
 **Target features:**
-- UI simplificada com seleção de 1 microfone
-- Mapeamento de speaker (speaker_0/speaker_1 → médico/paciente)
-- Backend refatorado para 1 conexão Deepgram com extração do campo speaker
-- Configurações Deepgram otimizadas para diarização
-- Lógica de warm-up para cold start dos primeiros 20-30s
+- Spike de validação com áudio real antes de implementar
+- UI simplificada com seleção de 1 microfone + toggle dual/single mode
+- Mapeamento de speaker (speaker_0/speaker_1 → médico/paciente) via UI
+- Backend: acumulação de chunks 30s+ para diarização confiável
+- Backend: extração de speaker + confidence dos utterances Deepgram
+- Backward compatibility com modo dual-mic existente
 
 ## Requirements
 
@@ -42,8 +43,10 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 - [ ] Backend: Conexão Deepgram única recebendo áudio misto
 - [ ] Backend: Extração do campo `speaker` dos words do Deepgram
 - [ ] Backend: Mapeamento speaker_id → role (médico/paciente)
-- [ ] Backend: Configurações otimizadas (endpointing 800ms, utterance_end 2000ms)
-- [ ] Tratamento de cold start (primeiros 20-30s de diarização)
+- [ ] Backend: Acumulação de chunks 30s+ para diarização confiável
+- [ ] Backend: Confidence threshold para auto-assign vs manual
+- [ ] Backend: Mapeamento retroativo de speaker
+- [ ] Frontend: Toggle entre modo single-mic e dual-mic
 
 ### Out of Scope
 
@@ -67,10 +70,11 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 
 ## Constraints
 
-- **API**: Deepgram pre-recorded API (chunks de 5s) — não streaming para presencial
+- **API**: Deepgram pre-recorded API (chunks acumulados 30s+) — não streaming para presencial
 - **Língua**: pt-BR — diarização é language-agnostic, transcrição precisa de pt-BR
 - **Modelo**: Nova-2 — manter modelo atual, não migrar para Nova-3 neste milestone
-- **Compatibilidade**: Manter fluxo de consulta remota intacto
+- **Compatibilidade**: Manter fluxo de consulta remota e dual-mic intactos
+- **Nota**: `endpointing` e `utterance_end_ms` são params de streaming API — não se aplicam à pre-recorded API
 
 ## Key Decisions
 
@@ -78,8 +82,9 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 |----------|-----------|---------|
 | Usar diarização Deepgram ao invés de 2 mics | Simplifica setup, UX melhor para médico | — Pending |
 | Mapeamento manual de speaker (não automático) | Cold start + precisão insuficiente para auto-atribuição | — Pending |
-| Manter pre-recorded API (chunks) ao invés de streaming | Arquitetura atual funciona bem, menor refatoração | — Pending |
-| endpointing 800ms + utterance_end 2000ms | Mais contexto para diarização, melhor separação de speakers | — Pending |
+| Manter pre-recorded API com chunks acumulados 30s+ | Arquitetura atual funciona, chunks maiores melhoram diarização | — Pending |
+| Manter backward compat com dual-mic | Médico escolhe modo na UI, sem risco de regressão | — Pending |
+| endpointing/utterance_end_ms removidos do escopo | São params de streaming API, não se aplicam a pre-recorded | ✓ Good |
 
 ## Evolution
 
