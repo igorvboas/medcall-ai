@@ -28,10 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Accuracy metrics (% of utterances with correct speaker) are computed and documented for each chunk size
   3. A go/no-go decision is recorded with clear acceptance threshold (recommend >85% accuracy)
   4. If go: optimal chunk accumulation size is identified; if no-go: fallback strategy is documented
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Spike scripts + accuracy analysis + go/no-go decision
 
 ### Phase 2: Backend Diarization
 **Goal**: Server produces correctly diarized, speaker-attributed transcriptions from accumulated audio chunks using Deepgram pre-recorded API
@@ -88,7 +88,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Validation Spike | 0/TBD | Not started | - |
+| 1. Validation Spike | 0/1 | Planning complete | - |
 | 2. Backend Diarization | 0/TBD | Not started | - |
 | 3. Frontend Single-Mic | 0/TBD | Not started | - |
 | 4. Integration & Compatibility | 0/TBD | Not started | - |
