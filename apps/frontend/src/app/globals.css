@@ -1286,12 +1286,12 @@ body {
 }
 
 .btn-primary {
-  background: var(--accent-color);
+  background: #1B4266;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #95C335;
+  background: #153350;
 }
 
 .btn-large {
@@ -2639,7 +2639,7 @@ body {
 }
 
 .volume-bar.doctor {
-  background: linear-gradient(90deg, var(--accent-color), #95C335);
+  background: linear-gradient(90deg, #1B4266, #2d6293);
 }
 
 .volume-bar.patient {

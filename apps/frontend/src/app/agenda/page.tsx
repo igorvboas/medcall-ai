@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn, RefreshCw, Check, X, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Video, Plus, LogIn, RefreshCw, Check, X, Loader2, Pencil, Trash2, Phone } from 'lucide-react';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
 import { AGENDA_STEPS } from '@/components/dashboard/tutorialSteps';
@@ -82,9 +82,13 @@ export default function AgendaPage() {
     type: 'TELEMEDICINA' as 'PRESENCIAL' | 'TELEMEDICINA',
   });
   const [isScheduling, setIsScheduling] = useState(false);
-  const [patientsList, setPatientsList] = useState<Array<{ id: string; name: string }>>([]);
+  const [patientsList, setPatientsList] = useState<Array<{ id: string; name: string; email?: string; phone?: string; profile_pic?: string }>>([]);
   const [patientSearch, setPatientSearch] = useState('');
   const [patientsLoading, setPatientsLoading] = useState(false);
+  const [selectedPatientData, setSelectedPatientData] = useState<{ id: string; name: string; email?: string; phone?: string; profile_pic?: string } | null>(null);
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [newPatientForm, setNewPatientForm] = useState({ name: '', email: '', phone: '', cpf: '', birth_date: '' });
 
   const today = new Date();
   const currentMonth = currentDate.getMonth();
@@ -99,7 +103,7 @@ export default function AgendaPage() {
       if (search) params.set('search', search);
       const res = await gatewayClient.get(`/patients?${params}`);
       if (res.success) {
-        setPatientsList((res.patients || []).map((p: any) => ({ id: p.id, name: p.name })));
+        setPatientsList((res.patients || []).map((p: any) => ({ id: p.id, name: p.name, email: p.email, phone: p.phone, profile_pic: p.profile_pic })));
       }
     } catch (e) { console.error(e); }
     finally { setPatientsLoading(false); }
@@ -111,6 +115,43 @@ export default function AgendaPage() {
     const timeout = setTimeout(() => searchPatients(patientSearch), 300);
     return () => clearTimeout(timeout);
   }, [patientSearch, scheduleModalOpen]);
+
+  // Abrir formulario de novo paciente
+  const handleOpenNewPatientForm = () => {
+    setShowNewPatientForm(true);
+    setNewPatientForm({ name: patientSearch.trim(), email: '', phone: '', cpf: '', birth_date: '' });
+  };
+
+  // Criar novo paciente com dados completos
+  const handleCreatePatient = async () => {
+    if (!newPatientForm.name.trim()) {
+      setNotification({ type: 'error', message: 'Nome e obrigatorio.' });
+      return;
+    }
+    setIsCreatingPatient(true);
+    try {
+      const payload: any = { name: newPatientForm.name.trim() };
+      if (newPatientForm.email.trim()) payload.email = newPatientForm.email.trim();
+      if (newPatientForm.phone.trim()) payload.phone = newPatientForm.phone.trim();
+      if (newPatientForm.cpf.trim()) payload.cpf = newPatientForm.cpf.trim();
+      if (newPatientForm.birth_date) payload.birth_date = newPatientForm.birth_date;
+
+      const res = await gatewayClient.post('/patients', payload);
+      if (res.success && res.patient) {
+        const p = res.patient;
+        setScheduleForm(prev => ({ ...prev, patient_id: p.id, patient_name: p.name }));
+        setSelectedPatientData({ id: p.id, name: p.name, email: p.email, phone: p.phone });
+        setPatientsList([]);
+        setPatientSearch('');
+        setShowNewPatientForm(false);
+        setNotification({ type: 'success', message: `Paciente "${p.name}" cadastrado!` });
+      }
+    } catch (e: any) {
+      setNotification({ type: 'error', message: e?.message || 'Erro ao cadastrar paciente.' });
+    } finally {
+      setIsCreatingPatient(false);
+    }
+  };
 
   // Abrir modal de agendamento
   const openScheduleModal = () => {
@@ -1146,44 +1187,125 @@ export default function AgendaPage() {
       {/* Modal de Novo Agendamento */}
       {scheduleModalOpen && (
         <div className="modal-overlay" onClick={() => setScheduleModalOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <div className="modal-header">
-              <h3>Agendar Consulta</h3>
-              <button className="modal-close" onClick={() => setScheduleModalOpen(false)}>
-                <X size={20} />
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600, width: '95%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E2E8F0' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0F172A' }}>Agendar Consulta</h3>
+              <button onClick={() => setScheduleModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', flexShrink: 0 }}>
+                <X size={18} />
               </button>
             </div>
             <div className="modal-body">
               {/* Paciente */}
-              <div className="form-group">
-                <label className="form-label">Paciente *</label>
-                {scheduleForm.patient_id ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#F1F5F9', borderRadius: 8, border: '1.5px solid #E2E8F0' }}>
-                    <User size={16} style={{ color: '#1B4266' }} />
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{scheduleForm.patient_name}</span>
-                    <button onClick={() => setScheduleForm(p => ({ ...p, patient_id: '', patient_name: '' }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
-                      <X size={16} />
-                    </button>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 6, display: 'block' }}>Paciente *</label>
+                {scheduleForm.patient_id && selectedPatientData ? (
+                  <div style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: 10, border: '1.5px solid #E2E8F0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1B4266', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>
+                          {selectedPatientData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>{selectedPatientData.name}</div>
+                          {selectedPatientData.email && <div style={{ fontSize: 12, color: '#64748B' }}>{selectedPatientData.email}</div>}
+                        </div>
+                      </div>
+                      <button onClick={() => { setScheduleForm(p => ({ ...p, patient_id: '', patient_name: '' })); setSelectedPatientData(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                        <X size={16} />
+                      </button>
+                    </div>
+                    {selectedPatientData.phone && (
+                      <div style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Phone size={12} /> {selectedPatientData.phone}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
-                    <input
-                      type="text" placeholder="Buscar paciente..."
-                      value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
-                      className="form-input" autoFocus
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                      <input
+                        type="text" placeholder="Buscar ou digitar nome do paciente..."
+                        value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
+                        autoFocus
+                        style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      />
+                    </div>
                     {patientsLoading && <div style={{ textAlign: 'center', padding: 8 }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /></div>}
                     {patientsList.length > 0 && (
-                      <div style={{ maxHeight: 150, overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: 8, marginTop: 4 }}>
+                      <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: 8, marginTop: 4 }}>
                         {patientsList.map(p => (
-                          <button key={p.id} onClick={() => { setScheduleForm(prev => ({ ...prev, patient_id: p.id, patient_name: p.name })); setPatientsList([]); setPatientSearch(''); }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', borderBottom: '1px solid #F1F5F9', background: 'transparent', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                          <button key={p.id} onClick={() => {
+                            setScheduleForm(prev => ({ ...prev, patient_id: p.id, patient_name: p.name }));
+                            setSelectedPatientData(p);
+                            setPatientsList([]);
+                            setPatientSearch('');
+                          }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', border: 'none', borderBottom: '1px solid #F1F5F9', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
                             onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
-                            <User size={14} style={{ color: '#94A3B8' }} /> {p.name}
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EBF3F6', color: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                              {p.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{p.name}</div>
+                              {p.email && <div style={{ fontSize: 11, color: '#94A3B8' }}>{p.email}</div>}
+                            </div>
                           </button>
                         ))}
+                      </div>
+                    )}
+                    {/* Opcao criar novo paciente */}
+                    {patientSearch.trim().length >= 2 && !patientsLoading && (
+                      <button onClick={handleOpenNewPatientForm}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '12px', marginTop: 4, border: '1.5px dashed #1B4266', borderRadius: 8, background: '#EFF6FF', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#1B4266' }}>
+                        <Plus size={16} />
+                        Cadastrar novo paciente
+                      </button>
+                    )}
+
+                    {/* Formulario de novo paciente */}
+                    {showNewPatientForm && (
+                      <div style={{ marginTop: 8, padding: 16, border: '1.5px solid #1B4266', borderRadius: 10, background: '#F8FAFC' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 12 }}>Novo Paciente</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Nome completo *</label>
+                            <input type="text" value={newPatientForm.name} onChange={e => setNewPatientForm(p => ({ ...p, name: e.target.value }))} placeholder="Nome do paciente"
+                              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>E-mail</label>
+                              <input type="email" value={newPatientForm.email} onChange={e => setNewPatientForm(p => ({ ...p, email: e.target.value }))} placeholder="email@exemplo.com"
+                                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Telefone</label>
+                              <input type="tel" value={newPatientForm.phone} onChange={e => setNewPatientForm(p => ({ ...p, phone: e.target.value }))} placeholder="(00) 00000-0000"
+                                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>CPF</label>
+                              <input type="text" value={newPatientForm.cpf} onChange={e => setNewPatientForm(p => ({ ...p, cpf: e.target.value }))} placeholder="000.000.000-00" maxLength={14}
+                                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Data de nascimento</label>
+                              <input type="date" value={newPatientForm.birth_date} onChange={e => setNewPatientForm(p => ({ ...p, birth_date: e.target.value }))}
+                                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                            <button onClick={() => setShowNewPatientForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                            <button onClick={handleCreatePatient} disabled={isCreatingPatient} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: isCreatingPatient ? 0.6 : 1 }}>
+                              {isCreatingPatient ? 'Cadastrando...' : 'Cadastrar e Selecionar'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1225,9 +1347,9 @@ export default function AgendaPage() {
 
             </div>
 
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setScheduleModalOpen(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleCreateSchedule} disabled={isScheduling}>
+            <div style={{ display: 'flex', gap: 12, padding: '16px 24px', borderTop: '1px solid #E2E8F0', justifyContent: 'flex-end' }}>
+              <button onClick={() => setScheduleModalOpen(false)} style={{ padding: '10px 24px', borderRadius: 10, border: '1.5px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+              <button onClick={handleCreateSchedule} disabled={isScheduling} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: '#1B4266', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, opacity: isScheduling ? 0.6 : 1 }}>
                 {isScheduling ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Agendando...</> : <><Calendar size={16} /> Agendar</>}
               </button>
             </div>

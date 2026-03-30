@@ -71,7 +71,7 @@ export function CreateConsultationRoom({
   const [socketConnected, setSocketConnected] = useState(false);
 
   // Novos estados para agendamento
-  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento' | ''>('');
+  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento' | ''>('instantanea');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
 
@@ -1183,54 +1183,13 @@ export function CreateConsultationRoom({
                 Não esqueça de permitir o uso do microfone em seu navegador
               </p>
             </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#A3A3A3', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-              Selecione o tipo de consulta abaixo para continuar
-            </div>
-          )}
+          ) : null}
         </div>
       </form>
 
-      {/* Seletor de tipo de consulta */}
+      {/* Botao Iniciar Consulta */}
       {!isFromAgendamento && (
-        <div style={{
-          display: 'flex',
-          gap: '16px',
-          justifyContent: 'center',
-          alignItems: 'flex-end',
-          marginTop: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#1B4266' }}>Tipo de Consulta</label>
-            <select
-            value={creationType}
-            onChange={(e) => {
-              const val = e.target.value as 'instantanea' | 'agendamento';
-              setCreationType(val);
-              if (val === 'instantanea') { setScheduledDate(''); setScheduledTime(''); }
-              if (val === 'agendamento') { setSelectedMicrophone(''); }
-            }}
-            disabled={isCreatingRoom}
-            style={{
-              padding: '12px 20px',
-              borderRadius: 10,
-              border: '2px solid #1B4266',
-              background: '#EBF3F6',
-              color: '#1B4266',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              minWidth: 220,
-            }}
-          >
-            <option value="" disabled>Selecione o tipo</option>
-            <option value="instantanea">Consulta Imediata</option>
-            <option value="agendamento">Agendar Consulta</option>
-          </select>
-          </div>
-
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, marginBottom: 16 }}>
           <button
             type="submit"
             form="consultation-form"
@@ -1244,24 +1203,22 @@ export function CreateConsultationRoom({
               loadingDoctor ||
               !selectedPatient ||
               !consent ||
-              !creationType ||
-              (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
-              (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
+              (consultationType === 'online' && !selectedMicrophone)
             }
             style={{
-              padding: '12px 28px',
+              padding: '14px 36px',
               borderRadius: 10,
               border: 'none',
               background: '#22c55e',
               color: '#fff',
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               transition: 'all 0.2s',
-              opacity: (isCreatingRoom || !selectedPatient || !consent || !creationType) ? 0.5 : 1,
+              opacity: (isCreatingRoom || !selectedPatient || !consent || (consultationType === 'online' && !selectedMicrophone)) ? 0.5 : 1,
               boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
             }}
             onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#16a34a'; }}

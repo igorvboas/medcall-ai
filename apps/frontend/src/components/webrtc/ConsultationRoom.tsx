@@ -4766,7 +4766,7 @@ export function ConsultationRoom({
               {/* Botao Ver Anamnese */}
               <button
                 className="patient-action-btn action-btn-primary"
-                onClick={() => { setSelectedAnamneseIndex(-1); setShowAnamnesePopup(true); }}
+                onClick={() => { setSelectedAnamneseIndex(0); setShowAnamnesePopup(true); }}
                 disabled={allAnamneses.length === 0}
                 style={{ opacity: allAnamneses.length > 0 ? 1 : 0.5 }}
               >
