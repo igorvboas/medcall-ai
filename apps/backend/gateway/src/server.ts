@@ -65,12 +65,11 @@ const allowedOrigins = getCorsOrigins();
 console.log('🔧 [GATEWAY] CORS Origins:', allowedOrigins);
 
 // ===== MIDDLEWARE CRÍTICO: Interceptar OPTIONS ANTES de tudo =====
-// Este middleware DEVE ser o primeiro para evitar redirects que quebram CORS preflight
-// Usar app.all() para interceptar antes do roteamento
-app.all('*', (req, res, next) => {
+// Usar app.use() (não app.all) para rodar como middleware puro ANTES do routing layer,
+// evitando que o Express faça 308 redirect no preflight OPTIONS
+app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     console.log('🔍 [OPTIONS HANDLER] Interceptando requisição OPTIONS:', req.url);
-    // Aplicar CORS manualmente
     const origin = req.headers.origin;
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
