@@ -1,0 +1,25 @@
+{
+  "name": "@medcall/validation-diarization-spike",
+  "version": "1.0.0",
+  "description": "Validation spike for Deepgram nova-2 diarization quality with pt-BR medical consultations",
+  "private": true,
+  "scripts": {
+    "spike": "tsx src/run-spike.ts",
+    "analyze": "tsx src/analyze-results.ts"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^3.13.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "dotenv": "^17.2.2",
+    "fluent-ffmpeg": "^2.1.3"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
