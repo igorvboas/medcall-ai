@@ -96,6 +96,22 @@ setupWebSocketHandlers(io);
 // Passar referência do Socket.IO para as rotas REST de rooms (para notificações admin)
 setSocketIO(io);
 
+// ===== MIDDLEWARE CRÍTICO: Interceptar OPTIONS ANTES de tudo =====
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        const origin = req.headers.origin;
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+            res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-ID, X-User-ID, X-Audio-Format, X-Sample-Rate, X-Request-ID, Cache-Control, Pragma');
+            res.setHeader('Access-Control-Max-Age', '86400');
+        }
+        return res.status(200).end();
+    }
+    next();
+});
+
 // ===== MIDDLEWARES DE SEGURANÇA =====
 
 // Helmet - Headers de segurança HTTP
