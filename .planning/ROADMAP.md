@@ -43,11 +43,12 @@ Plans:
   3. Transcriptions are stored in the database with speaker_id attribution (speaker_0, speaker_1)
   4. When a speaker mapping is provided (e.g., speaker_0 = medico), all existing transcriptions for that session are retroactively updated
   5. Utterances with confidence below threshold are marked as "incerto" rather than auto-assigned
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — DB migration, diarization types, and storage functions
+- [ ] 02-02-PLAN.md — Batch accumulator and diarized processing in presencialSessionManager
+- [ ] 02-03-PLAN.md — Retroactive speaker mapping Socket.IO handler
 
 ### Phase 3: Frontend Single-Mic
 **Goal**: Doctor can conduct a presencial consultation using a single microphone, see speaker-labeled transcriptions, and assign speaker roles
@@ -89,6 +90,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Validation Spike | 0/1 | Planning complete | - |
-| 2. Backend Diarization | 0/TBD | Not started | - |
+| 2. Backend Diarization | 0/3 | Planning complete | - |
 | 3. Frontend Single-Mic | 0/TBD | Not started | - |
 | 4. Integration & Compatibility | 0/TBD | Not started | - |
