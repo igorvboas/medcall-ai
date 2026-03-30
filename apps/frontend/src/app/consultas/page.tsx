@@ -951,177 +951,45 @@ function AnamneseSection({
 
       {/* Síntese Analítica - Agora dentro do menu */}
       {shouldShowSection('Síntese') && sinteseAnalitica && (
-        <CollapsibleSection title="Síntese Analítica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
-          <div className="anamnese-subsection">
-            <DataField
-              label="Síntese"
-              value={sinteseAnalitica.sintese}
-              fieldPath="a_sintese_analitica.sintese"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Três Linhas"
-              value={sinteseAnalitica.tres_linhas}
-              fieldPath="a_sintese_analitica.tres_linhas"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Eixo Causal Principal"
-              value={sinteseAnalitica.eixo_causal_principal}
-              fieldPath="a_sintese_analitica.eixo_causal_principal"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Perpetuadores"
-              value={sinteseAnalitica.perpetuadores}
-              fieldPath="a_sintese_analitica.perpetuadores"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Achados Críticos Urgentes"
-              value={sinteseAnalitica.achados_criticos_urgentes}
-              fieldPath="a_sintese_analitica.achados_criticos_urgentes"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Achados Críticos Importantes"
-              value={sinteseAnalitica.achados_criticos_importantes}
-              fieldPath="a_sintese_analitica.achados_criticos_importantes"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Psicoemocional"
-              value={sinteseAnalitica.psicoemocional}
-              fieldPath="a_sintese_analitica.psicoemocional"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Intervenção Imediata"
-              value={sinteseAnalitica.intervencao_imediata}
-              fieldPath="a_sintese_analitica.intervencao_imediata"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Próximas Etapas"
-              value={sinteseAnalitica.proximas_etapas}
-              fieldPath="a_sintese_analitica.proximas_etapas"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Exames Faltantes"
-              value={sinteseAnalitica.exames_faltantes}
-              fieldPath="a_sintese_analitica.exames_faltantes"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Encaminhar"
-              value={sinteseAnalitica.encaminhar}
-              fieldPath="a_sintese_analitica.encaminhar"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Pontos de Atenção"
-              value={sinteseAnalitica.pontos_atencao}
-              fieldPath="a_sintese_analitica.pontos_atencao"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <DataField
-              label="Prognóstico"
-              value={sinteseAnalitica.prognostico}
-              fieldPath="a_sintese_analitica.prognostico"
-              consultaId={consultaId}
-              onSave={handleSaveField}
-              onAIEdit={handleAIEdit}
-              readOnly={readOnly}
-              hideActions={true}
-            />
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
-              {sinteseAnalitica.complexidade && (
-                <div>
-                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Complexidade</h4>
-                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.complexidade}</p>
-                </div>
-              )}
-              {sinteseAnalitica.urgencia && (
-                <div>
-                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Urgência</h4>
-                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.urgencia}</p>
-                </div>
-              )}
-              {sinteseAnalitica.prontidao_mudanca && (
-                <div>
-                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Prontidão para Mudança</h4>
-                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.prontidao_mudanca}</p>
-                </div>
-              )}
-              {sinteseAnalitica.confiabilidade && (
-                <div>
-                  <h4 style={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Confiabilidade</h4>
-                  <p style={{ color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>{sinteseAnalitica.confiabilidade}</p>
-                </div>
-              )}
+        <CollapsibleSection title="Sintese Analitica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
+          <div onClick={() => setViewPopupSection('sintese')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
             </div>
+            {(() => {
+              const s = sinteseAnalitica;
+              const fields = [
+                { label: 'Sintese', value: s.sintese },
+                { label: 'Tres Linhas', value: s.tres_linhas },
+                { label: 'Eixo Causal Principal', value: s.eixo_causal_principal },
+                { label: 'Perpetuadores', value: s.perpetuadores },
+                { label: 'Achados Urgentes', value: s.achados_criticos_urgentes },
+                { label: 'Achados Importantes', value: s.achados_criticos_importantes },
+                { label: 'Psicoemocional', value: s.psicoemocional },
+                { label: 'Intervencao Imediata', value: s.intervencao_imediata },
+                { label: 'Proximas Etapas', value: s.proximas_etapas },
+                { label: 'Exames Faltantes', value: s.exames_faltantes },
+                { label: 'Encaminhar', value: s.encaminhar },
+                { label: 'Pontos de Atencao', value: s.pontos_atencao },
+                { label: 'Prognostico', value: s.prognostico },
+                { label: 'Complexidade', value: s.complexidade },
+                { label: 'Urgencia', value: s.urgencia },
+                { label: 'Prontidao para Mudanca', value: s.prontidao_mudanca },
+                { label: 'Confiabilidade', value: s.confiabilidade },
+              ].filter(f => f.value);
+              return (<>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Sintese Analitica</div>
+                {fields.map((f, i) => (
+                  <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                    <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                    <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                  </div>
+                ))}
+              </>);
+            })()}
           </div>
         </CollapsibleSection>
       )}
@@ -1135,43 +1003,55 @@ function AnamneseSection({
               <p>Carregando dados do paciente...</p>
             </div>
           ) : cadastroAnamnese ? (
-            <>
-              <div className="anamnese-subsection">
-                <h4>Identificação</h4>
-                <CadastroDataField label="Nome Completo" value={cadastroAnamnese?.nome_completo} fieldName="nome_completo" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Data de Nascimento" value={cadastroAnamnese?.data_nascimento} fieldName="data_nascimento" onSave={handleSaveCadastroField} readOnly={readOnly} mask="date" />
-                <CadastroDataField label="CPF" value={cadastroAnamnese?.cpf} fieldName="cpf" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Estado Civil" value={cadastroAnamnese?.estado_civil} fieldName="estado_civil" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Email" value={cadastroAnamnese?.email} fieldName="email" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Profissão" value={cadastroAnamnese?.profissao} fieldName="profissao" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Gênero" value={cadastroAnamnese?.genero} fieldName="genero" onSave={handleSaveCadastroField} readOnly={readOnly} />
+            <div onClick={() => setViewPopupSection('dados_paciente')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+                <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Expandir e Editar
+                </span>
               </div>
-
-              <div className="anamnese-subsection">
-                <h4>Dados Físicos</h4>
-                <CadastroDataField label="Altura" value={cadastroAnamnese?.altura} fieldName="altura" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Peso Atual" value={cadastroAnamnese?.peso_atual} fieldName="peso_atual" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Peso Antigo" value={cadastroAnamnese?.peso_antigo} fieldName="peso_antigo" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Peso Desejado" value={cadastroAnamnese?.peso_desejado} fieldName="peso_desejado" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              </div>
-
-              <div className="anamnese-subsection">
-                <h4>Objetivos e Atividade Física</h4>
-                <CadastroDataField label="Objetivo Principal" value={cadastroAnamnese?.objetivo_principal} fieldName="objetivo_principal" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Pratica Atividade Física" value={cadastroAnamnese?.patrica_atividade_fisica} fieldName="patrica_atividade_fisica" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Frequência que Deseja Treinar" value={cadastroAnamnese?.frequencia_deseja_treinar} fieldName="frequencia_deseja_treinar" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Restrição de Movimento" value={cadastroAnamnese?.restricao_movimento} fieldName="restricao_movimento" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              </div>
-
-              <div className="anamnese-subsection">
-                <h4>Informações Adicionais</h4>
-                <CadastroDataField label="Informações Importantes" value={cadastroAnamnese?.informacoes_importantes} fieldName="informacoes_importantes" onSave={handleSaveCadastroField} readOnly={readOnly} />
-                <CadastroDataField label="Necessidade Energética Diária" value={cadastroAnamnese?.NecessidadeEnergeticaDiaria} fieldName="NecessidadeEnergeticaDiaria" onSave={handleSaveCadastroField} readOnly={readOnly} />
-              </div>
-            </>
+              {(() => {
+                const c = cadastroAnamnese;
+                const sections = [
+                  { title: 'Identificacao', fields: [
+                    { label: 'Nome', value: c.nome_completo }, { label: 'Data Nasc.', value: c.data_nascimento },
+                    { label: 'CPF', value: c.cpf }, { label: 'Estado Civil', value: c.estado_civil },
+                    { label: 'Email', value: c.email }, { label: 'Profissao', value: c.profissao },
+                    { label: 'Genero', value: c.genero },
+                  ]},
+                  { title: 'Dados Fisicos', fields: [
+                    { label: 'Altura', value: c.altura }, { label: 'Peso Atual', value: c.peso_atual },
+                    { label: 'Peso Antigo', value: c.peso_antigo }, { label: 'Peso Desejado', value: c.peso_desejado },
+                  ]},
+                  { title: 'Objetivos', fields: [
+                    { label: 'Objetivo Principal', value: c.objetivo_principal },
+                    { label: 'Pratica Atividade', value: c.patrica_atividade_fisica },
+                    { label: 'Frequencia Treino', value: c.frequencia_deseja_treinar },
+                    { label: 'Restricao', value: c.restricao_movimento },
+                  ]},
+                ];
+                return (<>
+                  {sections.map((section) => {
+                    const vf = section.fields.filter(f => f.value);
+                    if (vf.length === 0) return null;
+                    return (
+                      <div key={section.title} style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>
+                        {vf.map((f, i) => (
+                          <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                            <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                            <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  </>);
+              })()}
+            </div>
           ) : (
-            <div className="anamnese-subsection" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-              <p>Nenhum dado de cadastro de anamnese encontrado para este paciente.</p>
+            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+              <p>Nenhum dado de cadastro encontrado.</p>
             </div>
           )}
         </CollapsibleSection>
@@ -1187,11 +1067,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = objetivos_queixas;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1241,15 +1127,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1275,11 +1161,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = historico_risco;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1326,15 +1218,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1360,11 +1252,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = observacao_clinica_lab;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1467,15 +1365,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1501,11 +1399,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = historia_vida;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1545,15 +1449,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1579,11 +1483,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = setenios_eventos;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1641,15 +1551,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1675,11 +1585,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = ambiente_contexto;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1734,15 +1650,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1768,11 +1684,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = sensacao_emocoes;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1812,15 +1734,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1846,11 +1768,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = preocupacoes_crencas;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1886,15 +1814,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1920,11 +1848,17 @@ function AnamneseSection({
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
               padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
               border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
-              maxHeight: 500, overflowY: 'auto',
+              maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = reino_miasma;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -1962,15 +1896,15 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
                           {section.title}
                         </div>
                         <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <span key={i}>
-                              <strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}
-                              {i < validFields.length - 1 && '. '}
-                            </span>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
+                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -2060,7 +1994,7 @@ function AnamneseSection({
                 if (!hasData) return null;
                 return (
                   <div key={section.title} style={{ marginBottom: 24 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>
                       {section.title}
                     </h4>
                     <div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>
@@ -2069,9 +2003,9 @@ function AnamneseSection({
                         if (!value) return null;
                         const isEditing = editingField === field.path;
                         return (
-                          <span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>
+                          <div key={field.key} style={{ marginBottom: 8 }}>
                             {isEditing ? (
-                              <div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
+                              <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div>
                                 <textarea
                                   value={editingValue}
@@ -2090,19 +2024,18 @@ function AnamneseSection({
                                 </div>
                               </div>
                             ) : (
-                              <span
-                                style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                              <div
+                                style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }}
                                 onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }}
                                 title={`Editar: ${field.label}`}
                               >
-                                <strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>
-                                {String(value)}
-                              </span>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div>
+                                <div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div>
+                              </div>
                             )}
-                            {' '}
-                          </span>
+                          </div>
                         );
                       })}
                     </div>
@@ -2183,7 +2116,7 @@ function AnamneseSection({
                 if (!hasData) return null;
                 return (
                   <div key={section.title} style={{ marginBottom: 24 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>
                       {section.title}
                     </h4>
                     <div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>
@@ -2192,9 +2125,9 @@ function AnamneseSection({
                         if (!value) return null;
                         const isEditing = editingField === field.path;
                         return (
-                          <span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>
+                          <div key={field.key} style={{ marginBottom: 8 }}>
                             {isEditing ? (
-                              <div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
+                              <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div>
                                 <textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }}
                                   style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} />
@@ -2213,8 +2146,7 @@ function AnamneseSection({
                                 {String(value)}
                               </span>
                             )}
-                            {' '}
-                          </span>
+                          </div>
                         );
                       })}
                     </div>
@@ -2307,16 +2239,16 @@ function AnamneseSection({
                 if (!hasData) return null;
                 return (
                   <div key={section.title} style={{ marginBottom: 24 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4>
                     <div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>
                       {section.fields.map((field) => {
                         const value = observacao_clinica_lab[field.key];
                         if (!value) return null;
                         const isEditing = editingField === field.path;
                         return (
-                          <span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>
+                          <div key={field.key} style={{ marginBottom: 8 }}>
                             {isEditing ? (
-                              <div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
+                              <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div>
                                 <textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }}
                                   style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} />
@@ -2331,8 +2263,8 @@ function AnamneseSection({
                                 onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}>
                                 <strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}
                               </span>
-                            )}{' '}
-                          </span>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -2387,7 +2319,7 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => historia_vida[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = historia_vida[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = historia_vida[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2455,7 +2387,7 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => setenios_eventos[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = setenios_eventos[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = setenios_eventos[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2519,7 +2451,7 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => ambiente_contexto[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = ambiente_contexto[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = ambiente_contexto[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2569,7 +2501,7 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => sensacao_emocoes[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = sensacao_emocoes[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = sensacao_emocoes[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2615,7 +2547,7 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => preocupacoes_crencas[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = preocupacoes_crencas[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = preocupacoes_crencas[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2663,7 +2595,97 @@ function AnamneseSection({
               ].map((section) => {
                 const hasData = section.fields.some(f => reino_miasma[f.key]);
                 if (!hasData) return null;
-                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em', paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9' }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = reino_miasma[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<span key={field.key} style={{ display: isEditing ? 'block' : 'inline' }}>{isEditing ? (<div style={{ margin: '8px 0', padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<span style={{ cursor: 'pointer', borderRadius: 4, padding: '1px 3px', transition: 'background 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><strong style={{ color: '#1B4266', fontSize: 12 }}>{field.label}: </strong>{String(value)}</span>)}{' '}</span>); })}</div></div>);
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = reino_miasma[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={`Editar: ${field.label}`}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Sintese Analitica */}
+      {viewPopupSection === 'sintese' && sinteseAnalitica && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Sintese Analitica</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Sintese Analitica', fields: [
+                  { label: 'Sintese', key: 'sintese', path: 'a_sintese_analitica.sintese' },
+                  { label: 'Tres Linhas', key: 'tres_linhas', path: 'a_sintese_analitica.tres_linhas' },
+                  { label: 'Eixo Causal Principal', key: 'eixo_causal_principal', path: 'a_sintese_analitica.eixo_causal_principal' },
+                  { label: 'Perpetuadores', key: 'perpetuadores', path: 'a_sintese_analitica.perpetuadores' },
+                  { label: 'Achados Urgentes', key: 'achados_criticos_urgentes', path: 'a_sintese_analitica.achados_criticos_urgentes' },
+                  { label: 'Achados Importantes', key: 'achados_criticos_importantes', path: 'a_sintese_analitica.achados_criticos_importantes' },
+                  { label: 'Psicoemocional', key: 'psicoemocional', path: 'a_sintese_analitica.psicoemocional' },
+                  { label: 'Intervencao Imediata', key: 'intervencao_imediata', path: 'a_sintese_analitica.intervencao_imediata' },
+                  { label: 'Proximas Etapas', key: 'proximas_etapas', path: 'a_sintese_analitica.proximas_etapas' },
+                  { label: 'Exames Faltantes', key: 'exames_faltantes', path: 'a_sintese_analitica.exames_faltantes' },
+                  { label: 'Encaminhar', key: 'encaminhar', path: 'a_sintese_analitica.encaminhar' },
+                  { label: 'Pontos de Atencao', key: 'pontos_atencao', path: 'a_sintese_analitica.pontos_atencao' },
+                  { label: 'Prognostico', key: 'prognostico', path: 'a_sintese_analitica.prognostico' },
+                  { label: 'Complexidade', key: 'complexidade', path: 'a_sintese_analitica.complexidade' },
+                  { label: 'Urgencia', key: 'urgencia', path: 'a_sintese_analitica.urgencia' },
+                  { label: 'Prontidao para Mudanca', key: 'prontidao_mudanca', path: 'a_sintese_analitica.prontidao_mudanca' },
+                  { label: 'Confiabilidade', key: 'confiabilidade', path: 'a_sintese_analitica.confiabilidade' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => sinteseAnalitica[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = sinteseAnalitica[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Dados do Paciente */}
+      {viewPopupSection === 'dados_paciente' && cadastroAnamnese && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Dados do Paciente</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Identificacao', fields: [
+                  { label: 'Nome', key: 'nome_completo', path: 'a_cadastro_anamnese.nome_completo' },
+                  { label: 'Data Nasc.', key: 'data_nascimento', path: 'a_cadastro_anamnese.data_nascimento' },
+                  { label: 'CPF', key: 'cpf', path: 'a_cadastro_anamnese.cpf' },
+                  { label: 'Estado Civil', key: 'estado_civil', path: 'a_cadastro_anamnese.estado_civil' },
+                  { label: 'Email', key: 'email', path: 'a_cadastro_anamnese.email' },
+                  { label: 'Profissao', key: 'profissao', path: 'a_cadastro_anamnese.profissao' },
+                  { label: 'Genero', key: 'genero', path: 'a_cadastro_anamnese.genero' },
+                ]},
+                { title: 'Dados Fisicos', fields: [
+                  { label: 'Altura', key: 'altura', path: 'a_cadastro_anamnese.altura' },
+                  { label: 'Peso Atual', key: 'peso_atual', path: 'a_cadastro_anamnese.peso_atual' },
+                  { label: 'Peso Antigo', key: 'peso_antigo', path: 'a_cadastro_anamnese.peso_antigo' },
+                  { label: 'Peso Desejado', key: 'peso_desejado', path: 'a_cadastro_anamnese.peso_desejado' },
+                ]},
+                { title: 'Objetivos', fields: [
+                  { label: 'Objetivo Principal', key: 'objetivo_principal', path: 'a_cadastro_anamnese.objetivo_principal' },
+                  { label: 'Pratica Atividade', key: 'patrica_atividade_fisica', path: 'a_cadastro_anamnese.patrica_atividade_fisica' },
+                  { label: 'Frequencia Treino', key: 'frequencia_deseja_treinar', path: 'a_cadastro_anamnese.frequencia_deseja_treinar' },
+                  { label: 'Restricao', key: 'restricao_movimento', path: 'a_cadastro_anamnese.restricao_movimento' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => cadastroAnamnese[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = cadastroAnamnese[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
               })}
             </div>
           </div>
@@ -2809,8 +2831,8 @@ function DiagnosticoSection({
     estado_mental,
     estado_fisiologico,
     diagnostico_principal,
-    integracao_diagnostica,
-    habitos_vida
+    agente_integracao_diagnostica: integracao_diagnostica,
+    agente_habitos_vida_sistemica: habitos_vida
   } = diagnosticoData || {};
 
   console.log('🔍 DiagnosticoSection - dados recebidos:', diagnosticoData);
@@ -2870,7 +2892,13 @@ function DiagnosticoSection({
       {/* ==================== DIAGNÓSTICO PRINCIPAL ==================== */}
       {shouldShowSection('1. Diagnóstico Principal') && (
         <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={activeTab === 'Diagnóstico Principal' || !activeTab}>
-          <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = diagnostico_principal;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -2885,7 +2913,7 @@ function DiagnosticoSection({
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{validFields.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < validFields.length - 1 && '. '}</span>))}</div></div>); })}<div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Clique para expandir e editar campos individualmente</div></>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -2894,7 +2922,13 @@ function DiagnosticoSection({
       {/* ==================== ESTADO GERAL ==================== */}
       {shouldShowSection('2. Estado Geral') && (
         <CollapsibleSection title="2. Estado Geral" defaultOpen={activeTab === 'Estado Geral' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = estado_geral;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -2911,7 +2945,7 @@ function DiagnosticoSection({
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{validFields.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < validFields.length - 1 && '. '}</span>))}</div></div>); })}<div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Clique para expandir e editar campos individualmente</div></>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -2920,7 +2954,13 @@ function DiagnosticoSection({
       {/* ====================ESTADO MENTAL ==================== */}
       {shouldShowSection('3. Estado Mental') && (
         <CollapsibleSection title="3. Estado Mental" defaultOpen={activeTab === 'Estado Mental' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = estado_mental;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
@@ -2937,7 +2977,7 @@ function DiagnosticoSection({
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{validFields.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < validFields.length - 1 && '. '}</span>))}</div></div>); })}<div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Clique para expandir e editar campos individualmente</div></>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -2947,7 +2987,13 @@ function DiagnosticoSection({
       {/* ==================== ESTADO FISIOLÓGICO ==================== */}
       {shouldShowSection('4. Estado Fisiológico (Resumo - devido ao volume de campos)') && (
         <CollapsibleSection title="4. Estado Fisiologico" defaultOpen={activeTab === 'Estado Fisiológico' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = estado_fisiologico;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
@@ -2964,7 +3010,7 @@ function DiagnosticoSection({
                 {sections.map((section) => {
                   const validFields = section.fields.filter(f => f.value);
                   if (validFields.length === 0) return null;
-                  return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{validFields.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < validFields.length - 1 && '. '}</span>))}</div></div>);
+                  return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>);
                 })}
                 <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -2979,7 +3025,13 @@ function DiagnosticoSection({
       {/* ==================== INTEGRAÇÃO DIAGNÓSTICA ==================== */}
       {shouldShowSection('5. Integração Diagnóstica') && (
         <CollapsibleSection title="5. Integracao Diagnostica" defaultOpen={activeTab === 'Integração Diagnóstica' || !activeTab}>
-          <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = integracao_diagnostica;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
@@ -2992,8 +3044,8 @@ function DiagnosticoSection({
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
               return (<>
-                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{vf.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < vf.length - 1 && '. '}</span>))}</div></div>); })}
-                <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>Clique para expandir e editar</div>
+                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>); })}
+                
               </>);
             })()}
           </div>
@@ -3003,7 +3055,13 @@ function DiagnosticoSection({
       {/* ==================== HÁBITOS DE VIDA ==================== */}
       {shouldShowSection('6. Hábitos de Vida (Resumo dos 5 Pilares)') && (
         <CollapsibleSection title="6. Habitos de Vida (5 Pilares)" defaultOpen={activeTab === 'Hábitos de Vida' || !activeTab}>
-          <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
             {(() => {
               const q = habitos_vida;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
@@ -3019,12 +3077,404 @@ function DiagnosticoSection({
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
               return (<>
-                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>{section.title}</div><div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{vf.map((f, i) => (<span key={i}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}{i < vf.length - 1 && '. '}</span>))}</div></div>); })}
-                <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>Clique para expandir e editar</div>
+                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{String(f.value)}</div></div>))}</div>); })}
+                
               </>);
             })()}
           </div>
         </CollapsibleSection>
+      )}
+
+      {/* Popup Diagnostico Principal */}
+      {viewPopupSection === 'diagnostico_principal' && diagnostico_principal && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>1. Diagnostico Principal</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'CID e Diagnosticos', fields: [
+                  { label: 'CID Principal', key: 'cid_principal', path: 'd_diagnostico_principal.cid_principal' },
+                  { label: 'Diagnosticos Associados (CID)', key: 'diagnosticos_associados_cid', path: 'd_diagnostico_principal.diagnosticos_associados_cid' },
+                ]},
+                { title: 'Avaliacao Diagnostica Sistematica (ADS)', fields: [
+                  { label: 'Sintese', key: 'ads_sintese', path: 'd_diagnostico_principal.ads_sintese' },
+                  { label: 'Biologico', key: 'ads_biologico', path: 'd_diagnostico_principal.ads_biologico' },
+                  { label: 'Psicologico', key: 'ads_psicologico', path: 'd_diagnostico_principal.ads_psicologico' },
+                  { label: 'Emocional', key: 'ads_emocional', path: 'd_diagnostico_principal.ads_emocional' },
+                  { label: 'Social', key: 'ads_social', path: 'd_diagnostico_principal.ads_social' },
+                  { label: 'Espiritual', key: 'ads_espiritual', path: 'd_diagnostico_principal.ads_espiritual' },
+                  { label: 'Trilha Causal Sintetica', key: 'ads_trilha_causal_sintetica', path: 'd_diagnostico_principal.ads_trilha_causal_sintetica' },
+                  { label: 'Tipo de Sindrome', key: 'ads_tipo_sindrome', path: 'd_diagnostico_principal.ads_tipo_sindrome' },
+                ]},
+                { title: 'Gravidade', fields: [
+                  { label: 'Nivel de Gravidade', key: 'grav_nivel', path: 'd_diagnostico_principal.grav_nivel' },
+                  { label: 'Justificativa', key: 'grav_justificativa', path: 'd_diagnostico_principal.grav_justificativa' },
+                  { label: 'Janela de Intervencao', key: 'grav_janela_intervencao', path: 'd_diagnostico_principal.grav_janela_intervencao' },
+                  { label: 'Risco Iminente', key: 'grav_risco_iminente', path: 'd_diagnostico_principal.grav_risco_iminente' },
+                ]},
+                { title: 'Homeopatia', fields: [
+                  { label: 'Reino Predominante', key: 'reino_predominante', path: 'd_diagnostico_principal.reino_predominante' },
+                  { label: 'Caracteristicas do Reino', key: 'reino_caracteristicas', path: 'd_diagnostico_principal.reino_caracteristicas' },
+                  { label: 'Medicamento Principal', key: 'homeo_medicamento_principal', path: 'd_diagnostico_principal.homeo_medicamento_principal' },
+                  { label: 'Justificativa', key: 'homeo_justificativa', path: 'd_diagnostico_principal.homeo_justificativa' },
+                  { label: 'Potencia Inicial', key: 'homeo_potencia_inicial', path: 'd_diagnostico_principal.homeo_potencia_inicial' },
+                  { label: 'Frequencia', key: 'homeo_frequencia', path: 'd_diagnostico_principal.homeo_frequencia' },
+                  { label: 'Medicamentos Complementares', key: 'medicamentos_complementares', path: 'd_diagnostico_principal.medicamentos_complementares' },
+                ]},
+                { title: 'Florais de Bach', fields: [
+                  { label: 'Florais Indicados', key: 'florais_bach_indicados', path: 'd_diagnostico_principal.florais_bach_indicados' },
+                  { label: 'Formula Floral Sugerida', key: 'formula_floral_sugerida', path: 'd_diagnostico_principal.formula_floral_sugerida' },
+                ]},
+                { title: 'Prognostico', fields: [
+                  { label: 'Fatores Favoraveis', key: 'prognostico_fatores_favoraveis', path: 'd_diagnostico_principal.prognostico_fatores_favoraveis' },
+                  { label: 'Fatores Desfavoraveis', key: 'prognostico_fatores_desfavoraveis', path: 'd_diagnostico_principal.prognostico_fatores_desfavoraveis' },
+                  { label: 'Prob. Sucesso (Adesao Total)', key: 'prob_sucesso_adesao_total', path: 'd_diagnostico_principal.prob_sucesso_adesao_total' },
+                  { label: 'Prob. Sucesso (Adesao Parcial)', key: 'prob_sucesso_adesao_parcial', path: 'd_diagnostico_principal.prob_sucesso_adesao_parcial' },
+                  { label: 'Prob. Sucesso (Sem Adesao)', key: 'prob_sucesso_sem_adesao', path: 'd_diagnostico_principal.prob_sucesso_sem_adesao' },
+                ]},
+                { title: 'Alertas', fields: [
+                  { label: 'Alertas Criticos', key: 'alertas_criticos', path: 'd_diagnostico_principal.alertas_criticos' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => diagnostico_principal[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = diagnostico_principal[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Estado Geral */}
+      {viewPopupSection === 'estado_geral' && estado_geral && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>2. Estado Geral</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Avaliacao Global', fields: [
+                  { label: 'Estado Geral', key: 'avaliacao_estado', path: 'd_estado_geral.avaliacao_estado' },
+                  { label: 'Score de Vitalidade', key: 'avaliacao_score_vitalidade', path: 'd_estado_geral.avaliacao_score_vitalidade' },
+                  { label: 'Tendencia', key: 'avaliacao_tendencia', path: 'd_estado_geral.avaliacao_tendencia' },
+                  { label: 'Reserva Fisiologica', key: 'avaliacao_reserva_fisiologica', path: 'd_estado_geral.avaliacao_reserva_fisiologica' },
+                ]},
+                { title: 'Energia Vital', fields: [
+                  { label: 'Nivel', key: 'energia_vital_nivel', path: 'd_estado_geral.energia_vital_nivel' },
+                  { label: 'Descricao', key: 'energia_vital_descricao', path: 'd_estado_geral.energia_vital_descricao' },
+                  { label: 'Manifestacao', key: 'energia_vital_manifestacao', path: 'd_estado_geral.energia_vital_manifestacao' },
+                  { label: 'Impacto', key: 'energia_vital_impacto', path: 'd_estado_geral.energia_vital_impacto' },
+                ]},
+                { title: 'Adaptacao ao Stress', fields: [
+                  { label: 'Nivel', key: 'adapt_stress_nivel', path: 'd_estado_geral.adapt_stress_nivel' },
+                  { label: 'Descricao', key: 'adapt_stress_descricao', path: 'd_estado_geral.adapt_stress_descricao' },
+                  { label: 'Reserva Adaptativa', key: 'adapt_stress_reserva_adaptativa', path: 'd_estado_geral.adapt_stress_reserva_adaptativa' },
+                  { label: 'Manifestacao', key: 'adapt_stress_manifestacao', path: 'd_estado_geral.adapt_stress_manifestacao' },
+                ]},
+                { title: 'Resiliencia', fields: [
+                  { label: 'Nivel', key: 'resiliencia_nivel', path: 'd_estado_geral.resiliencia_nivel' },
+                  { label: 'Descricao', key: 'resiliencia_descricao', path: 'd_estado_geral.resiliencia_descricao' },
+                  { label: 'Elasticidade', key: 'resiliencia_elasticidade', path: 'd_estado_geral.resiliencia_elasticidade' },
+                  { label: 'Tempo de Recuperacao', key: 'resiliencia_tempo_recuperacao', path: 'd_estado_geral.resiliencia_tempo_recuperacao' },
+                ]},
+                { title: 'Observacao Clinica', fields: [
+                  { label: 'Facies', key: 'obs_facies', path: 'd_estado_geral.obs_facies' },
+                  { label: 'Postura', key: 'obs_postura', path: 'd_estado_geral.obs_postura' },
+                  { label: 'Marcha', key: 'obs_marcha', path: 'd_estado_geral.obs_marcha' },
+                  { label: 'Tonus Muscular', key: 'obs_tonus_muscular', path: 'd_estado_geral.obs_tonus_muscular' },
+                  { label: 'Aparencia Geral', key: 'obs_aparencia_geral', path: 'd_estado_geral.obs_aparencia_geral' },
+                  { label: 'Contato Visual', key: 'obs_contato_visual', path: 'd_estado_geral.obs_contato_visual' },
+                  { label: 'Voz', key: 'obs_voz', path: 'd_estado_geral.obs_voz' },
+                ]},
+                { title: 'AVD', fields: [
+                  { label: 'Autocuidado Basico', key: 'avd_autocuidado_basico', path: 'd_estado_geral.avd_autocuidado_basico' },
+                  { label: 'Trabalho Profissional', key: 'avd_trabalho_profissional', path: 'd_estado_geral.avd_trabalho_profissional' },
+                  { label: 'Cuidado com Filhos', key: 'avd_cuidado_filhos', path: 'd_estado_geral.avd_cuidado_filhos' },
+                  { label: 'Tarefas Domesticas', key: 'avd_tarefas_domesticas', path: 'd_estado_geral.avd_tarefas_domesticas' },
+                  { label: 'Lazer e Social', key: 'avd_lazer_social', path: 'd_estado_geral.avd_lazer_social' },
+                  { label: 'Autocuidado Ampliado', key: 'avd_autocuidado_ampliado', path: 'd_estado_geral.avd_autocuidado_ampliado' },
+                ]},
+                { title: 'Funcionalidade e Qualidade de Vida', fields: [
+                  { label: 'Score Karnofsky', key: 'funcionalidade_score_karnofsky', path: 'd_estado_geral.funcionalidade_score_karnofsky' },
+                  { label: 'Limitacoes Funcionais', key: 'limitacoes_funcionais_especificas', path: 'd_estado_geral.limitacoes_funcionais_especificas' },
+                  { label: 'WHOQOL Score Geral', key: 'whoqol_score_geral', path: 'd_estado_geral.whoqol_score_geral' },
+                ]},
+                { title: 'Sinais de Alerta e Evolucao', fields: [
+                  { label: 'Sinais de Alerta', key: 'sinais_alerta_deterioracao', path: 'd_estado_geral.sinais_alerta_deterioracao' },
+                  { label: 'Atual', key: 'evo_atual', path: 'd_estado_geral.evo_atual' },
+                  { label: 'Projecao 6 Meses (Sem Intervencao)', key: 'projecao_6_meses_sem_intervencao', path: 'd_estado_geral.projecao_6_meses_sem_intervencao' },
+                ]},
+                { title: 'Impacto', fields: [
+                  { label: 'Profissional', key: 'impacto_profissional', path: 'd_estado_geral.impacto_profissional' },
+                  { label: 'Familiar', key: 'impacto_familiar', path: 'd_estado_geral.impacto_familiar' },
+                  { label: 'Social', key: 'impacto_social', path: 'd_estado_geral.impacto_social' },
+                  { label: 'Pessoal', key: 'impacto_pessoal', path: 'd_estado_geral.impacto_pessoal' },
+                  { label: 'Saude', key: 'impacto_saude', path: 'd_estado_geral.impacto_saude' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => estado_geral[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = estado_geral[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Estado Mental */}
+      {viewPopupSection === 'estado_mental' && estado_mental && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>3. Estado Mental</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Memoria', fields: [
+                  { label: 'Curto Prazo', key: 'memoria_curto_prazo', path: 'd_estado_mental.memoria_curto_prazo' },
+                  { label: 'Longo Prazo', key: 'memoria_longo_prazo', path: 'd_estado_mental.memoria_longo_prazo' },
+                  { label: 'De Trabalho', key: 'memoria_de_trabalho', path: 'd_estado_mental.memoria_de_trabalho' },
+                  { label: 'Score', key: 'memoria_score', path: 'd_estado_mental.memoria_score' },
+                ]},
+                { title: 'Atencao', fields: [
+                  { label: 'Sustentada', key: 'atencao_sustentada', path: 'd_estado_mental.atencao_sustentada' },
+                  { label: 'Seletiva', key: 'atencao_seletiva', path: 'd_estado_mental.atencao_seletiva' },
+                  { label: 'Score', key: 'atencao_score', path: 'd_estado_mental.atencao_score' },
+                ]},
+                { title: 'Funcoes Executivas', fields: [
+                  { label: 'Planejamento', key: 'exec_planejamento', path: 'd_estado_mental.exec_planejamento' },
+                  { label: 'Organizacao', key: 'exec_organizacao', path: 'd_estado_mental.exec_organizacao' },
+                  { label: 'Tomada de Decisao', key: 'exec_tomada_decisao', path: 'd_estado_mental.exec_tomada_decisao' },
+                  { label: 'Score', key: 'exec_score', path: 'd_estado_mental.exec_score' },
+                ]},
+                { title: 'Humor e Afeto', fields: [
+                  { label: 'Tipo de Humor', key: 'humor_tipo', path: 'd_estado_mental.humor_tipo' },
+                  { label: 'Intensidade', key: 'humor_intensidade', path: 'd_estado_mental.humor_intensidade' },
+                  { label: 'Variabilidade', key: 'humor_variabilidade', path: 'd_estado_mental.humor_variabilidade' },
+                  { label: 'Expressao do Afeto', key: 'afeto_expressao', path: 'd_estado_mental.afeto_expressao' },
+                ]},
+                { title: 'Ansiedade', fields: [
+                  { label: 'Nivel', key: 'ansiedade_nivel', path: 'd_estado_mental.ansiedade_nivel' },
+                  { label: 'Tipo Predominante', key: 'ansiedade_tipo_predominante', path: 'd_estado_mental.ansiedade_tipo_predominante' },
+                  { label: 'Score GAD-7', key: 'ansiedade_score_gad7_estimado', path: 'd_estado_mental.ansiedade_score_gad7_estimado' },
+                ]},
+                { title: 'PHQ-9 (Depressao)', fields: [
+                  { label: 'Humor Deprimido', key: 'phq9_humor_deprimido', path: 'd_estado_mental.phq9_humor_deprimido' },
+                  { label: 'Anedonia', key: 'phq9_anedonia', path: 'd_estado_mental.phq9_anedonia' },
+                  { label: 'Fadiga', key: 'phq9_fadiga', path: 'd_estado_mental.phq9_fadiga' },
+                  { label: 'Score PHQ-9', key: 'phq9_score_estimado', path: 'd_estado_mental.phq9_score_estimado' },
+                ]},
+                { title: 'Autoestima', fields: [
+                  { label: 'Autoestima Global', key: 'autoestima_global', path: 'd_estado_mental.autoestima_global' },
+                  { label: 'Autopercepcao', key: 'autopercepcao', path: 'd_estado_mental.autopercepcao' },
+                  { label: 'Autoeficacia', key: 'autoeficacia', path: 'd_estado_mental.autoeficacia' },
+                ]},
+                { title: 'Risco de Suicidio', fields: [
+                  { label: 'Nivel de Risco', key: 'risco_nivel', path: 'd_estado_mental.risco_nivel' },
+                  { label: 'Ideacao', key: 'risco_ideacao', path: 'd_estado_mental.risco_ideacao' },
+                  { label: 'Acao Requerida', key: 'risco_acao_requerida', path: 'd_estado_mental.risco_acao_requerida' },
+                ]},
+                { title: 'Diagnosticos e Intervencoes', fields: [
+                  { label: 'Diagnosticos DSM-5', key: 'diagnosticos_mentais_dsm5_sugeridos', path: 'd_estado_mental.diagnosticos_mentais_dsm5_sugeridos' },
+                  { label: 'Psicoterapia', key: 'intervencao_psicoterapia', path: 'd_estado_mental.intervencao_psicoterapia' },
+                  { label: 'Psiquiatria', key: 'intervencao_psiquiatria', path: 'd_estado_mental.intervencao_psiquiatria' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => estado_mental[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = estado_mental[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Estado Fisiologico */}
+      {viewPopupSection === 'estado_fisiologico' && estado_fisiologico && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>4. Estado Fisiologico</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Tireoide', fields: [
+                  { label: 'Status', key: 'end_tireo_status', path: 'd_estado_fisiologico.end_tireo_status' },
+                  { label: 'Diagnostico', key: 'end_tireo_diagnostico', path: 'd_estado_fisiologico.end_tireo_diagnostico' },
+                  { label: 'Acao', key: 'end_tireo_acao_terapeutica', path: 'd_estado_fisiologico.end_tireo_acao_terapeutica' },
+                ]},
+                { title: 'Insulina/Glicose', fields: [
+                  { label: 'Status', key: 'end_insgl_status', path: 'd_estado_fisiologico.end_insgl_status' },
+                  { label: 'Diagnostico', key: 'end_insgl_diagnostico', path: 'd_estado_fisiologico.end_insgl_diagnostico' },
+                  { label: 'Acao', key: 'end_insgl_acao_terapeutica', path: 'd_estado_fisiologico.end_insgl_acao_terapeutica' },
+                ]},
+                { title: 'Intestino', fields: [
+                  { label: 'Status', key: 'gi_int_status', path: 'd_estado_fisiologico.gi_int_status' },
+                  { label: 'Diagnostico', key: 'gi_int_diagnostico', path: 'd_estado_fisiologico.gi_int_diagnostico' },
+                  { label: 'Acao', key: 'gi_int_acao_prioritaria', path: 'd_estado_fisiologico.gi_int_acao_prioritaria' },
+                ]},
+                { title: 'Cardiovascular', fields: [
+                  { label: 'Status', key: 'cv_status', path: 'd_estado_fisiologico.cv_status' },
+                  { label: 'Pressao', key: 'cv_pressao_arterial', path: 'd_estado_fisiologico.cv_pressao_arterial' },
+                  { label: 'Acao', key: 'cv_acao', path: 'd_estado_fisiologico.cv_acao' },
+                ]},
+                { title: 'Inflamacao', fields: [
+                  { label: 'Nivel Inflamacao', key: 'infl_sist_nivel', path: 'd_estado_fisiologico.infl_sist_nivel' },
+                  { label: 'Causas', key: 'infl_sist_causas', path: 'd_estado_fisiologico.infl_sist_causas' },
+                  { label: 'Estresse Oxidativo', key: 'oxi_nivel', path: 'd_estado_fisiologico.oxi_nivel' },
+                ]},
+                { title: 'Exames', fields: [
+                  { label: 'Urgente', key: 'exames_urgente_0_15_dias', path: 'd_estado_fisiologico.exames_urgente_0_15_dias' },
+                  { label: 'Alta Prioridade', key: 'exames_alta_prioridade_30_dias', path: 'd_estado_fisiologico.exames_alta_prioridade_30_dias' },
+                  { label: 'Media Prioridade', key: 'exames_media_prioridade_60_90_dias', path: 'd_estado_fisiologico.exames_media_prioridade_60_90_dias' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => estado_fisiologico[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = estado_fisiologico[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Integracao Diagnostica */}
+      {viewPopupSection === 'integracao_diagnostica' && integracao_diagnostica && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>5. Integracao Diagnostica</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Diagnostico Integrado', fields: [
+                  { label: 'Titulo', key: 'diagnostico_titulo', path: 'd_agente_integracao_diagnostica.diagnostico_titulo' },
+                  { label: 'CID Primario', key: 'diagnostico_cid_primario', path: 'd_agente_integracao_diagnostica.diagnostico_cid_primario' },
+                  { label: 'CIDs Associados', key: 'diagnostico_cids_associados', path: 'd_agente_integracao_diagnostica.diagnostico_cids_associados' },
+                  { label: 'Sintese Executiva', key: 'diagnostico_sintese_executiva', path: 'd_agente_integracao_diagnostica.diagnostico_sintese_executiva' },
+                ]},
+                { title: 'Metafora da Casa', fields: [
+                  { label: 'Fundacao Status', key: 'fundacao_status', path: 'd_agente_integracao_diagnostica.fundacao_status' },
+                  { label: 'Fundacao Eventos', key: 'fundacao_eventos', path: 'd_agente_integracao_diagnostica.fundacao_eventos' },
+                  { label: 'Colunas Status', key: 'colunas_status', path: 'd_agente_integracao_diagnostica.colunas_status' },
+                  { label: 'Colunas Eventos', key: 'colunas_eventos', path: 'd_agente_integracao_diagnostica.colunas_eventos' },
+                  { label: 'Cumeeira Status', key: 'cumeeira_status', path: 'd_agente_integracao_diagnostica.cumeeira_status' },
+                  { label: 'Cumeeira Eventos', key: 'cumeeira_eventos', path: 'd_agente_integracao_diagnostica.cumeeira_eventos' },
+                ]},
+                { title: 'Diagnosticos Especificos', fields: [
+                  { label: 'Biologico', key: 'diagnostico_biologico', path: 'd_agente_integracao_diagnostica.diagnostico_biologico' },
+                  { label: 'Emocional', key: 'diagnostico_emocional', path: 'd_agente_integracao_diagnostica.diagnostico_emocional' },
+                  { label: 'Social', key: 'diagnostico_social', path: 'd_agente_integracao_diagnostica.diagnostico_social' },
+                  { label: 'Energetico', key: 'diagnostico_energetico', path: 'd_agente_integracao_diagnostica.diagnostico_energetico' },
+                  { label: 'Espiritual', key: 'diagnostico_espiritual', path: 'd_agente_integracao_diagnostica.diagnostico_espiritual' },
+                ]},
+                { title: 'Confianca', fields: [
+                  { label: 'Nivel', key: 'nivel_confianca_diagnostico', path: 'd_agente_integracao_diagnostica.nivel_confianca_diagnostico' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => integracao_diagnostica[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = integracao_diagnostica[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Habitos de Vida */}
+      {viewPopupSection === 'habitos_vida' && habitos_vida && (
+        <div onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 800, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>6. Habitos de Vida (5 Pilares)</h3>
+              </div>
+              <button onClick={() => { setViewPopupSection(null); setEditingField(null); }} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              {[
+                { title: 'Alimentacao', fields: [
+                  { label: 'Status', key: 'pilar1_alimentacao_status_global', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_status_global' },
+                  { label: 'Score', key: 'pilar1_alimentacao_score_qualidade', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_score_qualidade' },
+                  { label: 'Problemas', key: 'pilar1_alimentacao_problemas_identificados', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_problemas_identificados' },
+                  { label: 'Intervencao', key: 'pilar1_intervencao_requerida_nutricional', path: 'd_agente_habitos_vida_sistemica.pilar1_intervencao_requerida_nutricional' },
+                ]},
+                { title: 'Atividade Fisica', fields: [
+                  { label: 'Status', key: 'pilar2_atividade_fisica_status_global', path: 'd_agente_habitos_vida_sistemica.pilar2_atividade_fisica_status_global' },
+                  { label: 'Score', key: 'pilar2_atividade_fisica_score', path: 'd_agente_habitos_vida_sistemica.pilar2_atividade_fisica_score' },
+                  { label: 'Padrao', key: 'pilar2_padrao_pratica_exercicio', path: 'd_agente_habitos_vida_sistemica.pilar2_padrao_pratica_exercicio' },
+                  { label: 'Prescricao', key: 'pilar2_prescricao_fase1_objetivo', path: 'd_agente_habitos_vida_sistemica.pilar2_prescricao_fase1_objetivo' },
+                ]},
+                { title: 'Sono', fields: [
+                  { label: 'Status', key: 'pilar3_sono_status_global', path: 'd_agente_habitos_vida_sistemica.pilar3_sono_status_global' },
+                  { label: 'Score', key: 'pilar3_sono_score', path: 'd_agente_habitos_vida_sistemica.pilar3_sono_score' },
+                  { label: 'Qualidade', key: 'pilar3_padrao_qualidade_subjetiva', path: 'd_agente_habitos_vida_sistemica.pilar3_padrao_qualidade_subjetiva' },
+                  { label: 'Intervencao', key: 'pilar3_intervencao_prioridade', path: 'd_agente_habitos_vida_sistemica.pilar3_intervencao_prioridade' },
+                ]},
+                { title: 'Gestao de Stress', fields: [
+                  { label: 'Status', key: 'pilar4_stress_status_global', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_status_global' },
+                  { label: 'Score', key: 'pilar4_stress_score', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_score' },
+                  { label: 'Nivel', key: 'pilar4_stress_nivel_atual', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_nivel_atual' },
+                  { label: 'Fontes', key: 'pilar4_fontes_stress_profissional', path: 'd_agente_habitos_vida_sistemica.pilar4_fontes_stress_profissional' },
+                ]},
+                { title: 'Espiritualidade', fields: [
+                  { label: 'Status', key: 'pilar5_espiritualidade_status_global', path: 'd_agente_habitos_vida_sistemica.pilar5_espiritualidade_status_global' },
+                  { label: 'Score', key: 'pilar5_espiritualidade_score', path: 'd_agente_habitos_vida_sistemica.pilar5_espiritualidade_score' },
+                  { label: 'Praticas', key: 'pilar5_espiritualidade_praticas_atuais', path: 'd_agente_habitos_vida_sistemica.pilar5_espiritualidade_praticas_atuais' },
+                ]},
+                { title: 'Ritmo Circadiano', fields: [
+                  { label: 'Status', key: 'ritmo_circadiano_status', path: 'd_agente_habitos_vida_sistemica.ritmo_circadiano_status' },
+                  { label: 'Problemas', key: 'ritmo_circadiano_problemas', path: 'd_agente_habitos_vida_sistemica.ritmo_circadiano_problemas' },
+                  { label: 'Impacto', key: 'ritmo_circadiano_impacto', path: 'd_agente_habitos_vida_sistemica.ritmo_circadiano_impacto' },
+                ]},
+                { title: 'Resumo', fields: [
+                  { label: 'Score Geral', key: 'score_habitos_vida_geral', path: 'd_agente_habitos_vida_sistemica.score_habitos_vida_geral' },
+                  { label: 'Prioridades', key: 'prioridades_intervencao_habitos', path: 'd_agente_habitos_vida_sistemica.prioridades_intervencao_habitos' },
+                ]},
+              ].map((section) => {
+                const hasData = section.fields.some(f => habitos_vida[f.key]);
+                if (!hasData) return null;
+                return (<div key={section.title} style={{ marginBottom: 24 }}><h4 style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', textAlign: 'center' as const }}>{section.title}</h4><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.8 }}>{section.fields.map((field) => { const value = habitos_vida[field.key]; if (!value) return null; const isEditing = editingField === field.path; return (<div key={field.key} style={{ marginBottom: 8 }}>{isEditing ? (<div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '2px solid #1B4266' }}><div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', marginBottom: 6 }}>{field.label}</div><textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus onKeyDown={async (e) => { if (e.key === 'Escape') setEditingField(null); }} style={{ width: '100%', minHeight: 120, padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' as const }} /><div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}><button onClick={() => setEditingField(null)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button><button onClick={async () => { await handleSaveField(field.path, editingValue, consultaId); setEditingField(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1B4266', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Salvar</button></div></div>) : (<div style={{ cursor: 'pointer', borderRadius: 8, padding: '8px 12px', transition: 'background 0.15s', borderLeft: '2px solid #E2E8F0' }} onMouseEnter={e => { e.currentTarget.style.background = '#EBF3F6'; e.currentTarget.style.borderLeftColor = '#1B4266'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = '#E2E8F0'; }} onClick={() => { setEditingField(field.path); setEditingValue(String(value || '')); }} title={'Editar: ' + field.label}><div style={{ fontSize: 11, fontWeight: 700, color: '#1B4266', marginBottom: 2 }}>{field.label}</div><div style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.6 }}>{String(value)}</div></div>)}</div>); })}</div></div>);
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -3756,13 +4206,19 @@ function MentalidadeSection({
 
     return (
       <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
-        <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+        <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
           {fields.length > 0 ? (
             <>
               {fields.map((f, i) => (
                 <div key={i} style={{ marginBottom: 6 }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong> {String(f.value)}</div>
               ))}
-              <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>Clique para expandir e editar</div>
+              
             </>
           ) : (
             <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>
@@ -3796,9 +4252,15 @@ function MentalidadeSection({
     return (
       <CollapsibleSection title={`Padrao ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
         <div onClick={() => setViewLivroPopup({ type: 'padrao', padraoNum: numero })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 600, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
           {/* Info basica */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>Informacoes e Origem</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Informacoes e Origem</div>
             <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
               {allFields.map((f, i) => (
                 <div key={i} style={{ marginBottom: 8 }}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {String(f.value)}</div>
@@ -3809,7 +4271,7 @@ function MentalidadeSection({
           {/* Orientacoes */}
           {orientacoes.length > 0 && (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>Orientacoes de Transformacao</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Orientacoes de Transformacao</div>
               {orientacoes.map((o, idx) => (
                 <div key={idx} style={{ marginBottom: 12, paddingLeft: 12, borderLeft: '3px solid #E2E8F0' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Passo {o.passo}: {o.nome}</div>
@@ -3823,7 +4285,7 @@ function MentalidadeSection({
             </div>
           )}
 
-          <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>Clique para expandir e editar</div>
+          
         </div>
       </CollapsibleSection>
     );
@@ -3875,11 +4337,17 @@ function MentalidadeSection({
     <div className="anamnese-sections">
       {/* Resumo Executivo */}
       <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
-        <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+        <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Expandir e Editar
+              </span>
+            </div>
           {livroVidaData.resumo_executivo ? (
             <>
               <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{livroVidaData.resumo_executivo}</div>
-              <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>Clique para expandir e editar</div>
+              
             </>
           ) : (
             <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para editar.</span>

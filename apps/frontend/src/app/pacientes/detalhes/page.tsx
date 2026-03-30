@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { gatewayClient } from '@/lib/gatewayClient';
-import { ArrowLeft, Mail, Phone, Moon, Activity, Utensils, Scale } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Moon, Activity, Utensils, Scale, TrendingUp } from 'lucide-react';
+import EvolucaoSection from '@/components/evolucao/EvolucaoSection';
 import Link from 'next/link';
 import '../pacientes.css';
 
@@ -42,6 +43,7 @@ function PatientDetailsContent() {
   const [metrics, setMetrics] = useState<PatientMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [latestConsultaId, setLatestConsultaId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -74,6 +76,20 @@ function PatientDetailsContent() {
             periodo_dias: 90
           });
         }
+
+        // Buscar consulta mais recente do paciente para evolucao
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const { data: consultas } = await supabase
+            .from('consultations')
+            .select('id')
+            .eq('patient_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (consultas && consultas.length > 0) {
+            setLatestConsultaId(consultas[0].id);
+          }
+        } catch (e) { console.error('Erro ao buscar consulta para evolucao:', e); }
       } catch (err) {
         console.error(err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
@@ -262,6 +278,21 @@ function PatientDetailsContent() {
             </p>
           )}
         </section>
+
+        {/* Evolucao do Paciente */}
+        {latestConsultaId && (
+          <section className="patient-info-section">
+            <h2 className="patient-info-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp size={20} />
+              Evolucao
+            </h2>
+            <EvolucaoSection
+              consultaId={latestConsultaId}
+              patientId={id}
+              patientName={patient.name}
+            />
+          </section>
+        )}
 
         {/* Dados cadastrais resumidos */}
         <section className="patient-info-section">
