@@ -115,6 +115,15 @@ export default function Footer() {
           <p className="text-white/50 text-[12px] lg:text-[13px] mt-2">
             Empresa regularmente inscrita. CNPJ: 64.493.228/0001-43
           </p>
+          <div className="flex items-center justify-center gap-4 mt-3">
+            <a href="/termos" className="text-white/50 text-[12px] lg:text-[13px] hover:text-white/80 transition-colors underline">
+              Termos de Serviço
+            </a>
+            <span className="text-white/30">|</span>
+            <a href="/privacidade" className="text-white/50 text-[12px] lg:text-[13px] hover:text-white/80 transition-colors underline">
+              Política de Privacidade
+            </a>
+          </div>
         </motion.div>
       </div>
     </footer>
