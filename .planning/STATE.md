@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-31T00:03:55.305Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-31T00:08:14.981Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 ## Current Position
 
 Phase: 02 (backend-diarization) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 02-backend-diarization P01 | 2min | 2 tasks | 3 files |
+| Phase 02 P02 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Prior]: Architecture change: from 2 Deepgram connections (1 per mic) to 1 connection with diarization
 - [Phase 02-backend-diarization]: Speaker 'unknown' added as valid role for pre-mapping utterances
 - [Phase 02-backend-diarization]: Per-utterance rows with batch_id grouping for diarized transcriptions
+- [Phase 02]: setTimeout chain for batch flush to prevent overlap (not setInterval)
+- [Phase 02]: Word-level speaker_confidence averaging for diarization confidence
+- [Phase 02]: Speaker always 'unknown' until doctor maps roles via future UI
 
 ### Pending Todos
 
@@ -80,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T00:03:55.303Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-31T00:08:14.979Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

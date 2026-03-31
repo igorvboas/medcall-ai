@@ -14,9 +14,9 @@ Requirements for single-mic presencial consultation. Each maps to roadmap phases
 
 ### Backend Diarizacao
 
-- [ ] **DIAR-01**: Servidor acumula chunks de 5s do cliente em batches de 30s+ antes de enviar ao Deepgram
-- [ ] **DIAR-02**: Servidor envia `utterances: true` + `diarize: true` ao Deepgram pre-recorded API
-- [ ] **DIAR-03**: Servidor extrai `speaker` e `speaker_confidence` de cada utterance do response Deepgram
+- [x] **DIAR-01**: Servidor acumula chunks de 5s do cliente em batches de 30s+ antes de enviar ao Deepgram
+- [x] **DIAR-02**: Servidor envia `utterances: true` + `diarize: true` ao Deepgram pre-recorded API
+- [x] **DIAR-03**: Servidor extrai `speaker` e `speaker_confidence` de cada utterance do response Deepgram
 - [x] **DIAR-04**: Servidor armazena transcricoes com speaker_id atribuido (speaker_0, speaker_1)
 - [x] **DIAR-05**: Servidor usa confidence threshold para decidir auto-assign vs marcar como "incerto"
 - [ ] **DIAR-06**: Servidor suporta mapeamento retroativo de speaker (atualizar transcricoes quando medico mapeia speakers)
@@ -66,9 +66,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | VAL-01 | Phase 1 | Pending |
 | VAL-02 | Phase 1 | Pending |
-| DIAR-01 | Phase 2 | Pending |
-| DIAR-02 | Phase 2 | Pending |
-| DIAR-03 | Phase 2 | Pending |
+| DIAR-01 | Phase 2 | Complete |
+| DIAR-02 | Phase 2 | Complete |
+| DIAR-03 | Phase 2 | Complete |
 | DIAR-04 | Phase 2 | Complete |
 | DIAR-05 | Phase 2 | Complete |
 | DIAR-06 | Phase 2 | Pending |
