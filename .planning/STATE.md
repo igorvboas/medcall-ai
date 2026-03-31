@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Consulta Presencial com Microfone Unico
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-31T23:39:01.560Z"
+status: verifying
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-31T23:45:17.926Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 05 (core-data-path) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
@@ -52,6 +52,8 @@ Progress: [░░░░░░░░░░] 0%
 - [v2.0]: Supabase JS nao suporta transactions -- usar PostgreSQL RPCs para atomicidade
 - [Phase 05]: PostgreSQL RPC upsert pattern for atomic transcription append (INSERT ON CONFLICT)
 - [Phase 05]: webhookConfig.ts uses NODE_ENV only, no FRONTEND_URL fallback
+- [Phase 05]: All finalization paths read transcription from DB (crash-safe), not in-memory arrays
+- [Phase 05]: All webhook dispatch uses centralized webhookConfig.ts -- zero hardcoded URLs remain
 
 ### Pending Todos
 
@@ -65,6 +67,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T23:39:01.558Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-31T23:45:17.924Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
