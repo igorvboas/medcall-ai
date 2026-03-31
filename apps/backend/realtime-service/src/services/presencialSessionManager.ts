@@ -1,6 +1,7 @@
 import { whisperService } from './whisperService';
 import { db, logError } from '../config/database';
 import fetch from 'node-fetch';
+import { getWebhookUrl, getWebhookHeaders, getEnv } from '../config/webhookConfig';
 import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
 import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { aiConfig } from '../config';
@@ -886,60 +887,46 @@ class PresencialSessionManager {
             console.error('❌ [PRESENCIAL] Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
         }
 
-        // 📤 NOVO: Enviar webhook com dados da consulta finalizada
+        // Enviar webhook com dados da consulta finalizada
         try {
-            // Montar transcrição completa formatada
-            const transcriptionText = session.transcriptions
-                .map(t => `[${t.speaker}]: ${t.text}`)
-                .join('\n');
+            const { supabase } = await import('../config/database');
 
-            // Configurar webhook
-            const isHomolog = process.env.NODE_ENV === 'homolog';
-            const webhookUrl = isHomolog
-                ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
-                : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-            const webhookHeaders = {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-            };
-
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            const env = isHomolog
-              ? 'homolog'
-              : frontendUrl.includes('localhost')
-                ? 'localhost'
-                : 'prod';
+            // Read transcription from DB (not memory) per D-14
+            const { data: txnForWebhook } = await supabase
+                .from('transcriptions')
+                .select('raw_text')
+                .eq('consultation_id', session.consultationId)
+                .maybeSingle();
 
             const webhookData = {
                 consultationId: session.consultationId,
                 doctorId: session.doctorId,
                 patientId: session.patientId,
-                transcription: transcriptionText,
+                transcription: txnForWebhook?.raw_text || '',
                 consulta_finalizada: true,
-                paciente_entrou_sala: true, // Em consultas presenciais, sempre true
-                tipo_consulta: 'PRESENCIAL',
-                env
+                paciente_entrou_sala: true,
+                tipo_consulta: 'PRESENCIAL' as const,
+                env: getEnv(),
             };
 
-            console.log(`📤 [PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
-            console.log(`📦 [PRESENCIAL] Dados: consultationId=${session.consultationId}, doctorId=${session.doctorId}, patientId=${session.patientId}`);
+            const webhookUrl = getWebhookUrl('transcricao');
+            console.log(`[PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
 
             const response = await fetch(webhookUrl, {
                 method: 'POST',
-                headers: webhookHeaders,
-                body: JSON.stringify(webhookData)
+                headers: getWebhookHeaders(),
+                body: JSON.stringify(webhookData),
             });
 
             if (response.ok) {
-                console.log(`✅ [PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
+                console.log(`[PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
             } else {
-                console.warn(`⚠️ [PRESENCIAL] Webhook retornou status ${response.status}`);
+                console.warn(`[PRESENCIAL] Webhook retornou status ${response.status}`);
             }
         } catch (webhookError) {
-            // Não bloquear finalização se webhook falhar
-            console.error(`❌ [PRESENCIAL] Erro ao enviar webhook:`, webhookError);
+            console.error(`[PRESENCIAL] Erro ao enviar webhook:`, webhookError);
             logError(
-                'Erro ao enviar webhook de finalização de consulta presencial',
+                'Erro ao enviar webhook de finalizacao de consulta presencial',
                 'warning',
                 session.consultationId,
                 {
@@ -960,34 +947,35 @@ class PresencialSessionManager {
      * Salva transcrições no banco de dados
      */
     private async saveTranscriptions(session: PresencialSession): Promise<void> {
-        if (session.transcriptions.length === 0) {
-            console.log(`⚠️ [PRESENCIAL] Nenhuma transcrição para salvar`);
+        // Read transcription from DB (crash-safe) per D-07, D-08
+        const { supabase } = await import('../config/database');
+        const { data: txnRecord } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const fullText = txnRecord?.raw_text || '';
+
+        if (!fullText) {
+            console.log(`[PRESENCIAL] Nenhuma transcricao encontrada em transcriptions para consulta ${session.consultationId}`);
             return;
         }
 
-        // Formatar transcrição completa como texto legível
-        const transcriptionText = session.transcriptions.map(t => {
-            const speakerLabel = t.speaker === 'doctor' ? 'MEDICO' :
-                                 t.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
-            const timestamp = t.timestamp.toISOString().substring(11, 19); // HH:mm:ss
-            return `[${speakerLabel}] (${timestamp}): ${t.text}`;
-        }).join('\n');
-
-        // Salvar em consultations.transcricao
-        const { supabase } = await import('../config/database');
+        // Copy to consultations.transcricao
         const { error } = await supabase
             .from('consultations')
             .update({
-                transcricao: transcriptionText
+                transcricao: fullText
             })
             .eq('id', session.consultationId);
 
         if (error) {
-            console.error('❌ [PRESENCIAL] Erro ao salvar transcrições:', error);
+            console.error('[PRESENCIAL] Erro ao salvar transcricoes:', error);
             throw error;
         }
 
-        console.log(`💾 [PRESENCIAL] ${session.transcriptions.length} transcrições salvas em consultations.transcricao`);
+        console.log(`[PRESENCIAL] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
     }
 
     /**
