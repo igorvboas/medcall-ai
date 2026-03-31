@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Robustez da Consulta Online
-status: roadmap_created
-stopped_at: Roadmap created for v2.0
-last_updated: "2026-03-31T20:00:00.000Z"
-last_activity: 2026-03-31
+milestone: v1.0
+milestone_name: Consulta Presencial com Microfone Unico
+status: planning
+stopped_at: Phase 5 context gathered
+last_updated: "2026-03-31T23:12:51.352Z"
+last_activity: 2026-03-31 -- Roadmap created for milestone v2.0
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 8
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 6
   percent: 0
 ---
 
@@ -63,6 +63,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31
-Stopped at: Roadmap v2.0 created with 4 phases (5-8), 19 requirements mapped
-Resume file: None
+Last session: 2026-03-31T23:12:51.350Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-core-data-path/05-CONTEXT.md
