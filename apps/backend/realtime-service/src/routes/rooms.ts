@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { rooms, userToRoom, socketToRoom } from '../websocket/rooms';
 import { db, supabase } from '../config/database';
 import { aiPricingService } from '../services/aiPricingService';
+import { getWebhookUrl, getWebhookHeaders, getEnv } from '../config/webhookConfig';
 
 const router = express.Router();
 
@@ -267,28 +268,24 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
         }
       });
 
-      if (consultationId && room.transcriptions?.length) {
-        const rawText = room.transcriptions
-          .map((t: any) => `[${t.speaker}] (${t.timestamp || ''}): ${t.text}`)
-          .join('\n');
+      // Read transcription from DB (crash-safe) per D-07, D-08
+      if (consultationId) {
+        const { data: txnRecord } = await supabase
+          .from('transcriptions')
+          .select('raw_text')
+          .eq('consultation_id', consultationId)
+          .maybeSingle();
 
-        const transcription = await db.saveConsultationTranscription({
-          consultation_id: consultationId,
-          raw_text: rawText,
-          language: 'pt-BR',
-          model_used: 'gpt-4o-mini-realtime-preview'
-        });
+        const fullText = txnRecord?.raw_text || '';
 
-        if (transcription) {
-          saveResult.transcriptionId = transcription.id;
-          console.log(`📝 [FINALIZE-HTTP] Transcrição salva: ${transcription.id}`);
+        if (fullText) {
+          await db.updateConsultation(consultationId, {
+            transcricao: fullText
+          });
+          console.log(`[FINALIZE-HTTP] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
+        } else {
+          console.warn(`[FINALIZE-HTTP] Nenhuma transcricao encontrada em transcriptions para consulta ${consultationId}`);
         }
-
-        // ✅ CORREÇÃO: Salvar também na coluna 'transcricao' da tabela 'consultations'
-        await db.updateConsultation(consultationId, {
-          transcricao: rawText
-        });
-        console.log(`📝 [FINALIZE-HTTP] Transcrição salva na consulta ${consultationId} (coluna transcricao)`);
       }
 
       if (consultationId) {
@@ -302,54 +299,49 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
         }
       }
 
-      // Enviar webhook de finalização (mesmo que ao concluir na sala)
+      // Enviar webhook de finalizacao (mesmo que ao concluir na sala)
       if (consultationId) {
-        const { data: consultation } = await supabase
-          .from('consultations')
-          .select('doctor_id, patient_id')
-          .eq('id', consultationId)
-          .single();
+        try {
+          const { data: consultation } = await supabase
+            .from('consultations')
+            .select('doctor_id, patient_id')
+            .eq('id', consultationId)
+            .single();
 
-        const transcriptionText = (room.transcriptions || [])
-          .map((t: any) => `[${t.speaker}]: ${t.text}`)
-          .join('\n');
+          // Read transcription from DB (not memory) per D-14
+          const { data: txnForWebhook } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', consultationId)
+            .maybeSingle();
 
-        const isHomolog = process.env.NODE_ENV === 'homolog';
-        const webhookUrl = isHomolog
-          ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
-          : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const env = isHomolog
-          ? 'homolog'
-          : frontendUrl.includes('localhost')
-            ? 'localhost'
-            : 'prod';
+          const webhookData = {
+            consultationId,
+            doctorId: consultation?.doctor_id || null,
+            patientId: consultation?.patient_id || room.patientId || 'unknown',
+            transcription: txnForWebhook?.raw_text || '',
+            consulta_finalizada: true,
+            paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
+            tipo_consulta: 'ONLINE' as const,
+            env: getEnv(),
+          };
 
-        const webhookData = {
-          consultationId,
-          doctorId: consultation?.doctor_id || null,
-          patientId: consultation?.patient_id || room.patientId || 'unknown',
-          transcription: transcriptionText,
-          consulta_finalizada: true,
-          paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
-          env
-        };
+          const webhookUrl = getWebhookUrl('transcricao');
+          console.log(`[FINALIZE-HTTP] Enviando webhook para ${webhookUrl}...`);
 
-        console.log(`📤 [FINALIZE-HTTP] Enviando webhook para ${webhookUrl}...`);
+          const webhookRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: getWebhookHeaders(),
+            body: JSON.stringify(webhookData),
+          });
 
-        const webhookRes = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-          },
-          body: JSON.stringify(webhookData)
-        });
-
-        if (webhookRes.ok) {
-          console.log(`✅ [FINALIZE-HTTP] Webhook enviado com sucesso (${webhookRes.status})`);
-        } else {
-          console.warn(`⚠️ [FINALIZE-HTTP] Webhook retornou ${webhookRes.status}`);
+          if (webhookRes.ok) {
+            console.log(`[FINALIZE-HTTP] Webhook enviado com sucesso (${webhookRes.status})`);
+          } else {
+            console.warn(`[FINALIZE-HTTP] Webhook retornou ${webhookRes.status}`);
+          }
+        } catch (webhookError) {
+          console.error('[FINALIZE-HTTP] Erro ao enviar webhook:', webhookError);
         }
       }
     } catch (dbError) {
