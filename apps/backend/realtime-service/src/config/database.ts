@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from './index';
+import type { DiarizedUtterance } from '../types/diarization';
 
 // Configuração do cliente Supabase
 // ✅ IMPORTANTE: Usar service role key para bypassar RLS
@@ -1238,6 +1239,157 @@ export const db = {
 
     console.log('🗑️ [DB] Gravação removida:', recordingId);
     return true;
+  },
+
+  /**
+   * Salva utterances diarizadas como linhas individuais em transcriptions_med
+   * Cada utterance vira uma row separada com speaker_id e batch_id
+   */
+  async saveDiarizedUtterances(
+    sessionId: string,
+    batchId: string,
+    utterances: Array<{
+      speaker: 'doctor' | 'patient' | 'unknown';
+      speakerId: string | null;
+      text: string;
+      startMs: number;
+      endMs: number;
+      confidence: number;
+      diarizationConfidence: number;
+      needsReview: boolean;
+      doctorName?: string;
+    }>
+  ): Promise<boolean> {
+    try {
+      const rows = utterances.map((u) => ({
+        session_id: sessionId,
+        speaker: u.speaker,
+        speaker_id: u.speakerId,
+        text: u.text,
+        is_final: true,
+        start_ms: u.startMs,
+        end_ms: u.endMs,
+        confidence: u.confidence,
+        diarization_confidence: u.diarizationConfidence,
+        batch_id: batchId,
+        needs_review: u.needsReview,
+        processing_status: 'completed',
+        doctor_name: u.doctorName || null,
+      }));
+
+      const { error } = await supabase
+        .from('transcriptions_med')
+        .insert(rows);
+
+      if (error) {
+        console.error(`[DIARIZATION-SAVE] Error saving utterances for batch ${batchId}:`, error);
+        return false;
+      }
+
+      console.log(`[DIARIZATION-SAVE] Saved ${utterances.length} utterances for batch ${batchId}`);
+      return true;
+    } catch (error) {
+      console.error(`[DIARIZATION-SAVE] Exception saving utterances for batch ${batchId}:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Atualiza o mapeamento de speaker (speaker_0/speaker_1 -> doctor/patient) para uma sessao
+   * Retroativamente atribui roles a todas as utterances da sessao
+   */
+  async updateSpeakerMapping(
+    sessionId: string,
+    mapping: { speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' }
+  ): Promise<boolean> {
+    try {
+      for (const [speakerKey, role] of Object.entries(mapping)) {
+        const { error } = await supabase
+          .from('transcriptions_med')
+          .update({ speaker: role, needs_review: false })
+          .eq('session_id', sessionId)
+          .eq('speaker_id', speakerKey);
+
+        if (error) {
+          console.error(`[SPEAKER-MAPPING] Error updating ${speakerKey} -> ${role} for session ${sessionId}:`, error);
+          return false;
+        }
+      }
+
+      console.log(`[SPEAKER-MAPPING] Updated speaker mapping for session ${sessionId}`);
+      return true;
+    } catch (error) {
+      console.error(`[SPEAKER-MAPPING] Exception updating mapping for session ${sessionId}:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Regenera o raw_text da transcricao com labels de speaker apos mapeamento
+   * Busca todas as utterances diarizadas e formata como [MEDICO/PACIENTE] (HH:mm:ss): texto
+   */
+  async regenerateRawTextWithSpeakers(
+    sessionId: string,
+    consultationId: string,
+    mapping: { speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' }
+  ): Promise<boolean> {
+    try {
+      const { data: rows, error: fetchError } = await supabase
+        .from('transcriptions_med')
+        .select('*')
+        .eq('session_id', sessionId)
+        .not('batch_id', 'is', null)
+        .order('start_ms', { ascending: true });
+
+      if (fetchError) {
+        console.error(`[REGENERATE-TEXT] Error fetching utterances for session ${sessionId}:`, fetchError);
+        return false;
+      }
+
+      if (!rows || rows.length === 0) {
+        console.warn(`[REGENERATE-TEXT] No diarized utterances found for session ${sessionId}`);
+        return false;
+      }
+
+      const lines = rows.map((row: any) => {
+        let label: string;
+        switch (row.speaker) {
+          case 'doctor':
+            label = 'MEDICO';
+            break;
+          case 'patient':
+            label = 'PACIENTE';
+            break;
+          default:
+            label = 'SPEAKER';
+        }
+
+        const totalSecs = Math.floor(row.start_ms / 1000);
+        const hh = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalSecs % 60).padStart(2, '0');
+
+        return `[${label}] (${hh}:${mm}:${ss}): ${row.text}`;
+      });
+
+      const rawText = lines.join('\n');
+
+      const { error: updateError } = await supabase
+        .from('transcriptions')
+        .update({ raw_text: rawText })
+        .eq('consultation_id', consultationId);
+
+      if (updateError) {
+        console.error(`[REGENERATE-TEXT] Error updating raw_text for consultation ${consultationId}:`, updateError);
+        return false;
+      }
+
+      console.log(`[REGENERATE-TEXT] Regenerated raw_text with ${rows.length} utterances for consultation ${consultationId}`);
+      return true;
+    } catch (error) {
+      console.error(`[REGENERATE-TEXT] Exception for session ${sessionId}:`, error);
+      return false;
+    }
   },
 };
 
