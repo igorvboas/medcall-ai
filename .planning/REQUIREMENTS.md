@@ -11,13 +11,13 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 - [ ] **TRNS-01**: Transcrição salva incrementalmente em `transcriptions.raw_text` durante a consulta (não apenas no final)
 - [ ] **TRNS-02**: Transcrição consolidada salva em `consultations.transcricao` na finalização da consulta
-- [ ] **TRNS-03**: Operação de save de transcrição é atômica (eliminar race condition read-modify-write no banco)
-- [ ] **TRNS-04**: Usar tabela `transcriptions` como fonte primária (não `transcriptions_med`)
+- [x] **TRNS-03**: Operação de save de transcrição é atômica (eliminar race condition read-modify-write no banco)
+- [x] **TRNS-04**: Usar tabela `transcriptions` como fonte primária (não `transcriptions_med`)
 
 ### Webhook (Prioridade Máxima)
 
 - [ ] **WBHK-01**: Webhook disparado para N8N com payload correto (consultationId, doctorId, patientId, transcription, env)
-- [ ] **WBHK-02**: URL do webhook determinada por `NODE_ENV` (homolog/production/localhost), centralizada em um único local
+- [x] **WBHK-02**: URL do webhook determinada por `NODE_ENV` (homolog/production/localhost), centralizada em um único local
 - [ ] **WBHK-03**: Registro de entregas de webhook em tabela `webhook_deliveries` (outbox pattern)
 - [ ] **WBHK-04**: Retry automático com backoff exponencial em caso de falha do webhook
 
@@ -78,10 +78,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | TRNS-01 | Phase 5 | Pending |
 | TRNS-02 | Phase 5 | Pending |
-| TRNS-03 | Phase 5 | Pending |
-| TRNS-04 | Phase 5 | Pending |
+| TRNS-03 | Phase 5 | Complete |
+| TRNS-04 | Phase 5 | Complete |
 | WBHK-01 | Phase 5 | Pending |
-| WBHK-02 | Phase 5 | Pending |
+| WBHK-02 | Phase 5 | Complete |
 | WBHK-03 | Phase 6 | Pending |
 | WBHK-04 | Phase 6 | Pending |
 | FINL-01 | Phase 6 | Pending |

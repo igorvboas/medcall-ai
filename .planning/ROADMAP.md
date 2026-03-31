@@ -114,7 +114,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — PostgreSQL RPC for atomic append, database.ts refactor, webhook config module
+- [x] 05-01-PLAN.md — PostgreSQL RPC for atomic append, database.ts refactor, webhook config module
 - [ ] 05-02-PLAN.md — Finalization DB-read consolidation and webhook centralization across all 3 dispatch points
 
 ### Phase 6: Webhook Reliability & Finalization Guards
