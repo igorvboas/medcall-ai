@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
 import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { aiConfig } from '../config';
+import { AudioAccumulator, DiarizedUtterance, BatchResult, DeepgramDiarizedUtterance, DeepgramWordWithSpeaker } from '../types/diarization';
 
 /**
  * Interface para chunk de áudio em fila
@@ -62,6 +63,15 @@ class PresencialSessionManager {
     // Sessões ativas em memória
     private sessions = new Map<string, PresencialSession>();
 
+    // Audio accumulators for 60s batch diarization (per D-01)
+    private accumulators = new Map<string, AudioAccumulator>();
+
+    // Socket.IO server reference for emitting events
+    private io: any = null;
+
+    // Confidence threshold for speaker attribution (per D-16, D-18)
+    private diarizationConfidenceThreshold: number;
+
     // Fila de chunks para processar
     private processingQueue: AudioChunk[] = [];
     private isProcessing = false;
@@ -76,10 +86,259 @@ class PresencialSessionManager {
 
         if (this.useDeepgram) {
             this.deepgramClient = createDeepgramClient(apiKey);
-            console.log('✅ [PRESENCIAL] Deepgram habilitado para transcrição');
+            console.log('[PRESENCIAL] Deepgram habilitado para transcricao');
         } else {
-            console.log('⚠️ [PRESENCIAL] Usando Whisper para transcrição (fallback)');
+            console.log('[PRESENCIAL] Usando Whisper para transcricao (fallback)');
         }
+
+        this.diarizationConfidenceThreshold = parseFloat(process.env.DIARIZATION_CONFIDENCE_THRESHOLD || '0.7');
+        console.log(`[PRESENCIAL] Diarization confidence threshold: ${this.diarizationConfidenceThreshold}`);
+    }
+
+    /**
+     * Set Socket.IO server reference for emitting diarized batch events
+     */
+    setIO(io: any): void {
+        this.io = io;
+    }
+
+    // ==================== ACCUMULATOR LIFECYCLE ====================
+
+    /**
+     * Start audio accumulator for batch diarization (per D-01, D-03)
+     */
+    private startAccumulator(sessionId: string): void {
+        const acc: AudioAccumulator = {
+            chunks: [],
+            timer: null,
+            batchNumber: 0,
+            startTime: new Date(),
+            totalDurationMs: 0,
+        };
+        this.accumulators.set(sessionId, acc);
+        this.scheduleFlush(sessionId);
+        console.log(`[DIARIZATION] Accumulator started for session ${sessionId}`);
+    }
+
+    /**
+     * Schedule next 60s flush using setTimeout chain (not setInterval) to prevent overlap
+     */
+    private scheduleFlush(sessionId: string): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        acc.timer = setTimeout(async () => {
+            await this.flushBatch(sessionId);
+            // Re-schedule only if accumulator still exists (session not ended)
+            if (this.accumulators.has(sessionId)) {
+                this.scheduleFlush(sessionId);
+            }
+        }, 60_000);
+    }
+
+    /**
+     * Add audio chunk to accumulator (called from processAudioChunkAndReturn)
+     */
+    private addChunkToAccumulator(sessionId: string, audioBuffer: Buffer): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        acc.chunks.push(audioBuffer);
+        acc.totalDurationMs += 5000; // Each chunk is 5s per D-01
+        console.log(`[DIARIZATION] Chunk added to accumulator for ${sessionId} (${acc.chunks.length} chunks, ${acc.totalDurationMs / 1000}s)`);
+    }
+
+    /**
+     * Flush accumulated audio batch to Deepgram with diarization (per D-01, D-02, D-05)
+     */
+    private async flushBatch(sessionId: string): Promise<void> {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc || acc.chunks.length === 0) return;
+
+        const batchId = `batch-${sessionId.substring(0, 8)}-${acc.batchNumber++}`;
+        const chunksToProcess = [...acc.chunks];
+        // Clear accumulator immediately so new chunks go to next batch
+        acc.chunks = [];
+        acc.totalDurationMs = 0;
+
+        const concatenated = Buffer.concat(chunksToProcess);
+        console.log(`[DIARIZATION] Flushing batch ${batchId}: ${chunksToProcess.length} chunks, ${concatenated.length} bytes`);
+
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            console.error(`[DIARIZATION] Session ${sessionId} not found for batch ${batchId}`);
+            return;
+        }
+
+        try {
+            const utterances = await this.transcribeWithDiarization(concatenated, session.consultationId);
+            await this.processDiarizedUtterances(sessionId, batchId, utterances);
+        } catch (err) {
+            console.error(`[DIARIZATION] Batch ${batchId} failed:`, err);
+            // Do NOT re-throw — don't crash the timer chain
+        }
+    }
+
+    /**
+     * Stop accumulator and clear timer (per Pitfall 5 from RESEARCH.md)
+     */
+    private stopAccumulator(sessionId: string): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        if (acc.timer) {
+            clearTimeout(acc.timer);
+        }
+        this.accumulators.delete(sessionId);
+        console.log(`[DIARIZATION] Accumulator stopped for session ${sessionId}`);
+    }
+
+    // ==================== DIARIZATION PROCESSING ====================
+
+    /**
+     * Transcribe audio buffer using Deepgram pre-recorded API with utterances + diarize (per D-05, D-06)
+     */
+    private async transcribeWithDiarization(
+        audioBuffer: Buffer,
+        consultationId: string
+    ): Promise<DeepgramDiarizedUtterance[]> {
+        if (!this.deepgramClient) {
+            throw new Error('Deepgram client nao inicializado');
+        }
+
+        const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
+            audioBuffer,
+            {
+                model: 'nova-2',
+                language: 'pt-BR',
+                smart_format: true,
+                punctuate: true,
+                numerals: true,
+                diarize: true,
+                utterances: true,
+                keywords: [
+                    'paciente:2', 'doutor:2', 'doutora:2',
+                    'pressao arterial:3', 'frequencia cardiaca:3',
+                    'hemograma:3', 'diagnostico:2', 'medicamento:2',
+                ],
+            }
+        );
+
+        if (error) {
+            throw new Error(`Deepgram diarization API error: ${JSON.stringify(error)}`);
+        }
+
+        const utterances = (result as any)?.results?.utterances || [];
+
+        // Log cost tracking (same pattern as existing transcribeWithDeepgram)
+        try {
+            const duration = (result as any)?.metadata?.duration || 0;
+            const { aiPricingService } = await import('./aiPricingService');
+            await aiPricingService.logWhisperUsage(
+                duration * 1000,
+                consultationId,
+                `[BATCH-DIARIZATION] ${utterances.length} utterances`,
+                { provider: 'deepgram', model: 'nova-2' }
+            );
+        } catch (e) {
+            // Don't block transcription for logging errors
+        }
+
+        return utterances as DeepgramDiarizedUtterance[];
+    }
+
+    /**
+     * Process diarized utterances: map, filter, save, emit (per D-10, D-11, D-16)
+     */
+    private async processDiarizedUtterances(
+        sessionId: string,
+        batchId: string,
+        utterances: DeepgramDiarizedUtterance[]
+    ): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+
+        // Map Deepgram utterances to our DiarizedUtterance type
+        const mappedUtterances: DiarizedUtterance[] = utterances
+            .map((utt) => {
+                const diarizationConfidence = utt.words && utt.words.length > 0
+                    ? utt.words.reduce((sum, w) => sum + (w.speaker_confidence || 0), 0) / utt.words.length
+                    : 0;
+
+                return {
+                    speakerId: `speaker_${utt.speaker}`,
+                    transcript: utt.transcript,
+                    startMs: Math.round(utt.start * 1000),
+                    endMs: Math.round(utt.end * 1000),
+                    transcriptionConfidence: utt.confidence,
+                    diarizationConfidence,
+                    needsReview: diarizationConfidence < this.diarizationConfidenceThreshold,
+                };
+            })
+            .filter((u) => u.transcript && u.transcript.trim().length > 0 && isValidTranscriptionText(u.transcript.trim()));
+
+        if (mappedUtterances.length === 0) {
+            console.log(`[DIARIZATION] Batch ${batchId} had no valid utterances after filtering`);
+            return;
+        }
+
+        // Save to transcriptions_med (speaker is always 'unknown' until doctor maps via DIAR-06)
+        await db.saveDiarizedUtterances(
+            session.callSessionId,
+            batchId,
+            mappedUtterances.map((u) => ({
+                speaker: 'unknown' as const,
+                speakerId: u.speakerId,
+                text: u.transcript,
+                startMs: u.startMs,
+                endMs: u.endMs,
+                confidence: u.transcriptionConfidence,
+                diarizationConfidence: u.diarizationConfidence,
+                needsReview: u.needsReview,
+                doctorName: session.doctorName,
+            }))
+        );
+
+        // Append to transcriptions.raw_text (per D-15)
+        const lines = mappedUtterances.map((u) => {
+            const ts = this.formatMs(u.startMs);
+            return `[${u.speakerId.toUpperCase()}] (${ts}): ${u.transcript}`;
+        });
+        await db.appendConsultationTranscription(
+            session.consultationId,
+            lines.join('\n'),
+            'BATCH',
+            new Date().toISOString().substring(11, 19)
+        );
+
+        // Emit presencialDiarizedBatch event (per D-09)
+        if (this.io) {
+            this.io.to(sessionId).emit('presencialDiarizedBatch', {
+                sessionId,
+                batchId,
+                utterances: mappedUtterances.map((u) => ({
+                    speakerId: u.speakerId,
+                    text: u.transcript,
+                    startMs: u.startMs,
+                    endMs: u.endMs,
+                    diarizationConfidence: u.diarizationConfidence,
+                    needsReview: u.needsReview,
+                })),
+            });
+        }
+
+        console.log(`[DIARIZATION] Batch ${batchId} processed: ${mappedUtterances.length} utterances`);
+    }
+
+    /**
+     * Convert milliseconds to HH:mm:ss format
+     */
+    private formatMs(ms: number): string {
+        const totalSecs = Math.floor(ms / 1000);
+        const hh = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalSecs % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
     }
 
     /**
@@ -206,7 +465,10 @@ class PresencialSessionManager {
 
         this.sessions.set(data.sessionId, session);
 
-        console.log(`✅ [PRESENCIAL] Sessão ${data.sessionId} criada`);
+        // Start batch accumulator for diarization (per D-01)
+        this.startAccumulator(data.sessionId);
+
+        console.log(`[PRESENCIAL] Sessao ${data.sessionId} criada`);
 
         return session;
     }
@@ -281,7 +543,10 @@ class PresencialSessionManager {
 
         session.totalChunks++;
 
-        console.log(`🎵 [PRESENCIAL] Processando chunk síncrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
+        // Feed accumulator for batch diarization (parallel path per D-08)
+        this.addChunkToAccumulator(sessionId, audioBuffer);
+
+        console.log(`[PRESENCIAL] Processando chunk sincrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
 
         try {
             let result: { text: string; confidence?: number; duration?: number };
@@ -505,7 +770,15 @@ class PresencialSessionManager {
             throw new Error(`Sessão ${sessionId} não encontrada`);
         }
 
-        console.log(`🏁 [PRESENCIAL] Finalizando sessão ${sessionId}...`);
+        console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
+
+        // Flush remaining audio in accumulator and stop timer (per D-03, D-04)
+        const acc = this.accumulators.get(sessionId);
+        if (acc && acc.chunks.length > 0) {
+            console.log(`[DIARIZATION] Flushing remaining ${acc.chunks.length} chunks on session end`);
+            await this.flushBatch(sessionId);
+        }
+        this.stopAccumulator(sessionId);
 
         session.status = 'ended';
         session.endTime = new Date();

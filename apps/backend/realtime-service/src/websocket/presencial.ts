@@ -7,6 +7,9 @@ import { db, logError } from '../config/database';
  * Configurar handlers Socket.IO para consultas presenciais
  */
 export function setupPresencialWebSocket(io: SocketIOServer): void {
+    // Provide Socket.IO reference for emitting diarized batch events
+    presencialSessionManager.setIO(io);
+
     io.on('connection', (socket: Socket) => {
         const userName = socket.handshake.auth.userName;
         const password = socket.handshake.auth.password;
