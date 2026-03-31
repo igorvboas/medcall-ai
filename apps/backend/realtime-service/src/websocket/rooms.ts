@@ -1538,7 +1538,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
             const isHomolog = process.env.NODE_ENV === 'homolog';
             const webhookUrl = isHomolog
-              ? 'https://webhook.tc1.triacompany.com.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
+              ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
               : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const env = isHomolog

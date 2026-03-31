@@ -48,7 +48,7 @@ Esta funcionalidade permite aos médicos fazer upload de arquivos de exames labo
 #### Webhook Externo
 - **Endpoint**: `POST /api/webhook/exames`
 - **Função**: Envia dados para webhook externo da TRIA
-- **URL**: `https://webhook.tc1.triacompany.com.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi`
+- **URL**: `https://triahook.gst.dev.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi`
 - **Dados enviados**: `consulta_id`, `medico_id`, `paciente_id`
 
 #### Processamento Completo

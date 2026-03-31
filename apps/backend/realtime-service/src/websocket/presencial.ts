@@ -122,7 +122,7 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
             try {
                 const {
                     sessionId,
-                    speaker, // 'doctor' | 'patient'
+                    speaker, // 'doctor' | 'patient' | 'mixed'
                     audioChunk, // base64 string
                     sequence,
                     timestamp
@@ -156,7 +156,8 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
                         speaker: transcription.speaker,
                         text: transcription.text,
                         timestamp: transcription.timestamp,
-                        sequence: transcription.sequence
+                        sequence: transcription.sequence,
+                        detectedSpeaker: transcription.detectedSpeaker,
                     });
                 } else {
                     console.log(`⚠️ [PRESENCIAL] Nenhuma transcrição gerada para chunk ${speaker} #${sequence}`);
@@ -174,15 +175,51 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
             }
         });
 
+        // ==================== BATCH DE DIARIZAÇÃO (60s WebM válido do frontend) ====================
+
+        socket.on('presencialDiarizationBatch', async (data, callback) => {
+            try {
+                const { sessionId, audioChunk } = data;
+
+                console.log(`📦 [DIARIZATION] Batch recebido do frontend (${audioChunk.length} chars base64)`);
+
+                const audioBuffer = Buffer.from(audioChunk, 'base64');
+                console.log(`📦 [DIARIZATION] Buffer: ${audioBuffer.length} bytes`);
+
+                // Processar diarização diretamente com o WebM válido
+                await presencialSessionManager.processDiarizationBatch(sessionId, audioBuffer);
+
+                if (callback) {
+                    callback({ success: true });
+                }
+
+            } catch (error) {
+                console.error('[DIARIZATION] Erro ao processar batch:', error);
+                if (callback) {
+                    callback({
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Erro desconhecido'
+                    });
+                }
+            }
+        });
+
         // ==================== FINALIZAR SESSÃO ====================
 
         socket.on('endPresencialSession', async (data, callback) => {
             try {
-                const { sessionId } = data;
+                const { sessionId, fullAudioData } = data;
 
                 console.log(`[PRESENCIAL] Finalizando sessão ${sessionId}...`);
 
-                // Finalizar sessão
+                // Se tem audio completo (single-mic), processar diarizacao final
+                if (fullAudioData) {
+                    const audioBuffer = Buffer.from(fullAudioData, 'base64');
+                    console.log(`[PRESENCIAL] Audio completo recebido: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+                    await presencialSessionManager.finalizeWithFullAudio(sessionId, audioBuffer);
+                }
+
+                // Finalizar sessão (salva transcricao, webhook, etc)
                 await presencialSessionManager.endSession(sessionId);
 
                 // Sair da sala

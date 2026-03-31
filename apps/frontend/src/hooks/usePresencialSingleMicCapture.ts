@@ -24,15 +24,20 @@ export function usePresencialSingleMicCapture({
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
 
-    // Usar refs para evitar problemas de closure nos callbacks
     const sessionIdRef = useRef<string | null>(null);
     const isRecordingRef = useRef<boolean>(false);
 
     // Stream de audio
     const streamRef = useRef<MediaStream | null>(null);
 
-    // MediaRecorder
-    const recorderRef = useRef<MediaRecorder | null>(null);
+    // RECORDER 1: Immediate (5s) — transcricao rapida incremental
+    const immediateRecorderRef = useRef<MediaRecorder | null>(null);
+
+    // RECORDER 2: Full session — grava consulta inteira para diarizacao no final
+    const fullRecorderRef = useRef<MediaRecorder | null>(null);
+    const fullChunksRef = useRef<Blob[]>([]);
+    const fullAudioResolveRef = useRef<((blob: Blob) => void) | null>(null);
+    const fullMimeTypeRef = useRef<string>('');
 
     // Voice Activity Detector
     const vadRef = useRef<VoiceActivityDetector | null>(null);
@@ -40,44 +45,39 @@ export function usePresencialSingleMicCapture({
     // Contador de sequencia
     const sequenceRef = useRef(0);
 
-    // Amostras de voz (para VAD)
-    const voiceSamplesRef = useRef(0);
-
     // Buffer de reconexao
     const bufferRef = useRef<AudioChunk[]>([]);
 
-    // Nivel de audio (para UI) - single value
+    // Nivel de audio (para UI)
     const [audioLevel, setAudioLevel] = useState(0);
 
-    // Interval para analise de nivel
+    // Intervals
     const levelIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Interval para ciclo de gravacao
-    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const immediateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const fullDataIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     /**
-     * Inicia captura de audio
+     * Inicia captura de audio com dois recorders paralelos:
+     * 1. Immediate (5s): transcricao rapida incremental
+     * 2. Full session: grava tudo para diarizacao ao finalizar consulta
      */
     const startCapture = useCallback(async (sessionId: string) => {
         if (!sessionId) {
             throw new Error('SessionId e obrigatorio para iniciar captura');
         }
 
-        // Armazenar sessionId na ref
         sessionIdRef.current = sessionId;
         console.log(`[SingleMic] SessionId armazenado na ref: ${sessionId}`);
 
         try {
-            // Verificar se socket esta conectado antes de iniciar
+            // Verificar socket
             if (!socket || !socket.connected) {
                 console.warn('[SingleMic] Socket nao conectado, aguardando conexao...');
-                // Aguardar ate 3 segundos pela conexao
                 let attempts = 0;
                 while ((!socket || !socket.connected) && attempts < 6) {
                     await new Promise(resolve => setTimeout(resolve, 500));
                     attempts++;
                 }
-
                 if (!socket || !socket.connected) {
                     throw new Error('Socket nao conectado apos 3 segundos de espera');
                 }
@@ -96,69 +96,80 @@ export function usePresencialSingleMicCapture({
             });
 
             streamRef.current = stream;
-
-            // Inicializar VAD
             vadRef.current = new VoiceActivityDetector(stream);
 
-            // Configurar MediaRecorder
             const mimeType = getBestAudioMimeType();
+            fullMimeTypeRef.current = mimeType;
 
-            const recorder = new MediaRecorder(stream, {
-                mimeType,
-                audioBitsPerSecond: 128000
-            });
+            // ========== RECORDER 1: Immediate (5s chunks para transcricao rapida) ==========
+            const immediateRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 });
+            let immediateChunks: Blob[] = [];
 
-            // Handler para chunks
-            let chunks: Blob[] = [];
-            recorder.ondataavailable = async (event) => {
-                if (event.data.size > 0) {
-                    chunks.push(event.data);
-                }
+            immediateRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) immediateChunks.push(event.data);
             };
 
-            // Quando o recorder parar, processar todos os chunks acumulados
-            recorder.onstop = async () => {
-                if (chunks.length > 0) {
-                    // Combinar todos os chunks em um Blob unico (WebM completo)
-                    const completeBlob = new Blob(chunks, { type: mimeType });
-                    await handleAudioChunk(completeBlob, sequenceRef.current++, voiceSamplesRef.current);
-                    voiceSamplesRef.current = 0; // Reset contador
-                    chunks = []; // Limpar chunks
+            immediateRecorder.onstop = async () => {
+                if (immediateChunks.length > 0) {
+                    const blob = new Blob(immediateChunks, { type: mimeType });
+                    immediateChunks = [];
+                    await handleImmediateChunk(blob, sequenceRef.current++);
 
-                    // Reiniciar gravacao se ainda estiver em modo de gravacao (usar ref para evitar closure)
-                    if (isRecordingRef.current && recorderRef.current && recorderRef.current.state === 'inactive') {
-                        console.log('[SingleMic] Reiniciando gravacao...');
-                        recorderRef.current.start();
+                    // Reiniciar se ainda gravando
+                    if (isRecordingRef.current && immediateRecorderRef.current?.state === 'inactive') {
+                        immediateRecorderRef.current.start();
                     }
                 }
             };
 
-            recorderRef.current = recorder;
+            immediateRecorderRef.current = immediateRecorder;
 
-            // Aguardar 500ms adicional para garantir que socket esta completamente pronto
+            // ========== RECORDER 2: Full session (grava consulta inteira) ==========
+            const fullRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 });
+
+            fullRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) fullChunksRef.current.push(event.data);
+            };
+
+            fullRecorder.onstop = () => {
+                const blob = new Blob(fullChunksRef.current, { type: mimeType });
+                console.log(`[SingleMic] Full session audio: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+                if (fullAudioResolveRef.current) {
+                    fullAudioResolveRef.current(blob);
+                    fullAudioResolveRef.current = null;
+                }
+            };
+
+            fullRecorderRef.current = fullRecorder;
+
+            // Aguardar socket estar completamente pronto
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Iniciar gravacao continua (sem timeslice - vamos parar/iniciar manualmente)
-            recorder.start();
+            // Iniciar ambos os recorders
+            immediateRecorder.start();
+            fullRecorder.start();
 
-            // Timer para parar e reiniciar a cada 5 segundos
-            recordingIntervalRef.current = setInterval(() => {
-                console.log(`[SingleMic] Timer - recorder state: ${recorderRef.current?.state}, isRecordingRef: ${isRecordingRef.current}`);
-
-                if (recorderRef.current && recorderRef.current.state === 'recording') {
-                    console.log('[SingleMic] Parando recorder...');
-                    recorderRef.current.stop();
+            // Timer para chunks imediatos (5s)
+            immediateIntervalRef.current = setInterval(() => {
+                if (immediateRecorderRef.current?.state === 'recording') {
+                    immediateRecorderRef.current.stop();
                 }
             }, 5000);
 
-            // Iniciar monitoramento de niveis de audio
+            // Flush data do full recorder periodicamente (evita acumulo na memoria)
+            fullDataIntervalRef.current = setInterval(() => {
+                if (fullRecorderRef.current?.state === 'recording') {
+                    fullRecorderRef.current.requestData();
+                }
+            }, 10000);
+
+            // Monitoramento de niveis
             startLevelMonitoring();
 
-            // Atualizar tanto state quanto ref
             setIsRecording(true);
             isRecordingRef.current = true;
 
-            console.log('[SingleMic] Captura de audio iniciada (1 microfone)');
+            console.log('[SingleMic] Captura iniciada (5s imediato + full session recording)');
 
         } catch (error) {
             console.error('[SingleMic] Erro ao iniciar captura de audio:', error);
@@ -167,21 +178,9 @@ export function usePresencialSingleMicCapture({
     }, [socket, microphoneId]);
 
     /**
-     * Processa chunk de audio
+     * Envia chunk imediato (5s) para transcricao rapida
      */
-    const handleAudioChunk = async (
-        blob: Blob,
-        sequence: number,
-        voiceSamples: number
-    ) => {
-        // Verificar VAD - so enviar se detectou voz
-        const vad = vadRef.current;
-
-        if (vad && !vad.shouldSendChunk(5000, voiceSamples)) {
-            console.log(`[SingleMic] Chunk #${sequence} descartado (silencio)`);
-            return;
-        }
-
+    const handleImmediateChunk = async (blob: Blob, sequence: number) => {
         const chunk: AudioChunk = {
             sequence,
             speaker: 'mixed',
@@ -190,28 +189,23 @@ export function usePresencialSingleMicCapture({
             sent: false
         };
 
-        // Adicionar ao buffer
         bufferRef.current.push(chunk);
-
-        // Tentar enviar
         await sendChunk(chunk);
     };
 
     /**
-     * Envia chunk para servidor
+     * Envia chunk imediato para servidor
      */
     const sendChunk = async (chunk: AudioChunk) => {
         const currentSessionId = sessionIdRef.current;
 
         if (!socket || !socket.connected || !currentSessionId) {
-            console.warn(`[SingleMic] Socket nao conectado, chunk em buffer - socket=${!!socket}, connected=${socket?.connected}, sessionId=${currentSessionId}`);
+            console.warn(`[SingleMic] Socket nao conectado, chunk em buffer`);
             return;
         }
 
         try {
             const base64Data = await blobToBase64(chunk.audioData);
-
-            console.log(`[SingleMic] Enviando chunk mixed #${chunk.sequence} (${base64Data.length} chars base64)...`);
 
             socket.emit('presencialAudioChunk', {
                 sessionId: currentSessionId,
@@ -222,9 +216,8 @@ export function usePresencialSingleMicCapture({
             }, (response: any) => {
                 if (response?.success) {
                     chunk.sent = true;
-                    console.log(`[SingleMic] Chunk mixed #${chunk.sequence} enviado`);
                 } else {
-                    console.error(`[SingleMic] Erro no callback do chunk mixed #${chunk.sequence}:`, response);
+                    console.error(`[SingleMic] Erro no callback do chunk #${chunk.sequence}:`, response);
                 }
             });
 
@@ -239,30 +232,50 @@ export function usePresencialSingleMicCapture({
     const startLevelMonitoring = () => {
         levelIntervalRef.current = setInterval(() => {
             if (vadRef.current) {
-                const level = vadRef.current.getAudioLevel();
-                setAudioLevel(level);
-
-                // Incrementar contador de voz se detectado
-                if (vadRef.current.isSpeaking()) {
-                    voiceSamplesRef.current++;
-                }
+                setAudioLevel(vadRef.current.getAudioLevel());
             }
         }, 100);
     };
 
     /**
-     * Para captura de audio
+     * Para o full recorder e retorna o audio completo da consulta.
+     * Deve ser chamado ANTES de stopCapture().
+     */
+    const getFullSessionAudio = useCallback((): Promise<Blob> => {
+        return new Promise((resolve) => {
+            if (!fullRecorderRef.current || fullRecorderRef.current.state === 'inactive') {
+                // Ja parado — retorna o que tem
+                const blob = new Blob(fullChunksRef.current, { type: fullMimeTypeRef.current || 'audio/webm' });
+                resolve(blob);
+                return;
+            }
+            fullAudioResolveRef.current = resolve;
+            fullRecorderRef.current.stop();
+        });
+    }, []);
+
+    /**
+     * Para captura de audio (cleanup)
      */
     const stopCapture = useCallback(() => {
-        // Parar interval de gravacao
-        if (recordingIntervalRef.current) {
-            clearInterval(recordingIntervalRef.current);
-            recordingIntervalRef.current = null;
+        // Parar timers
+        if (immediateIntervalRef.current) {
+            clearInterval(immediateIntervalRef.current);
+            immediateIntervalRef.current = null;
+        }
+        if (fullDataIntervalRef.current) {
+            clearInterval(fullDataIntervalRef.current);
+            fullDataIntervalRef.current = null;
         }
 
-        // Parar recorder
-        if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-            recorderRef.current.stop();
+        // Parar immediate recorder
+        if (immediateRecorderRef.current?.state !== 'inactive') {
+            immediateRecorderRef.current?.stop();
+        }
+
+        // Full recorder: so para se getFullSessionAudio nao foi chamado
+        if (fullRecorderRef.current?.state !== 'inactive') {
+            fullRecorderRef.current?.stop();
         }
 
         // Parar stream
@@ -277,37 +290,16 @@ export function usePresencialSingleMicCapture({
             levelIntervalRef.current = null;
         }
 
-        // Atualizar tanto state quanto ref
+        // Limpar refs do full audio
+        fullChunksRef.current = [];
+        fullAudioResolveRef.current = null;
+
         setIsRecording(false);
         isRecordingRef.current = false;
         setAudioLevel(0);
 
         console.log('[SingleMic] Captura de audio parada');
     }, []);
-
-    /**
-     * Reenviar chunks pendentes apos reconexao
-     */
-    const retryPendingChunks = useCallback(async () => {
-        const pending = bufferRef.current.filter(c => !c.sent);
-        console.log(`[SingleMic] Reenviando ${pending.length} chunks pendentes...`);
-
-        for (const chunk of pending) {
-            await sendChunk(chunk);
-        }
-
-        // Limpar chunks enviados apos 5s
-        setTimeout(() => {
-            bufferRef.current = bufferRef.current.filter(c => !c.sent);
-        }, 5000);
-    }, [socket]);
-
-    // Efeito: reconectar socket
-    useEffect(() => {
-        if (socket && socket.connected && bufferRef.current.some(c => !c.sent)) {
-            retryPendingChunks();
-        }
-    }, [socket?.connected, retryPendingChunks]);
 
     // Cleanup ao desmontar
     useEffect(() => {
@@ -321,6 +313,7 @@ export function usePresencialSingleMicCapture({
         isPaused,
         startCapture,
         stopCapture,
+        getFullSessionAudio,
         audioLevel,
         pendingChunks: bufferRef.current.filter(c => !c.sent).length
     };

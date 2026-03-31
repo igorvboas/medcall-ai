@@ -76,7 +76,8 @@ const io = new SocketIOServer(httpServer, {
         allowedHeaders: ["Content-Type", "Authorization", "X-Session-ID", "X-User-ID"],
         credentials: true
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    maxHttpBufferSize: 200e6 // 200MB — full consultation audio for end-of-session diarization
 });
 
 // Configurar handler de WebSocket PCM para transcrição

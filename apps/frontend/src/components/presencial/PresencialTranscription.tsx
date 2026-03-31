@@ -25,15 +25,6 @@ function resolveSingleMicDisplay(
   doctorName: string,
   patientName: string
 ): { className: string; label: string; icon: 'stethoscope' | 'user' | 'message-circle' } {
-  // UNKNOWN speaker: gray styling
-  if (segment.speaker === 'UNKNOWN') {
-    return {
-      className: 'unknown',
-      label: 'Processando...',
-      icon: 'message-circle'
-    };
-  }
-
   // Already resolved to MEDICO/PACIENTE (e.g. from dual mode logic or fully resolved)
   if (segment.speaker === 'MEDICO') {
     return { className: 'doctor', label: doctorName, icon: 'stethoscope' };
@@ -42,7 +33,8 @@ function resolveSingleMicDisplay(
     return { className: 'patient', label: patientName, icon: 'user' };
   }
 
-  // Speaker ID-based resolution (speaker_0 / speaker_1)
+  // Speaker ID-based resolution (speaker_0 / speaker_1) — check BEFORE unknown fallback
+  // Diarized segments arrive with speaker='UNKNOWN' but participantId='speaker_0'/'speaker_1'
   const participantId = segment.participantId;
   if (participantId === 'speaker_0' || participantId === 'speaker_1') {
     if (speakerMapping) {
@@ -65,8 +57,17 @@ function resolveSingleMicDisplay(
     }
   }
 
-  // Fallback: treat as unknown
-  return { className: 'unknown', label: 'Processando...', icon: 'message-circle' };
+  // UNKNOWN speaker without participantId: immediate transcription (no diarization yet)
+  if (segment.speaker === 'UNKNOWN') {
+    return {
+      className: 'unknown',
+      label: 'Transcricao',
+      icon: 'message-circle'
+    };
+  }
+
+  // Fallback
+  return { className: 'unknown', label: 'Transcricao', icon: 'message-circle' };
 }
 
 function SpeakerIcon({ type, size }: { type: 'stethoscope' | 'user' | 'message-circle'; size: number }) {

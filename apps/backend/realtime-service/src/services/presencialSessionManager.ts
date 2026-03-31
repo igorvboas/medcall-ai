@@ -11,7 +11,7 @@ import { AudioAccumulator, DiarizedUtterance, BatchResult, DeepgramDiarizedUtter
  */
 interface AudioChunk {
     sequence: number;
-    speaker: 'doctor' | 'patient';
+    speaker: 'doctor' | 'patient' | 'mixed';
     audioBuffer: Buffer;
     timestamp: Date;
     sessionId: string;
@@ -21,10 +21,11 @@ interface AudioChunk {
  * Interface para transcrição
  */
 interface Transcription {
-    speaker: 'doctor' | 'patient';
+    speaker: 'doctor' | 'patient' | 'unknown';
     text: string;
     timestamp: Date;
     sequence: number;
+    detectedSpeaker?: string; // speaker_0 / speaker_1 from Deepgram diarization
 }
 
 /**
@@ -209,17 +210,17 @@ class PresencialSessionManager {
         const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
             audioBuffer,
             {
-                model: 'nova-2',
+                model: 'nova-3',
                 language: 'pt-BR',
                 smart_format: true,
                 punctuate: true,
                 numerals: true,
                 diarize: true,
                 utterances: true,
-                keywords: [
-                    'paciente:2', 'doutor:2', 'doutora:2',
-                    'pressao arterial:3', 'frequencia cardiaca:3',
-                    'hemograma:3', 'diagnostico:2', 'medicamento:2',
+                keyterm: [
+                    'paciente', 'doutor', 'doutora',
+                    'pressao arterial', 'frequencia cardiaca',
+                    'hemograma', 'diagnostico', 'medicamento',
                 ],
             }
         );
@@ -331,6 +332,23 @@ class PresencialSessionManager {
     }
 
     /**
+     * Process a diarization batch from frontend (valid 30s WebM file)
+     * Called directly via Socket.IO event instead of backend accumulator
+     */
+    async processDiarizationBatch(sessionId: string, audioBuffer: Buffer): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            throw new Error(`Sessão ${sessionId} não encontrada`);
+        }
+
+        const batchId = `batch-${sessionId.substring(0, 8)}-${Date.now()}`;
+        console.log(`[DIARIZATION] Processing frontend batch ${batchId}: ${audioBuffer.length} bytes`);
+
+        const utterances = await this.transcribeWithDiarization(audioBuffer, session.consultationId);
+        await this.processDiarizedUtterances(sessionId, batchId, utterances);
+    }
+
+    /**
      * Convert milliseconds to HH:mm:ss format
      */
     private formatMs(ms: number): string {
@@ -347,10 +365,10 @@ class PresencialSessionManager {
      */
     private async transcribeWithDeepgram(
         audioBuffer: Buffer,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         language: string = 'pt-BR',
         consultationId?: string
-    ): Promise<{ text: string; confidence: number; duration: number }> {
+    ): Promise<{ text: string; confidence: number; duration: number; detectedSpeaker?: string }> {
         if (!this.deepgramClient) {
             throw new Error('Deepgram client não inicializado');
         }
@@ -359,16 +377,16 @@ class PresencialSessionManager {
             const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
                 audioBuffer,
                 {
-                    model: 'nova-2',
+                    model: 'nova-3',
                     language: language,
                     smart_format: true,
                     punctuate: true,
                     numerals: true,
                     diarize: true,
-                    keywords: [
-                        'paciente:2', 'doutor:2', 'doutora:2',
-                        'pressão arterial:3', 'frequência cardíaca:3',
-                        'hemograma:3', 'diagnóstico:2', 'medicamento:2',
+                    keyterm: [
+                        'paciente', 'doutor', 'doutora',
+                        'pressão arterial', 'frequência cardíaca',
+                        'hemograma', 'diagnóstico', 'medicamento',
                     ],
                 }
             );
@@ -382,6 +400,26 @@ class PresencialSessionManager {
             const confidence = transcript?.confidence || 0;
             const duration = result?.metadata?.duration || 0;
 
+            // Extract dominant speaker from words (for single-mic mode)
+            let detectedSpeaker: string | undefined;
+            if (speaker === 'mixed') {
+                const words = (transcript as any)?.words || [];
+                if (words.length > 0) {
+                    // Count words per speaker, pick the dominant one
+                    const speakerCounts: Record<number, number> = {};
+                    for (const w of words) {
+                        if (w.speaker !== undefined) {
+                            speakerCounts[w.speaker] = (speakerCounts[w.speaker] || 0) + 1;
+                        }
+                    }
+                    const dominant = Object.entries(speakerCounts)
+                        .sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+                    if (dominant) {
+                        detectedSpeaker = `speaker_${dominant[0]}`;
+                    }
+                }
+            }
+
             // Registrar uso para monitoramento de custos
             try {
                 const { aiPricingService } = await import('./aiPricingService');
@@ -389,13 +427,13 @@ class PresencialSessionManager {
                     duration * 1000,
                     consultationId,
                     text,
-                    { provider: 'deepgram', model: 'nova-2' }
+                    { provider: 'deepgram', model: 'nova-3' }
                 );
             } catch (e) {
                 // Não bloquear transcrição por erro de logging
             }
 
-            return { text, confidence, duration: duration * 1000 };
+            return { text, confidence, duration: duration * 1000, detectedSpeaker };
         } catch (error) {
             console.error(`❌ [PRESENCIAL-DEEPGRAM] Erro na transcrição:`, error);
             throw error;
@@ -485,7 +523,7 @@ class PresencialSessionManager {
      */
     async addAudioChunk(
         sessionId: string,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         audioBuffer: Buffer,
         sequence: number
     ): Promise<void> {
@@ -527,7 +565,7 @@ class PresencialSessionManager {
      */
     async processAudioChunkAndReturn(
         sessionId: string,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         audioBuffer: Buffer,
         sequence: number
     ): Promise<Transcription | null> {
@@ -543,13 +581,13 @@ class PresencialSessionManager {
 
         session.totalChunks++;
 
-        // Feed accumulator for batch diarization (parallel path per D-08)
-        this.addChunkToAccumulator(sessionId, audioBuffer);
+        // Note: batch diarization is now handled by frontend sending valid 60s WebM
+        // via presencialDiarizationBatch event (no more backend accumulator for single-mic)
 
         console.log(`[PRESENCIAL] Processando chunk sincrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
 
         try {
-            let result: { text: string; confidence?: number; duration?: number };
+            let result: { text: string; confidence?: number; duration?: number; detectedSpeaker?: string };
 
             if (this.useDeepgram) {
                 // Deepgram (pre-recorded API para chunks WebM)
@@ -571,7 +609,7 @@ class PresencialSessionManager {
                 );
             }
 
-            console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)`);
+            console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)${result.detectedSpeaker ? ` [${result.detectedSpeaker}]` : ''}`);
 
             if (!result.text || result.text.trim().length === 0) {
                 console.log(`⚠️ [PRESENCIAL] Chunk ${speaker} #${sequence} sem transcrição (silêncio)`);
@@ -585,11 +623,14 @@ class PresencialSessionManager {
             }
 
             // Criar transcrição
+            // Map 'mixed' (single-mic mode) to 'unknown' for DB constraint compatibility
+            const dbSpeaker = speaker === 'mixed' ? 'unknown' as const : speaker;
             const transcription: Transcription = {
-                speaker: speaker,
+                speaker: dbSpeaker,
                 text: result.text,
                 timestamp: new Date(),
-                sequence: sequence
+                sequence: sequence,
+                detectedSpeaker: result.detectedSpeaker,
             };
 
             // Adicionar à sessão (memória)
@@ -705,8 +746,10 @@ class PresencialSessionManager {
         }
 
         // Adicionar transcrição à sessão
+        // Map 'mixed' (single-mic mode) to 'unknown' for DB constraint compatibility
+        const dbSpeaker = chunk.speaker === 'mixed' ? 'unknown' as const : chunk.speaker;
         const transcription: Transcription = {
-            speaker: chunk.speaker,
+            speaker: dbSpeaker,
             text: result.text,
             timestamp: chunk.timestamp,
             sequence: chunk.sequence
@@ -727,23 +770,27 @@ class PresencialSessionManager {
      */
     private async saveTranscriptionIncrementally(session: PresencialSession, transcription: Transcription): Promise<void> {
         try {
-            const speakerId = transcription.speaker === 'doctor' ? session.doctorId : session.patientId;
             const timestamp = transcription.timestamp.toISOString().substring(11, 19); // HH:mm:ss
 
-            // 1. Salvar em transcriptions_med (array de conversas por sessão)
-            const saved = await db.addTranscriptionToSession(session.callSessionId, {
-                speaker: transcription.speaker,
-                speaker_id: speakerId,
-                text: transcription.text,
-                doctor_name: session.doctorName,
-            });
+            // 1. Salvar em transcriptions_med apenas se speaker é conhecido (dual-mic mode)
+            // No single-mic mode, speaker='unknown' — salva só na transcriptions até o mapeamento
+            if (transcription.speaker !== 'unknown') {
+                const speakerId = transcription.speaker === 'doctor' ? session.doctorId : session.patientId;
+                const saved = await db.addTranscriptionToSession(session.callSessionId, {
+                    speaker: transcription.speaker,
+                    speaker_id: speakerId,
+                    text: transcription.text,
+                    doctor_name: session.doctorName,
+                });
 
-            if (saved) {
-                console.log(`💾 [PRESENCIAL] Transcrição salva em transcriptions_med (session: ${session.callSessionId})`);
+                if (saved) {
+                    console.log(`💾 [PRESENCIAL] Transcrição salva em transcriptions_med (session: ${session.callSessionId})`);
+                }
             }
 
-            // 2. Salvar em transcriptions (raw_text append)
-            const speakerLabel = transcription.speaker === 'doctor' ? 'MEDICO' : 'PACIENTE';
+            // 2. Salvar em transcriptions (raw_text append) — sempre, independente do modo
+            const speakerLabel = transcription.speaker === 'doctor' ? 'MEDICO' :
+                                 transcription.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
             const appended = await db.appendConsultationTranscription(
                 session.consultationId,
                 transcription.text,
@@ -849,7 +896,7 @@ class PresencialSessionManager {
             // Configurar webhook
             const isHomolog = process.env.NODE_ENV === 'homolog';
             const webhookUrl = isHomolog
-                ? 'https://webhook.tc1.triacompany.com.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
+                ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
                 : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
             const webhookHeaders = {
                 'Content-Type': 'application/json',
@@ -918,19 +965,20 @@ class PresencialSessionManager {
             return;
         }
 
-        // Formatar transcrições como JSON
-        const transcriptionJSON = session.transcriptions.map(t => ({
-            speaker: t.speaker,
-            text: t.text,
-            timestamp: t.timestamp.toISOString()
-        }));
+        // Formatar transcrição completa como texto legível
+        const transcriptionText = session.transcriptions.map(t => {
+            const speakerLabel = t.speaker === 'doctor' ? 'MEDICO' :
+                                 t.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
+            const timestamp = t.timestamp.toISOString().substring(11, 19); // HH:mm:ss
+            return `[${speakerLabel}] (${timestamp}): ${t.text}`;
+        }).join('\n');
 
         // Salvar em consultations.transcricao
         const { supabase } = await import('../config/database');
         const { error } = await supabase
             .from('consultations')
             .update({
-                transcricao: JSON.stringify(transcriptionJSON)
+                transcricao: transcriptionText
             })
             .eq('id', session.consultationId);
 
@@ -939,7 +987,7 @@ class PresencialSessionManager {
             throw error;
         }
 
-        console.log(`💾 [PRESENCIAL] ${session.transcriptions.length} transcrições salvas no banco`);
+        console.log(`💾 [PRESENCIAL] ${session.transcriptions.length} transcrições salvas em consultations.transcricao`);
     }
 
     /**
@@ -948,6 +996,142 @@ class PresencialSessionManager {
     getTranscriptions(sessionId: string): Transcription[] {
         const session = this.sessions.get(sessionId);
         return session?.transcriptions || [];
+    }
+
+    /**
+     * Processa audio completo da consulta ao finalizar (single-mic mode):
+     * 1. Envia audio inteiro para Deepgram com diarizacao
+     * 2. Atualiza transcricoes com speaker correto (speaker_0 → doctor, speaker_1 → patient)
+     * 3. Salva audio no Supabase storage
+     * 4. Atualiza consultation.transcricao e consultation.url_audio
+     */
+    async finalizeWithFullAudio(sessionId: string, audioBuffer: Buffer): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            throw new Error(`Sessão ${sessionId} não encontrada`);
+        }
+
+        console.log(`[FINALIZE] Processando audio completo: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+        // 1. Diarizar audio completo
+        const utterances = await this.transcribeWithDiarization(audioBuffer, session.consultationId);
+        console.log(`[FINALIZE] Diarizacao completa: ${utterances.length} utterances`);
+
+        if (utterances.length === 0) {
+            console.warn('[FINALIZE] Nenhuma utterance encontrada no audio');
+            return;
+        }
+
+        // 2. Mapear speakers: speaker_0 = doctor (primeiro a falar, normalmente o medico)
+        const speakerMapping: Record<string, 'doctor' | 'patient'> = {
+            '0': 'doctor',
+            '1': 'patient',
+        };
+
+        // Verificar se o mapeamento ja foi feito manualmente (salvo em metadata)
+        try {
+            const { supabase } = await import('../config/database');
+            const { data: callSession } = await supabase
+                .from('call_sessions')
+                .select('metadata')
+                .eq('room_id', sessionId)
+                .single();
+
+            if (callSession?.metadata?.speakerMapping) {
+                const savedMapping = callSession.metadata.speakerMapping;
+                // savedMapping format: { speaker_0: 'doctor', speaker_1: 'patient' }
+                speakerMapping['0'] = savedMapping.speaker_0 || 'doctor';
+                speakerMapping['1'] = savedMapping.speaker_1 || 'patient';
+                console.log(`[FINALIZE] Usando mapeamento salvo: speaker_0=${speakerMapping['0']}, speaker_1=${speakerMapping['1']}`);
+            }
+        } catch (e) {
+            console.warn('[FINALIZE] Erro ao buscar mapeamento salvo, usando padrao (speaker_0=doctor)');
+        }
+
+        // 3. Formatar transcricao final com speakers corretos
+        const finalTranscriptions: Transcription[] = utterances
+            .filter(utt => utt.transcript && utt.transcript.trim().length > 0 && isValidTranscriptionText(utt.transcript.trim()))
+            .map((utt, idx) => {
+                const speakerNum = String(utt.speaker);
+                const role = speakerMapping[speakerNum] || 'doctor';
+                return {
+                    speaker: role as 'doctor' | 'patient',
+                    text: utt.transcript.trim(),
+                    timestamp: new Date(session.startTime.getTime() + Math.round(utt.start * 1000)),
+                    sequence: idx,
+                };
+            });
+
+        // Substituir transcricoes incrementais com as diarizadas
+        session.transcriptions = finalTranscriptions;
+        console.log(`[FINALIZE] ${finalTranscriptions.length} transcricoes com speaker correto`);
+
+        // 4. Reescrever transcriptions.raw_text com speakers corretos
+        try {
+            const { supabase: supa, db: dbUtil } = await import('../config/database');
+            const rawText = finalTranscriptions.map(t => {
+                const label = t.speaker === 'doctor' ? 'MEDICO' : t.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
+                const ts = t.timestamp.toISOString().substring(11, 19);
+                return `[${label}] (${ts}): ${t.text}`;
+            }).join('\n');
+
+            // Sobrescrever raw_text na tabela transcriptions
+            const { error: rawErr } = await supa
+                .from('transcriptions')
+                .update({ raw_text: rawText, updated_at: new Date().toISOString() })
+                .eq('consultation_id', session.consultationId);
+
+            if (rawErr) {
+                console.error(`[FINALIZE] Erro ao atualizar transcriptions.raw_text:`, rawErr);
+            } else {
+                console.log(`[FINALIZE] transcriptions.raw_text atualizado com speakers corretos`);
+            }
+        } catch (rawTextError) {
+            console.error(`[FINALIZE] Erro ao reescrever raw_text:`, rawTextError);
+        }
+
+        // 5. Upload audio para Supabase storage
+        try {
+            const { supabase } = await import('../config/database');
+            const fileName = `consulta_${session.consultationId}.webm`;
+            const bucket = 'audios';
+
+            const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, audioBuffer, {
+                    contentType: 'audio/webm',
+                    upsert: true, // sobrescrever se existir
+                });
+
+            if (uploadError) {
+                console.error(`[FINALIZE] Erro ao fazer upload do audio:`, uploadError);
+            } else {
+                // Gerar URL publica
+                const { data: urlData } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(fileName);
+
+                const audioUrl = urlData?.publicUrl;
+                console.log(`[FINALIZE] Audio salvo: ${audioUrl}`);
+
+                // Salvar url_audio na consultation
+                if (audioUrl) {
+                    const { error: updateError } = await supabase
+                        .from('consultations')
+                        .update({ url_audio: audioUrl })
+                        .eq('id', session.consultationId);
+
+                    if (updateError) {
+                        console.error(`[FINALIZE] Erro ao salvar url_audio:`, updateError);
+                    } else {
+                        console.log(`[FINALIZE] url_audio salvo na consultation`);
+                    }
+                }
+            }
+        } catch (storageError) {
+            // Nao bloquear finalizacao se storage falhar
+            console.error(`[FINALIZE] Erro no storage:`, storageError);
+        }
     }
 
     /**

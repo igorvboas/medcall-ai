@@ -11,34 +11,13 @@ import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
 import { usePresencialSingleMicCapture } from '@/hooks/usePresencialSingleMicCapture';
 import { MicModeToggle } from '@/components/presencial/MicModeToggle';
 import { SingleMicrophoneControl } from '@/components/presencial/SingleMicrophoneControl';
-import { SpeakerMappingPanel } from '@/components/presencial/SpeakerMappingPanel';
-import { formatDuration } from '@/lib/audioUtils';
+import { formatDuration, blobToBase64 } from '@/lib/audioUtils';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { supabase } from '@/lib/supabase';
 
 import { TranscriptionSegment, Speaker } from '@/types/transcription';
 
-// Types for diarized batch events from backend
-interface DiarizedBatchEvent {
-  sessionId: string;
-  batchId: string;
-  utterances: Array<{
-    speakerId: string;
-    text: string;
-    startMs: number;
-    endMs: number;
-    diarizationConfidence: number;
-    needsReview: boolean;
-  }>;
-}
-
-interface SpeakerMappingUpdatedEvent {
-  sessionId: string;
-  mapping: {
-    speaker_0: 'doctor' | 'patient';
-    speaker_1: 'doctor' | 'patient';
-  };
-}
+const IS_DEV = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_NODE_ENV !== 'production';
 
 function PresencialConsultationContent() {
   const router = useRouter();
@@ -67,9 +46,7 @@ function PresencialConsultationContent() {
   // Single-mic mode state
   const [micMode, setMicMode] = useState<'single' | 'dual'>('dual');
   const [singleMicId, setSingleMicId] = useState('');
-  const [speakerMapping, setSpeakerMapping] = useState<{ speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' } | null>(null);
-  const [showMappingPanel, setShowMappingPanel] = useState(false);
-  const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
+  const [isFinalizingAudio, setIsFinalizingAudio] = useState(false);
 
   // Estados para monitoramento de niveis de audio durante setup
   const [doctorMicLevel, setDoctorMicLevel] = useState(0);
@@ -362,50 +339,22 @@ function PresencialConsultationContent() {
       console.warn('Erro ao fazer upgrade para websocket, continuando com polling:', error);
     });
 
-    // Receber transcricoes
+    // Receber transcricoes imediatas (5s chunks)
+    // Salva texto incremental. Diarizacao real acontece no final com audio completo.
     newSocket.on('presencialTranscription', (data: any) => {
       console.log('Nova transcricao:', data);
+      const isMixed = data.speaker === 'mixed' || data.speaker === 'unknown';
+
       const mappedData: TranscriptionSegment = {
-        id: `seq-${data.sequence || Date.now()}`,
+        id: `t-${data.sequence || Date.now()}`,
         text: data.text,
-        speaker: data.speaker === 'mixed' ? 'UNKNOWN' :
+        speaker: isMixed ? 'UNKNOWN' :
                  data.speaker === 'doctor' ? 'MEDICO' : 'PACIENTE',
-        participantId: data.speaker === 'mixed' ? undefined : data.speaker,
+        participantId: isMixed ? undefined : data.speaker,
         timestamp: data.timestamp,
         confidence: 1.0,
       };
       setTranscriptions(prev => [...prev, mappedData]);
-    });
-
-    // Receber batches diarizados (single-mic mode)
-    newSocket.on('presencialDiarizedBatch', (data: DiarizedBatchEvent) => {
-      console.log('Diarized batch recebido:', data.batchId, data.utterances.length, 'utterances');
-      // Remove all UNKNOWN transcriptions and replace with diarized utterances
-      setTranscriptions(prev => {
-        const nonUnknown = prev.filter(t => t.speaker !== 'UNKNOWN');
-        const diarized = data.utterances.map((u, i) => ({
-          id: `diarized-${data.batchId}-${i}`,
-          text: u.text,
-          speaker: 'UNKNOWN' as Speaker,  // Will be resolved by PresencialTranscription based on speakerMapping
-          participantId: u.speakerId,      // 'speaker_0' or 'speaker_1'
-          timestamp: new Date(u.startMs).toISOString(),
-          confidence: u.diarizationConfidence,
-        }));
-        return [...nonUnknown, ...diarized];
-      });
-      // Show mapping panel on first batch
-      setShowMappingPanel(true);
-      // Update active speaker
-      if (data.utterances.length > 0) {
-        setActiveSpeaker(data.utterances[data.utterances.length - 1].speakerId);
-      }
-    });
-
-    // Receber confirmacao de mapeamento de speakers
-    newSocket.on('speakerMappingUpdated', (data: SpeakerMappingUpdatedEvent) => {
-      console.log('Speaker mapping updated:', data.mapping);
-      setSpeakerMapping(data.mapping);
-      setShowMappingPanel(false);
     });
 
     setSocket(newSocket);
@@ -465,18 +414,6 @@ function PresencialConsultationContent() {
   const handleMicrophonesSelected = (doctorMic: string, patientMic: string) => {
     setDoctorMicrophoneId(doctorMic);
     setPatientMicrophoneId(patientMic);
-  };
-
-  const handleMapSpeakers = (mapping: { speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' }) => {
-    if (!socket || !sessionId) return;
-    socket.emit('mapSpeakers', {
-      sessionId,
-      mapping
-    }, (response: { success: boolean; error?: string }) => {
-      if (!response.success) {
-        setError(response.error || 'Erro ao mapear speakers');
-      }
-    });
   };
 
   const handleStartSession = async () => {
@@ -542,18 +479,42 @@ function PresencialConsultationContent() {
   const handleEndSession = async () => {
     if (!socket || !sessionId) return;
 
-    activeCapture.stopCapture();
+    try {
+      setIsFinalizingAudio(true);
 
-    socket.emit('endPresencialSession', {
-      sessionId
-    }, (response: any) => {
-      if (response.success) {
-        console.log('Sessao finalizada');
-        router.push('/consultas');
-      } else {
-        setError(response.error || 'Erro ao finalizar sessao');
+      // Em single-mic: pegar audio completo da consulta antes de parar
+      let fullAudioBase64: string | undefined;
+      if (micMode === 'single') {
+        console.log('[EndSession] Obtendo audio completo da consulta...');
+        const fullBlob = await singleCapture.getFullSessionAudio();
+        console.log(`[EndSession] Audio completo: ${(fullBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        if (fullBlob.size > 0) {
+          fullAudioBase64 = await blobToBase64(fullBlob);
+          console.log(`[EndSession] Base64: ${(fullAudioBase64.length / 1024 / 1024).toFixed(2)} MB`);
+        }
       }
-    });
+
+      // Parar captura
+      activeCapture.stopCapture();
+
+      // Enviar para backend com audio completo
+      socket.emit('endPresencialSession', {
+        sessionId,
+        fullAudioData: fullAudioBase64, // undefined se dual-mic
+      }, (response: any) => {
+        setIsFinalizingAudio(false);
+        if (response.success) {
+          console.log('Sessao finalizada');
+          router.push('/consultas');
+        } else {
+          setError(response.error || 'Erro ao finalizar sessao');
+        }
+      });
+    } catch (err) {
+      setIsFinalizingAudio(false);
+      console.error('[EndSession] Erro:', err);
+      setError('Erro ao finalizar consulta');
+    }
   };
 
   if (!consultationId) {
@@ -667,17 +628,10 @@ function PresencialConsultationContent() {
                 </span>
               </div>
 
-              {micMode === 'single' && activeSpeaker && (
+              {micMode === 'single' && isFinalizingAudio && (
                 <div className="status-item">
-                  <span className="status-label">Falando:</span>
-                  <span className={`status-value ${activeSpeaker === 'speaker_0' ? 'speaker-0-active' : 'speaker-1-active'}`}>
-                    {speakerMapping
-                      ? (speakerMapping[activeSpeaker as 'speaker_0' | 'speaker_1'] === 'doctor'
-                          ? `${doctorName || 'Medico'} falando`
-                          : `${patientName || 'Paciente'} falando`)
-                      : `${activeSpeaker === 'speaker_0' ? 'Speaker 0' : 'Speaker 1'} ativo`
-                    }
-                  </span>
+                  <span className="status-label">Status:</span>
+                  <span className="status-value">Processando audio...</span>
                 </div>
               )}
             </div>
@@ -697,15 +651,6 @@ function PresencialConsultationContent() {
                 patientLevel={dualCapture.patientLevel}
                 initialDoctorMic={doctorMicrophoneId}
                 initialPatientMic={patientMicrophoneId}
-              />
-            )}
-
-            {micMode === 'single' && (
-              <SpeakerMappingPanel
-                visible={showMappingPanel}
-                onMap={handleMapSpeakers}
-                isMapped={speakerMapping !== null}
-                onRemap={() => { setSpeakerMapping(null); setShowMappingPanel(true); }}
               />
             )}
 
@@ -739,15 +684,17 @@ function PresencialConsultationContent() {
                     </div>
                   </div>
                 </div>
-                <div className="transcription-panel">
-                  <PresencialTranscription
-                    transcriptions={transcriptions}
-                    doctorName={doctorName}
-                    patientName={patientName}
-                    speakerMapping={speakerMapping}
-                    micMode={micMode}
-                  />
-                </div>
+                {IS_DEV && (
+                  <div className="dev-transcription-panel">
+                    <div className="dev-badge">DEV — Transcricao incremental (nao visivel em producao)</div>
+                    <PresencialTranscription
+                      transcriptions={transcriptions}
+                      doctorName={doctorName}
+                      patientName={patientName}
+                      micMode={micMode}
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -780,7 +727,6 @@ function PresencialConsultationContent() {
                     transcriptions={transcriptions}
                     doctorName={doctorName}
                     patientName={patientName}
-                    speakerMapping={speakerMapping}
                     micMode={micMode}
                   />
                 </div>
@@ -796,11 +742,22 @@ function PresencialConsultationContent() {
         onClose={() => setShowConfirmEndModal(false)}
         onConfirm={handleEndSession}
         title="Finalizar Consulta"
-        message="Tem certeza que deseja finalizar esta consulta? Esta acao nao pode ser desfeita. A gravacao sera encerrada e a consulta sera concluida."
+        message="Tem certeza que deseja finalizar esta consulta? O audio completo sera processado para identificar quem falou o que."
         confirmText="Sim, Finalizar"
         cancelText="Cancelar"
         variant="danger"
       />
+
+      {/* Overlay de finalizacao */}
+      {isFinalizingAudio && (
+        <div className="finalizing-overlay">
+          <div className="finalizing-card">
+            <div className="finalizing-spinner" />
+            <h3>Finalizando consulta...</h3>
+            <p>Processando audio e identificando speakers. Isso pode levar alguns segundos.</p>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .presencial-page {
@@ -1011,6 +968,30 @@ function PresencialConsultationContent() {
           flex: 1;
         }
 
+        .dev-transcription-panel {
+          position: relative;
+          border: 2px dashed #F59E0B;
+          border-radius: 12px;
+          overflow: hidden;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 300px;
+          max-height: calc(100vh - 100px);
+          opacity: 0.85;
+        }
+
+        .dev-badge {
+          background: #F59E0B;
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          text-align: center;
+          padding: 4px 0;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
         .audio-visualizer-panel {
           padding: 8px;
           flex: 1;
@@ -1155,6 +1136,54 @@ function PresencialConsultationContent() {
             max-height: calc(100vh - 200px);
             min-height: 400px;
           }
+        }
+
+        .finalizing-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .finalizing-card {
+          background: white;
+          border-radius: 16px;
+          padding: 40px;
+          text-align: center;
+          max-width: 400px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .finalizing-card h3 {
+          margin: 16px 0 8px;
+          color: #1B4266;
+          font-size: 20px;
+        }
+
+        .finalizing-card p {
+          margin: 0;
+          color: #6B7280;
+          font-size: 14px;
+        }
+
+        .finalizing-spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #E5E7EB;
+          border-top-color: #1B4266;
+          border-radius: 50%;
+          margin: 0 auto;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

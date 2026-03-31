@@ -629,7 +629,7 @@ export const db = {
    * Salva tudo em um único registro, atualizando o array conforme novas transcrições chegam
    */
   async addTranscriptionToSession(sessionId: string, transcription: {
-    speaker: 'doctor' | 'patient' | 'system';
+    speaker: 'doctor' | 'patient' | 'system' | 'unknown';
     speaker_id: string;
     text: string;
     confidence?: number;
