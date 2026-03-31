@@ -1025,58 +1025,22 @@ export const db = {
    */
   async appendConsultationTranscription(consultationId: string, textToAppend: string, speaker: string, timestamp: string): Promise<boolean> {
     try {
-      // 1. Check if a transcription record exists for this consultation
-      const { data: existing, error: fetchError } = await supabase
-        .from('transcriptions')
-        .select('id, raw_text')
-        .eq('consultation_id', consultationId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('❌ [DB] Error fetching transcription for append:', fetchError);
-        return false;
-      }
-
       const formattedLine = `[${speaker}] (${timestamp}): ${textToAppend}`;
-
-      if (existing) {
-        // Append to existing
-        const newText = existing.raw_text ? `${existing.raw_text}\n${formattedLine}` : formattedLine;
-
-        const { error: updateError } = await supabase
-          .from('transcriptions')
-          .update({
-            raw_text: newText,
-            updated_at: new Date().toISOString() // Assuming there's an updated_at, if not it's fine
-          } as any)
-          .eq('id', existing.id);
-
-        if (updateError) {
-          console.error('❌ [DB] Error appending transcription:', updateError);
-          return false;
-        }
-      } else {
-        // Create new
-        const { error: insertError } = await supabase
-          .from('transcriptions')
-          .insert({
-            consultation_id: consultationId,
-            raw_text: formattedLine,
-            language: 'pt-BR',
-            model_used: 'whisper-1-vad',
-            created_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('❌ [DB] Error creating transcription (append):', insertError);
-          return false;
-        }
+      const { error } = await supabase.rpc('append_transcription_text', {
+        p_consultation_id: consultationId,
+        p_text: formattedLine,
+      });
+      if (error) {
+        console.error('[DB] Error in atomic append:', error);
+        logError('Erro no append atomico de transcricao', 'error', consultationId, {
+          error: error.message,
+          code: error.code,
+        });
+        return false;
       }
       return true;
     } catch (e) {
-      console.error('❌ [DB] Exception in appendConsultationTranscription:', e);
+      console.error('[DB] Exception in appendConsultationTranscription:', e);
       return false;
     }
   },
