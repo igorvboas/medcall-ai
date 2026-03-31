@@ -46,7 +46,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — DB migration, diarization types, and storage functions
+- [x] 02-01-PLAN.md — DB migration, diarization types, and storage functions
 - [ ] 02-02-PLAN.md — Batch accumulator and diarized processing in presencialSessionManager
 - [ ] 02-03-PLAN.md — Retroactive speaker mapping Socket.IO handler
 

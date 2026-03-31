@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 planned, ready to execute
-last_updated: "2026-03-30T23:59:47.634Z"
-last_activity: 2026-03-30
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-31T00:03:55.305Z"
+last_activity: 2026-03-31
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Medico consegue realizar consulta presencial com transcricao automatica usando apenas 1 microfone, com identificacao correta de quem esta falando.
-**Current focus:** Phase 01 — validation-spike
+**Current focus:** Phase 02 — backend-diarization
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Executing Phase 01
-Last activity: 2026-03-30
+Phase: 02 (backend-diarization) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02-backend-diarization P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - [Roadmap]: endpointing/utterance_end_ms confirmed not applicable to pre-recorded API
 - [Prior]: Current codebase already has diarize=true but discards speaker field from response
 - [Prior]: Architecture change: from 2 Deepgram connections (1 per mic) to 1 connection with diarization
+- [Phase 02-backend-diarization]: Speaker 'unknown' added as valid role for pre-mapping utterances
+- [Phase 02-backend-diarization]: Per-utterance rows with batch_id grouping for diarized transcriptions
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T23:59:47.627Z
-Stopped at: Phase 2 planned, ready to execute
-Resume file: .planning/phases/02-backend-diarization/02-01-PLAN.md
+Last session: 2026-03-31T00:03:55.303Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
