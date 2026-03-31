@@ -60,12 +60,13 @@ Plans:
   3. Doctor can assign speaker_0 and speaker_1 to "Medico" or "Paciente" via a mapping panel
   4. UI shows a visual indicator of which speaker is currently active during the consultation
   5. Transcriptions are displayed grouped by speaker with correct labels (Medico/Paciente)
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Single-mic capture hook, mode toggle, and single mic selector components
+- [ ] 03-02-PLAN.md — Speaker mapping panel and extended transcription display with three-state lifecycle
+- [ ] 03-03-PLAN.md — Page.tsx integration: wiring all components, Socket.IO events, and active speaker indicator
 
 ### Phase 4: Integration & Compatibility
 **Goal**: Complete single-mic consultation flow works end-to-end and dual-mic mode has zero regressions
@@ -91,5 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Validation Spike | 0/1 | Planning complete | - |
 | 2. Backend Diarization | 0/3 | Planning complete | - |
-| 3. Frontend Single-Mic | 0/TBD | Not started | - |
+| 3. Frontend Single-Mic | 0/3 | Planning complete | - |
 | 4. Integration & Compatibility | 0/TBD | Not started | - |
