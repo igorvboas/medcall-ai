@@ -49,10 +49,10 @@ Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Transcrição incremental salva em `transcription.raw_text` durante a consulta
-- [ ] Transcrição consolidada salva em `consultation.transcricao` na finalização
-- [ ] Webhook disparado para N8N com payload correto e URL baseada em NODE_ENV
-- [ ] Operação atômica no save de transcrição (eliminar race condition read-modify-write)
+- [x] Transcrição incremental salva em `transcription.raw_text` durante a consulta — Validated in Phase 5
+- [x] Transcrição consolidada salva em `consultation.transcricao` na finalização — Validated in Phase 5
+- [x] Webhook disparado para N8N com payload correto e URL baseada em NODE_ENV — Validated in Phase 5
+- [x] Operação atômica no save de transcrição (eliminar race condition read-modify-write) — Validated in Phase 5
 - [ ] Webhook outbox pattern com retry e tracking de entregas
 - [ ] Guards de finalização (idempotência, mutex, status transitions)
 - [ ] Limpeza de sessões órfãs em disconnect WebSocket
@@ -75,9 +75,9 @@ Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e
 
 - Revisão sistemática (REVISAO_SISTEMATICA_CONSULTAS.md) identificou 14 falhas críticas, 19 altas, 18 médias
 - Transcrição atualmente salva em 3 locais: `transcriptions_med.text` (JSON), `transcriptions.raw_text`, `consultations.transcricao`
-- `transcriptions_med` usa read-modify-write de JSON sem lock — race condition com falas simultâneas
-- `consultations.transcricao` só é escrito em `endSession()` — crash antes disso = coluna vazia
-- Webhook hardcoded em 4 locais com URLs diferentes para homolog/prod baseado em NODE_ENV
+- `transcriptions_med` usa read-modify-write de JSON sem lock — race condition com falas simultâneas (FIXED: Phase 5 atomic RPC)
+- `consultations.transcricao` agora lido do DB na finalização — crash antes disso ainda preserva raw_text (FIXED: Phase 5)
+- Webhook centralizado em `webhookConfig.ts` com URLs por NODE_ENV (FIXED: Phase 5)
 - Webhook sem retry — falha silenciosa perde pipeline de análise AI (anamnese, diagnóstico)
 - Room deletada da memória mesmo quando DB write falha — perda irreversível
 - Finalização pode ser disparada por HTTP e WebSocket simultaneamente — sem mutex
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after milestone v2.0 initialization*
+*Last updated: 2026-03-31 after Phase 5 completion*
