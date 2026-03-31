@@ -64,7 +64,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01-PLAN.md — Single-mic capture hook, mode toggle, and single mic selector components
+- [x] 03-01-PLAN.md — Single-mic capture hook, mode toggle, and single mic selector components
 - [x] 03-02-PLAN.md — Speaker mapping panel and extended transcription display with three-state lifecycle
 - [ ] 03-03-PLAN.md — Page.tsx integration: wiring all components, Socket.IO events, and active speaker indicator
 
