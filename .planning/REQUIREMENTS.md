@@ -25,9 +25,9 @@ Requirements for single-mic presencial consultation. Each maps to roadmap phases
 
 - [ ] **FMIC-01**: Medico pode selecionar 1 microfone para a consulta presencial
 - [ ] **FMIC-02**: Medico pode alternar entre modo single-mic e dual-mic na UI
-- [ ] **FMIC-03**: Medico pode associar speaker_0 a "medico" e speaker_1 a "paciente" via painel de mapping
+- [x] **FMIC-03**: Medico pode associar speaker_0 a "medico" e speaker_1 a "paciente" via painel de mapping
 - [ ] **FMIC-04**: UI exibe indicador visual de quem esta falando em tempo real
-- [ ] **FMIC-05**: UI exibe transcricoes agrupadas por speaker com labels corretos (Medico/Paciente)
+- [x] **FMIC-05**: UI exibe transcricoes agrupadas por speaker com labels corretos (Medico/Paciente)
 
 ### Integracao
 
@@ -74,9 +74,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIAR-06 | Phase 2 | Complete |
 | FMIC-01 | Phase 3 | Pending |
 | FMIC-02 | Phase 3 | Pending |
-| FMIC-03 | Phase 3 | Pending |
+| FMIC-03 | Phase 3 | Complete |
 | FMIC-04 | Phase 3 | Pending |
-| FMIC-05 | Phase 3 | Pending |
+| FMIC-05 | Phase 3 | Complete |
 | INTG-01 | Phase 4 | Pending |
 | INTG-02 | Phase 4 | Pending |
 | INTG-03 | Phase 4 | Pending |

@@ -65,7 +65,7 @@ Plans:
 
 Plans:
 - [ ] 03-01-PLAN.md — Single-mic capture hook, mode toggle, and single mic selector components
-- [ ] 03-02-PLAN.md — Speaker mapping panel and extended transcription display with three-state lifecycle
+- [x] 03-02-PLAN.md — Speaker mapping panel and extended transcription display with three-state lifecycle
 - [ ] 03-03-PLAN.md — Page.tsx integration: wiring all components, Socket.IO events, and active speaker indicator
 
 ### Phase 4: Integration & Compatibility
@@ -92,5 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Validation Spike | 0/1 | Planning complete | - |
 | 2. Backend Diarization | 0/3 | Planning complete | - |
-| 3. Frontend Single-Mic | 0/3 | Planning complete | - |
+| 3. Frontend Single-Mic | 1/3 | In Progress|  |
 | 4. Integration & Compatibility | 0/TBD | Not started | - |
