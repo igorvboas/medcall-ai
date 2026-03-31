@@ -1,24 +1,32 @@
-# Auton Health — Consulta Presencial com Microfone Único
+# Auton Health — Plataforma de Consulta Médica
 
 ## What This Is
 
-Plataforma de saúde que permite consultas presenciais e remotas com transcrição automática via Deepgram. O sistema captura áudio da consulta, transcreve em tempo real, e identifica quem está falando (médico ou paciente) para gerar prontuário estruturado.
+Plataforma de saúde que permite consultas presenciais e online com transcrição automática via Deepgram. O sistema captura áudio da consulta, transcreve em tempo real, identifica quem está falando (médico ou paciente), e envia dados processados via webhook para pipeline de análise AI que gera prontuário estruturado.
 
 ## Core Value
 
-Médico consegue realizar consulta presencial com transcrição automática usando apenas 1 microfone, com identificação correta de quem está falando.
+Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e prontuário devem ser resilientes a falhas de rede, crashes e race conditions.
 
-## Current Milestone: v1.0 Consulta Presencial com Microfone Único
+## Current Milestone: v2.0 Robustez da Consulta Online
 
-**Goal:** Eliminar a necessidade de 2 microfones na consulta presencial, usando diarização do Deepgram para identificar médico vs paciente com apenas 1 microfone.
+**Goal:** Garantir que consultas online nunca percam dados — transcrição salva incrementalmente durante a consulta, consolidada na finalização, e webhook disparado corretamente para o N8N.
 
-**Target features:**
-- Spike de validação com áudio real antes de implementar
-- UI simplificada com seleção de 1 microfone + toggle dual/single mode
-- Mapeamento de speaker (speaker_0/speaker_1 → médico/paciente) via UI
-- Backend: acumulação de chunks 30s+ para diarização confiável
-- Backend: extração de speaker + confidence dos utterances Deepgram
-- Backward compatibility com modo dual-mic existente
+**Target features (prioridade máxima):**
+- Garantir que `transcription.raw_text` seja salvo durante a consulta (incremental)
+- Garantir que `consultation.transcricao` seja salvo na finalização
+- Garantir que o webhook seja disparado para N8N com payload correto, usando URL baseada em `NODE_ENV`
+
+**Target features (robustez geral):**
+- Persistência de transcrição incremental (não apenas em memória)
+- Webhook outbox pattern com retry e tracking de entregas
+- Guards de finalização (idempotência, mutex, status transitions)
+- Limpeza de sessões órfãs em disconnect
+- Reconexão WebSocket com rejoin automático de sala
+- Proteção contra tab crash (beforeunload + persistência local)
+- Detecção de mic desconectado/silencioso
+- Integridade do banco (migrations faltantes, transações, constraints)
+- Operações atômicas de transcrição (eliminar race condition read-modify-write)
 
 ## Requirements
 
@@ -41,10 +49,18 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Frontend: Seleção de microfone único (remover dual mic)
-- [ ] Frontend: Mapeamento manual speaker → role na UI
-- [ ] Frontend: Indicador visual de speaker ativo em tempo real
-- [ ] Frontend: Toggle entre modo single-mic e dual-mic
+- [ ] Transcrição incremental salva em `transcription.raw_text` durante a consulta
+- [ ] Transcrição consolidada salva em `consultation.transcricao` na finalização
+- [ ] Webhook disparado para N8N com payload correto e URL baseada em NODE_ENV
+- [ ] Operação atômica no save de transcrição (eliminar race condition read-modify-write)
+- [ ] Webhook outbox pattern com retry e tracking de entregas
+- [ ] Guards de finalização (idempotência, mutex, status transitions)
+- [ ] Limpeza de sessões órfãs em disconnect WebSocket
+- [ ] Reconexão WebSocket com rejoin automático de sala
+- [ ] Proteção contra tab crash (beforeunload + persistência local)
+- [ ] Detecção de mic desconectado/silencioso
+- [ ] Migrations faltantes (transcriptions_med, recordings)
+- [ ] Transações na finalização (atomicidade multi-table writes)
 
 ### Out of Scope
 
@@ -57,22 +73,24 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 
 ## Context
 
-- Sistema atual usa `usePresencialAudioCapture.ts` com dual MediaRecorder (1 por mic)
-- `DualMicrophoneControl.tsx` permite seleção de dispositivos separados para médico e paciente
-- Backend `presencialSessionManager.ts` acumula chunks de 5s em batches de 60s+ e processa com diarização via Deepgram pre-recorded API
-- `presencialSessionManager.ts` extrai speaker + confidence de utterances e emite eventos `presencialDiarizedBatch`
-- `presencial.ts` suporta evento `mapSpeakers` para mapeamento retroativo de speaker_0/speaker_1 → médico/paciente
-- Cold start: primeiros 20-30s tudo atribuído a speaker_0 (limitação conhecida do Deepgram)
-- Frontend envia chunks via Socket.IO evento `presencialAudioChunk` com campo `speaker: 'doctor'|'patient'`
-- Chunks passam por VAD (threshold 0.08 RMS, min 1.5s speech, 30% speech ratio)
+- Revisão sistemática (REVISAO_SISTEMATICA_CONSULTAS.md) identificou 14 falhas críticas, 19 altas, 18 médias
+- Transcrição atualmente salva em 3 locais: `transcriptions_med.text` (JSON), `transcriptions.raw_text`, `consultations.transcricao`
+- `transcriptions_med` usa read-modify-write de JSON sem lock — race condition com falas simultâneas
+- `consultations.transcricao` só é escrito em `endSession()` — crash antes disso = coluna vazia
+- Webhook hardcoded em 4 locais com URLs diferentes para homolog/prod baseado em NODE_ENV
+- Webhook sem retry — falha silenciosa perde pipeline de análise AI (anamnese, diagnóstico)
+- Room deletada da memória mesmo quando DB write falha — perda irreversível
+- Finalização pode ser disparada por HTTP e WebSocket simultaneamente — sem mutex
+- Sessões órfãs ficam em RECORDING para sempre quando WebSocket desconecta
+- NODE_ENV configurado em: gateway (.env:82), realtime-service (.env:87), frontend (.env:2)
+- Webhook auth via env var WEBHOOK_AUTH_HEADER
 
 ## Constraints
 
-- **API**: Deepgram pre-recorded API (chunks acumulados 60s+) — não streaming para presencial
-- **Língua**: pt-BR — diarização é language-agnostic, transcrição precisa de pt-BR
-- **Modelo**: Nova-2 — manter modelo atual, não migrar para Nova-3 neste milestone
-- **Compatibilidade**: Manter fluxo de consulta remota e dual-mic intactos
-- **Nota**: `endpointing` e `utterance_end_ms` são params de streaming API — não se aplicam à pre-recorded API
+- **Compatibilidade**: Não quebrar fluxo de consulta presencial (mic único/dual) nem remota
+- **Banco**: Supabase (PostgreSQL) — JS client não suporta transactions, usar RPCs para atomicidade
+- **Ambiente**: NODE_ENV = homolog|production|localhost — URLs de webhook dependem disso
+- **Downtime**: Zero downtime — correções devem ser retrocompatíveis com consultas em andamento
 
 ## Key Decisions
 
@@ -102,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after Phase 2 completion*
+*Last updated: 2026-03-31 after milestone v2.0 initialization*
