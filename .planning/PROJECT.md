@@ -32,6 +32,10 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 - ✓ Consulta remota com WebRTC + streaming Deepgram — v0
 - ✓ Keywords médicos para boost de reconhecimento — v0
 - ✓ Webhook de notificação ao finalizar consulta — v0
+- ✓ Backend: Acumulação de chunks 60s+ para diarização confiável — Phase 2
+- ✓ Backend: Extração de speaker + confidence dos utterances Deepgram — Phase 2
+- ✓ Backend: Confidence threshold (0.7) para auto-assign vs "incerto" — Phase 2
+- ✓ Backend: Mapeamento retroativo de speaker via Socket.IO — Phase 2
 
 ### Active
 
@@ -40,12 +44,6 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 - [ ] Frontend: Seleção de microfone único (remover dual mic)
 - [ ] Frontend: Mapeamento manual speaker → role na UI
 - [ ] Frontend: Indicador visual de speaker ativo em tempo real
-- [ ] Backend: Conexão Deepgram única recebendo áudio misto
-- [ ] Backend: Extração do campo `speaker` dos words do Deepgram
-- [ ] Backend: Mapeamento speaker_id → role (médico/paciente)
-- [ ] Backend: Acumulação de chunks 30s+ para diarização confiável
-- [ ] Backend: Confidence threshold para auto-assign vs manual
-- [ ] Backend: Mapeamento retroativo de speaker
 - [ ] Frontend: Toggle entre modo single-mic e dual-mic
 
 ### Out of Scope
@@ -61,9 +59,9 @@ Médico consegue realizar consulta presencial com transcrição automática usan
 
 - Sistema atual usa `usePresencialAudioCapture.ts` com dual MediaRecorder (1 por mic)
 - `DualMicrophoneControl.tsx` permite seleção de dispositivos separados para médico e paciente
-- Backend `presencialSessionManager.ts` processa chunks de 5s via Deepgram pre-recorded API
-- `deepgramService.ts` já tem `diarize: true` mas o campo `speaker` nos words é descartado
-- Deepgram retorna `speaker: 0`, `speaker: 1` nos words — precisa mapear para roles
+- Backend `presencialSessionManager.ts` acumula chunks de 5s em batches de 60s+ e processa com diarização via Deepgram pre-recorded API
+- `presencialSessionManager.ts` extrai speaker + confidence de utterances e emite eventos `presencialDiarizedBatch`
+- `presencial.ts` suporta evento `mapSpeakers` para mapeamento retroativo de speaker_0/speaker_1 → médico/paciente
 - Cold start: primeiros 20-30s tudo atribuído a speaker_0 (limitação conhecida do Deepgram)
 - Frontend envia chunks via Socket.IO evento `presencialAudioChunk` com campo `speaker: 'doctor'|'patient'`
 - Chunks passam por VAD (threshold 0.08 RMS, min 1.5s speech, 30% speech ratio)
@@ -104,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after milestone v1.0 initialization*
+*Last updated: 2026-03-31 after Phase 2 completion*
