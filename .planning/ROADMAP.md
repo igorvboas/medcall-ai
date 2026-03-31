@@ -48,7 +48,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md — DB migration, diarization types, and storage functions
 - [x] 02-02-PLAN.md — Batch accumulator and diarized processing in presencialSessionManager
-- [ ] 02-03-PLAN.md — Retroactive speaker mapping Socket.IO handler
+- [x] 02-03-PLAN.md — Retroactive speaker mapping Socket.IO handler
 
 ### Phase 3: Frontend Single-Mic
 **Goal**: Doctor can conduct a presencial consultation using a single microphone, see speaker-labeled transcriptions, and assign speaker roles

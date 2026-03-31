@@ -19,7 +19,7 @@ Requirements for single-mic presencial consultation. Each maps to roadmap phases
 - [x] **DIAR-03**: Servidor extrai `speaker` e `speaker_confidence` de cada utterance do response Deepgram
 - [x] **DIAR-04**: Servidor armazena transcricoes com speaker_id atribuido (speaker_0, speaker_1)
 - [x] **DIAR-05**: Servidor usa confidence threshold para decidir auto-assign vs marcar como "incerto"
-- [ ] **DIAR-06**: Servidor suporta mapeamento retroativo de speaker (atualizar transcricoes quando medico mapeia speakers)
+- [x] **DIAR-06**: Servidor suporta mapeamento retroativo de speaker (atualizar transcricoes quando medico mapeia speakers)
 
 ### Frontend Single Mic
 
@@ -71,7 +71,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIAR-03 | Phase 2 | Complete |
 | DIAR-04 | Phase 2 | Complete |
 | DIAR-05 | Phase 2 | Complete |
-| DIAR-06 | Phase 2 | Pending |
+| DIAR-06 | Phase 2 | Complete |
 | FMIC-01 | Phase 3 | Pending |
 | FMIC-02 | Phase 3 | Pending |
 | FMIC-03 | Phase 3 | Pending |
