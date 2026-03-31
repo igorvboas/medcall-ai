@@ -76,31 +76,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TRNS-01 | TBD | Pending |
-| TRNS-02 | TBD | Pending |
-| TRNS-03 | TBD | Pending |
-| TRNS-04 | TBD | Pending |
-| WBHK-01 | TBD | Pending |
-| WBHK-02 | TBD | Pending |
-| WBHK-03 | TBD | Pending |
-| WBHK-04 | TBD | Pending |
-| FINL-01 | TBD | Pending |
-| FINL-02 | TBD | Pending |
-| FINL-03 | TBD | Pending |
-| FINL-04 | TBD | Pending |
-| SESS-01 | TBD | Pending |
-| SESS-02 | TBD | Pending |
-| SESS-03 | TBD | Pending |
-| AUDM-01 | TBD | Pending |
-| AUDM-02 | TBD | Pending |
-| DBAS-01 | TBD | Pending |
-| DBAS-02 | TBD | Pending |
+| TRNS-01 | Phase 5 | Pending |
+| TRNS-02 | Phase 5 | Pending |
+| TRNS-03 | Phase 5 | Pending |
+| TRNS-04 | Phase 5 | Pending |
+| WBHK-01 | Phase 5 | Pending |
+| WBHK-02 | Phase 5 | Pending |
+| WBHK-03 | Phase 6 | Pending |
+| WBHK-04 | Phase 6 | Pending |
+| FINL-01 | Phase 6 | Pending |
+| FINL-02 | Phase 6 | Pending |
+| FINL-03 | Phase 6 | Pending |
+| FINL-04 | Phase 6 | Pending |
+| SESS-01 | Phase 7 | Pending |
+| SESS-02 | Phase 7 | Pending |
+| SESS-03 | Phase 8 | Pending |
+| AUDM-01 | Phase 8 | Pending |
+| AUDM-02 | Phase 8 | Pending |
+| DBAS-01 | Phase 7 | Pending |
+| DBAS-02 | Phase 7 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19 ⚠️
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation*

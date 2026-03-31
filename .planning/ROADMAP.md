@@ -1,8 +1,9 @@
-# Roadmap: Auton Health — Consulta Presencial com Microfone Unico
+# Roadmap: Auton Health
 
-## Overview
+## Milestones
 
-This milestone replaces the dual-microphone presencial consultation setup with a single shared microphone, using Deepgram diarization to distinguish doctor from patient. The roadmap starts with a validation spike to confirm nova-2 diarization viability for pt-BR, then builds backend chunk accumulation and speaker extraction, followed by frontend single-mic capture and speaker mapping UI, and finishes with end-to-end integration ensuring backward compatibility with dual-mic mode.
+- 🚧 **v1.0 Consulta Presencial com Microfone Unico** - Phases 1-4 (in progress)
+- 📋 **v2.0 Robustez da Consulta Online** - Phases 5-8 (planned)
 
 ## Phases
 
@@ -12,12 +13,27 @@ This milestone replaces the dual-microphone presencial consultation setup with a
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+<details>
+<summary>🚧 v1.0 Consulta Presencial com Microfone Unico (Phases 1-4)</summary>
+
 - [ ] **Phase 1: Validation Spike** - Go/no-go decision on nova-2 diarization quality for pt-BR medical consultations
 - [ ] **Phase 2: Backend Diarization** - Server accumulates chunks, calls Deepgram with utterances, extracts and stores speaker-attributed transcriptions
 - [ ] **Phase 3: Frontend Single-Mic** - Doctor can capture audio from one microphone and map speakers to roles via UI
 - [ ] **Phase 4: Integration & Compatibility** - End-to-end single-mic flow works, dual-mic mode preserved, webhook output correct
 
+</details>
+
+### v2.0 Robustez da Consulta Online (Phases 5-8)
+
+- [ ] **Phase 5: Core Data Path** - Transcription saved incrementally during consultation, consolidated at finalization, webhook fired correctly
+- [ ] **Phase 6: Webhook Reliability & Finalization Guards** - Webhook delivery tracked with retry, finalization protected against duplicates and data loss
+- [ ] **Phase 7: Session Resilience & DB Integrity** - Orphan sessions cleaned, WebSocket reconnection works, database operations are atomic
+- [ ] **Phase 8: Frontend Protections** - Doctor alerted on mic issues, transcription survives tab crash
+
 ## Phase Details
+
+<details>
+<summary>🚧 v1.0 Phases (1-4) — Details</summary>
 
 ### Phase 1: Validation Spike
 **Goal**: Team has quantified evidence that nova-2 diarization produces acceptable speaker attribution for pt-BR medical consultations, enabling a confident go/no-go decision
@@ -83,14 +99,66 @@ Plans:
 - [ ] 04-01: TBD
 - [ ] 04-02: TBD
 
+</details>
+
+### Phase 5: Core Data Path
+**Goal**: Transcription data persists incrementally during the consultation and is consolidated at finalization, with webhook correctly notifying N8N
+**Depends on**: Phase 4
+**Requirements**: TRNS-01, TRNS-02, TRNS-03, TRNS-04, WBHK-01, WBHK-02
+**Success Criteria** (what must be TRUE):
+  1. During an active consultation, `transcriptions.raw_text` is updated incrementally (every new speech segment persists to DB within seconds, not only at session end)
+  2. When the doctor finalizes a consultation, `consultations.transcricao` contains the complete consolidated transcription text
+  3. The transcription save operation uses an atomic append (SQL concat or RPC) instead of read-modify-write, eliminating race conditions when concurrent speech segments arrive
+  4. All transcription reads and writes use the `transcriptions` table as the single source of truth (not `transcriptions_med`)
+  5. Upon finalization, a webhook fires to the correct N8N URL (determined by NODE_ENV) with the complete payload (consultationId, doctorId, patientId, transcription, env)
+**Plans**: TBD
+
+### Phase 6: Webhook Reliability & Finalization Guards
+**Goal**: Webhook delivery is tracked and retried on failure, and the finalization process is protected against duplicate invocations, status regressions, and premature memory cleanup
+**Depends on**: Phase 5
+**Requirements**: WBHK-03, WBHK-04, FINL-01, FINL-02, FINL-03, FINL-04
+**Success Criteria** (what must be TRUE):
+  1. Every webhook dispatch is recorded in a `webhook_deliveries` table with status, response code, and timestamp (outbox pattern)
+  2. A failed webhook is automatically retried with exponential backoff (at least 3 attempts) without manual intervention
+  3. If two finalization requests arrive simultaneously (HTTP + WebSocket), only one executes; the second returns idempotently without error
+  4. A consultation that is already COMPLETED cannot regress to PROCESSING or RECORDING status
+  5. If a database write fails during finalization, the in-memory room data is preserved (not deleted), allowing retry
+**Plans**: TBD
+
+### Phase 7: Session Resilience & DB Integrity
+**Goal**: Sessions survive WebSocket disconnections gracefully, and database writes during finalization are atomic across multiple tables
+**Depends on**: Phase 5 (needs core save path working), Phase 6 (needs finalization guards)
+**Requirements**: SESS-01, SESS-02, DBAS-01, DBAS-02
+**Success Criteria** (what must be TRUE):
+  1. When a WebSocket disconnects during an active consultation, the session transitions to a "disconnected" state with a configurable timeout (not immediately deleted), and is cleaned up only after the timeout expires without reconnection
+  2. When a WebSocket reconnects within the timeout window, the client automatically rejoins the room and transcription continues without data loss
+  3. The finalization process writes to `transcriptions`, `consultations`, and `webhook_deliveries` atomically via a PostgreSQL RPC (all succeed or all roll back)
+  4. The `transcriptions.consultation_id` column has a NOT NULL constraint enforced at the database level
+**Plans**: TBD
+
+### Phase 8: Frontend Protections
+**Goal**: The doctor is alerted when microphone issues occur during recording, and transcription data is not lost on accidental tab closure
+**Depends on**: Phase 5 (needs incremental save working to make beforeunload less critical but still valuable)
+**Requirements**: AUDM-01, AUDM-02, SESS-03
+**Success Criteria** (what must be TRUE):
+  1. If the microphone is physically disconnected during an active consultation, the doctor sees an immediate visual alert indicating the mic was lost
+  2. If the microphone captures prolonged silence (configurable threshold, e.g., 30+ seconds), the doctor sees a visual alert suggesting to check the mic
+  3. If the doctor attempts to close or navigate away from the tab during an active recording, a browser confirmation dialog warns them and triggers a flush of any unsaved transcription data
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Validation Spike | 0/1 | Planning complete | - |
-| 2. Backend Diarization | 0/3 | Planning complete | - |
-| 3. Frontend Single-Mic | 1/3 | In Progress|  |
-| 4. Integration & Compatibility | 0/TBD | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Validation Spike | v1.0 | 1/1 | Complete | - |
+| 2. Backend Diarization | v1.0 | 3/3 | Complete | - |
+| 3. Frontend Single-Mic | v1.0 | 2/3 | In progress | - |
+| 4. Integration & Compatibility | v1.0 | 0/TBD | Not started | - |
+| 5. Core Data Path | v2.0 | 0/TBD | Not started | - |
+| 6. Webhook Reliability & Finalization Guards | v2.0 | 0/TBD | Not started | - |
+| 7. Session Resilience & DB Integrity | v2.0 | 0/TBD | Not started | - |
+| 8. Frontend Protections | v2.0 | 0/TBD | Not started | - |

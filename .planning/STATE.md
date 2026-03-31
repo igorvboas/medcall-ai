@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Robustez da Consulta Online
-status: defining_requirements
-stopped_at: Milestone initialized
-last_updated: "2026-03-31T19:00:00.000Z"
+status: roadmap_created
+stopped_at: Roadmap created for v2.0
+last_updated: "2026-03-31T20:00:00.000Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,15 +20,17 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-31)
 
-**Core value:** Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e prontuário devem ser resilientes a falhas.
-**Current focus:** Defining requirements for milestone v2.0
+**Core value:** Nenhum dado de consulta medica pode ser perdido -- transcricao, gravacao e prontuario devem ser resilientes a falhas.
+**Current focus:** Phase 5 - Core Data Path (ready to plan)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-31 — Milestone v2.0 started
+Phase: 5 of 8 (Core Data Path) -- first phase of milestone v2.0
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-31 -- Roadmap created for milestone v2.0
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -42,10 +44,12 @@ Last activity: 2026-03-31 — Milestone v2.0 started
 
 ### Decisions
 
-- [v1.0]: Diarização Deepgram validada com chunks 60s+ (CONDITIONAL GO)
-- [v1.0]: Mapeamento manual de speaker via UI (não automático)
-- [v2.0]: Escopo baseado em revisão sistemática (REVISAO_SISTEMATICA_CONSULTAS.md)
-- [v2.0]: Prioridade máxima: transcription.raw_text incremental, consultation.transcricao na finalização, webhook NODE_ENV-aware
+- [v1.0]: Diarizacao Deepgram validada com chunks 60s+ (CONDITIONAL GO)
+- [v1.0]: Mapeamento manual de speaker via UI (nao automatico)
+- [v2.0]: Escopo baseado em revisao sistematica (REVISAO_SISTEMATICA_CONSULTAS.md)
+- [v2.0]: Prioridade maxima: transcription.raw_text incremental, consultation.transcricao na finalizacao, webhook NODE_ENV-aware
+- [v2.0]: Usar tabela `transcriptions` como fonte primaria (nao `transcriptions_med`)
+- [v2.0]: Supabase JS nao suporta transactions -- usar PostgreSQL RPCs para atomicidade
 
 ### Pending Todos
 
@@ -53,11 +57,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- Supabase JS client não suporta transactions — precisará de RPCs PostgreSQL para atomicidade
-- Race condition no addTranscriptionToSession é ativa em produção — pode perder segmentos agora
+- Supabase JS client nao suporta transactions -- precisara de RPCs PostgreSQL para atomicidade
+- Race condition no addTranscriptionToSession e ativa em producao -- pode perder segmentos agora
+- Zero downtime constraint -- todas mudancas devem ser backward compatible
 
 ## Session Continuity
 
 Last session: 2026-03-31
-Stopped at: Milestone v2.0 initialized
+Stopped at: Roadmap v2.0 created with 4 phases (5-8), 19 requirements mapped
 Resume file: None
