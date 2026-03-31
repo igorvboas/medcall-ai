@@ -214,6 +214,117 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
             }
         });
 
+        // ==================== MAPEAR SPEAKERS ====================
+
+        socket.on('mapSpeakers', async (data, callback) => {
+            try {
+                const { sessionId, mapping } = data;
+                // mapping expected: { speaker_0: 'doctor', speaker_1: 'patient' }
+
+                console.log(`[PRESENCIAL] Mapping speakers for session ${sessionId}:`, mapping);
+
+                // Validate mapping
+                if (!sessionId || !mapping || !mapping.speaker_0 || !mapping.speaker_1) {
+                    console.error('[PRESENCIAL] Invalid mapSpeakers data:', data);
+                    if (callback) {
+                        callback({ success: false, error: 'sessionId and mapping (speaker_0, speaker_1) are required' });
+                    }
+                    return;
+                }
+
+                // Validate roles
+                const validRoles = ['doctor', 'patient'];
+                if (!validRoles.includes(mapping.speaker_0) || !validRoles.includes(mapping.speaker_1)) {
+                    if (callback) {
+                        callback({ success: false, error: 'speaker roles must be "doctor" or "patient"' });
+                    }
+                    return;
+                }
+
+                // Get session to find callSessionId and consultationId
+                const session = presencialSessionManager.getSession(sessionId);
+                if (!session) {
+                    console.error(`[PRESENCIAL] Session ${sessionId} not found for speaker mapping`);
+                    if (callback) {
+                        callback({ success: false, error: 'Session not found' });
+                    }
+                    return;
+                }
+
+                // 1. Batch UPDATE transcriptions_med: set speaker role based on mapping (per D-20)
+                const mappingUpdated = await db.updateSpeakerMapping(session.callSessionId, mapping);
+                if (!mappingUpdated) {
+                    console.error(`[PRESENCIAL] Failed to update speaker mapping in transcriptions_med`);
+                }
+
+                // 2. Regenerate transcriptions.raw_text with correct labels (per D-21)
+                const rawTextUpdated = await db.regenerateRawTextWithSpeakers(
+                    session.callSessionId,
+                    session.consultationId,
+                    mapping
+                );
+                if (!rawTextUpdated) {
+                    console.error(`[PRESENCIAL] Failed to regenerate raw_text with speaker labels`);
+                }
+
+                // 3. Store mapping in call_sessions.metadata (per D-22)
+                const { supabase } = await import('../config/database');
+
+                // Fetch existing metadata first to merge
+                const { data: callSession } = await supabase
+                    .from('call_sessions')
+                    .select('metadata')
+                    .eq('room_id', sessionId)
+                    .single();
+
+                const existingMetadata = callSession?.metadata || {};
+                const updatedMetadata = {
+                    ...existingMetadata,
+                    speakerMapping: mapping
+                };
+
+                const { error: metadataError } = await supabase
+                    .from('call_sessions')
+                    .update({ metadata: updatedMetadata })
+                    .eq('room_id', sessionId);
+
+                if (metadataError) {
+                    console.error('[PRESENCIAL] Failed to save speaker mapping to call_sessions.metadata:', metadataError);
+                }
+
+                // 4. Emit speakerMappingUpdated to all room participants (per D-23)
+                io.to(sessionId).emit('speakerMappingUpdated', {
+                    sessionId,
+                    mapping
+                });
+
+                console.log(`[PRESENCIAL] Speaker mapping completed for session ${sessionId}`);
+
+                if (callback) {
+                    callback({ success: true });
+                }
+            } catch (error) {
+                console.error('[PRESENCIAL] Error mapping speakers:', error);
+
+                logError(
+                    'Error mapping speakers in presencial session',
+                    'error',
+                    null,
+                    {
+                        sessionId: data?.sessionId,
+                        error: error instanceof Error ? error.message : String(error)
+                    }
+                );
+
+                if (callback) {
+                    callback({
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                }
+            }
+        });
+
         // ==================== OBTER TRANSCRIÇÕES ====================
 
         socket.on('getPresencialTranscriptions', (data, callback) => {
