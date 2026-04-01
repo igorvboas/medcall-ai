@@ -525,6 +525,13 @@ class PresencialSessionManager {
     }
 
     /**
+     * Returns all active session IDs (for reconnection lookup by consultationId)
+     */
+    getAllSessionIds(): string[] {
+        return Array.from(this.sessions.keys());
+    }
+
+    /**
      * Adiciona chunk de áudio à fila de processamento
      */
     async addAudioChunk(
