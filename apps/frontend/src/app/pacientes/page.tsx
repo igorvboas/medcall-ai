@@ -551,13 +551,10 @@ export default function PatientsPage() {
         <div className="patients-header">
           <div className="patients-header-content">
             <h1 className="patients-title">Lista de Pacientes</h1>
-            <button
-              onClick={() => setShowForm(true)}
-              className="btn btn-primary btn-novo-paciente"
-            >
+            <Link href="/cadastro/pacientes" className="btn btn-primary btn-novo-paciente">
               <Plus className="btn-icon" />
               Novo Paciente
-            </button>
+            </Link>
           </div>
           <div className="patients-count-badge">
             {pagination.total} {pagination.total === 1 ? 'paciente cadastrado' : 'pacientes cadastrados'}

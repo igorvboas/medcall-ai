@@ -38,26 +38,36 @@ export async function getAgenda(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    // Buscar consultas do mês
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    // Buscar consultas do mês (calcular último dia corretamente)
+    const y = Number(year);
+    const m = Number(month);
+    const lastDay = new Date(y, m, 0).getDate(); // último dia do mês
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01T00:00:00`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}T23:59:59`;
 
-    const { data: consultations, error } = await supabase
-      .from('consultations')
-      .select(`
-        id,
-        patient_name,
-        patient_id,
-        consultation_type,
-        status,
-        duration,
-        created_at,
-        consulta_inicio
-      `)
-      .eq('doctor_id', medico.id)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
-      .order('created_at', { ascending: true });
+    const selectFields = `id, patient_name, patient_id, consultation_type, status, duration, created_at, consulta_inicio`;
+
+    // Buscar em paralelo: por consulta_inicio e por created_at (sem consulta_inicio)
+    const [byInicio, byCreated] = await Promise.all([
+      supabase.from('consultations').select(selectFields)
+        .eq('doctor_id', medico.id)
+        .not('consulta_inicio', 'is', null)
+        .gte('consulta_inicio', startDate)
+        .lte('consulta_inicio', endDate)
+        .order('consulta_inicio', { ascending: true }),
+      supabase.from('consultations').select(selectFields)
+        .eq('doctor_id', medico.id)
+        .is('consulta_inicio', null)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at', { ascending: true }),
+    ]);
+
+    const error = byInicio.error || byCreated.error;
+    // Merge e deduplicar
+    const allConsultations = [...(byInicio.data || []), ...(byCreated.data || [])];
+    const seen = new Set<string>();
+    const consultations = allConsultations.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
 
     if (error) {
       console.error('Erro ao buscar agenda:', error);

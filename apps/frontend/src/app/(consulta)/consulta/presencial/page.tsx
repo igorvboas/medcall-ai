@@ -27,6 +27,11 @@ function PresencialConsultationContent() {
   const searchParams = useSearchParams();
 
   const consultationId = searchParams.get('consultationId');
+  const autoStart = searchParams.get('autoStart') === 'true';
+  const paramMicMode = searchParams.get('micMode') as 'single' | 'dual' | null;
+  const paramSingleMicId = searchParams.get('singleMicId');
+  const paramDoctorMic = searchParams.get('doctorMic');
+  const paramPatientMic = searchParams.get('patientMic');
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -34,8 +39,8 @@ function PresencialConsultationContent() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
 
-  const [doctorMicrophoneId, setDoctorMicrophoneId] = useState('');
-  const [patientMicrophoneId, setPatientMicrophoneId] = useState('');
+  const [doctorMicrophoneId, setDoctorMicrophoneId] = useState(paramDoctorMic || '');
+  const [patientMicrophoneId, setPatientMicrophoneId] = useState(paramPatientMic || '');
 
   const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([]);
   const [duration, setDuration] = useState(0);
@@ -51,8 +56,8 @@ function PresencialConsultationContent() {
   const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
   // Single-mic mode state
-  const [micMode, setMicMode] = useState<'single' | 'dual'>('dual');
-  const [singleMicId, setSingleMicId] = useState('');
+  const [micMode, setMicMode] = useState<'single' | 'dual'>(paramMicMode || 'single');
+  const [singleMicId, setSingleMicId] = useState(paramSingleMicId || '');
   const [isFinalizingAudio, setIsFinalizingAudio] = useState(false);
 
   // Estados para monitoramento de niveis de audio durante setup
@@ -439,6 +444,20 @@ function PresencialConsultationContent() {
     loadDoctor();
   }, [consultationId]);
 
+  // Auto-start quando vem da tela de Nova Consulta com microfones pré-configurados
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStart && socketConnected && !autoStarted.current && !sessionStarted && consultationId) {
+      // Verificar se microfones estão configurados
+      const hasMic = micMode === 'single' ? !!singleMicId : (!!doctorMicrophoneId && !!patientMicrophoneId);
+      if (hasMic) {
+        autoStarted.current = true;
+        console.log('🚀 Auto-starting presencial session with mic config from Nova Consulta');
+        handleStartSession();
+      }
+    }
+  }, [autoStart, socketConnected, sessionStarted, consultationId, singleMicId, doctorMicrophoneId, patientMicrophoneId, micMode]);
+
   const handleMicrophonesSelected = (doctorMic: string, patientMic: string) => {
     setDoctorMicrophoneId(doctorMic);
     setPatientMicrophoneId(patientMic);
@@ -579,8 +598,15 @@ function PresencialConsultationContent() {
 
       <MicAlertBanner isMicConnected={isMicConnected} isSilent={isSilent} />
 
-      {!sessionStarted ? (
-        // Setup: Selecao de microfones
+      {!sessionStarted && autoStart && !error ? (
+        // Auto-starting: mostrar loading enquanto conecta e inicia
+        <div className="setup-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', gap: 16 }}>
+          <div className="loading-spinner" />
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#1B4266' }}>Iniciando consulta...</p>
+          <p style={{ fontSize: 13, color: '#64748B' }}>Conectando microfone e preparando gravação</p>
+        </div>
+      ) : !sessionStarted ? (
+        // Setup manual: Selecao de microfones
         <div className="setup-container">
           <MicModeToggle
             mode={micMode}
