@@ -1,7 +1,7 @@
 import express from 'express';
 import { Request, Response } from 'express';
 import { rooms, userToRoom, socketToRoom } from '../websocket/rooms';
-import { db, supabase, logError } from '../config/database';
+import { db, supabase, logError, finalizeConsultation } from '../config/database';
 import { aiPricingService } from '../services/aiPricingService';
 import { getEnv } from '../config/webhookConfig';
 import { tryAcquireFinalizationLock, releaseFinalizationLock, isTerminalStatus } from '../shared/finalizationGuard';
@@ -264,43 +264,7 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
     let dbWriteSuccess = false;
     try {
       if (consultationId) {
-        const duracaoSegundos = calculateDuration(room.createdAt);
-        const duracaoMinutos = duracaoSegundos / 60;
-        const consultaFim = new Date().toISOString();
-
-        const { error: updateError } = await supabase
-          .from('consultations')
-          .update({
-            status: 'PROCESSING',
-            consulta_finalizada: true,
-            consulta_fim: consultaFim,
-            duracao: duracaoMinutos,
-            updated_at: consultaFim
-          })
-          .eq('id', consultationId);
-
-        if (updateError) {
-          console.error('[FINALIZE-HTTP] Erro ao atualizar consulta:', updateError);
-        } else {
-          console.log(`[FINALIZE-HTTP] Consulta ${consultationId} finalizada e atualizada para PROCESSING`);
-        }
-      }
-
-      await db.updateCallSession(roomId, {
-        status: 'ended',
-        ended_at: new Date().toISOString(),
-        webrtc_active: false,
-        consultation_id: consultationId || undefined,
-        metadata: {
-          transcriptionsCount: room.transcriptions?.length || 0,
-          duration: calculateDuration(room.createdAt),
-          participantName: room.participantUserName,
-          terminatedBy: 'remote'
-        }
-      });
-
-      // Read transcription from DB (crash-safe) per D-07, D-08
-      if (consultationId) {
+        // Read transcription from DB (crash-safe) per D-07, D-08
         const { data: txnRecord } = await supabase
           .from('transcriptions')
           .select('raw_text')
@@ -308,17 +272,26 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
           .maybeSingle();
 
         const fullText = txnRecord?.raw_text || '';
+        const duracaoSegundos = calculateDuration(room.createdAt);
+        const duracaoMinutos = duracaoSegundos / 60;
 
-        if (fullText) {
-          await db.updateConsultation(consultationId, {
-            transcricao: fullText
-          });
-          console.log(`[FINALIZE-HTTP] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
+        // Per D-10, D-11: Single atomic RPC replaces sequential writes
+        dbWriteSuccess = await finalizeConsultation({
+          consultationId,
+          transcription: fullText,
+          status: 'COMPLETED',
+          durationMinutes: duracaoMinutos,
+          callSessionRoomId: roomId,
+        });
+
+        if (dbWriteSuccess) {
+          console.log(`[FINALIZE-HTTP] Consulta ${consultationId} finalizada atomicamente via RPC (duracao: ${duracaoMinutos.toFixed(2)} min)`);
         } else {
-          console.warn(`[FINALIZE-HTTP] Nenhuma transcricao encontrada em transcriptions para consulta ${consultationId}`);
+          console.error(`[FINALIZE-HTTP] RPC finalize_consultation falhou para consulta ${consultationId}`);
         }
       }
 
+      // Keep pricing outside the transaction (per D-12)
       if (consultationId) {
         try {
           const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(consultationId);
@@ -328,16 +301,6 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
         } catch (costError) {
           console.error('[FINALIZE-HTTP] Erro ao calcular custo:', costError);
         }
-      }
-
-      dbWriteSuccess = true;
-
-      // Per D-12: Set COMPLETED after all DB writes succeed
-      if (consultationId) {
-        await supabase
-          .from('consultations')
-          .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
-          .eq('id', consultationId);
       }
 
       // Per D-05: Use centralized webhook dispatch with retry
