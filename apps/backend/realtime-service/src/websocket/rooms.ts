@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { db, logError, logWarning } from '../config/database';
+import { db, supabase, logError, logWarning, finalizeConsultation } from '../config/database';
 import { aiPricingService } from '../services/aiPricingService';
 import { transcriptionService } from '../services/transcriptionService'; // ✅ Importado
 import { getEnv } from '../config/webhookConfig';
@@ -147,6 +147,38 @@ function cleanExpiredRoom(roomId: string): void {
 /**
  * 🔧 Fecha conexão OpenAI de forma segura e registra uso
  */
+/**
+ * Per D-01 through D-04: Cleans a room that was disconnected and never reconnected.
+ * Called by the disconnect timeout timer. If the room was reconnected (disconnectedAt cleared),
+ * the cleanup is skipped.
+ */
+function cleanDisconnectedRoom(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  // If room was reconnected (disconnectedAt cleared), skip cleanup
+  if (!room.disconnectedAt) {
+    console.log(`[CLEANUP] Room ${roomId} was reconnected -- skipping disconnect cleanup`);
+    return;
+  }
+  console.log(`[CLEANUP] Cleaning disconnected room ${roomId} (disconnected at ${room.disconnectedAt})`);
+  // Per D-04: Update consultation status to terminal state
+  if (room.consultationId) {
+    supabase.from('consultations')
+      .update({ status: 'ABANDONED', updated_at: new Date().toISOString() })
+      .eq('id', room.consultationId)
+      .then((result: any) => {
+        if (result.error) {
+          console.error(`[CLEANUP] Failed to update consultation:`, result.error);
+        } else {
+          console.log(`[CLEANUP] Consultation ${room.consultationId} marked ABANDONED`);
+        }
+      });
+    logError('Sessao orfa limpa apos disconnect timeout', 'warning', room.consultationId, { roomId });
+  }
+  // Reuse existing cleanup logic
+  cleanExpiredRoom(roomId);
+}
+
 /**
  * 🔧 Fecha conexão OpenAI de forma segura e registra uso
  * (Stub mantido para compatibilidade, mas lógica removida)
@@ -563,10 +595,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       const isHostByRole = requesterRole === 'host' || requesterRole === 'doctor';
 
       if (isHostByRole || participantName === room.hostUserName) {
-        console.log(`🔄 Reconexão do host: ${participantName} na sala ${roomId}`);
+        console.log(`[REJOIN] Reconexao do host: ${participantName} na sala ${roomId}`);
         room.hostSocketId = socket.id;
         socketToRoom.set(socket.id, roomId);
-        socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
+        socket.join(roomId);
+
+        // Per D-08, D-09: Cancel disconnect timer and clear disconnected state on rejoin
+        if (room.disconnectedAt) {
+          console.log(`[REJOIN] Clearing disconnect state for room ${roomId} (was disconnected at ${room.disconnectedAt})`);
+          room.disconnectedAt = null;
+        }
         resetRoomExpiration(roomId);
 
         // ✅ NOVO: Atualizar webrtc_active = true quando o médico entrar na consulta
@@ -685,10 +723,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
         // Se é a mesma sala, é reconexão
         if (existingRoom === roomId) {
-          console.log(`🔄 Reconexão do participante: ${participantName} na sala ${roomId}`);
+          console.log(`[REJOIN] Reconexao do participante: ${participantName} na sala ${roomId}`);
           room.participantSocketId = socket.id;
-          room.joinedPatientName = participantName; // ✅ NOVO: Persistir nome do paciente
+          room.joinedPatientName = participantName;
           socketToRoom.set(socket.id, roomId);
+
+          // Per D-08, D-09: Cancel disconnect timer and clear disconnected state on rejoin
+          if (room.disconnectedAt) {
+            console.log(`[REJOIN] Clearing disconnect state for room ${roomId} (was disconnected at ${room.disconnectedAt})`);
+            room.disconnectedAt = null;
+          }
           resetRoomExpiration(roomId);
 
           // ✅ NOVO: Buscar transcrições do banco de dados
@@ -1325,7 +1369,6 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
       // Per D-11: Check DB status before proceeding
       if (room.consultationId) {
-        const { supabase } = await import('../config/database');
         const { data: statusCheck } = await supabase
           .from('consultations')
           .select('status')
@@ -1366,43 +1409,30 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         let consultationId = room.consultationId || null;
 
         if (consultationId) {
-          try {
-            const { supabase } = await import('../config/database');
+          // Read transcription from DB (crash-safe) per D-07, D-08
+          const { data: txnRecord } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', consultationId)
+            .maybeSingle();
 
-            const duracaoSegundos = calculateDuration(room.createdAt);
-            const duracaoMinutos = duracaoSegundos / 60;
-            const consultaFim = new Date().toISOString();
+          const fullText = txnRecord?.raw_text || '';
+          const duracaoSegundos = calculateDuration(room.createdAt);
+          const duracaoMinutos = duracaoSegundos / 60;
 
-            const { error: updateError } = await supabase
-              .from('consultations')
-              .update({
-                status: 'PROCESSING',
-                consulta_finalizada: true,
-                consulta_fim: consultaFim,
-                duracao: duracaoMinutos,
-                updated_at: consultaFim
-              })
-              .eq('id', consultationId);
+          // Per D-10, D-11: Single atomic RPC replaces sequential writes
+          dbWriteSuccess = await finalizeConsultation({
+            consultationId,
+            transcription: fullText,
+            status: 'COMPLETED',
+            durationMinutes: duracaoMinutos,
+            callSessionRoomId: roomId,
+          });
 
-            if (updateError) {
-              console.error('[ENDROOM] Erro ao atualizar status da consulta:', updateError);
-              logError(
-                `Erro ao atualizar status da consulta para PROCESSING`,
-                'error',
-                consultationId,
-                { roomId, error: updateError.message }
-              );
-            } else {
-              console.log(`[ENDROOM] Consulta ${consultationId} finalizada e atualizada para PROCESSING (duracao: ${duracaoMinutos.toFixed(2)} min)`);
-            }
-          } catch (updateError) {
-            console.error('[ENDROOM] Erro ao atualizar consulta:', updateError);
-            logError(
-              `Excecao ao atualizar consulta`,
-              'error',
-              consultationId,
-              { roomId, error: updateError instanceof Error ? updateError.message : String(updateError) }
-            );
+          if (dbWriteSuccess) {
+            console.log(`[ENDROOM] Consulta ${consultationId} finalizada atomicamente via RPC (duracao: ${duracaoMinutos.toFixed(2)} min)`);
+          } else {
+            console.error(`[ENDROOM] RPC finalize_consultation falhou para consulta ${consultationId}`);
           }
         } else if (doctorId && room.patientId) {
           console.warn('[ENDROOM] Consulta nao encontrada na room, criando nova...');
@@ -1421,7 +1451,6 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             saveResult.consultationId = consultationId;
 
             try {
-              const { supabase } = await import('../config/database');
               const duracaoSegundos = calculateDuration(room.createdAt);
               const duracaoMinutos = duracaoSegundos / 60;
 
@@ -1462,60 +1491,44 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           );
         }
 
-        // 3. Atualizar CALL_SESSION (Sempre, usando o roomId)
-        try {
-          const callSessionUpdateData: any = {
-            status: 'ended',
-            ended_at: new Date().toISOString(),
-            webrtc_active: false,
-            metadata: {
-              transcriptionsCount: room.transcriptions.length,
-              duration: calculateDuration(room.createdAt),
-              participantName: room.participantUserName,
-              terminatedBy: socket.id === room.hostSocketId ? 'host' : 'participant'
+        // 3. Atualizar CALL_SESSION para fallback path (RPC ja cuida do main path)
+        if (!room.consultationId) {
+          try {
+            const callSessionUpdateData: any = {
+              status: 'ended',
+              ended_at: new Date().toISOString(),
+              webrtc_active: false,
+              metadata: {
+                transcriptionsCount: room.transcriptions.length,
+                duration: calculateDuration(room.createdAt),
+                participantName: room.participantUserName,
+                terminatedBy: socket.id === room.hostSocketId ? 'host' : 'participant'
+              }
+            };
+
+            if (consultationId) {
+              callSessionUpdateData.consultation_id = consultationId;
             }
-          };
 
-          if (consultationId) {
-            callSessionUpdateData.consultation_id = consultationId;
-          }
+            console.log(`[ENDROOM] Atualizando call_session para ENDED (Room: ${roomId}) [fallback path]`);
+            await db.updateCallSession(roomId, callSessionUpdateData);
+            saveResult.sessionUpdated = true;
+            dbWriteSuccess = true;
 
-          console.log(`[ENDROOM] Atualizando call_session para ENDED (Room: ${roomId})`);
-          await db.updateCallSession(roomId, callSessionUpdateData);
-          saveResult.sessionUpdated = true;
-
-        } catch (sessionError) {
-          console.error('[ENDROOM] Erro ao atualizar call_session:', sessionError);
-          logError(
-            `Erro ao atualizar call_session para ended`,
-            'error',
-            consultationId,
-            { roomId, error: sessionError instanceof Error ? sessionError.message : String(sessionError) }
-          );
-        }
-
-        // 4. Read transcription from DB (crash-safe) per D-07, D-08
-        if (consultationId) {
-          const { supabase } = await import('../config/database');
-          const { data: txnRecord } = await supabase
-            .from('transcriptions')
-            .select('raw_text')
-            .eq('consultation_id', consultationId)
-            .maybeSingle();
-
-          const fullText = txnRecord?.raw_text || '';
-
-          if (fullText) {
-            await db.updateConsultation(consultationId, {
-              transcricao: fullText
-            });
-            console.log(`[ENDROOM] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
+          } catch (sessionError) {
+            console.error('[ENDROOM] Erro ao atualizar call_session:', sessionError);
+            logError(
+              `Erro ao atualizar call_session para ended`,
+              'error',
+              consultationId,
+              { roomId, error: sessionError instanceof Error ? sessionError.message : String(sessionError) }
+            );
           }
         }
 
         console.log(`[ENDROOM] Dados salvos no banco de dados com sucesso`);
 
-        // Calcular e atualizar valor_consulta
+        // Keep pricing outside the transaction (per D-12)
         if (consultationId) {
           try {
             const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(consultationId);
@@ -1527,20 +1540,8 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           }
         }
 
-        dbWriteSuccess = true;
-
-        // Per D-12: Set COMPLETED after all DB writes succeed
-        if (consultationId) {
-          const { supabase } = await import('../config/database');
-          await supabase
-            .from('consultations')
-            .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
-            .eq('id', consultationId);
-        }
-
         // Per D-05: Use centralized webhook dispatch with retry
         if (consultationId) {
-          const { supabase } = await import('../config/database');
           const { data: consultation } = await supabase
             .from('consultations')
             .select('doctor_id, patient_id')
@@ -1638,19 +1639,22 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         const room = rooms.get(roomId);
 
         if (room) {
+          // Per D-01: Determine role BEFORE nullifying socket IDs
+          const isHost = socket.id === room.hostSocketId;
+          const isParticipant = socket.id === room.participantSocketId;
+
           // Se host desconectou
-          if (socket.id === room.hostSocketId) {
-            console.log(`⚠️ Host desconectou da sala ${roomId}`);
+          if (isHost) {
+            console.log(`[DISCONNECT] Host desconectou da sala ${roomId}`);
             room.hostSocketId = null;
 
-            // ✅ NOVO: Atualizar webrtc_active = false quando host desconecta
-            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (host desconectou)`);
+            console.log(`[DISCONNECT] [WebRTC] Conexao perdida na sala ${roomId} (host desconectou)`);
             db.setWebRTCActive(roomId, false);
           }
 
           // Se participante desconectou
-          if (socket.id === room.participantSocketId) {
-            console.log(`⚠️ Participante desconectou da sala ${roomId}`);
+          if (isParticipant) {
+            console.log(`[DISCONNECT] Participante desconectou da sala ${roomId}`);
             // Liberar vaga do participante para evitar sala ficar "cheia"
             if (room.participantUserName) {
               userToRoom.delete(room.participantUserName);
@@ -1658,18 +1662,35 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             room.participantUserName = null;
             room.participantSocketId = null;
 
-            // ✅ NOVO: Atualizar webrtc_active = false quando participante desconecta
-            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (participante desconectou)`);
+            console.log(`[DISCONNECT] [WebRTC] Conexao perdida na sala ${roomId} (participante desconectou)`);
             db.setWebRTCActive(roomId, false);
           }
 
-          // Continuar com timer de expiração (permite reconexão)
-          resetRoomExpiration(roomId);
+          // Per D-01: Set disconnected state instead of immediate cleanup
+          room.disconnectedAt = new Date().toISOString();
+
+          // Per D-02: Configurable timeout -- 5 min host, 3 min participant
+          const timeoutMs = isHost ? 5 * 60 * 1000 : 3 * 60 * 1000;
+
+          // Per Pitfall 5: Skip disconnect timer if finalization is already in progress
+          if (!tryAcquireFinalizationLock(roomId)) {
+            // Finalization owns this room -- don't start a competing timer
+            console.log(`[DISCONNECT] Room ${roomId} is being finalized -- skipping disconnect timer`);
+          } else {
+            releaseFinalizationLock(roomId); // We just tested, not actually finalizing
+            // Clear existing timer and set disconnect-specific timeout
+            if (roomTimers.has(roomId)) {
+              clearTimeout(roomTimers.get(roomId));
+            }
+            const timer = setTimeout(() => cleanDisconnectedRoom(roomId), timeoutMs);
+            roomTimers.set(roomId, timer);
+            console.log(`[DISCONNECT] Room ${roomId} -- disconnect timer started (${timeoutMs / 60000} min)`);
+          }
         }
       }
 
-      // 🔧 CORREÇÃO: Fechar conexão OpenAI corretamente quando usuário desconecta
-      closeOpenAIConnection(userName, 'usuário desconectou');
+      // Fechar conexao OpenAI corretamente quando usuario desconecta
+      closeOpenAIConnection(userName, 'usuario desconectou');
 
       socketToRoom.delete(socket.id);
     });
