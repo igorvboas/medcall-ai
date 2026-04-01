@@ -31,6 +31,9 @@ import { DeviceSettings } from './DeviceSettings';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { ExamUploadModal } from '@/components/modals/ExamUploadModal';
 import { UploadedFile } from '@/components/FileUpload';
+import { useMicMonitor } from '@/hooks/useMicMonitor';
+import { useBeforeUnloadProtection } from '@/hooks/useBeforeUnloadProtection';
+import { MicAlertBanner } from '@/components/alerts/MicAlertBanner';
 
 
 
@@ -201,6 +204,10 @@ export function ConsultationRoom({
   // ✅ STATES para VideoPlayer (reativos)
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
+
+  // Mic monitoring and tab protection
+  const { isMicConnected, isSilent } = useMicMonitor(localStreamState, recordingState.isRecording);
+  useBeforeUnloadProtection(recordingState.isRecording || isCallActive);
 
   // ✅ NOVO: Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -4406,6 +4413,9 @@ export function ConsultationRoom({
         status={networkQuality.status}
         packetLoss={networkQuality.packetLoss}
       />
+
+      {/* Mic protection alerts */}
+      <MicAlertBanner isMicConnected={isMicConnected} isSilent={isSilent} />
 
       {/* ✅ GRAVAÇÃO: Indicador flutuante de gravação */}
       {recordingState.isRecording && (
