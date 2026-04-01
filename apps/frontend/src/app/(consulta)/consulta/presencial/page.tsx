@@ -16,6 +16,9 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { supabase } from '@/lib/supabase';
 
 import { TranscriptionSegment, Speaker } from '@/types/transcription';
+import { useMicMonitor } from '@/hooks/useMicMonitor';
+import { useBeforeUnloadProtection } from '@/hooks/useBeforeUnloadProtection';
+import { MicAlertBanner } from '@/components/alerts/MicAlertBanner';
 
 const IS_DEV = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_NODE_ENV !== 'production';
 
@@ -84,6 +87,14 @@ function PresencialConsultationContent() {
     stopCapture: dualCapture.stopCapture,
     pendingChunks: dualCapture.pendingChunks,
   };
+
+  // Select stream to monitor based on mic mode
+  const streamToMonitor = micMode === 'single'
+    ? singleCapture.stream
+    : dualCapture.doctorStream;
+
+  const { isMicConnected, isSilent } = useMicMonitor(streamToMonitor, activeCapture.isRecording);
+  useBeforeUnloadProtection(activeCapture.isRecording);
 
   // Monitorar niveis de audio durante setup (antes de iniciar sessao)
   useEffect(() => {
@@ -548,6 +559,8 @@ function PresencialConsultationContent() {
           <span>{error}</span>
         </div>
       )}
+
+      <MicAlertBanner isMicConnected={isMicConnected} isSilent={isSilent} />
 
       {!sessionStarted ? (
         // Setup: Selecao de microfones
