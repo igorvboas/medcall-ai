@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Consulta Presencial com Microfone Unico
-status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-04-01T00:39:19.470Z"
+status: verifying
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-04-01T00:47:37.133Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 06 (webhook-reliability-finalization-guards) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-01
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 06]: webhookConfig.ts created as centralized webhook URL/header config (missing dependency)
 - [Phase 06]: Outbox pattern: record pending delivery BEFORE HTTP call, update after
 - [Phase 06]: In-memory Set for finalization mutex (sufficient for single-instance realtime-service)
+- [Phase 06]: Lock released in finally block to prevent permanent deadlock; COMPLETED set after all DB writes; Room preserved on DB failure with 10min safety timer
 
 ### Pending Todos
 
@@ -70,6 +71,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T00:39:19.467Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-04-01T00:47:37.130Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None

@@ -25,8 +25,8 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 - [x] **FINL-01**: Guard contra finalização duplicada (mutex/flag `isFinalizing` por room)
 - [x] **FINL-02**: Guard de status transition (não regredir COMPLETED para PROCESSING)
-- [ ] **FINL-03**: Room não deletada da memória se DB write falhou
-- [ ] **FINL-04**: Finalização idempotente (retry seguro sem duplicar dados)
+- [x] **FINL-03**: Room não deletada da memória se DB write falhou
+- [x] **FINL-04**: Finalização idempotente (retry seguro sem duplicar dados)
 
 ### Sessão e Conexão
 
@@ -86,8 +86,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WBHK-04 | Phase 6 | Complete |
 | FINL-01 | Phase 6 | Complete |
 | FINL-02 | Phase 6 | Complete |
-| FINL-03 | Phase 6 | Pending |
-| FINL-04 | Phase 6 | Pending |
+| FINL-03 | Phase 6 | Complete |
+| FINL-04 | Phase 6 | Complete |
 | SESS-01 | Phase 7 | Pending |
 | SESS-02 | Phase 7 | Pending |
 | SESS-03 | Phase 8 | Pending |
