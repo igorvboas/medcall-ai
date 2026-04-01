@@ -130,7 +130,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — SQL migration, database helpers, webhookService with retry, finalizationGuard module
+- [x] 06-01-PLAN.md — SQL migration, database helpers, webhookService with retry, finalizationGuard module
 - [ ] 06-02-PLAN.md — Wire guards and webhookService into all 3 finalization and dispatch points
 
 ### Phase 7: Session Resilience & DB Integrity

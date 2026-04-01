@@ -18,13 +18,13 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 - [x] **WBHK-01**: Webhook disparado para N8N com payload correto (consultationId, doctorId, patientId, transcription, env)
 - [x] **WBHK-02**: URL do webhook determinada por `NODE_ENV` (homolog/production/localhost), centralizada em um único local
-- [ ] **WBHK-03**: Registro de entregas de webhook em tabela `webhook_deliveries` (outbox pattern)
-- [ ] **WBHK-04**: Retry automático com backoff exponencial em caso de falha do webhook
+- [x] **WBHK-03**: Registro de entregas de webhook em tabela `webhook_deliveries` (outbox pattern)
+- [x] **WBHK-04**: Retry automático com backoff exponencial em caso de falha do webhook
 
 ### Finalização
 
-- [ ] **FINL-01**: Guard contra finalização duplicada (mutex/flag `isFinalizing` por room)
-- [ ] **FINL-02**: Guard de status transition (não regredir COMPLETED para PROCESSING)
+- [x] **FINL-01**: Guard contra finalização duplicada (mutex/flag `isFinalizing` por room)
+- [x] **FINL-02**: Guard de status transition (não regredir COMPLETED para PROCESSING)
 - [ ] **FINL-03**: Room não deletada da memória se DB write falhou
 - [ ] **FINL-04**: Finalização idempotente (retry seguro sem duplicar dados)
 
@@ -82,10 +82,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRNS-04 | Phase 5 | Complete |
 | WBHK-01 | Phase 5 | Complete |
 | WBHK-02 | Phase 5 | Complete |
-| WBHK-03 | Phase 6 | Pending |
-| WBHK-04 | Phase 6 | Pending |
-| FINL-01 | Phase 6 | Pending |
-| FINL-02 | Phase 6 | Pending |
+| WBHK-03 | Phase 6 | Complete |
+| WBHK-04 | Phase 6 | Complete |
+| FINL-01 | Phase 6 | Complete |
+| FINL-02 | Phase 6 | Complete |
 | FINL-03 | Phase 6 | Pending |
 | FINL-04 | Phase 6 | Pending |
 | SESS-01 | Phase 7 | Pending |
