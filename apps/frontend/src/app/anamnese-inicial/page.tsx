@@ -291,13 +291,8 @@ function AnamneseInicialContent() {
 
   useEffect(() => {
     if (pacienteId) {
-      if (consultaId) {
-        // Nova consulta: formulario em branco (nao carregar anamnese anterior)
-        setLoading(false);
-      } else {
-        // Primeira consulta: carregar anamnese existente se houver
-        fetchAnamnese();
-      }
+      // Sempre carregar dados do paciente (nome, email, etc)
+      fetchAnamnese();
     } else {
       showError('ID do paciente não encontrado na URL', 'Erro');
       setLoading(false);
@@ -517,7 +512,7 @@ function AnamneseInicialContent() {
 
                 <div className="wizard-form-field">
                   <label className="wizard-field-label">E-mail <span style={{ color: '#ef4444' }}>*</span></label>
-                  <InputField icon={Mail} type="email" value={formData.email || ''} onChange={(e: any) => handleChange('email', e.target.value)} placeholder="seuemail@exemplo.com" disabled={emailLocked} />
+                  <InputField icon={Mail} type="email" value={formData.email || ''} onChange={(e: any) => handleChange('email', e.target.value)} placeholder="seuemail@exemplo.com" disabled={true} />
                 </div>
 
                 <div className="wizard-form-row">

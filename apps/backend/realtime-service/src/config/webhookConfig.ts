@@ -6,9 +6,9 @@
 
 const WEBHOOK_URLS: Record<string, Record<string, string>> = {
   transcricao: {
-    homolog: 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog',
+    homolog: 'https://triahook.gst.dev.br/webhook/usi-analise-homolog',
     production: 'https://triahook.gst.dev.br/webhook/usi-analise-v2',
-    localhost: 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog',
+    localhost: 'https://triahook.gst.dev.br/webhook/usi-analise-homolog',
   },
 };
 

@@ -681,15 +681,12 @@ export class TranscriptionService extends EventEmitter {
 
       if (consultationId) {
         console.log(`===> SPEAKER: ${speaker}`)
-        // Formatar speaker para o padrão solicitado: [MEDICO] ou [PACIENTE - NOME]
+        // Formatar speaker para o padrão: [MEDICO] ou [PACIENTE]
         let formattedSpeaker = '';
         if (speaker === 'doctor') {
           formattedSpeaker = 'MEDICO';
         } else {
-          console.log(`===> PARTICIPANT NAME: ${segment.participantName}`)
-          // Tentar pegar nome do paciente
-          const patientName = segment.participantName || 'Paciente';
-          formattedSpeaker = `PACIENTE - ${patientName}`;
+          formattedSpeaker = 'PACIENTE';
         }
 
         // Formatar timestamp para visualização (HH:mm:ss)

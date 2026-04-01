@@ -74,54 +74,137 @@ function muscOffset(m: number) {
   return Math.max(125.7 * (1 - (m - 38) / 10), 8);
 }
 
-// Demo data for when no real data exists
-function getDemoData(): EvolucaoData[] {
-  return [
-    {
-      id: 'demo-1', consulta_id: '', paciente_id: '', num: 1,
-      mes: 'Janeiro', mes_abr: 'Jan', ano: '2025', data: '10 Jan 2025',
-      peso: 75.0, cintura: 80, imc: 29.3, gordura: 37, massa_magra: 41.3,
-      imc_class: 'Obesidade I', progresso: 0, total_perdido: 0, is_goal: false,
-      peso_meta: 65, imc_meta: 25.4,
-      nota: 'Inicio do acompanhamento. Habitos alimentares irregulares, alto consumo de ultraprocessados. Paciente motivado e comprometido.'
-    },
-    {
-      id: 'demo-2', consulta_id: '', paciente_id: '', num: 2,
-      mes: 'Fevereiro', mes_abr: 'Fev', ano: '2025', data: '12 Fev 2025',
-      peso: 73.2, cintura: 78, imc: 28.6, gordura: 35, massa_magra: 41.5,
-      delta_peso: '-1,8 kg', delta_cintura: '-2 cm', delta_gordura: '-2pp', delta_magra: '+0,2 kg',
-      imc_class: 'Sobrepeso', progresso: 18, total_perdido: 1.8, is_goal: false,
-      peso_meta: 65, imc_meta: 25.4,
-      nota: 'Otima adaptacao. Reduziu acucar e farinhas refinadas. Sono melhorou. Manteve 3x treino por semana.'
-    },
-    {
-      id: 'demo-3', consulta_id: '', paciente_id: '', num: 3,
-      mes: 'Marco', mes_abr: 'Mar', ano: '2025', data: '10 Mar 2025',
-      peso: 71.0, cintura: 76, imc: 27.7, gordura: 33, massa_magra: 41.8,
-      delta_peso: '-2,2 kg', delta_cintura: '-2 cm', delta_gordura: '-2pp', delta_magra: '+0,3 kg',
-      imc_class: 'Sobrepeso', progresso: 40, total_perdido: 4.0, is_goal: false,
-      peso_meta: 65, imc_meta: 25.4,
-      nota: 'Excelente progresso! Aumentamos proteina no jantar. Paciente relatou mais energia e menos inchaco abdominal.'
-    },
-    {
-      id: 'demo-4', consulta_id: '', paciente_id: '', num: 4,
-      mes: 'Abril', mes_abr: 'Abr', ano: '2025', data: '08 Abr 2025',
-      peso: 68.5, cintura: 73, imc: 26.8, gordura: 30, massa_magra: 42.1,
-      delta_peso: '-2,5 kg', delta_cintura: '-3 cm', delta_gordura: '-3pp', delta_magra: '+0,3 kg',
-      imc_class: 'Sobrepeso', progresso: 65, total_perdido: 6.5, is_goal: false,
-      peso_meta: 65, imc_meta: 25.4,
-      nota: 'Marco importante: -6,5 kg! IMC proximo de normal. Introduzimos carboidratos ciclados no dia de treino.'
-    },
-    {
-      id: 'demo-5', consulta_id: '', paciente_id: '', num: 5,
-      mes: 'Junho', mes_abr: 'Jun', ano: '2025', data: '09 Jun 2025',
-      peso: 65.0, cintura: 69, imc: 25.4, gordura: 26, massa_magra: 42.6,
-      delta_peso: '-3,5 kg', delta_cintura: '-4 cm', delta_gordura: '-4pp', delta_magra: '+0,5 kg',
-      imc_class: 'Normal', progresso: 100, total_perdido: 10.0, is_goal: true,
-      peso_meta: 65, imc_meta: 25.4,
-      nota: 'META ATINGIDA! Peso: 65 kg. Plano de manutencao iniciado. Paciente firme e confiante. Resultado extraordinario!'
+const MESES: Record<string, string> = {
+  '01': 'Janeiro', '02': 'Fevereiro', '03': 'Marco', '04': 'Abril',
+  '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+  '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro',
+};
+const MESES_ABR: Record<string, string> = {
+  '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+  '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+};
+
+function classifyImc(imc: number): string {
+  if (imc < 18.5) return 'Abaixo do peso';
+  if (imc < 25) return 'Normal';
+  if (imc < 30) return 'Sobrepeso';
+  if (imc < 35) return 'Obesidade I';
+  if (imc < 40) return 'Obesidade II';
+  return 'Obesidade III';
+}
+
+function parseNum(val: any): number | null {
+  if (val == null || val === '') return null;
+  const str = String(val).replace(',', '.').replace(/[^\d.\-]/g, '');
+  const n = parseFloat(str);
+  return isNaN(n) ? null : n;
+}
+
+function formatDelta(current: number, previous: number, unit: string): string {
+  const diff = current - previous;
+  const sign = diff > 0 ? '+' : '';
+  return `${sign}${diff.toFixed(1).replace('.', ',')} ${unit}`;
+}
+
+async function fetchAnamnesesForPatient(
+  supabase: ReturnType<typeof createBrowserClient>,
+  patientId: string
+): Promise<EvolucaoData[]> {
+  // Fetch all anamnese records for this patient, ordered by creation date
+  const { data: anamneses, error } = await supabase
+    .from('a_cadastro_anamnese')
+    .select('id, consulta_id, paciente_id, peso_atual, peso_desejado, altura, created_at')
+    .eq('paciente_id', patientId)
+    .order('created_at', { ascending: true });
+
+  if (error || !anamneses || anamneses.length === 0) {
+    console.warn('[Evolucao] Nenhuma anamnese encontrada:', error);
+    return [];
+  }
+
+  // Fetch measurement data from a_observacao_clinica_lab_2 for each consultation
+  const consultaIds = anamneses
+    .map((a: any) => a.consulta_id)
+    .filter(Boolean);
+
+  let obsMap: Record<string, any> = {};
+  if (consultaIds.length > 0) {
+    const { data: obsData } = await supabase
+      .from('a_observacao_clinica_lab_2')
+      .select('consulta_id, medidas_antropometricas_peso_atual, medidas_antropometricas_altura, medidas_antropometricas_imc, medidas_antropometricas_circunferencias_cintura, medidas_antropometricas_bioimpedancia_gordura_percentual, medidas_antropometricas_bioimpedancia_massa_muscular')
+      .in('consulta_id', consultaIds);
+
+    if (obsData) {
+      for (const obs of obsData) {
+        if (obs.consulta_id) obsMap[obs.consulta_id] = obs;
+      }
     }
-  ];
+  }
+
+  const pesoDesejado = parseNum(anamneses[0]?.peso_desejado) || 65;
+  const alturaM = (() => {
+    const h = parseNum(anamneses[0]?.altura);
+    if (!h) return 1.7;
+    return h > 3 ? h / 100 : h; // handle cm or m
+  })();
+  const imcMeta = pesoDesejado / (alturaM * alturaM);
+  const initialPeso = parseNum(anamneses[0]?.peso_atual);
+
+  const result: EvolucaoData[] = [];
+
+  for (let i = 0; i < anamneses.length; i++) {
+    const a = anamneses[i];
+    const obs = a.consulta_id ? obsMap[a.consulta_id] : null;
+
+    // Get peso: prefer obs measurement, fallback to anamnese
+    const peso = parseNum(obs?.medidas_antropometricas_peso_atual) || parseNum(a.peso_atual);
+    if (!peso) continue; // skip records without weight data
+
+    const cintura = parseNum(obs?.medidas_antropometricas_circunferencias_cintura) || 0;
+    const imc = parseNum(obs?.medidas_antropometricas_imc) || (peso / (alturaM * alturaM));
+    const gordura = parseNum(obs?.medidas_antropometricas_bioimpedancia_gordura_percentual) || 0;
+    const massaMagra = parseNum(obs?.medidas_antropometricas_bioimpedancia_massa_muscular) || 0;
+
+    const createdAt = new Date(a.created_at);
+    const mesKey = String(createdAt.getMonth() + 1).padStart(2, '0');
+    const ano = String(createdAt.getFullYear());
+    const dia = String(createdAt.getDate()).padStart(2, '0');
+
+    const prev = result[result.length - 1];
+    const totalPerdido = initialPeso ? initialPeso - peso : 0;
+    const totalNeeded = initialPeso ? initialPeso - pesoDesejado : 10;
+    const progresso = totalNeeded > 0 ? Math.min(Math.round((totalPerdido / totalNeeded) * 100), 100) : 0;
+    const isGoal = imc <= imcMeta + 0.5 && peso <= pesoDesejado + 0.5;
+
+    result.push({
+      id: a.id,
+      consulta_id: a.consulta_id || '',
+      paciente_id: a.paciente_id,
+      num: i + 1,
+      mes: MESES[mesKey] || mesKey,
+      mes_abr: MESES_ABR[mesKey] || mesKey,
+      ano,
+      data: `${dia} ${MESES_ABR[mesKey]} ${ano}`,
+      peso,
+      cintura,
+      imc,
+      gordura,
+      massa_magra: massaMagra,
+      imc_class: classifyImc(imc),
+      progresso: Math.max(progresso, 0),
+      total_perdido: Math.max(totalPerdido, 0),
+      is_goal: isGoal,
+      peso_meta: pesoDesejado,
+      imc_meta: imcMeta,
+      delta_peso: prev ? formatDelta(peso, prev.peso, 'kg') : undefined,
+      delta_cintura: prev && cintura && prev.cintura ? formatDelta(cintura, prev.cintura, 'cm') : undefined,
+      delta_gordura: prev && gordura && prev.gordura ? `${formatDelta(gordura, prev.gordura, 'pp')}` : undefined,
+      delta_magra: prev && massaMagra && prev.massa_magra ? formatDelta(massaMagra, prev.massa_magra, 'kg') : undefined,
+    });
+  }
+
+  return result;
 }
 
 export default function EvolucaoSection({ consultaId, patientId, patientName }: EvolucaoSectionProps) {
@@ -131,10 +214,22 @@ export default function EvolucaoSection({ consultaId, patientId, patientName }: 
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    // For now, use demo data. Replace with API call when backend is ready.
-    const demoData = getDemoData();
-    setData(demoData);
-    setLoading(false);
+    if (!patientId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    const supabase = getSupabase();
+    fetchAnamnesesForPatient(supabase, patientId)
+      .then(result => {
+        setData(result);
+      })
+      .catch(err => {
+        console.error('[Evolucao] Erro ao buscar anamneses:', err);
+        setData([]);
+      })
+      .finally(() => setLoading(false));
   }, [consultaId, patientId]);
 
   // Chart data

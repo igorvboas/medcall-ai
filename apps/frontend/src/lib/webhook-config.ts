@@ -66,14 +66,14 @@ export function getWebhookEndpoints(): WebhookEndpoints {
     return {
       anamnese: `${homologBase}/webhook/usi-anamnese-preenchimento-homolog`,
       edicaoAnamnese: `${homologBase}/webhook/usi-input-edicao-analise-homolog`,
-      transcricao: `${homologBase}/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog`,
+      transcricao: `${homologBase}/webhook/usi-analise-homolog`,
       edicaoDiagnostico: `${homologBase}/webhook/usi-input-edicao-diagnostico-homolog`,
       diagnosticoPrincipal: `${homologBase}/webhook/diagnostico-principal-homolog`,
       edicaoSolucao: `${homologBase}/webhook/usi-input-edicao-solucao-homolog`,
       edicaoLivroDaVida: `${prodBase}/webhook/usi-solucao-homolog`,
       triggerSolucao: `${homologBase}/webhook/usi-trigger-solucao-homolog`,
       solucaoCriacaoEntregaveis: `${homologBase}/webhook/usi-solucao-criacao-entregaveis-homolog`,
-      exames: `${homologBase}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-homolog`
+      exames: `${homologBase}/webhook/input-at-exames-usi-homolog`
     };
   }
 
