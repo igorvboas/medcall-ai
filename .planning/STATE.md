@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Consulta Presencial com Microfone Unico
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-04-01T01:28:12.637Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-04-01T01:35:20.446Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 71
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 ## Current Position
 
 Phase: 7
-Plan: 1 of 3
-Status: Executing
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-01
 
 Progress: [███████░░░] 71%
@@ -43,6 +43,7 @@ Progress: [███████░░░] 71%
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 07    | 01   | 2min     | 2     | 3     |
+| Phase 07 P03 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Progress: [███████░░░] 71%
 - [Phase 06]: Lock released in finally block to prevent permanent deadlock; COMPLETED set after all DB writes; Room preserved on DB failure with 10min safety timer
 - [Phase 07]: finalize_consultation RPC for atomic multi-table finalization (consultations + call_sessions)
 - [Phase 07]: NOT NULL constraint on transcriptions.consultation_id prevents orphan rows
+- [Phase 07]: Presencial endSession uses atomic finalizeConsultation() RPC instead of sequential writes
+- [Phase 07]: Presencial disconnect handler starts 5-min cleanup timer; reconnection cancels timer and reuses session
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T01:28:12.633Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-04-01T01:35:20.444Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
