@@ -142,7 +142,12 @@ Plans:
   2. When a WebSocket reconnects within the timeout window, the client automatically rejoins the room and transcription continues without data loss
   3. The finalization process writes to `transcriptions`, `consultations`, and `webhook_deliveries` atomically via a PostgreSQL RPC (all succeed or all roll back)
   4. The `transcriptions.consultation_id` column has a NOT NULL constraint enforced at the database level
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — SQL migrations (finalize_consultation RPC + NOT NULL constraint) and database.ts wrapper
+- [ ] 07-02-PLAN.md — Wire HTTP and WebSocket finalization to RPC, add online room disconnect/reconnect handling
+- [ ] 07-03-PLAN.md — Wire presencial finalization to RPC, add presencial disconnect/reconnect handling
 
 ### Phase 8: Frontend Protections
 **Goal**: The doctor is alerted when microphone issues occur during recording, and transcription data is not lost on accidental tab closure
@@ -168,5 +173,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 4. Integration & Compatibility | v1.0 | 0/TBD | Not started | - |
 | 5. Core Data Path | v2.0 | 0/2 | Not started | - |
 | 6. Webhook Reliability & Finalization Guards | v2.0 | 0/2 | Not started | - |
-| 7. Session Resilience & DB Integrity | v2.0 | 0/TBD | Not started | - |
+| 7. Session Resilience & DB Integrity | v2.0 | 0/3 | Not started | - |
 | 8. Frontend Protections | v2.0 | 0/TBD | Not started | - |
