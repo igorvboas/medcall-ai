@@ -145,7 +145,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — SQL migrations (finalize_consultation RPC + NOT NULL constraint) and database.ts wrapper
+- [x] 07-01-PLAN.md — SQL migrations (finalize_consultation RPC + NOT NULL constraint) and database.ts wrapper
 - [ ] 07-02-PLAN.md — Wire HTTP and WebSocket finalization to RPC, add online room disconnect/reconnect handling
 - [ ] 07-03-PLAN.md — Wire presencial finalization to RPC, add presencial disconnect/reconnect handling
 

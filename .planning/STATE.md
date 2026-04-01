@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Consulta Presencial com Microfone Unico
-status: verifying
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-04-01T00:52:41.553Z"
+status: executing
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-04-01T01:28:12.637Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 0
+  total_plans: 7
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -21,24 +21,28 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Nenhum dado de consulta medica pode ser perdido -- transcricao, gravacao e prontuario devem ser resilientes a falhas.
-**Current focus:** Phase 06 — webhook-reliability-finalization-guards
+**Current focus:** Phase 07 — session-resilience-db-integrity
 
 ## Current Position
 
 Phase: 7
-Plan: Not started
-Status: Phase complete — ready for verification
+Plan: 1 of 3
+Status: Executing
 Last activity: 2026-04-01
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 5
+- Average duration: ~2 min
+- Total execution time: ~10 min
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 07    | 01   | 2min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -58,6 +62,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 06]: Outbox pattern: record pending delivery BEFORE HTTP call, update after
 - [Phase 06]: In-memory Set for finalization mutex (sufficient for single-instance realtime-service)
 - [Phase 06]: Lock released in finally block to prevent permanent deadlock; COMPLETED set after all DB writes; Room preserved on DB failure with 10min safety timer
+- [Phase 07]: finalize_consultation RPC for atomic multi-table finalization (consultations + call_sessions)
+- [Phase 07]: NOT NULL constraint on transcriptions.consultation_id prevents orphan rows
 
 ### Pending Todos
 
@@ -71,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T00:47:37.130Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-04-01T01:28:12.633Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

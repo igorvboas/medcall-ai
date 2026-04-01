@@ -41,8 +41,8 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 ### Banco de Dados
 
-- [ ] **DBAS-01**: Transações na finalização (atomicidade multi-table writes via RPC PostgreSQL)
-- [ ] **DBAS-02**: `consultation_id` NOT NULL em tabela `transcriptions`
+- [x] **DBAS-01**: Transações na finalização (atomicidade multi-table writes via RPC PostgreSQL)
+- [x] **DBAS-02**: `consultation_id` NOT NULL em tabela `transcriptions`
 
 ## v2+ Requirements
 
@@ -93,8 +93,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-03 | Phase 8 | Pending |
 | AUDM-01 | Phase 8 | Pending |
 | AUDM-02 | Phase 8 | Pending |
-| DBAS-01 | Phase 7 | Pending |
-| DBAS-02 | Phase 7 | Pending |
+| DBAS-01 | Phase 7 | Complete |
+| DBAS-02 | Phase 7 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 19 total
