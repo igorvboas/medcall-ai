@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import './ConfirmModal.css';
 
@@ -38,7 +39,7 @@ export function ConfirmModal({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="confirm-modal-overlay" onClick={handleOverlayClick}>
       <div className="confirm-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header com botão de fechar */}
@@ -69,7 +70,7 @@ export function ConfirmModal({
           >
             {cancelText}
           </button>
-          
+
           <button
             onClick={handleConfirm}
             className={`btn-confirm-ok ${variant}`}
@@ -80,5 +81,10 @@ export function ConfirmModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }
 

@@ -203,9 +203,13 @@ export function ActiveConsultationBanner() {
     }
   };
 
-  const handleFinishConsultation = () => {
+  const handleFinishConsultation = async () => {
     if (!activeConsultation) return;
-    setShowFinishConfirm(true);
+    const patName = activeConsultation?.patients?.name || activeConsultation?.patient_name || 'paciente';
+    const confirmed = window.confirm(`Tem certeza que deseja encerrar a consulta com ${patName}?\n\nA consulta será finalizada e o processamento será iniciado.`);
+    if (confirmed) {
+      await handleConfirmFinish();
+    }
   };
 
   const handleConfirmFinish = async () => {
@@ -214,37 +218,34 @@ export function ActiveConsultationBanner() {
     try {
       setIsFinishing(true);
 
-      // Tentar finalizar remotamente (mesmo fluxo de concluir na sala: salva transcrições e dispara webhook)
-      const finalizeResponse = await gatewayClient.post(
-        `/consultations/${activeConsultation.id}/finalize-remote`
-      );
-
-      if (finalizeResponse.success) {
-        // Remover o banner
-        activeConsultationRef.current = null;
-        setActiveConsultation(null);
-        // Recarregar a página para atualizar o dashboard
-        window.location.reload();
-        return;
+      // Tentar finalizar remotamente (via realtime-service)
+      let finalized = false;
+      try {
+        const finalizeResponse = await gatewayClient.post(
+          `/consultations/${activeConsultation.id}/finalize-remote`
+        );
+        if (finalizeResponse.success) {
+          finalized = true;
+        }
+      } catch (e) {
+        console.warn('Finalize-remote falhou, usando fallback direto:', e);
       }
 
-      // Se sala não encontrada (ex.: já finalizada), marcar como finalizada
-      const statusCode = (finalizeResponse as any).status;
-      if (statusCode === 400 || statusCode === 404) {
+      // Fallback: atualizar status diretamente no banco
+      if (!finalized) {
         const response = await gatewayClient.patch(`/consultations/${activeConsultation.id}`, {
+          status: 'PROCESSING',
           consulta_finalizada: true,
           consulta_fim: new Date().toISOString(),
         });
         if (!response.success) {
-          throw new Error(response.error || 'Erro na requisição');
+          throw new Error(response.error || 'Erro ao finalizar consulta');
         }
-        activeConsultationRef.current = null;
-        setActiveConsultation(null);
-        window.location.reload();
-        return;
       }
 
-      throw new Error((finalizeResponse as any).error || 'Erro ao finalizar consulta');
+      activeConsultationRef.current = null;
+      setActiveConsultation(null);
+      window.location.reload();
     } catch (error) {
       console.error('Erro ao finalizar consulta:', error);
       showError('Erro ao finalizar consulta. Tente novamente.', 'Erro');

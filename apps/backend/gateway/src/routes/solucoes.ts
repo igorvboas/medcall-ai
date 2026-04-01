@@ -13,6 +13,7 @@ import {
   removeRefeicaoFromProtocol,
   addAlimentoToMeal,
   removeAlimentoFromMeal,
+  reorderMeals,
   getAtividadeFisica,
   updateAtividadeFisicaField,
   addExercicioToProtocol,
@@ -45,6 +46,7 @@ router.post('/alimentacao/:consultaId/add-refeicao', authenticateToken, addRefei
 router.post('/alimentacao/:consultaId/remove-refeicao', authenticateToken, removeRefeicaoFromProtocol);
 router.post('/alimentacao/:consultaId/add-alimento-to-meal', authenticateToken, addAlimentoToMeal);
 router.post('/alimentacao/:consultaId/remove-alimento-from-meal', authenticateToken, removeAlimentoFromMeal);
+router.post('/alimentacao/:consultaId/reorder-meals', authenticateToken, reorderMeals);
 
 /**
  * Atividade Física

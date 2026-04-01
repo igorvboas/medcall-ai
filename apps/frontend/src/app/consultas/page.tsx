@@ -7,7 +7,7 @@ import {
   MoreVertical, Calendar, Video, User, AlertCircle, ArrowLeft,
   Clock, Phone, FileText, Stethoscope, Mic, Download, Play,
   Save, X, Sparkles, Edit, Plus, Trash2, Pencil, ArrowRight, Search, Send,
-  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight, Copy, Loader2, ClipboardCheck
+  Dna, Brain, Apple, Pill, Dumbbell, Leaf, LogIn, Scale, Ruler, Droplet, FolderOpen, AlertTriangle, FileDown, ChevronRight, Copy, Loader2, ClipboardCheck, CheckCircle
 } from 'lucide-react';
 import Image from 'next/image';
 import { StatusBadge, mapBackendStatus } from '../../components/StatusBadge';
@@ -4850,19 +4850,19 @@ function SuplemementacaoSection({
                         const { gerarReceitaItemPdf } = await import('@/lib/receitaPdf');
                         const { data: medicoData } = await supabase
                           .from('medicos')
-                          .select('name, crm, especialidade, phone, email, endereco')
+                          .select('name, crm, specialty, phone, email, logo_url')
                           .eq('user_auth', userId || '')
                           .maybeSingle();
-                        gerarReceitaItemPdf({
+                        await gerarReceitaItemPdf({
                           item,
                           category,
                           medico: {
                             nome: medicoData?.name || '',
                             crm: medicoData?.crm || '',
-                            especialidade: medicoData?.especialidade || '',
+                            especialidade: medicoData?.specialty || '',
                             telefone: medicoData?.phone || '',
                             email: medicoData?.email || '',
-                            endereco: medicoData?.endereco || '',
+                            logo_url: medicoData?.logo_url || '',
                           },
                           paciente: { nome: patientName || '' },
                         });
@@ -5197,6 +5197,20 @@ function AlimentacaoSection({
   const [mealAlimentoLoading, setMealAlimentoLoading] = useState(false);
   const [favRefeicoes, setFavRefeicoes] = useState<any[]>([]);
   const [favAlimentos, setFavAlimentos] = useState<any[]>([]);
+  // Criar refeição/alimento inline
+  const [showCreateRefeicao, setShowCreateRefeicao] = useState(false);
+  const [createRefeicaoNome, setCreateRefeicaoNome] = useState('');
+  // Drag and drop reorder
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showCreateAlimento, setShowCreateAlimento] = useState<string | false>(false); // false or mealId
+  const [createAlimentoNome, setCreateAlimentoNome] = useState('');
+  const [createAlimentoPorcao, setCreateAlimentoPorcao] = useState('100');
+  const [createAlimentoTacoResults, setCreateAlimentoTacoResults] = useState<any[]>([]);
+  const [createAlimentoTacoLoading, setCreateAlimentoTacoLoading] = useState(false);
+  const [createAlimentoTacoBase, setCreateAlimentoTacoBase] = useState<{ calorias: number; proteinas: number; carboidratos: number; gorduras: number; fibras: number } | null>(null);
+  const [createAlimentoShowDropdown, setCreateAlimentoShowDropdown] = useState(false);
+  const [createAlimentoCategoria, setCreateAlimentoCategoria] = useState('');
 
   useEffect(() => {
     loadAlimentacaoData();
@@ -5364,6 +5378,124 @@ function AlimentacaoSection({
     } catch (err: any) {
       console.error('Erro ao adicionar alimento:', err);
       showError(err?.message || 'Erro ao adicionar alimento.');
+    }
+  };
+
+  // TACO search for inline alimento creation
+  useEffect(() => {
+    if (!showCreateAlimento || !createAlimentoShowDropdown || createAlimentoNome.length < 2) { setCreateAlimentoTacoResults([]); return; }
+    const t = setTimeout(async () => {
+      setCreateAlimentoTacoLoading(true);
+      try {
+        const res = await gatewayClient.get(`/alimentos-nutricionais?search=${encodeURIComponent(createAlimentoNome)}&limit=10`);
+        if (res.success) setCreateAlimentoTacoResults(res.alimentos || []);
+      } catch {} finally { setCreateAlimentoTacoLoading(false); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [createAlimentoNome, showCreateAlimento, createAlimentoShowDropdown]);
+
+  const handleSelectTacoInline = (item: any) => {
+    const base = {
+      calorias: item.energia_kcal ? parseFloat(item.energia_kcal) : 0,
+      proteinas: item.proteina_g ? parseFloat(item.proteina_g) : 0,
+      carboidratos: item.carboidrato_g ? parseFloat(item.carboidrato_g) : 0,
+      gorduras: item.lipideos_g ? parseFloat(item.lipideos_g) : 0,
+      fibras: item.fibra_alimentar_g ? parseFloat(item.fibra_alimentar_g) : 0,
+    };
+    setCreateAlimentoTacoBase(base);
+    setCreateAlimentoNome(item.nome);
+    setCreateAlimentoCategoria(item.categoria || '');
+    setCreateAlimentoPorcao('100');
+    setCreateAlimentoShowDropdown(false);
+    setCreateAlimentoTacoResults([]);
+  };
+
+  const getCalcAlimento = () => {
+    if (!createAlimentoTacoBase) return { calorias: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 };
+    const ratio = (parseFloat(createAlimentoPorcao) || 0) / 100;
+    return {
+      calorias: +(createAlimentoTacoBase.calorias * ratio).toFixed(1),
+      proteinas: +(createAlimentoTacoBase.proteinas * ratio).toFixed(1),
+      carboidratos: +(createAlimentoTacoBase.carboidratos * ratio).toFixed(1),
+      gorduras: +(createAlimentoTacoBase.gorduras * ratio).toFixed(1),
+      fibras: +(createAlimentoTacoBase.fibras * ratio).toFixed(1),
+    };
+  };
+
+  // Criar alimento e adicionar à refeição
+  const handleCreateAlimentoInline = async (mealId?: string, mealIndex?: number) => {
+    if (!createAlimentoNome.trim()) { showError('Nome é obrigatório'); return; }
+    try {
+      const calc = getCalcAlimento();
+      const payload = {
+        nome: createAlimentoNome,
+        categoria: createAlimentoCategoria || null,
+        porcao: createAlimentoPorcao,
+        calorias: calc.calorias || null,
+        proteinas: calc.proteinas || null,
+        carboidratos: calc.carboidratos || null,
+        gorduras: calc.gorduras || null,
+        fibras: calc.fibras || null,
+      };
+      const resp = await gatewayClient.post('/cadastro/alimentos', payload);
+      if (!resp.success) throw new Error(resp.error);
+      showSuccess('Alimento criado!');
+
+      // Se tiver mealId, adicionar à refeição
+      if (mealId && mealIndex !== undefined) {
+        await handleAddAlimentoToMeal(mealId, mealIndex, { ...payload, id: resp.data?.id });
+      }
+
+      setShowCreateAlimento(false);
+      setCreateAlimentoNome('');
+      setCreateAlimentoPorcao('100');
+      setCreateAlimentoTacoBase(null);
+      setCreateAlimentoCategoria('');
+    } catch (err: any) {
+      showError(err?.message || 'Erro ao criar alimento');
+    }
+  };
+
+  // Criar refeição vazia e adicionar ao protocolo
+  const handleCreateRefeicaoInline = async () => {
+    if (!createRefeicaoNome.trim()) { showError('Nome é obrigatório'); return; }
+    try {
+      const resp = await gatewayClient.post('/cadastro-refeicoes', { nome: createRefeicaoNome, descricao: '', tags: [] });
+      if (!resp.success) throw new Error(resp.error);
+
+      // Adicionar ao protocolo
+      await handleAddItemToProtocol({ ...resp.refeicao, _type: 'refeicao', alimentos: [] });
+      showSuccess('Refeição criada e adicionada!');
+      setShowCreateRefeicao(false);
+      setCreateRefeicaoNome('');
+      setShowAddSearch(false);
+    } catch (err: any) {
+      showError(err?.message || 'Erro ao criar refeição');
+    }
+  };
+
+  // Drag and drop reorder handler
+  const handleDrop = async (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const meals = Array.isArray(alimentacaoData) ? alimentacaoData : [];
+    const fromMeal = meals[fromIdx];
+    const toMeal = meals[toIdx];
+    if (!fromMeal?.id || !toMeal?.id) return;
+    try {
+      // Optimistic UI update
+      const newMeals = [...meals];
+      [newMeals[fromIdx], newMeals[toIdx]] = [newMeals[toIdx], newMeals[fromIdx]];
+      setAlimentacaoData(newMeals);
+
+      const resp = await gatewayClient.post(`/alimentacao/${consultaId}/reorder-meals`, {
+        fromId: fromMeal.id,
+        toId: toMeal.id
+      });
+      if (!resp.success) throw new Error(resp.error);
+      await loadAlimentacaoData();
+    } catch (err: any) {
+      showError('Erro ao reordenar');
+      await loadAlimentacaoData(); // revert
     }
   };
 
@@ -5620,6 +5752,28 @@ function AlimentacaoSection({
               {addSearchQuery.trim() && !addSearchLoading && addSearchResults.filter((r: any) => r._type === 'refeicao').length === 0 && (
                 <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', padding: '8px 0' }}>Nenhuma refeição encontrada.</p>
               )}
+              {/* Criar Nova Refeição */}
+              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '10px', marginTop: '8px' }}>
+                {showCreateRefeicao ? (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input type="text" placeholder="Nome da refeição..." value={createRefeicaoNome} onChange={e => setCreateRefeicaoNome(e.target.value)} autoFocus
+                      onKeyDown={e => { if (e.key === 'Enter') handleCreateRefeicaoInline(); }}
+                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px' }} />
+                    <button onClick={handleCreateRefeicaoInline}
+                      style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', background: '#1A3D61', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Criar</button>
+                    <button onClick={() => setShowCreateRefeicao(false)}
+                      style={{ padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowCreateRefeicao(true)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', borderRadius: '6px', border: '1px dashed #1A3D61', background: 'transparent', color: '#1A3D61', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    Criar Nova Refeição
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -5639,9 +5793,26 @@ function AlimentacaoSection({
             const hasSubstituicoes = Object.keys(substituicoes).length > 0;
 
             return (
-              <div key={meal.id || index} className="alimentacao-meal-card">
+              <div
+                key={meal.id || index}
+                className="alimentacao-meal-card"
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={e => { e.preventDefault(); setDragOverIndex(index); }}
+                onDragLeave={() => setDragOverIndex(null)}
+                onDrop={e => { e.preventDefault(); if (dragIndex !== null) handleDrop(dragIndex, index); setDragIndex(null); setDragOverIndex(null); }}
+                onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                style={{
+                  opacity: dragIndex === index ? 0.5 : 1,
+                  borderTop: dragOverIndex === index && dragIndex !== index ? '3px solid #1A3D61' : undefined,
+                  transition: 'opacity 0.2s',
+                }}
+              >
                 <div className="alimentacao-meal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: '#94A3B8', padding: '4px' }} title="Arrastar para reordenar">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+                    </div>
                     <div className="alimentacao-meal-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /><path d="M7 2v20" /><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></svg>
                     </div>
@@ -5773,6 +5944,58 @@ function AlimentacaoSection({
                             {mealAlimentoSearch.trim() && !mealAlimentoLoading && mealAlimentoResults.length === 0 && (
                               <p style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', padding: '4px 0' }}>Nenhum alimento encontrado.</p>
                             )}
+                            {/* Criar Novo Alimento */}
+                            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '6px' }}>
+                              {showCreateAlimento === meal.id ? (
+                                <div style={{ background: '#fff', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px' }}>
+                                  <div style={{ position: 'relative', marginBottom: '8px' }}>
+                                    <input type="text" placeholder="Buscar na TACO ou digitar nome..." value={createAlimentoNome}
+                                      onChange={e => { setCreateAlimentoNome(e.target.value); setCreateAlimentoShowDropdown(true); }}
+                                      onFocus={() => { if (createAlimentoNome.length >= 2) setCreateAlimentoShowDropdown(true); }}
+                                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box' }} />
+                                    {createAlimentoShowDropdown && (createAlimentoTacoResults.length > 0 || createAlimentoTacoLoading) && (
+                                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: '#fff', border: '1px solid #E2E8F0', borderRadius: '6px', maxHeight: 160, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 2 }}>
+                                        {createAlimentoTacoLoading ? (
+                                          <div style={{ padding: 8, textAlign: 'center', color: '#64748B', fontSize: 11 }}>Buscando...</div>
+                                        ) : createAlimentoTacoResults.map((item: any) => (
+                                          <div key={item.table_id} onClick={() => handleSelectTacoInline(item)}
+                                            style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9', fontSize: 11 }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                            <div style={{ fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                                            <div style={{ color: '#64748B', marginTop: 1 }}>{item.energia_kcal && `${item.energia_kcal} kcal`} {item.proteina_g && `P:${item.proteina_g}g`} {item.carboidrato_g && `C:${item.carboidrato_g}g`} <span style={{ color: '#94A3B8' }}>(100g)</span></div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {createAlimentoTacoBase && (
+                                    <div style={{ padding: '4px 8px', background: '#EBF3F6', borderRadius: 6, marginBottom: 8, fontSize: 10, color: '#1B4266' }}>
+                                      {createAlimentoCategoria && <strong>{createAlimentoCategoria} · </strong>}
+                                      TACO/100g: {createAlimentoTacoBase.calorias}kcal P:{createAlimentoTacoBase.proteinas}g C:{createAlimentoTacoBase.carboidratos}g G:{createAlimentoTacoBase.gorduras}g
+                                    </div>
+                                  )}
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
+                                    <label style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>Porção (g):</label>
+                                    <input type="number" value={createAlimentoPorcao} onChange={e => setCreateAlimentoPorcao(e.target.value)}
+                                      style={{ width: 70, padding: '6px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '12px' }} />
+                                    {createAlimentoTacoBase && (() => { const c = getCalcAlimento(); return <span style={{ fontSize: 10, color: '#64748B' }}>{c.calorias}kcal · P:{c.proteinas}g · C:{c.carboidratos}g · G:{c.gorduras}g</span>; })()}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button onClick={() => handleCreateAlimentoInline(meal.id, index)}
+                                      style={{ flex: 1, padding: '6px', borderRadius: '6px', border: 'none', background: '#166534', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Criar e Adicionar</button>
+                                    <button onClick={() => { setShowCreateAlimento(false); setCreateAlimentoNome(''); setCreateAlimentoPorcao('100'); setCreateAlimentoTacoBase(null); }}
+                                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', color: '#64748B' }}>Cancelar</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button onClick={() => { setShowCreateAlimento(meal.id); setCreateAlimentoNome(''); setCreateAlimentoPorcao('100'); setCreateAlimentoTacoBase(null); }}
+                                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '6px', borderRadius: '6px', border: '1px dashed #166534', background: 'transparent', color: '#166534', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                  Criar Novo Alimento
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -8884,14 +9107,9 @@ function ConsultasPageContent() {
     return type === 'TELEMEDICINA' ? <Video className="type-icon" /> : <User className="type-icon" />;
   };
 
-  const generateAvatar = (name: string, profilePic?: string) => {
-    const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-      '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
-    ];
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-    const colorIndex = name.length % colors.length;
+  const avatarUserIcon = <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 
+  const generateAvatar = (name: string, profilePic?: string) => {
     if (profilePic) {
       return (
         <div className="patient-avatar">
@@ -8900,15 +9118,11 @@ function ConsultasPageContent() {
             alt={name}
             className="avatar-image"
             onError={(e) => {
-              // Se a imagem falhar ao carregar, substituir por placeholder
               const target = e.target as HTMLImageElement;
               const parent = target.parentElement;
               if (parent) {
-                // Limpar completamente o conteúdo
                 parent.innerHTML = '';
-                // Aplicar todas as classes CSS necessárias
                 parent.className = 'avatar-placeholder';
-                // Aplicar estilo de fundo correto
                 parent.style.background = '#1B4266';
                 parent.style.width = '48px';
                 parent.style.height = '48px';
@@ -8916,16 +9130,11 @@ function ConsultasPageContent() {
                 parent.style.display = 'flex';
                 parent.style.alignItems = 'center';
                 parent.style.justifyContent = 'center';
-                parent.style.fontSize = '15px';
-                parent.style.fontWeight = '700';
                 parent.style.color = 'white';
                 parent.style.flexShrink = '0';
-                parent.style.position = 'relative';
                 parent.style.boxShadow = '0 4px 12px rgba(27, 66, 102, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)';
-                parent.style.transition = 'all 0.3s ease';
-                parent.style.isolation = 'isolate';
-                // Adicionar o texto
-                parent.textContent = initials;
+                // Inserir ícone SVG de bonequinho
+                parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
               }
             }}
           />
@@ -8938,7 +9147,7 @@ function ConsultasPageContent() {
         className="avatar-placeholder"
         style={{ background: '#1B4266' }}
       >
-        {initials}
+        {avatarUserIcon}
       </div>
     );
   };
@@ -9223,21 +9432,30 @@ function ConsultasPageContent() {
   if (consultaDetails) {
     console.log('✅ [RENDER] RENDERIZANDO DETALHES! Status:', consultaDetails.status);
 
-    // Bloqueio para consultas em andamento (gravando)
-    if (consultaDetails.status === 'RECORDING' || consultaDetails.status === 'CREATED') {
+    // Bloqueio para consultas em andamento (gravando) ou agendadas
+    if (consultaDetails.status === 'RECORDING' || consultaDetails.status === 'CREATED' || consultaDetails.status === 'AGENDAMENTO') {
+      const isAgendamento = consultaDetails.status === 'AGENDAMENTO';
       return (
         <div className="consultas-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div style={{ width: 80, height: 80, borderRadius: '50%', background: isAgendamento ? '#DBEAFE' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+            {isAgendamento ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            )}
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Consulta em Andamento</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>
+            {isAgendamento ? 'Consulta Agendada' : 'Consulta em Andamento'}
+          </h2>
           <p style={{ fontSize: 15, color: '#64748B', lineHeight: 1.6, maxWidth: 400, marginBottom: 24 }}>
-            Esta consulta esta sendo realizada no momento. Os detalhes estarao disponiveis apos a finalizacao da gravacao.
+            {isAgendamento
+              ? 'Esta consulta está agendada. Os detalhes estarão disponíveis após a realização da consulta.'
+              : 'Esta consulta está sendo realizada no momento. Os detalhes estarão disponíveis após a finalização da gravação.'}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: '#FEF3C7', borderRadius: 10, marginBottom: 24 }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', animation: 'pulse 1.5s infinite' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>
-              {consultaDetails.status === 'RECORDING' ? 'Gravando...' : 'Aguardando inicio...'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: isAgendamento ? '#DBEAFE' : '#FEF3C7', borderRadius: 10, marginBottom: 24 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: isAgendamento ? '#2563EB' : '#EF4444', animation: isAgendamento ? undefined : 'pulse 1.5s infinite' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: isAgendamento ? '#1E40AF' : '#92400E' }}>
+              {isAgendamento ? 'Aguardando consulta...' : consultaDetails.status === 'RECORDING' ? 'Gravando...' : 'Aguardando inicio...'}
             </span>
           </div>
           <button onClick={handleBackToList} style={{
@@ -11610,7 +11828,7 @@ function ConsultasPageContent() {
                     // Buscar dados do medico
                     const { data: medicoData } = await supabase
                       .from('medicos')
-                      .select('name, crm, especialidade, phone, email, endereco')
+                      .select('name, crm, specialty, phone, email, logo_url')
                       .eq('user_auth', user?.id)
                       .maybeSingle();
 
@@ -11618,15 +11836,15 @@ function ConsultasPageContent() {
                     const supResponse = await gatewayClient.get(`/solucao-suplementacao/${consultaDetails?.id || consultaId}`);
 
                     if (supResponse.success && supResponse.suplementacao_data) {
-                      gerarReceitaPdf({
+                      await gerarReceitaPdf({
                         suplementacaoData: supResponse.suplementacao_data,
                         medico: {
                           nome: medicoData?.name || 'Dr(a). Medico',
                           crm: medicoData?.crm || '',
-                          especialidade: medicoData?.especialidade || '',
+                          especialidade: medicoData?.specialty || '',
                           telefone: medicoData?.phone || '',
                           email: medicoData?.email || '',
-                          endereco: medicoData?.endereco || '',
+                          logo_url: medicoData?.logo_url || '',
                         },
                         paciente: {
                           nome: consultaDetails?.patient_name || '',
@@ -13034,55 +13252,32 @@ function ConsultasPageContent() {
                   <div className="table-row-divider"></div>
                   <div className="table-cell actions-cell">
                     <div className="action-buttons">
-                      {/* Botão Entrar na Consulta (apenas para agendamentos) */}
-                      {consultation.status === 'AGENDAMENTO' && (
-                        (() => {
-                          const isTelemedicina = consultation.consultation_type === 'TELEMEDICINA';
-
-                          // Verificar se a consulta já expirou (apenas para Telemedicina)
-                          let isExpired = false;
-                          if (isTelemedicina && consultation.consulta_inicio) {
-                            const consultaDate = new Date(consultation.consulta_inicio);
-                            const now = new Date();
-
-                            // Zerar horas para comparar apenas a data (considera expirado se for dia anterior)
-                            // OU se usuário quiser hora exata: "se já tiver passado a data"
-                            // Interpretação: Se o dia JÁ PASSOU. (Ontem não pode, hoje pode mesmo se atrasado).
-                            // Se fosse hora exata, seria muito rígido.
-                            // Mas "passado a data" pode significar DATA (calendar day).
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-
-                            const consultationDay = new Date(consultaDate);
-                            consultationDay.setHours(0, 0, 0, 0);
-
-                            // Se a data da consulta for MENOR que hoje (ontem ou antes), expirou.
-                            if (consultationDay < today) {
-                              isExpired = true;
+                      {/* Botão Finalizar para consultas presas em RECORDING/CREATED */}
+                      {(consultation.status === 'RECORDING' || consultation.status === 'CREATED') && (
+                        <button
+                          className="action-btn-table"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!window.confirm(`Finalizar consulta com ${consultation.patient_name}?\n\nO status será alterado para PROCESSING.`)) return;
+                            try {
+                              const resp = await gatewayClient.patch(`/consultations/${consultation.id}`, {
+                                status: 'PROCESSING',
+                                consulta_finalizada: true,
+                                consulta_fim: new Date().toISOString(),
+                              });
+                              if (resp.success) {
+                                window.location.reload();
+                              }
+                            } catch (err) {
+                              console.error('Erro ao finalizar:', err);
                             }
-                          }
-
-                          if (isExpired) {
-                            return (
-                              <span
-                                className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded"
-                                title="Data da consulta expirada"
-                              >
-                                Expirada
-                              </span>
-                            );
-                          }
-
-                          return (
-                            <button
-                              className="action-button enter-action"
-                              onClick={(e) => handleEnterConsultation(e, consultation)}
-                              title="Entrar na Consulta"
-                            >
-                              <LogIn className="w-4 h-4" />
-                            </button>
-                          );
-                        })()
+                          }}
+                          title="Finalizar consulta"
+                          style={{ color: '#EF4444', borderColor: '#FECACA' }}
+                        >
+                          <CheckCircle size={16} />
+                          <span>Finalizar</span>
+                        </button>
                       )}
                       {/* Botoes Anamnese - ocultos se já preenchida */}
                       {consultaAnamneseStatus[consultation.id] !== 'preenchida' && (

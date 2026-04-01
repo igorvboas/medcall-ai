@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { useRouter, useSearchParams } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
-import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft, ClipboardList, X, FileText } from 'lucide-react';
 import { DualMicrophoneControl } from '@/components/presencial/DualMicrophoneControl';
 import { PresencialTranscription } from '@/components/presencial/PresencialTranscription';
 import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
@@ -45,6 +45,10 @@ function PresencialConsultationContent() {
 
   const [error, setError] = useState<string | null>(null);
   const [showConfirmEndModal, setShowConfirmEndModal] = useState(false);
+  const [showQuestionarioPopup, setShowQuestionarioPopup] = useState(false);
+  const [showAnamnesePopup, setShowAnamnesePopup] = useState(false);
+  const [allAnamneses, setAllAnamneses] = useState<any[]>([]);
+  const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
   // Single-mic mode state
   const [micMode, setMicMode] = useState<'single' | 'dual'>('dual');
@@ -69,6 +73,19 @@ function PresencialConsultationContent() {
     doctorMicrophoneId,
     patientMicrophoneId
   });
+
+  // Buscar anamneses do paciente via consultationId
+  useEffect(() => {
+    if (!consultationId) return;
+    (async () => {
+      try {
+        const { data: consulta } = await supabase.from('consultations').select('patient_id').eq('id', consultationId).maybeSingle();
+        if (!consulta?.patient_id) return;
+        const { data: anamneses } = await supabase.from('a_cadastro_anamnese').select('*').eq('paciente_id', consulta.patient_id).order('created_at', { ascending: false });
+        if (anamneses && anamneses.length > 0) setAllAnamneses(anamneses);
+      } catch (e) { console.error('Erro ao buscar anamneses:', e); }
+    })();
+  }, [consultationId]);
 
   const singleCapture = usePresencialSingleMicCapture({
     socket: micMode === 'single' ? socket : null,
@@ -667,6 +684,24 @@ function PresencialConsultationContent() {
               />
             )}
 
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button
+                onClick={() => { setSelectedAnamneseIndex(0); setShowAnamnesePopup(true); }}
+                disabled={allAnamneses.length === 0}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 9, border: 'none', background: allAnamneses.length > 0 ? '#1B4266' : '#CBD5E1', color: '#fff', fontSize: 14, fontWeight: 600, cursor: allAnamneses.length > 0 ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+              >
+                <FileText size={16} />
+                Ver Anamnese
+              </button>
+              <button
+                onClick={() => setShowQuestionarioPopup(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 9, border: 'none', background: '#0F172A', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <ClipboardList size={16} />
+                Questionário
+              </button>
+            </div>
+
             <div className="finish-button">
               <button
                 onClick={() => setShowConfirmEndModal(true)}
@@ -760,6 +795,111 @@ function PresencialConsultationContent() {
         cancelText="Cancelar"
         variant="danger"
       />
+
+      {/* Popup Anamnese */}
+      {showAnamnesePopup && allAnamneses.length > 0 && (
+        <div onClick={() => setShowAnamnesePopup(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={18} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Histórico de Anamneses</h3>
+              </div>
+              <button onClick={() => setShowAnamnesePopup(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div style={{ width: 160, borderRight: '1px solid #E2E8F0', overflowY: 'auto', background: '#FAFBFC', padding: '8px 0' }}>
+                {allAnamneses.map((a, idx) => (
+                  <button key={idx} onClick={() => setSelectedAnamneseIndex(idx)}
+                    style={{ width: '100%', padding: '10px 14px', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', background: selectedAnamneseIndex === idx ? '#EBF3F6' : 'transparent', borderLeft: selectedAnamneseIndex === idx ? '3px solid #1B4266' : '3px solid transparent' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: selectedAnamneseIndex === idx ? '#1B4266' : '#64748B' }}>
+                      {a.created_at ? new Date(a.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : `Anamnese ${idx + 1}`}
+                    </div>
+                    {idx === 0 && <div style={{ fontSize: 10, color: '#1B4266', fontWeight: 700, marginTop: 2 }}>Mais recente</div>}
+                  </button>
+                ))}
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                {(() => {
+                  const a = allAnamneses[selectedAnamneseIndex];
+                  if (!a) return null;
+                  const sections = [
+                    { title: 'Dados Pessoais', fields: [{ label: 'Nome', value: a.nome_completo }, { label: 'Email', value: a.email }, { label: 'Telefone', value: a.telefone }, { label: 'Data Nasc.', value: a.data_nascimento }, { label: 'Gênero', value: a.genero }, { label: 'Profissão', value: a.profissao }] },
+                    { title: 'Medidas', fields: [{ label: 'Peso Atual', value: a.peso_atual }, { label: 'Altura', value: a.altura }, { label: 'Peso Desejado', value: a.peso_desejado }] },
+                    { title: 'Sono, Água e Jejum', fields: [{ label: 'Sono', value: a.avaliacao_sono }, { label: 'Água', value: a.consumo_agua }, { label: 'Urina', value: a.cor_urina }, { label: 'Jejum', value: a.pratica_jejum }] },
+                    { title: 'Objetivo e Atividade', fields: [{ label: 'Objetivo', value: a.objetivo_principal }, { label: 'Atividade', value: a.patrica_atividade_fisica }, { label: 'Frequência', value: a.frequencia_deseja_treinar }] },
+                    { title: 'Saúde', fields: [{ label: 'Medicamentos', value: a.toma_medicamentos }, { label: 'Detalhes', value: a.medicamentos_detalhes }, { label: 'Condições', value: Array.isArray(a.condicoes) ? a.condicoes.join(', ') : a.condicoes }] },
+                  ];
+                  return sections.map(s => {
+                    const vf = s.fields.filter(f => f.value);
+                    if (!vf.length) return null;
+                    return (<div key={s.title} style={{ marginBottom: 20 }}><h4 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 10 }}>{s.title}</h4><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>{vf.map(f => (<div key={f.label} style={{ padding: '6px 0' }}><div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>{f.label}</div><div style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{String(f.value)}</div></div>))}</div></div>);
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Questionário */}
+      {showQuestionarioPopup && (
+        <div onClick={() => setShowQuestionarioPopup(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ClipboardList size={18} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Roteiro de Condução Clínica</h3>
+              </div>
+              <button onClick={() => setShowQuestionarioPopup(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, textAlign: 'center', fontStyle: 'italic' }}>Roteiro com o objetivo de encontrar a CAUSA RAIZ</p>
+              {[
+                { mod: '1', title: 'Abertura do Campo', obj: 'Estabilizar o campo emocional e identificar a queixa principal de entrada', questions: ['1. O que hoje mais te incomoda na sua vida ou na sua saúde?', '2. O que você gostaria de melhorar neste momento?', '3. Se pudesse resolver apenas uma coisa agora, qual seria?'] },
+                { mod: '2', title: 'Leitura da Queixa', obj: 'Mapear palavras-chave, linguagem emocional, padrão de ameaça e início da suspeita de Reino', questions: ['4. Desde quando isso começou?', '5. O que estava acontecendo na sua vida nessa época?', '6. Isso surgiu de forma súbita ou foi aos poucos? □ Súbita □ Aos poucos □ Não sabe', '7. O que isso te impede de fazer hoje?', '8. Em quais momentos piora?', '9. Em quais momentos melhora?', '10. Se esse sintoma pudesse falar, o que ele diria?'] },
+                { mod: '3', title: 'Sensação Corporal (Reino)', obj: 'Classificar o padrão sensorial em Vegetal, Mineral ou Animal', questions: ['11. Qual é a sensação exata no corpo?', '12. É pressão, aperto, peso, queimação, bloqueio, invasão ou fragilidade? □ Pressão □ Aperto □ Peso □ Queimação □ Bloqueio □ Invasão □ Fragilidade □ Outro', '13. Onde exatamente você sente isso?', '14. Essa sensação se move ou fica fixa? □ Move □ Fixa □ Varia', '15. Isso te lembra algo da sua vida?'] },
+                { mod: '4', title: 'Emoção de Sobrevivência (Eixo HPA)', obj: 'Identificar o medo dominante, padrão de defesa e ativação simpática ou colapso', questions: ['16. O que você mais teme perder hoje?', '17. O que mais te gera medo?', '18. O que mais te gera raiva?', '19. Você se sente ameaçado, pressionado, abandonado ou desvalorizado? □ Ameaçado □ Pressionado □ Abandonado □ Desvalorizado', '20. Você sente que precisa se defender da vida? □ Sim □ Não □ Às vezes'] },
+                { mod: '5', title: 'Projeto de Vida (IKIGAI)', obj: 'Avaliar presença ou ausência de propósito, bloqueio existencial e coerência de vida', questions: ['21. Qual é seu projeto de vida hoje?', '22. Como você se imagina daqui a 5 anos?', '23. O que te dá sentido para viver?', '24. O que você gostaria de estar vivendo e não consegue?'] },
+                { mod: '6', title: 'História de Vida (Mapa do Miasma)', obj: 'Detectar padrões repetitivos, traumas não resolvidos e origem do conflito', questions: ['25. Como foi sua infância?', '26. Como eram seus pais com você?', '27. Houve perdas importantes? □ Sim □ Não', '28. Houve mudanças bruscas na sua vida? □ Sim □ Não', '29. Existe algo que se repete na sua vida e você não entende por quê?'] },
+                { mod: '7', title: 'Histórico Gestacional', obj: 'Correlacionar ansiedade precoce, eixo HPA, microbiota e comportamento desde a gestação', questions: ['30. A gestação foi planejada ou surpresa? □ Planejada □ Surpresa □ Não sabe', '31. Como sua mãe se sentia durante a gravidez?', '32. Houve medo, rejeição ou estresse? □ Sim □ Não □ Não sabe', '33. Houve intercorrências na gestação ou parto? □ Sim □ Não □ Não sabe'] },
+                { mod: '8', title: 'Setênios (Localização do Trauma)', obj: 'Identificar o ponto de ruptura e início do padrão em cada fase da vida', questions: ['34. Entre 0 e 7 anos, algo marcou sua vida?', '35. Entre 7 e 14 anos?', '36. Entre 14 e 21 anos?', '37. Em qual fase você sente que algo mudou dentro de você?'] },
+                { mod: '9', title: 'Eixos Fisiológicos', obj: 'Avaliar padrões de sono, intestino e metabolismo', questions: ['— Sono —', '38. Você dorme bem? □ Sim □ Não □ Regularmente', '39. Acorda cansado(a)? □ Sim □ Não □ Às vezes', '40. Acorda durante a noite? □ Sim □ Não □ Às vezes', '— Intestino —', '41. Como é seu intestino?', '42. Tem gases, distensão ou constipação? □ Gases □ Distensão □ Constipação □ Nenhum', '— Metabolismo —', '43. Tem ganho de peso? □ Sim □ Não □ Estável', '44. Tem desejo por doces? □ Sim □ Não □ Às vezes', '45. Já teve alteração de glicose? □ Sim □ Não □ Não sabe'] },
+                { mod: '10', title: 'Hábitos e Estilo de Vida', obj: 'Mapear fatores externos que impactam o processo saúde-doença', questions: ['46. Como é sua alimentação?', '47. Você pratica atividade física? □ Sim □ Não □ Às vezes', '48. Como é sua rotina de trabalho?', '49. Você tem momentos de descanso? □ Sim □ Não □ Raramente'] },
+                { mod: '11', title: 'Fechamento do Campo', obj: 'Integrar a percepção do paciente e alinhar expectativas terapêuticas', questions: ['50. O que você acredita que seu corpo está tentando te mostrar?', '51. O que você espera desse tratamento?'] },
+              ].map(m => (
+                <div key={m.mod} style={{ marginBottom: 28 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo {m.mod} — {m.title}</div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: {m.obj}</p>
+                  <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                    {m.questions.map((q, i) => {
+                      if (q.startsWith('—')) return <div key={i} style={{ fontWeight: 600, color: '#1B4266', marginTop: 8 }}>{q.replace(/—/g, '').trim()}</div>;
+                      const parts = q.split('□');
+                      return <div key={i}>{parts[0]}{parts.length > 1 && <span style={{ color: '#94A3B8' }}>{parts.slice(1).map((p, j) => `□${p}`).join('')}</span>}</div>;
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div style={{ marginBottom: 16, padding: 16, background: '#F8FAFC', borderRadius: 10, border: '1.5px solid #E2E8F0' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Processamento — Análise AUTON</div>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2.2 }}>
+                  <div><strong>Reino predominante:</strong> _______________</div>
+                  <div><strong>Miasma ativo:</strong> _______________</div>
+                  <div><strong>Eixos comprometidos:</strong> _______________</div>
+                  <div><strong>Prioridade terapêutica:</strong> _______________</div>
+                  <div style={{ marginTop: 10 }}><strong>Sequência terapêutica sugerida:</strong></div>
+                  <div style={{ color: '#64748B' }}>□ 1. Sistema nervoso □ 2. Intestino □ 3. Inflamação □ 4. Hormonal □ 5. Emocional □ 6. Propósito</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', fontStyle: 'italic', marginTop: 20 }}>"Não escute apenas o que o paciente diz. Escute o que o corpo dele está tentando resolver." — AUTON USI</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Overlay de finalizacao */}
       {isFinalizingAudio && (

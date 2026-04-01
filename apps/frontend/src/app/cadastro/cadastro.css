@@ -628,7 +628,7 @@
 
 .cadastro-btn-cancel {
   flex: 1;
-  padding: 10px;
+  padding: 10px 16px;
   border: 1.5px solid #E2E8F0;
   border-radius: 10px;
   background: transparent;
@@ -638,6 +638,9 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
+  white-space: nowrap;
+  text-align: center;
+  justify-content: center;
 }
 
 .cadastro-btn-cancel:hover {
@@ -648,8 +651,9 @@
 .cadastro-btn-save {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  flex: 2;
+  flex: 1;
   padding: 10px 16px;
   border: none;
   border-radius: 10px;

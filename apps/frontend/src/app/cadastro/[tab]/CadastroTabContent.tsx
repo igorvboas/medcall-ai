@@ -283,6 +283,11 @@ export default function CadastroTabContent() {
   const [editingAlimentoItem, setEditingAlimentoItem] = useState<Alimento | null>(null);
   const [alimentoTabFormData, setAlimentoTabFormData] = useState({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] as string[] });
   const [alimentoTabTagInput, setAlimentoTabTagInput] = useState('');
+  // TACO search for alimento modal
+  const [tacoSearchResults, setTacoSearchResults] = useState<AlimentoNutricional[]>([]);
+  const [tacoSearchLoading, setTacoSearchLoading] = useState(false);
+  const [showTacoDropdown, setShowTacoDropdown] = useState(false);
+  const [tacoBase, setTacoBase] = useState<{ calorias: number; proteinas: number; carboidratos: number; gorduras: number; fibras: number } | null>(null);
   const { showSuccess, showError } = useNotifications();
   const { user } = useAuth();
 
@@ -924,6 +929,69 @@ export default function CadastroTabContent() {
       fetchAlimentosTab('');
     }
   }, [activeTab, showFavoritesOnly]);
+
+  // TACO search for alimento modal
+  const searchTacoAlimentos = async (searchVal: string) => {
+    if (!searchVal.trim() || searchVal.length < 2) { setTacoSearchResults([]); return; }
+    try {
+      setTacoSearchLoading(true);
+      const res = await gatewayClient.get<{ alimentos: AlimentoNutricional[] }>(`/alimentos-nutricionais?${new URLSearchParams({ search: searchVal, limit: '10' })}`);
+      if (res.success) setTacoSearchResults(res.alimentos || []);
+    } catch (err) {
+      console.error('Erro busca TACO:', err);
+    } finally {
+      setTacoSearchLoading(false);
+    }
+  };
+
+  // Debounce TACO search
+  useEffect(() => {
+    if (!showAlimentoModal || !showTacoDropdown) return;
+    const timeoutId = setTimeout(() => { searchTacoAlimentos(alimentoTabFormData.nome); }, 400);
+    return () => clearTimeout(timeoutId);
+  }, [alimentoTabFormData.nome, showAlimentoModal, showTacoDropdown]);
+
+  // Select TACO item - fill base values per 100g
+  const handleSelectTaco = (item: AlimentoNutricional) => {
+    const base = {
+      calorias: item.energia_kcal ? parseFloat(item.energia_kcal) : 0,
+      proteinas: item.proteina_g ? parseFloat(item.proteina_g) : 0,
+      carboidratos: item.carboidrato_g ? parseFloat(item.carboidrato_g) : 0,
+      gorduras: item.lipideos_g ? parseFloat(item.lipideos_g) : 0,
+      fibras: item.fibra_alimentar_g ? parseFloat(item.fibra_alimentar_g) : 0,
+    };
+    setTacoBase(base);
+    setAlimentoTabFormData(p => ({
+      ...p,
+      nome: item.nome,
+      categoria: item.categoria || p.categoria,
+      porcao: '100',
+      calorias: base.calorias.toFixed(1),
+      proteinas: base.proteinas.toFixed(1),
+      carboidratos: base.carboidratos.toFixed(1),
+      gorduras: base.gorduras.toFixed(1),
+      fibras: base.fibras.toFixed(1),
+    }));
+    setShowTacoDropdown(false);
+    setTacoSearchResults([]);
+  };
+
+  // Recalculate macros when portion changes (if TACO base is set)
+  const handlePorcaoChange = (gramsStr: string) => {
+    setAlimentoTabFormData(p => {
+      const updated = { ...p, porcao: gramsStr };
+      if (tacoBase) {
+        const grams = parseFloat(gramsStr) || 0;
+        const ratio = grams / 100;
+        updated.calorias = (tacoBase.calorias * ratio).toFixed(1);
+        updated.proteinas = (tacoBase.proteinas * ratio).toFixed(1);
+        updated.carboidratos = (tacoBase.carboidratos * ratio).toFixed(1);
+        updated.gorduras = (tacoBase.gorduras * ratio).toFixed(1);
+        updated.fibras = (tacoBase.fibras * ratio).toFixed(1);
+      }
+      return updated;
+    });
+  };
 
   // Debounce busca alimentos tab
   useEffect(() => {
@@ -1945,58 +2013,6 @@ export default function CadastroTabContent() {
                         value={refeicaoFormData.descricao} onChange={e => setRefeicaoFormData(p => ({ ...p, descricao: e.target.value }))} />
                     </div>
 
-                    {/* Tags */}
-                    <div className="cadastro-form-group">
-                      <label className="cadastro-form-label">Tags</label>
-                      {refeicaoFormData.tags.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                          {refeicaoFormData.tags.map((tag, i) => (
-                            <span key={i} style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '4px',
-                              padding: '4px 10px', borderRadius: '20px', fontSize: '12px',
-                              fontWeight: 500, background: '#EFF6FF', color: '#1A3D61',
-                              border: '1px solid #BFDBFE',
-                            }}>
-                              {tag}
-                              <button type="button" onClick={() => setRefeicaoFormData(p => ({ ...p, tags: p.tags.filter((_, idx) => idx !== i) }))}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', display: 'flex', color: '#64748B' }}>
-                                <X size={12} />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <input className="cadastro-form-input" placeholder="Ex: Alta proteina, Low carb"
-                          value={tagInput}
-                          onChange={e => setTagInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && tagInput.trim()) {
-                              e.preventDefault();
-                              if (!refeicaoFormData.tags.includes(tagInput.trim())) {
-                                setRefeicaoFormData(p => ({ ...p, tags: [...p.tags, tagInput.trim()] }));
-                              }
-                              setTagInput('');
-                            }
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <button type="button" onClick={() => {
-                          if (tagInput.trim() && !refeicaoFormData.tags.includes(tagInput.trim())) {
-                            setRefeicaoFormData(p => ({ ...p, tags: [...p.tags, tagInput.trim()] }));
-                            setTagInput('');
-                          }
-                        }}
-                          style={{
-                            padding: '6px 14px', borderRadius: '8px', border: '1px solid #CBD5E1',
-                            background: '#F8FAFC', cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-                            color: '#1A3D61', fontFamily: 'inherit',
-                          }}
-                        >
-                          Adicionar
-                        </button>
-                      </div>
-                    </div>
 
                     {/* Alimentos associados (somente no edit) */}
                     {editingRefeicao && (
@@ -2932,7 +2948,7 @@ export default function CadastroTabContent() {
                 <h2 className="cadastro-section-title">Alimentos</h2>
                 <p className="cadastro-section-subtitle">Cadastre alimentos individuais para montar refeicoes</p>
               </div>
-              <button className="cadastro-btn-add" onClick={() => { setAlimentoTabFormData({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] }); setEditingAlimentoItem(null); setShowAlimentoModal(true); }}>
+              <button className="cadastro-btn-add" onClick={() => { setAlimentoTabFormData({ nome: '', categoria: '', descricao: '', porcao: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', tags: [] }); setEditingAlimentoItem(null); setTacoBase(null); setShowTacoDropdown(false); setShowAlimentoModal(true); }}>
                 <Plus size={18} /> Novo Alimento
               </button>
             </div>
@@ -2968,7 +2984,7 @@ export default function CadastroTabContent() {
                         <button className={`cadastro-card-btn ${a.favorito ? 'favorite' : ''}`} onClick={() => handleToggleFavoritoAlimento(a.id)} title={a.favorito ? 'Remover favorito' : 'Favoritar'}>
                           <Star size={16} fill={a.favorito ? 'currentColor' : 'none'} />
                         </button>
-                        <button className="cadastro-card-btn" onClick={() => { setEditingAlimentoItem(a); setAlimentoTabFormData({ nome: a.nome, categoria: a.categoria || '', descricao: a.descricao || '', porcao: a.porcao || '', calorias: a.calorias?.toString() || '', proteinas: a.proteinas?.toString() || '', carboidratos: a.carboidratos?.toString() || '', gorduras: a.gorduras?.toString() || '', fibras: a.fibras?.toString() || '', tags: a.tags || [] }); setShowAlimentoModal(true); }} title="Editar"><Pencil size={16} /></button>
+                        <button className="cadastro-card-btn" onClick={() => { setEditingAlimentoItem(a); setTacoBase(null); setAlimentoTabFormData({ nome: a.nome, categoria: a.categoria || '', descricao: a.descricao || '', porcao: a.porcao || '', calorias: a.calorias?.toString() || '', proteinas: a.proteinas?.toString() || '', carboidratos: a.carboidratos?.toString() || '', gorduras: a.gorduras?.toString() || '', fibras: a.fibras?.toString() || '', tags: a.tags || [] }); setShowAlimentoModal(true); }} title="Editar"><Pencil size={16} /></button>
                         <button className="cadastro-card-btn" onClick={() => handleDeleteAlimentoTab(a.id)} title="Excluir"><Trash2 size={16} /></button>
                       </div>
                     </div>
@@ -2999,50 +3015,92 @@ export default function CadastroTabContent() {
                     <button className="cadastro-modal-close" onClick={() => { setShowAlimentoModal(false); setEditingAlimentoItem(null); }}><X size={18} /></button>
                   </div>
                   <div className="cadastro-modal-body">
-                    <div className="cadastro-form-group">
-                      <label className="cadastro-form-label">Nome *</label>
-                      <input className="cadastro-form-input" placeholder="Ex: Peito de frango grelhado" value={alimentoTabFormData.nome} onChange={e => setAlimentoTabFormData(p => ({ ...p, nome: e.target.value }))} />
+                    <div className="cadastro-form-group" style={{ position: 'relative' }}>
+                      <label className="cadastro-form-label">Nome * {!editingAlimentoItem && <span style={{ fontSize: 11, color: '#64748B', fontWeight: 400 }}>(busca na tabela TACO)</span>}</label>
+                      <input
+                        className="cadastro-form-input"
+                        placeholder="Digite para buscar alimento..."
+                        value={alimentoTabFormData.nome}
+                        onChange={e => { setAlimentoTabFormData(p => ({ ...p, nome: e.target.value })); if (!editingAlimentoItem) setShowTacoDropdown(true); }}
+                        onFocus={() => { if (!editingAlimentoItem && alimentoTabFormData.nome.length >= 2) setShowTacoDropdown(true); }}
+                      />
+                      {showTacoDropdown && !editingAlimentoItem && (tacoSearchResults.length > 0 || tacoSearchLoading) && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 8, maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', marginTop: 4 }}>
+                          {tacoSearchLoading ? (
+                            <div style={{ padding: 12, textAlign: 'center', color: '#64748B', fontSize: 13 }}>Buscando...</div>
+                          ) : tacoSearchResults.map(item => (
+                            <div
+                              key={item.table_id}
+                              onClick={() => handleSelectTaco(item)}
+                              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{item.nome}</div>
+                              <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                {item.energia_kcal && `${item.energia_kcal} kcal`} {item.proteina_g && `· P: ${item.proteina_g}g`} {item.carboidrato_g && `· C: ${item.carboidrato_g}g`} {item.lipideos_g && `· G: ${item.lipideos_g}g`}
+                                <span style={{ marginLeft: 6, color: '#94A3B8' }}>(por 100g)</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    {tacoBase && (
+                      <div style={{ padding: '8px 12px', background: '#EBF3F6', borderRadius: 8, marginBottom: 12, fontSize: 12, color: '#1B4266', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Valores TACO por 100g: {tacoBase.calorias} kcal · P: {tacoBase.proteinas}g · C: {tacoBase.carboidratos}g · G: {tacoBase.gorduras}g · F: {tacoBase.fibras}g
+                      </div>
+                    )}
                     <div className="cadastro-form-row">
                       <div className="cadastro-form-group">
                         <label className="cadastro-form-label">Categoria</label>
                         <select className="cadastro-form-select" value={alimentoTabFormData.categoria} onChange={e => setAlimentoTabFormData(p => ({ ...p, categoria: e.target.value }))}>
                           <option value="">Selecione</option>
-                          {['Proteinas', 'Carboidratos', 'Vegetais', 'Leguminosas', 'Gorduras', 'Frutas', 'Laticinios'].map(c => <option key={c} value={c}>{c}</option>)}
+                          {(() => {
+                            const cats = ['Cereais e derivados', 'Verduras, hortaliças e derivados', 'Frutas e derivados', 'Gorduras e óleos', 'Pescados e frutos do mar', 'Carnes e derivados', 'Leite e derivados', 'Bebidas', 'Ovos e derivados', 'Produtos açucarados', 'Miscelâneas', 'Outros alimentos industrializados', 'Alimentos preparados', 'Leguminosas e derivados', 'Nozes e sementes', 'Tubérculos, raízes e derivados', 'Suplementos'];
+                            if (alimentoTabFormData.categoria && !cats.includes(alimentoTabFormData.categoria)) {
+                              cats.unshift(alimentoTabFormData.categoria);
+                            }
+                            return cats.map(c => <option key={c} value={c}>{c}</option>);
+                          })()}
                         </select>
                       </div>
                       <div className="cadastro-form-group">
-                        <label className="cadastro-form-label">Porcao</label>
-                        <input className="cadastro-form-input" placeholder="Ex: 150g" value={alimentoTabFormData.porcao} onChange={e => setAlimentoTabFormData(p => ({ ...p, porcao: e.target.value }))} />
+                        <label className="cadastro-form-label">Porcao (g) *</label>
+                        <input
+                          type="number"
+                          className="cadastro-form-input"
+                          placeholder="Ex: 150"
+                          value={alimentoTabFormData.porcao}
+                          onChange={e => handlePorcaoChange(e.target.value)}
+                          style={tacoBase ? { borderColor: '#1B4266', fontWeight: 600 } : {}}
+                        />
                       </div>
                     </div>
                     <div className="cadastro-form-row">
                       <div className="cadastro-form-group">
                         <label className="cadastro-form-label">Calorias (kcal)</label>
-                        <input type="number" className="cadastro-form-input" placeholder="248" value={alimentoTabFormData.calorias} onChange={e => setAlimentoTabFormData(p => ({ ...p, calorias: e.target.value }))} />
+                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.calorias} onChange={e => setAlimentoTabFormData(p => ({ ...p, calorias: e.target.value }))} readOnly={!!tacoBase} style={tacoBase ? { background: '#F8FAFC', color: '#64748B' } : {}} />
                       </div>
                       <div className="cadastro-form-group">
                         <label className="cadastro-form-label">Proteinas (g)</label>
-                        <input type="number" className="cadastro-form-input" placeholder="46.5" value={alimentoTabFormData.proteinas} onChange={e => setAlimentoTabFormData(p => ({ ...p, proteinas: e.target.value }))} />
+                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.proteinas} onChange={e => setAlimentoTabFormData(p => ({ ...p, proteinas: e.target.value }))} readOnly={!!tacoBase} style={tacoBase ? { background: '#F8FAFC', color: '#64748B' } : {}} />
                       </div>
                     </div>
                     <div className="cadastro-form-row">
                       <div className="cadastro-form-group">
                         <label className="cadastro-form-label">Carboidratos (g)</label>
-                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.carboidratos} onChange={e => setAlimentoTabFormData(p => ({ ...p, carboidratos: e.target.value }))} />
+                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.carboidratos} onChange={e => setAlimentoTabFormData(p => ({ ...p, carboidratos: e.target.value }))} readOnly={!!tacoBase} style={tacoBase ? { background: '#F8FAFC', color: '#64748B' } : {}} />
                       </div>
                       <div className="cadastro-form-group">
                         <label className="cadastro-form-label">Gorduras (g)</label>
-                        <input type="number" className="cadastro-form-input" placeholder="5.4" value={alimentoTabFormData.gorduras} onChange={e => setAlimentoTabFormData(p => ({ ...p, gorduras: e.target.value }))} />
+                        <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.gorduras} onChange={e => setAlimentoTabFormData(p => ({ ...p, gorduras: e.target.value }))} readOnly={!!tacoBase} style={tacoBase ? { background: '#F8FAFC', color: '#64748B' } : {}} />
                       </div>
                     </div>
                     <div className="cadastro-form-group">
                       <label className="cadastro-form-label">Fibras (g)</label>
-                      <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.fibras} onChange={e => setAlimentoTabFormData(p => ({ ...p, fibras: e.target.value }))} />
-                    </div>
-                    <div className="cadastro-form-group">
-                      <label className="cadastro-form-label">Descricao</label>
-                      <textarea className="cadastro-form-input" placeholder="Descricao do alimento" rows={2} value={alimentoTabFormData.descricao} onChange={e => setAlimentoTabFormData(p => ({ ...p, descricao: e.target.value }))} style={{ resize: 'vertical' }} />
+                      <input type="number" className="cadastro-form-input" placeholder="0" value={alimentoTabFormData.fibras} onChange={e => setAlimentoTabFormData(p => ({ ...p, fibras: e.target.value }))} readOnly={!!tacoBase} style={tacoBase ? { background: '#F8FAFC', color: '#64748B' } : {}} />
                     </div>
                   </div>
                   <div className="cadastro-modal-footer">
