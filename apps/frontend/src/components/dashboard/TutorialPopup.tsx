@@ -162,6 +162,7 @@ export function TutorialPopup({
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPos, setTooltipPos] = useState<TooltipPos | null>(null);
+  const [dbChecked, setDbChecked] = useState(false);
   const blockingRef = useRef(false);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -241,12 +242,20 @@ export function TutorialPopup({
   );
 
   // --- Complete tutorial ---
-  const completeTutorial = useCallback(() => {
+  const completeTutorial = useCallback(async () => {
     unblockScroll();
     expandSidebar(false);
     markPageDone(pageKey);
     if (checkAllPagesDone()) {
       setTutorialActive(false);
+      // Salvar no banco que tutorial foi concluído
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('medicos').update({ tutorial_concluido: true }).eq('user_auth', user.id);
+        }
+      } catch (e) { console.error('Erro ao salvar tutorial no banco:', e); }
     }
     setPhase('hidden');
   }, [pageKey, unblockScroll, expandSidebar]);
@@ -329,16 +338,37 @@ export function TutorialPopup({
     }
   }, [pageKey, showWelcome, startTour]);
 
-  // --- Mount logic: tutorial only on first access ---
+  // --- Mount logic: tutorial only on first access (check DB first) ---
   useEffect(() => {
-    if (!isPageDone(pageKey)) {
+    (async () => {
+      // Se localStorage já marca como feito, não mostrar
+      if (isPageDone(pageKey)) { setDbChecked(true); return; }
+
+      // Verificar no banco se tutorial já foi concluído
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: medico } = await supabase.from('medicos').select('tutorial_concluido').eq('user_auth', user.id).maybeSingle();
+          if (medico?.tutorial_concluido) {
+            // Tutorial já concluído no banco - marcar localStorage e não mostrar
+            ALL_PAGE_KEYS.forEach(k => markPageDone(k));
+            setTutorialActive(false);
+            setDbChecked(true);
+            return;
+          }
+        }
+      } catch (e) { console.error('Erro ao verificar tutorial no banco:', e); }
+
+      setDbChecked(true);
+      // Tutorial não concluído - mostrar
       if (showWelcome && !isTutorialActive()) {
         setPhase('welcome');
       } else {
         setTutorialActive(true);
         startTour();
       }
-    }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

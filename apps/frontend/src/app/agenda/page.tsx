@@ -1202,8 +1202,8 @@ export default function AgendaPage() {
                   <div style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: 10, border: '1.5px solid #E2E8F0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1B4266', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>
-                          {selectedPatientData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1B4266', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>{selectedPatientData.name}</div>
@@ -1245,8 +1245,8 @@ export default function AgendaPage() {
                             onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
-                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EBF3F6', color: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                              {p.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             </div>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{p.name}</div>

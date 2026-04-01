@@ -577,7 +577,7 @@ export async function addRefeicaoToProtocol(req: AuthenticatedRequest, res: Resp
     if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
 
     const { consultaId } = req.params;
-    const { refeicaoData, nome } = req.body;
+    const { refeicaoData, nome, targetSlot: requestedSlot } = req.body;
 
     // Buscar consulta para pegar paciente
     const { data: consulta } = await supabase
@@ -589,13 +589,20 @@ export async function addRefeicaoToProtocol(req: AuthenticatedRequest, res: Resp
       .from('s_refeicao').select('*').eq('paciente', consulta.patient_id)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-    // Encontrar proximo slot disponivel (ref_1 a ref_4)
+    // Encontrar proximo slot disponivel (ref_1 a ref_10)
     const slots = ['ref_1', 'ref_2', 'ref_3', 'ref_4', 'ref_5', 'ref_6', 'ref_7', 'ref_8', 'ref_9', 'ref_10'];
     let targetSlot: string | null = null;
 
+    // Se requestedSlot foi fornecido (usado para reordenação), usar ele diretamente
+    if (requestedSlot && slots.includes(requestedSlot)) {
+      targetSlot = requestedSlot;
+    }
+
     if (existing) {
-      for (const slot of slots) {
-        if (!existing[slot]) { targetSlot = slot; break; }
+      if (!targetSlot) {
+        for (const slot of slots) {
+          if (!existing[slot]) { targetSlot = slot; break; }
+        }
       }
       if (!targetSlot) {
         return res.status(400).json({ success: false, error: 'Limite de 10 refeições atingido. Exclua uma antes de adicionar.' });
@@ -604,7 +611,7 @@ export async function addRefeicaoToProtocol(req: AuthenticatedRequest, res: Resp
         .from('s_refeicao').update({ [targetSlot]: refeicaoData }).eq('id', existing.id);
       if (error) throw error;
     } else {
-      targetSlot = 'ref_1';
+      targetSlot = targetSlot || 'ref_1';
       const { error } = await supabase
         .from('s_refeicao').insert({ paciente: consulta.patient_id, [targetSlot]: refeicaoData });
       if (error) throw error;
@@ -807,6 +814,62 @@ export async function updateAlimentacaoField(req: AuthenticatedRequest, res: Res
   } catch (error) {
     console.error('Erro ao atualizar alimentação:', error);
     return res.status(500).json({ success: false, error: 'Erro ao atualizar' });
+  }
+}
+
+/**
+ * POST /alimentacao/:consultaId/reorder-meals
+ * Reordena refeições trocando os slots ref_X
+ * Body: { fromId: 'ref_1', toId: 'ref_3' }
+ */
+export async function reorderMeals(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+    const { consultaId } = req.params;
+    const { fromId, toId } = req.body;
+    const validSlots = ['ref_1', 'ref_2', 'ref_3', 'ref_4', 'ref_5', 'ref_6', 'ref_7', 'ref_8', 'ref_9', 'ref_10'];
+
+    if (!fromId || !toId || !validSlots.includes(fromId) || !validSlots.includes(toId)) {
+      return res.status(400).json({ success: false, error: 'Slots inválidos' });
+    }
+
+    // Buscar consulta para pegar paciente
+    const { data: consulta } = await supabase
+      .from('consultations').select('patient_id').eq('id', consultaId).maybeSingle();
+    if (!consulta) return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+
+    // Buscar registro de refeição
+    const { data: current, error: fetchErr } = await supabase
+      .from('s_refeicao')
+      .select('*')
+      .eq('paciente', consulta.patient_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchErr || !current) {
+      return res.status(404).json({ success: false, error: 'Dados não encontrados' });
+    }
+
+    // Swap
+    const fromData = current[fromId];
+    const toData = current[toId];
+
+    const { error: updateErr } = await supabase
+      .from('s_refeicao')
+      .update({ [fromId]: toData, [toId]: fromData })
+      .eq('id', current.id);
+
+    if (updateErr) {
+      console.error('[reorderMeals] Erro:', updateErr);
+      return res.status(500).json({ success: false, error: 'Erro ao reordenar' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao reordenar refeições:', error);
+    return res.status(500).json({ success: false, error: 'Erro interno' });
   }
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText, Smartphone } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, Mail, Phone, Stethoscope, CreditCard, Calendar, Hash, FileText, Smartphone, Upload, X, ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { AvatarUpload } from '@/components/shared/AvatarUpload';
 import { formatCPF, formatPhone, validateCPF, removeMask } from '@/lib/validations';
@@ -20,6 +20,7 @@ interface MedicoData {
   cpf?: string;
   birth_date?: string;
   profile_pic?: string | null;
+  logo_url?: string | null;
   subscription_type?: 'FREE' | 'PRO' | 'ENTERPRISE';
   created_at: string;
   updated_at: string;
@@ -232,6 +233,77 @@ export default function ConfiguracoesPage() {
                 userType="medico"
                 size="large"
               />
+            </div>
+          )}
+
+          {/* Upload de Logo para Documentos */}
+          {medico && (
+            <div className="form-group" style={{ marginBottom: '2rem' }}>
+              <label className="form-label" style={{ marginBottom: 12 }}>
+                <ImageIcon style={{ width: 16, height: 16, display: 'inline', marginRight: 8 }} />
+                Logo para Documentos (Receitas/Prescrições)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                  width: 160, height: 80, borderRadius: 10, border: '2px dashed #CBD5E1',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: medico.logo_url ? '#fff' : '#F8FAFC', overflow: 'hidden', position: 'relative', cursor: 'pointer',
+                }}
+                  onClick={() => (document.getElementById('logo-upload-input') as HTMLInputElement)?.click()}
+                >
+                  {medico.logo_url ? (
+                    <img src={medico.logo_url} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#94A3B8' }}>
+                      <Upload size={20} />
+                      <div style={{ fontSize: 11, marginTop: 4 }}>Enviar logo</div>
+                    </div>
+                  )}
+                </div>
+                {medico.logo_url && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { data: { user: u } } = await supabase.auth.getUser();
+                      await supabase.from('medicos').update({ logo_url: null }).eq('user_auth', u?.id || '');
+                      setMedico(prev => prev ? { ...prev, logo_url: null } : null);
+                      setSuccess('Logo removida');
+                      setTimeout(() => setSuccess(null), 3000);
+                    }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <X size={14} /> Remover
+                  </button>
+                )}
+                <input
+                  id="logo-upload-input"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !medico) return;
+                    try {
+                      const fileExt = file.name.split('.').pop();
+                      const fileName = `logo_${medico.id}_${Date.now()}.${fileExt}`;
+                      const filePath = `logos/${fileName}`;
+                      const { error: uploadError } = await supabase.storage.from('profile_pics').upload(filePath, file, { cacheControl: '3600', upsert: true });
+                      if (uploadError) throw uploadError;
+                      const { data: { publicUrl } } = supabase.storage.from('profile_pics').getPublicUrl(filePath);
+                      const { data: { user: authUser } } = await supabase.auth.getUser();
+                      await supabase.from('medicos').update({ logo_url: publicUrl }).eq('user_auth', authUser?.id || '');
+                      setMedico(prev => prev ? { ...prev, logo_url: publicUrl } : null);
+                      setSuccess('Logo atualizada com sucesso!');
+                      setTimeout(() => setSuccess(null), 3000);
+                    } catch (err: any) {
+                      setError(err.message || 'Erro ao enviar logo');
+                      setTimeout(() => setError(null), 5000);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Recomendado: imagem PNG ou JPG, fundo transparente, max 500KB</p>
             </div>
           )}
 

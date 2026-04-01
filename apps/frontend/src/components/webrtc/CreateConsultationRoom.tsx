@@ -113,10 +113,11 @@ export function CreateConsultationRoom({
   }, [agendamentoId, preselectedPatientId, preselectedConsultationType]);
 
   // Efeito para iniciar automaticamente a consulta quando vier de um agendamento
+  const agendamentoAutoStarted = useRef(false);
   useEffect(() => {
     if (
       isFromAgendamento &&
-      // socketConnected && // Removido: socket conecta sob demanda agora
+      !agendamentoAutoStarted.current &&
       !loadingDoctor &&
       !loadingPatients &&
       selectedPatient &&
@@ -124,6 +125,7 @@ export function CreateConsultationRoom({
       !isCreatingRoom &&
       !roomCreated
     ) {
+      agendamentoAutoStarted.current = true;
       console.log('🚀 Iniciando consulta automaticamente a partir do agendamento');
       handleCreateRoom();
     }

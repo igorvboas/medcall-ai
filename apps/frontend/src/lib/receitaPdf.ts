@@ -29,6 +29,7 @@ interface DadosMedico {
   telefone?: string;
   email?: string;
   endereco?: string;
+  logo_url?: string;
 }
 
 interface DadosPaciente {
@@ -71,7 +72,7 @@ function getCategoryLabel(key: string): string {
   return map[key] || key.toUpperCase();
 }
 
-export function gerarReceitaPdf({
+export async function gerarReceitaPdf({
   suplementacaoData,
   medico,
   paciente,
@@ -112,158 +113,139 @@ export function gerarReceitaPdf({
     return;
   }
 
+  // Carregar logo se disponivel
+  if (medico.logo_url) {
+    try {
+      const response = await fetch(medico.logo_url);
+      const blob = await response.blob();
+      const logoDataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      (doc as any).__logoData = logoDataUrl;
+    } catch (e) { console.warn('Erro ao carregar logo:', e); }
+  }
+
   // Gerar uma pagina por item
   allItems.forEach(({ item, category }, idx) => {
     if (idx > 0) doc.addPage();
 
-    let y = 20;
+    let y = 15;
 
-    // ════════════════════════════════════════════
-    // TITULO: Prescricao de formula
-    // ════════════════════════════════════════════
+    // LOGO (se disponivel - carregado previamente)
+    if ((doc as any).__logoData) {
+      try {
+        doc.addImage((doc as any).__logoData, 'PNG', center - 25, y, 50, 20, undefined, 'FAST');
+        y += 25;
+      } catch { y += 5; }
+    }
+
+    // TITULO
     doc.setFont('courier', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setTextColor(...BLACK);
-    doc.text('Prescricao de formula', center, y, { align: 'center' });
-    y += 7;
+    doc.text('PRESCRICAO', center, y, { align: 'center' });
+    y += 6;
 
-    // Nome do paciente
+    // Paciente + data
     doc.setFont('courier', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...GRAY);
-    doc.text(`Nome do paciente: ${paciente.nome || 'N/A'}`, center, y, { align: 'center' });
-    y += 10;
+    doc.text(`Paciente: ${paciente.nome || 'N/A'}`, margin, y);
+    doc.text(dataConsulta || new Date().toLocaleDateString('pt-BR'), pageWidth - margin, y, { align: 'right' });
+    y += 8;
 
-    // Linha separadora
     drawHr(doc, y);
     y += 10;
 
-    // ════════════════════════════════════════════
-    // USO INTERNO
-    // ════════════════════════════════════════════
+    // CATEGORIA + NOME (com quebra de linha)
     doc.setFont('courier', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(...BLACK);
-    doc.text('Uso Interno', center, y, { align: 'center' });
-    y += 15;
-
-    // ════════════════════════════════════════════
-    // CATEGORIA + NOME
-    // ════════════════════════════════════════════
-    doc.setFont('courier', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(...BLACK);
-    doc.text(`${getCategoryLabel(category)} - ${(item.nome || '').toUpperCase()}`, margin, y);
-    y += 12;
+    const catNome = `${getCategoryLabel(category)} - ${(item.nome || '').toUpperCase()}`;
+    const catLines = doc.splitTextToSize(catNome, contentWidth);
+    doc.text(catLines, margin, y);
+    y += catLines.length * 6 + 6;
 
-    // ════════════════════════════════════════════
-    // DOSAGEM (linha pontilhada)
-    // ════════════════════════════════════════════
+    // DOSAGEM (com quebra de linha)
     if (item.dosagem) {
-      const dotsWidth = 100;
-      const labelText = item.nome || '';
-      const valueText = item.dosagem;
-
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(11);
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(10);
       doc.setTextColor(...BLACK);
-
-      // Nome do componente --- dosagem
-      const labelWidth = doc.getTextWidth(labelText);
-      const valueWidth = doc.getTextWidth(valueText);
-      const dotsCount = Math.floor((contentWidth - labelWidth - valueWidth - 4) / doc.getTextWidth('-'));
-      const dots = '-'.repeat(Math.max(dotsCount, 3));
-
-      doc.text(`${labelText} ${dots} ${valueText}`, margin, y);
-      y += 10;
+      doc.text('Dosagem:', margin, y);
+      y += 5;
+      doc.setFont('courier', 'normal');
+      const dosLines = doc.splitTextToSize(item.dosagem, contentWidth);
+      doc.text(dosLines, margin, y);
+      y += dosLines.length * 5 + 6;
     }
 
-    // ════════════════════════════════════════════
-    // HORARIO DE USO
-    // ════════════════════════════════════════════
+    // HORARIO (com quebra de linha)
     if (item.horario) {
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(11);
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(10);
       doc.setTextColor(...BLACK);
+      doc.text('Horario:', margin, y);
+      y += 5;
+      doc.setFont('courier', 'normal');
       const horarioLines = doc.splitTextToSize(item.horario, contentWidth);
       doc.text(horarioLines, margin, y);
-      y += horarioLines.length * 6 + 8;
+      y += horarioLines.length * 5 + 6;
     }
 
-    // ════════════════════════════════════════════
-    // OBJETIVO
-    // ════════════════════════════════════════════
+    // OBJETIVO (com quebra de linha)
     if (item.objetivo) {
-      doc.setFont('courier', 'normal');
+      doc.setFont('courier', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(...BLACK);
+      doc.text('Objetivo:', margin, y);
+      y += 5;
+      doc.setFont('courier', 'normal');
       const objLines = doc.splitTextToSize(item.objetivo, contentWidth);
       doc.text(objLines, margin, y);
-      y += objLines.length * 5 + 8;
+      y += objLines.length * 5 + 6;
     }
 
-    // ════════════════════════════════════════════
-    // PERIODO
-    // ════════════════════════════════════════════
+    // PERIODO (com quebra de linha)
     if (item.inicio || item.termino) {
-      doc.setFont('courier', 'normal');
+      doc.setFont('courier', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(...BLACK);
+      doc.text('Periodo:', margin, y);
+      y += 5;
+      doc.setFont('courier', 'normal');
       const periodoText = [
         item.inicio ? `Inicio: ${item.inicio}` : null,
         item.termino ? `Termino: ${item.termino}` : null,
-      ].filter(Boolean).join('. ');
+      ].filter(Boolean).join('  |  ');
       const periodoLines = doc.splitTextToSize(periodoText, contentWidth);
       doc.text(periodoLines, margin, y);
-      y += periodoLines.length * 5 + 8;
+      y += periodoLines.length * 5 + 6;
     }
 
-    // ════════════════════════════════════════════
-    // ASSINATURA (parte inferior fixa)
-    // ════════════════════════════════════════════
-
-    // Linha de assinatura
-    const sigY = 210;
+    // ASSINATURA (fixa na parte inferior)
+    const sigY = 220;
     drawHr(doc, sigY, center - 50, center + 50);
 
-    // Nome do profissional + registro
     doc.setFont('courier', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...BLACK);
+    doc.text(medico.nome || '', center, sigY + 6, { align: 'center' });
 
-    const sigParts = [medico.nome || ''];
-    if (medico.especialidade) sigParts[0] = `${medico.nome} - ${medico.especialidade}`;
-    if (medico.crm) sigParts.push(medico.crm);
+    const sigDetails = [medico.especialidade, medico.crm].filter(Boolean).join(' - ');
+    if (sigDetails) {
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY);
+      doc.text(sigDetails, center, sigY + 11, { align: 'center' });
+    }
 
-    const sigText = sigParts.join(' ');
-    doc.text(sigText, center, sigY + 6, { align: 'center' });
-
-    // ════════════════════════════════════════════
     // FOOTER
-    // ════════════════════════════════════════════
-
-    // Texto de verificacao
     doc.setFont('courier', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    const verifyText = [
-      'Visualize o documento original atraves da',
-      'leitura do QR Code ao lado. Em caso de',
-      'divergencias, entre em contato com o',
-      'profissional responsavel pelo documento.',
-    ];
-    verifyText.forEach((line, i) => {
-      doc.text(line, center + 5, 255 + (i * 4), { align: 'left' });
-    });
-
-    // Pagina
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...GRAY);
     doc.text(`Pagina ${idx + 1}/${allItems.length}`, margin, 285);
-
-    // Nome do profissional no footer
-    const footerName = [medico.especialidade, medico.nome].filter(Boolean).join(' ');
+    const footerName = [medico.nome, medico.crm].filter(Boolean).join(' - ');
     doc.text(footerName, pageWidth - margin, 285, { align: 'right' });
   });
 
@@ -282,7 +264,7 @@ interface ReceitaItemParams {
   paciente: DadosPaciente;
 }
 
-export function gerarReceitaItemPdf({
+export async function gerarReceitaItemPdf({
   item,
   category,
   medico,
@@ -302,7 +284,7 @@ export function gerarReceitaItemPdf({
     suplementacaoData[key] = [item];
   }
 
-  gerarReceitaPdf({
+  await gerarReceitaPdf({
     suplementacaoData,
     medico,
     paciente,
