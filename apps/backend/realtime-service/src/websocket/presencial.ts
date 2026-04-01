@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import crypto from 'crypto';
 import { presencialSessionManager } from '../services/presencialSessionManager';
 import { db, logError } from '../config/database';
+import { tryAcquireFinalizationLock, releaseFinalizationLock } from '../shared/finalizationGuard';
 
 /**
  * Configurar handlers Socket.IO para consultas presenciais
@@ -210,32 +211,42 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
             try {
                 const { sessionId, fullAudioData } = data;
 
-                console.log(`[PRESENCIAL] Finalizando sessão ${sessionId}...`);
-
-                // Se tem audio completo (single-mic), processar diarizacao final
-                if (fullAudioData) {
-                    const audioBuffer = Buffer.from(fullAudioData, 'base64');
-                    console.log(`[PRESENCIAL] Audio completo recebido: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-                    await presencialSessionManager.finalizeWithFullAudio(sessionId, audioBuffer);
+                // Per D-08: Mutex prevents concurrent finalization
+                if (!tryAcquireFinalizationLock(sessionId)) {
+                    callback({ success: true, already_finalizing: true, message: 'Sessao ja esta sendo finalizada' });
+                    return;
                 }
 
-                // Finalizar sessão (salva transcricao, webhook, etc)
-                await presencialSessionManager.endSession(sessionId);
+                try {
+                    console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
 
-                // Sair da sala
-                socket.leave(sessionId);
+                    // Se tem audio completo (single-mic), processar diarizacao final
+                    if (fullAudioData) {
+                        const audioBuffer = Buffer.from(fullAudioData, 'base64');
+                        console.log(`[PRESENCIAL] Audio completo recebido: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+                        await presencialSessionManager.finalizeWithFullAudio(sessionId, audioBuffer);
+                    }
 
-                console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada`);
+                    // Finalizar sessao (salva transcricao, webhook, etc)
+                    await presencialSessionManager.endSession(sessionId);
 
-                callback({
-                    success: true,
-                    message: 'Sessão finalizada com sucesso'
-                });
+                    // Sair da sala
+                    socket.leave(sessionId);
+
+                    console.log(`[PRESENCIAL] Sessao ${sessionId} finalizada`);
+
+                    callback({
+                        success: true,
+                        message: 'Sessao finalizada com sucesso'
+                    });
+                } finally {
+                    releaseFinalizationLock(sessionId);
+                }
             } catch (error) {
-                console.error('[PRESENCIAL] Erro ao finalizar sessão:', error);
+                console.error('[PRESENCIAL] Erro ao finalizar sessao:', error);
 
                 logError(
-                    'Erro ao finalizar sessão presencial',
+                    'Erro ao finalizar sessao presencial',
                     'error',
                     null,
                     {

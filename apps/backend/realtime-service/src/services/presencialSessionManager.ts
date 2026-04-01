@@ -1,7 +1,9 @@
 import { whisperService } from './whisperService';
 import { db, logError } from '../config/database';
-import fetch from 'node-fetch';
-import { getWebhookUrl, getWebhookHeaders, getEnv } from '../config/webhookConfig';
+import { getEnv } from '../config/webhookConfig';
+import { dispatchWebhookWithRetry } from './webhookService';
+import type { WebhookPayload } from './webhookService';
+import { isTerminalStatus } from '../shared/finalizationGuard';
 import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
 import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { aiConfig } from '../config';
@@ -815,7 +817,20 @@ class PresencialSessionManager {
         const session = this.sessions.get(sessionId);
 
         if (!session) {
-            throw new Error(`Sessão ${sessionId} não encontrada`);
+            throw new Error(`Sessao ${sessionId} nao encontrada`);
+        }
+
+        // Per D-11, D-17: Check DB status before proceeding
+        const { supabase } = await import('../config/database');
+        const { data: statusCheck } = await supabase
+            .from('consultations')
+            .select('status')
+            .eq('id', session.consultationId)
+            .single();
+
+        if (statusCheck && isTerminalStatus(statusCheck.status)) {
+            console.log(`[PRESENCIAL] Consulta ${session.consultationId} ja esta COMPLETED -- skip`);
+            return;
         }
 
         console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
@@ -833,114 +848,111 @@ class PresencialSessionManager {
 
         // Aguardar processamento completo da fila
         while (this.processingQueue.some(c => c.sessionId === sessionId)) {
-            console.log(`⏳ [PRESENCIAL] Aguardando fila processar...`);
+            console.log(`[PRESENCIAL] Aguardando fila processar...`);
             await this.sleep(500);
         }
 
-        // Salvar transcrições no banco
-        await this.saveTranscriptions(session);
-
-        // Atualizar consultation
         const durationSeconds = Math.floor((session.endTime.getTime() - session.startTime.getTime()) / 1000);
-        const durationMinutes = durationSeconds / 60; // Converter para minutos conforme schema do banco
+        const durationMinutes = durationSeconds / 60;
 
-        const { supabase } = await import('../config/database');
-        await supabase
-            .from('consultations')
-            .update({
-                status: 'PROCESSING',
-                consulta_finalizada: true,
-                consulta_fim: session.endTime.toISOString(),
-                duracao: durationMinutes, // Campo duracao é REAL em minutos
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', session.consultationId);
+        let dbWriteSuccess = false;
+        try {
+            // Salvar transcricoes no banco
+            await this.saveTranscriptions(session);
 
-        // Atualizar call_sessions.status para 'ended'
-        {
-            const { error: csError } = await supabase
-                .from('call_sessions')
+            // Atualizar consultation
+            await supabase
+                .from('consultations')
                 .update({
-                    status: 'ended',
-                    ended_at: session.endTime.toISOString(),
-                    webrtc_active: false
+                    status: 'PROCESSING',
+                    consulta_finalizada: true,
+                    consulta_fim: session.endTime.toISOString(),
+                    duracao: durationMinutes,
+                    updated_at: new Date().toISOString()
                 })
-                .eq('room_id', sessionId);
+                .eq('id', session.consultationId);
 
-            if (csError) {
-                console.error(`⚠️ [PRESENCIAL] Erro ao atualizar call_sessions:`, csError);
-            } else {
-                console.log(`✅ [PRESENCIAL] call_sessions.status atualizado para 'ended'`);
-            }
-        }
+            // Atualizar call_sessions.status para 'ended'
+            {
+                const { error: csError } = await supabase
+                    .from('call_sessions')
+                    .update({
+                        status: 'ended',
+                        ended_at: session.endTime.toISOString(),
+                        webrtc_active: false
+                    })
+                    .eq('room_id', sessionId);
 
-        console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada (${session.totalTranscriptions} transcrições, ${durationMinutes.toFixed(2)} min)`);
-
-        // 💰 NOVO: Calcular e atualizar valor_consulta
-        try {
-            const { aiPricingService } = await import('./aiPricingService');
-            const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
-            if (totalCost !== null) {
-                console.log(`💰 [PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
-            }
-        } catch (costError) {
-            console.error('❌ [PRESENCIAL] Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
-        }
-
-        // Enviar webhook com dados da consulta finalizada
-        try {
-            const { supabase } = await import('../config/database');
-
-            // Read transcription from DB (not memory) per D-14
-            const { data: txnForWebhook } = await supabase
-                .from('transcriptions')
-                .select('raw_text')
-                .eq('consultation_id', session.consultationId)
-                .maybeSingle();
-
-            const webhookData = {
-                consultationId: session.consultationId,
-                doctorId: session.doctorId,
-                patientId: session.patientId,
-                transcription: txnForWebhook?.raw_text || '',
-                consulta_finalizada: true,
-                paciente_entrou_sala: true,
-                tipo_consulta: 'PRESENCIAL' as const,
-                env: getEnv(),
-            };
-
-            const webhookUrl = getWebhookUrl('transcricao');
-            console.log(`[PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: getWebhookHeaders(),
-                body: JSON.stringify(webhookData),
-            });
-
-            if (response.ok) {
-                console.log(`[PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
-            } else {
-                console.warn(`[PRESENCIAL] Webhook retornou status ${response.status}`);
-            }
-        } catch (webhookError) {
-            console.error(`[PRESENCIAL] Erro ao enviar webhook:`, webhookError);
-            logError(
-                'Erro ao enviar webhook de finalizacao de consulta presencial',
-                'warning',
-                session.consultationId,
-                {
-                    sessionId,
-                    error: webhookError instanceof Error ? webhookError.message : String(webhookError)
+                if (csError) {
+                    console.error(`[PRESENCIAL] Erro ao atualizar call_sessions:`, csError);
+                } else {
+                    console.log(`[PRESENCIAL] call_sessions.status atualizado para 'ended'`);
                 }
-            );
+            }
+
+            // Calcular e atualizar valor_consulta
+            try {
+                const { aiPricingService } = await import('./aiPricingService');
+                const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
+                if (totalCost !== null) {
+                    console.log(`[PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+                }
+            } catch (costError) {
+                console.error('[PRESENCIAL] Erro ao calcular custo da consulta (nao bloqueia finalizacao):', costError);
+            }
+
+            dbWriteSuccess = true;
+
+            // Per D-12: Set COMPLETED after all DB writes succeed
+            await supabase
+                .from('consultations')
+                .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+                .eq('id', session.consultationId);
+
+            console.log(`[PRESENCIAL] Sessao ${sessionId} finalizada (${session.totalTranscriptions} transcricoes, ${durationMinutes.toFixed(2)} min)`);
+        } catch (dbError) {
+            console.error('[PRESENCIAL] Erro ao salvar dados da finalizacao:', dbError);
+            logError('Finalizacao presencial DB write falhou - sessao preservada na memoria', 'error', session.consultationId, {
+                sessionId,
+                error: dbError instanceof Error ? dbError.message : String(dbError)
+            });
         }
 
-        // Remover da memória após 5 minutos
-        setTimeout(() => {
-            this.sessions.delete(sessionId);
-            console.log(`🧹 [PRESENCIAL] Sessão ${sessionId} removida da memória`);
-        }, 5 * 60 * 1000);
+        // Per D-05: Use centralized webhook dispatch with retry
+        const { data: txnForWebhook } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const webhookPayload: WebhookPayload = {
+            consultationId: session.consultationId,
+            doctorId: session.doctorId,
+            patientId: session.patientId,
+            transcription: txnForWebhook?.raw_text || '',
+            consulta_finalizada: true,
+            paciente_entrou_sala: true,
+            tipo_consulta: 'PRESENCIAL',
+            env: getEnv(),
+        };
+        dispatchWebhookWithRetry(session.consultationId, webhookPayload, 'transcricao');
+
+        // Per D-14, D-16: Only schedule session cleanup if DB writes succeeded
+        if (dbWriteSuccess) {
+            // Keep existing 5-minute cleanup timer
+            setTimeout(() => {
+                this.sessions.delete(sessionId);
+                console.log(`[PRESENCIAL] Sessao ${sessionId} removida da memoria`);
+            }, 5 * 60 * 1000);
+        } else {
+            // Per D-15: Safety net cleanup after 10 minutes (longer than normal 5min because we want retry window)
+            setTimeout(() => {
+                if (this.sessions.has(sessionId)) {
+                    this.sessions.delete(sessionId);
+                    logError('Sessao presencial cleanup timer - sessao removida apos 10min sem retry', 'error', session.consultationId, { sessionId });
+                }
+            }, 10 * 60 * 1000);
+        }
     }
 
     /**
