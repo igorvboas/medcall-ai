@@ -168,6 +168,45 @@ router.post('/upload', upload.single('recording') as any, async (req, res) => {
         }
 
         console.log('💾 [RECORDING] Metadados salvos no banco');
+
+        // Salvar audio no bucket 'audios' e url_audio na consultation
+        if (consultationId) {
+          try {
+            const audioFileName = `consulta_${consultationId}.webm`;
+            const { error: audioUploadError } = await supabase.storage
+              .from('audios')
+              .upload(audioFileName, file.buffer, {
+                contentType: 'audio/webm',
+                upsert: true,
+              });
+
+            if (audioUploadError) {
+              console.error('⚠️ [RECORDING] Erro ao salvar audio no bucket audios:', audioUploadError);
+            } else {
+              const { data: audioUrlData } = supabase.storage
+                .from('audios')
+                .getPublicUrl(audioFileName);
+
+              const audioUrl = audioUrlData?.publicUrl;
+              console.log(`✅ [RECORDING] Audio salvo no bucket audios: ${audioUrl}`);
+
+              if (audioUrl) {
+                const { error: updateError } = await supabase
+                  .from('consultations')
+                  .update({ url_audio: audioUrl })
+                  .eq('id', consultationId);
+
+                if (updateError) {
+                  console.error('⚠️ [RECORDING] Erro ao salvar url_audio:', updateError);
+                } else {
+                  console.log('✅ [RECORDING] url_audio salvo na consultation');
+                }
+              }
+            }
+          } catch (audioError) {
+            console.error('⚠️ [RECORDING] Erro no upload audio (nao bloqueia):', audioError);
+          }
+        }
       } catch (dbError) {
         console.error('⚠️ [RECORDING] Erro ao salvar metadados (upload OK):', dbError);
         // Não falhar o request, upload já foi feito

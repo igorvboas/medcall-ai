@@ -1,8 +1,12 @@
 import express from 'express';
 import { Request, Response } from 'express';
 import { rooms, userToRoom, socketToRoom } from '../websocket/rooms';
-import { db, supabase } from '../config/database';
+import { db, supabase, logError, finalizeConsultation } from '../config/database';
 import { aiPricingService } from '../services/aiPricingService';
+import { getEnv } from '../config/webhookConfig';
+import { tryAcquireFinalizationLock, releaseFinalizationLock, isTerminalStatus } from '../shared/finalizationGuard';
+import { dispatchWebhookWithRetry } from '../services/webhookService';
+import type { WebhookPayload } from '../services/webhookService';
 
 const router = express.Router();
 
@@ -222,87 +226,84 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
       });
     }
 
-    console.log(`🏁 [FINALIZE-HTTP] Finalizando sala ${roomId} remotamente...`);
+    // Per D-08: Mutex prevents concurrent finalization
+    if (!tryAcquireFinalizationLock(roomId)) {
+      return res.status(200).json({
+        success: true,
+        already_finalizing: true,
+        message: 'Sala ja esta sendo finalizada'
+      });
+    }
 
+    // Per D-11: Check DB status before proceeding
     let consultationId = room.consultationId || null;
+    if (consultationId) {
+      const { data: consultation } = await supabase
+        .from('consultations')
+        .select('status')
+        .eq('id', consultationId)
+        .single();
+
+      if (consultation && isTerminalStatus(consultation.status)) {
+        releaseFinalizationLock(roomId);
+        return res.status(200).json({
+          success: true,
+          already_completed: true,
+          message: 'Consulta ja foi finalizada'
+        });
+      }
+    }
+
+    console.log(`[FINALIZE-HTTP] Finalizando sala ${roomId} remotamente...`);
+
     const saveResult: any = {
       transcriptionsCount: room.transcriptions?.length || 0,
       transcriptions: room.transcriptions || []
     };
 
+    let dbWriteSuccess = false;
     try {
       if (consultationId) {
+        // Read transcription from DB (crash-safe) per D-07, D-08
+        const { data: txnRecord } = await supabase
+          .from('transcriptions')
+          .select('raw_text')
+          .eq('consultation_id', consultationId)
+          .maybeSingle();
+
+        const fullText = txnRecord?.raw_text || '';
         const duracaoSegundos = calculateDuration(room.createdAt);
         const duracaoMinutos = duracaoSegundos / 60;
-        const consultaFim = new Date().toISOString();
 
-        const { error: updateError } = await supabase
-          .from('consultations')
-          .update({
-            status: 'PROCESSING',
-            consulta_finalizada: true,
-            consulta_fim: consultaFim,
-            duracao: duracaoMinutos,
-            updated_at: consultaFim
-          })
-          .eq('id', consultationId);
+        // Per D-10, D-11: Single atomic RPC replaces sequential writes
+        dbWriteSuccess = await finalizeConsultation({
+          consultationId,
+          transcription: fullText,
+          status: 'COMPLETED',
+          durationMinutes: duracaoMinutos,
+          callSessionRoomId: roomId,
+        });
 
-        if (updateError) {
-          console.error('❌ [FINALIZE-HTTP] Erro ao atualizar consulta:', updateError);
+        if (dbWriteSuccess) {
+          console.log(`[FINALIZE-HTTP] Consulta ${consultationId} finalizada atomicamente via RPC (duracao: ${duracaoMinutos.toFixed(2)} min)`);
         } else {
-          console.log(`📋 [FINALIZE-HTTP] Consulta ${consultationId} finalizada e atualizada para PROCESSING`);
+          console.error(`[FINALIZE-HTTP] RPC finalize_consultation falhou para consulta ${consultationId}`);
         }
       }
 
-      await db.updateCallSession(roomId, {
-        status: 'ended',
-        ended_at: new Date().toISOString(),
-        webrtc_active: false,
-        consultation_id: consultationId || undefined,
-        metadata: {
-          transcriptionsCount: room.transcriptions?.length || 0,
-          duration: calculateDuration(room.createdAt),
-          participantName: room.participantUserName,
-          terminatedBy: 'remote'
-        }
-      });
-
-      if (consultationId && room.transcriptions?.length) {
-        const rawText = room.transcriptions
-          .map((t: any) => `[${t.speaker}] (${t.timestamp || ''}): ${t.text}`)
-          .join('\n');
-
-        const transcription = await db.saveConsultationTranscription({
-          consultation_id: consultationId,
-          raw_text: rawText,
-          language: 'pt-BR',
-          model_used: 'gpt-4o-mini-realtime-preview'
-        });
-
-        if (transcription) {
-          saveResult.transcriptionId = transcription.id;
-          console.log(`📝 [FINALIZE-HTTP] Transcrição salva: ${transcription.id}`);
-        }
-
-        // ✅ CORREÇÃO: Salvar também na coluna 'transcricao' da tabela 'consultations'
-        await db.updateConsultation(consultationId, {
-          transcricao: rawText
-        });
-        console.log(`📝 [FINALIZE-HTTP] Transcrição salva na consulta ${consultationId} (coluna transcricao)`);
-      }
-
+      // Keep pricing outside the transaction (per D-12)
       if (consultationId) {
         try {
           const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(consultationId);
           if (totalCost !== null) {
-            console.log(`💰 [FINALIZE-HTTP] Custo calculado: $${totalCost.toFixed(6)}`);
+            console.log(`[FINALIZE-HTTP] Custo calculado: $${totalCost.toFixed(6)}`);
           }
         } catch (costError) {
-          console.error('❌ [FINALIZE-HTTP] Erro ao calcular custo:', costError);
+          console.error('[FINALIZE-HTTP] Erro ao calcular custo:', costError);
         }
       }
 
-      // Enviar webhook de finalização (mesmo que ao concluir na sala)
+      // Per D-05: Use centralized webhook dispatch with retry
       if (consultationId) {
         const { data: consultation } = await supabase
           .from('consultations')
@@ -310,53 +311,35 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
           .eq('id', consultationId)
           .single();
 
-        const transcriptionText = (room.transcriptions || [])
-          .map((t: any) => `[${t.speaker}]: ${t.text}`)
-          .join('\n');
+        // Read transcription from DB (not memory) per D-14
+        const { data: txnForWebhook } = await supabase
+          .from('transcriptions')
+          .select('raw_text')
+          .eq('consultation_id', consultationId)
+          .maybeSingle();
 
-        const isHomolog = process.env.NODE_ENV === 'homolog';
-        const webhookUrl = isHomolog
-          ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
-          : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const env = isHomolog
-          ? 'homolog'
-          : frontendUrl.includes('localhost')
-            ? 'localhost'
-            : 'prod';
-
-        const webhookData = {
+        const webhookData: WebhookPayload = {
           consultationId,
           doctorId: consultation?.doctor_id || null,
           patientId: consultation?.patient_id || room.patientId || 'unknown',
-          transcription: transcriptionText,
+          transcription: txnForWebhook?.raw_text || '',
           consulta_finalizada: true,
           paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
-          env
+          tipo_consulta: 'ONLINE',
+          env: getEnv(),
         };
-
-        console.log(`📤 [FINALIZE-HTTP] Enviando webhook para ${webhookUrl}...`);
-
-        const webhookRes = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-          },
-          body: JSON.stringify(webhookData)
-        });
-
-        if (webhookRes.ok) {
-          console.log(`✅ [FINALIZE-HTTP] Webhook enviado com sucesso (${webhookRes.status})`);
-        } else {
-          console.warn(`⚠️ [FINALIZE-HTTP] Webhook retornou ${webhookRes.status}`);
-        }
+        dispatchWebhookWithRetry(consultationId, webhookData, 'transcricao');
       }
     } catch (dbError) {
-      console.error('❌ [FINALIZE-HTTP] Erro ao salvar/atualizar:', dbError);
+      console.error('[FINALIZE-HTTP] Erro ao salvar/atualizar:', dbError);
       saveResult.error = dbError instanceof Error ? dbError.message : String(dbError);
+      // Per D-14, D-15: Do NOT delete room -- log error
+      logError('Finalizacao DB write falhou - room preservada na memoria', 'error', consultationId, { roomId, error: saveResult.error });
+    } finally {
+      releaseFinalizationLock(roomId);
     }
 
+    // Notify participant (always, regardless of dbWriteSuccess)
     if (socketIO) {
       if (room.participantSocketId) {
         socketIO.to(room.participantSocketId).emit('roomEnded', {
@@ -366,13 +349,26 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
       }
     }
 
-    if (room.hostUserName) userToRoom.delete(room.hostUserName);
-    if (room.participantUserName) userToRoom.delete(room.participantUserName);
-    if (room.hostSocketId) socketToRoom.delete(room.hostSocketId);
-    if (room.participantSocketId) socketToRoom.delete(room.participantSocketId);
-    rooms.delete(roomId);
+    // Per D-14, D-16: Only delete room if DB writes succeeded
+    if (dbWriteSuccess) {
+      if (room.hostUserName) userToRoom.delete(room.hostUserName);
+      if (room.participantUserName) userToRoom.delete(room.participantUserName);
+      if (room.hostSocketId) socketToRoom.delete(room.hostSocketId);
+      if (room.participantSocketId) socketToRoom.delete(room.participantSocketId);
+      rooms.delete(roomId);
+    } else {
+      // Per D-15: Safety net cleanup after 10 minutes
+      setTimeout(() => {
+        if (rooms.has(roomId)) {
+          if (room.hostUserName) userToRoom.delete(room.hostUserName);
+          if (room.participantUserName) userToRoom.delete(room.participantUserName);
+          rooms.delete(roomId);
+          logError('Room cleanup timer - room removida apos 10min sem retry', 'error', consultationId, { roomId });
+        }
+      }, 10 * 60 * 1000);
+    }
 
-    console.log(`✅ [FINALIZE-HTTP] Sala ${roomId} finalizada com sucesso`);
+    console.log(`[FINALIZE-HTTP] Sala ${roomId} finalizada com sucesso`);
 
     res.json({
       success: true,
@@ -380,7 +376,7 @@ router.post('/finalize/:roomId', async (req: Request, res: Response) => {
       saveResult
     });
   } catch (error) {
-    console.error('❌ [FINALIZE-HTTP] Erro:', error);
+    console.error('[FINALIZE-HTTP] Erro:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Erro interno do servidor'

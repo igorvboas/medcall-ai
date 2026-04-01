@@ -1,86 +1,75 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-31T01:00:00.005Z"
-last_activity: 2026-03-31
+milestone: v2.0
+milestone_name: Robustez da Consulta Online
+status: verified
+stopped_at: Phase 8 verified — v2.0 milestone complete
+last_updated: "2026-04-01T02:30:00.000Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 6
-  percent: 0
+  completed_phases: 4
+  total_plans: 10
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-30)
+See: .planning/PROJECT.md (updated 2026-03-31)
 
-**Core value:** Medico consegue realizar consulta presencial com transcricao automatica usando apenas 1 microfone, com identificacao correta de quem esta falando.
-**Current focus:** Phase 03 — frontend-single-mic
+**Core value:** Nenhum dado de consulta medica pode ser perdido -- transcricao, gravacao e prontuario devem ser resilientes a falhas.
+**Current focus:** v2.0 milestone complete — all phases verified
 
 ## Current Position
 
-Phase: 03 (frontend-single-mic) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-03-31
+Phase: 8 (final)
+Plan: 2 of 2
+Status: v2.0 milestone complete — all 19 requirements verified
+Last activity: 2026-04-01
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 5
+- Average duration: ~2 min
+- Total execution time: ~10 min
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 02-backend-diarization P01 | 2min | 2 tasks | 3 files |
-| Phase 02 P02 | 2min | 1 tasks | 2 files |
-| Phase 02 P03 | 1min | 1 tasks | 1 files |
-| Phase 03 P02 | 2min | 2 tasks | 2 files |
-| Phase 03 P01 | 2min | 2 tasks | 3 files |
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 07    | 01   | 2min     | 2     | 3     |
+| Phase 07 P03 | 3 | 2 tasks | 2 files |
+| Phase 08 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap]: Validation spike is Phase 1 — go/no-go before any implementation
-- [Roadmap]: Backend diarization (chunk accumulation) is Phase 2 — foundational for all downstream work
-- [Roadmap]: endpointing/utterance_end_ms confirmed not applicable to pre-recorded API
-- [Prior]: Current codebase already has diarize=true but discards speaker field from response
-- [Prior]: Architecture change: from 2 Deepgram connections (1 per mic) to 1 connection with diarization
-- [Phase 02-backend-diarization]: Speaker 'unknown' added as valid role for pre-mapping utterances
-- [Phase 02-backend-diarization]: Per-utterance rows with batch_id grouping for diarized transcriptions
-- [Phase 02]: setTimeout chain for batch flush to prevent overlap (not setInterval)
-- [Phase 02]: Word-level speaker_confidence averaging for diarization confidence
-- [Phase 02]: Speaker always 'unknown' until doctor maps roles via future UI
-- [Phase 02]: Uses session.callSessionId for transcriptions_med queries, sessionId for call_sessions metadata
-- [Phase 03]: Speaker mapping uses two-button UI with auto-assign of complementary role
-- [Phase 03]: Three-state display: UNKNOWN (gray) -> Speaker 0/1 (muted) -> Medico/Paciente (full colors)
-- [Phase 03]: Single audioLevel value (not dual) reflecting single-mic paradigm
-- [Phase 03]: speaker='mixed' in socket emit to distinguish from dual-mic doctor/patient
-- [Phase 03]: localStorage key presencial-mic-mode for mode persistence, default dual
+- [v1.0]: Diarizacao Deepgram validada com chunks 60s+ (CONDITIONAL GO)
+- [v1.0]: Mapeamento manual de speaker via UI (nao automatico)
+- [v2.0]: Escopo baseado em revisao sistematica (REVISAO_SISTEMATICA_CONSULTAS.md)
+- [v2.0]: Prioridade maxima: transcription.raw_text incremental, consultation.transcricao na finalizacao, webhook NODE_ENV-aware
+- [v2.0]: Usar tabela `transcriptions` como fonte primaria (nao `transcriptions_med`)
+- [v2.0]: Supabase JS nao suporta transactions -- usar PostgreSQL RPCs para atomicidade
+- [Phase 05]: PostgreSQL RPC upsert pattern for atomic transcription append (INSERT ON CONFLICT)
+- [Phase 05]: webhookConfig.ts uses NODE_ENV only, no FRONTEND_URL fallback
+- [Phase 05]: All finalization paths read transcription from DB (crash-safe), not in-memory arrays
+- [Phase 05]: All webhook dispatch uses centralized webhookConfig.ts -- zero hardcoded URLs remain
+- [Phase 06]: webhookConfig.ts created as centralized webhook URL/header config (missing dependency)
+- [Phase 06]: Outbox pattern: record pending delivery BEFORE HTTP call, update after
+- [Phase 06]: In-memory Set for finalization mutex (sufficient for single-instance realtime-service)
+- [Phase 06]: Lock released in finally block to prevent permanent deadlock; COMPLETED set after all DB writes; Room preserved on DB failure with 10min safety timer
+- [Phase 07]: finalize_consultation RPC for atomic multi-table finalization (consultations + call_sessions)
+- [Phase 07]: NOT NULL constraint on transcriptions.consultation_id prevents orphan rows
+- [Phase 07]: Presencial endSession uses atomic finalizeConsultation() RPC instead of sequential writes
+- [Phase 07]: Presencial disconnect handler starts 5-min cleanup timer; reconnection cancels timer and reuses session
+- [Phase 08]: useMicMonitor creates own VAD instance; only doctorStream exposed from capture hook; usePresencialSingleMicCapture deferred to merge
+- [Phase 08]: streamToMonitor selects stream based on micMode; ConsultationRoom protects tab on isRecording OR isCallActive
 
 ### Pending Todos
 
@@ -88,11 +77,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Research]: nova-2 pt-BR diarization accuracy is unvalidated — Phase 1 spike is the mitigation
-- [Research]: 30s chunk accumulation introduces ~30s latency — doctor tolerance unknown
+- Supabase JS client nao suporta transactions -- precisara de RPCs PostgreSQL para atomicidade
+- Race condition no addTranscriptionToSession e ativa em producao -- pode perder segmentos agora
+- Zero downtime constraint -- todas mudancas devem ser backward compatible
 
 ## Session Continuity
 
-Last session: 2026-03-31T01:00:00.002Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-01T02:13:52.627Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

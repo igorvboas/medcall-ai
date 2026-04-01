@@ -1,62 +1,74 @@
-# Requirements: Auton Health — Consulta Presencial com Microfone Unico
+# Requirements: Auton Health — Robustez da Consulta Online
 
-**Defined:** 2026-03-30
-**Core Value:** Medico consegue realizar consulta presencial com transcricao automatica usando apenas 1 microfone, com identificacao correta de quem esta falando.
+**Defined:** 2026-03-31
+**Core Value:** Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e prontuário devem ser resilientes a falhas.
 
-## v1.0 Requirements
+## v2.0 Requirements
 
-Requirements for single-mic presencial consultation. Each maps to roadmap phases.
+Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
-### Validacao
+### Transcrição (Prioridade Máxima)
 
-- [ ] **VAL-01**: Medico pode executar spike de validacao com audio real de consulta para medir acuracia da diarizacao nova-2 + pt-BR
-- [ ] **VAL-02**: Sistema reporta metricas de acuracia (% de utterances com speaker correto) para decisao go/no-go
+- [x] **TRNS-01**: Transcrição salva incrementalmente em `transcriptions.raw_text` durante a consulta (não apenas no final)
+- [x] **TRNS-02**: Transcrição consolidada salva em `consultations.transcricao` na finalização da consulta
+- [x] **TRNS-03**: Operação de save de transcrição é atômica (eliminar race condition read-modify-write no banco)
+- [x] **TRNS-04**: Usar tabela `transcriptions` como fonte primária (não `transcriptions_med`)
 
-### Backend Diarizacao
+### Webhook (Prioridade Máxima)
 
-- [x] **DIAR-01**: Servidor acumula chunks de 5s do cliente em batches de 30s+ antes de enviar ao Deepgram
-- [x] **DIAR-02**: Servidor envia `utterances: true` + `diarize: true` ao Deepgram pre-recorded API
-- [x] **DIAR-03**: Servidor extrai `speaker` e `speaker_confidence` de cada utterance do response Deepgram
-- [x] **DIAR-04**: Servidor armazena transcricoes com speaker_id atribuido (speaker_0, speaker_1)
-- [x] **DIAR-05**: Servidor usa confidence threshold para decidir auto-assign vs marcar como "incerto"
-- [x] **DIAR-06**: Servidor suporta mapeamento retroativo de speaker (atualizar transcricoes quando medico mapeia speakers)
+- [x] **WBHK-01**: Webhook disparado para N8N com payload correto (consultationId, doctorId, patientId, transcription, env)
+- [x] **WBHK-02**: URL do webhook determinada por `NODE_ENV` (homolog/production/localhost), centralizada em um único local
+- [x] **WBHK-03**: Registro de entregas de webhook em tabela `webhook_deliveries` (outbox pattern)
+- [x] **WBHK-04**: Retry automático com backoff exponencial em caso de falha do webhook
 
-### Frontend Single Mic
+### Finalização
 
-- [x] **FMIC-01**: Medico pode selecionar 1 microfone para a consulta presencial
-- [x] **FMIC-02**: Medico pode alternar entre modo single-mic e dual-mic na UI
-- [x] **FMIC-03**: Medico pode associar speaker_0 a "medico" e speaker_1 a "paciente" via painel de mapping
-- [ ] **FMIC-04**: UI exibe indicador visual de quem esta falando em tempo real
-- [x] **FMIC-05**: UI exibe transcricoes agrupadas por speaker com labels corretos (Medico/Paciente)
+- [x] **FINL-01**: Guard contra finalização duplicada (mutex/flag `isFinalizing` por room)
+- [x] **FINL-02**: Guard de status transition (não regredir COMPLETED para PROCESSING)
+- [x] **FINL-03**: Room não deletada da memória se DB write falhou
+- [x] **FINL-04**: Finalização idempotente (retry seguro sem duplicar dados)
 
-### Integracao
+### Sessão e Conexão
 
-- [ ] **INTG-01**: Fluxo end-to-end funciona: 1 mic → acumulacao → diarizacao → speaker mapping → transcricao final
-- [ ] **INTG-02**: Modo dual-mic existente continua funcionando sem regressao
-- [ ] **INTG-03**: Webhook de finalizacao envia transcricao com speaker attribution correto
-- [ ] **INTG-04**: Dados de transcricao salvos no banco sao compativeis com ambos os modos
+- [x] **SESS-01**: Sessões órfãs limpas automaticamente após timeout de inatividade no disconnect WebSocket
+- [x] **SESS-02**: Reconexão WebSocket com rejoin automático de sala (manter transcrição fluindo)
+- [x] **SESS-03**: Proteção contra tab crash com `beforeunload` handler durante gravação ativa
 
-## v2 Requirements
+### Áudio e Microfone
 
-Deferred to future release. Tracked but not in current roadmap.
+- [x] **AUDM-01**: Detecção de mic desconectado via `track.onended` com alerta visual ao médico
+- [x] **AUDM-02**: Detecção de mic silencioso prolongado com alerta visual ao médico
 
-### Enhancements
+### Banco de Dados
 
-- **ENH-01**: Sistema sugere automaticamente mapping de speaker baseado em padroes de fala (quem fala primeiro = medico)
-- **ENH-02**: Medico pode corrigir speaker attribution pos-consulta em UI de revisao
-- **ENH-03**: Sistema aprende padroes de voz do medico ao longo de multiplas consultas
-- **ENH-04**: Migracao para Nova-3 para melhor acuracia de transcricao pt-BR
+- [x] **DBAS-01**: Transações na finalização (atomicidade multi-table writes via RPC PostgreSQL)
+- [x] **DBAS-02**: `consultation_id` NOT NULL em tabela `transcriptions`
+
+## v2+ Requirements
+
+Deferred to future milestone. Tracked but not in current roadmap.
+
+### Persistência Local
+
+- **PLOC-01**: Persistência local de áudio em IndexedDB como buffer contra tab crash
+- **PLOC-02**: Streaming de áudio completo para servidor (substituir mensagem WebSocket gigante)
+
+### Observabilidade
+
+- **OBSV-01**: Dashboard de monitoramento de webhooks falhados
+- **OBSV-02**: Alertas automáticos para sessões órfãs prolongadas
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Nova-3 migration | Testar separadamente depois — Nova-2 e o baseline atual |
-| 3+ speakers no mesmo mic | Foco em consulta 1:1 (medico + paciente) |
-| Alteracoes na consulta remota | Fluxo diferente (WebRTC + streaming), nao impactado |
-| Word-level speaker correction | Granularidade excessiva — utterance-level e suficiente |
-| Streaming API para presencial | Arquitetura atual e pre-recorded; streaming seria rewrite completo |
-| Auto-mapping sem confirmacao | Risco de liability em contexto medico — mapping manual obrigatorio |
+| Migração para `transcriptions_med` como tabela primária | Continuar usando `transcriptions` como fonte de verdade |
+| Refactor completo do schema de banco | Foco apenas nas correções críticas, não redesign |
+| Testes E2E automatizados | Importante mas escopo separado |
+| Alterações na consulta presencial | Milestone v1.0 trata disso separadamente |
+| Reconexão automática do Deepgram | Melhoria futura, não crítico agora |
+| Migration para `transcriptions_med` | Tabela não será criada/migrada, usar `transcriptions` |
+| Migration para `recordings` | Não faz parte deste milestone |
 
 ## Traceability
 
@@ -64,29 +76,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VAL-01 | Phase 1 | Pending |
-| VAL-02 | Phase 1 | Pending |
-| DIAR-01 | Phase 2 | Complete |
-| DIAR-02 | Phase 2 | Complete |
-| DIAR-03 | Phase 2 | Complete |
-| DIAR-04 | Phase 2 | Complete |
-| DIAR-05 | Phase 2 | Complete |
-| DIAR-06 | Phase 2 | Complete |
-| FMIC-01 | Phase 3 | Complete |
-| FMIC-02 | Phase 3 | Complete |
-| FMIC-03 | Phase 3 | Complete |
-| FMIC-04 | Phase 3 | Pending |
-| FMIC-05 | Phase 3 | Complete |
-| INTG-01 | Phase 4 | Pending |
-| INTG-02 | Phase 4 | Pending |
-| INTG-03 | Phase 4 | Pending |
-| INTG-04 | Phase 4 | Pending |
+| TRNS-01 | Phase 5 | Complete |
+| TRNS-02 | Phase 5 | Complete |
+| TRNS-03 | Phase 5 | Complete |
+| TRNS-04 | Phase 5 | Complete |
+| WBHK-01 | Phase 5 | Complete |
+| WBHK-02 | Phase 5 | Complete |
+| WBHK-03 | Phase 6 | Complete |
+| WBHK-04 | Phase 6 | Complete |
+| FINL-01 | Phase 6 | Complete |
+| FINL-02 | Phase 6 | Complete |
+| FINL-03 | Phase 6 | Complete |
+| FINL-04 | Phase 6 | Complete |
+| SESS-01 | Phase 7 | Complete |
+| SESS-02 | Phase 7 | Complete |
+| SESS-03 | Phase 8 | Complete |
+| AUDM-01 | Phase 8 | Complete |
+| AUDM-02 | Phase 8 | Complete |
+| DBAS-01 | Phase 7 | Complete |
+| DBAS-02 | Phase 7 | Complete |
 
 **Coverage:**
-- v1.0 requirements: 17 total
-- Mapped to phases: 17
+- v2.0 requirements: 19 total
+- Mapped to phases: 19
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 after roadmap creation*
+*Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after roadmap creation*

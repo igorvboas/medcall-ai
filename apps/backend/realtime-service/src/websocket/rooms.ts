@@ -1,9 +1,13 @@
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { db, logError, logWarning } from '../config/database';
+import { db, supabase, logError, logWarning, finalizeConsultation } from '../config/database';
 import { aiPricingService } from '../services/aiPricingService';
 import { transcriptionService } from '../services/transcriptionService'; // ✅ Importado
+import { getEnv } from '../config/webhookConfig';
+import { tryAcquireFinalizationLock, releaseFinalizationLock, isTerminalStatus } from '../shared/finalizationGuard';
+import { dispatchWebhookWithRetry } from '../services/webhookService';
+import type { WebhookPayload } from '../services/webhookService';
 
 
 // ==================== ESTRUTURAS DE DADOS ====================
@@ -143,6 +147,38 @@ function cleanExpiredRoom(roomId: string): void {
 /**
  * 🔧 Fecha conexão OpenAI de forma segura e registra uso
  */
+/**
+ * Per D-01 through D-04: Cleans a room that was disconnected and never reconnected.
+ * Called by the disconnect timeout timer. If the room was reconnected (disconnectedAt cleared),
+ * the cleanup is skipped.
+ */
+function cleanDisconnectedRoom(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  // If room was reconnected (disconnectedAt cleared), skip cleanup
+  if (!room.disconnectedAt) {
+    console.log(`[CLEANUP] Room ${roomId} was reconnected -- skipping disconnect cleanup`);
+    return;
+  }
+  console.log(`[CLEANUP] Cleaning disconnected room ${roomId} (disconnected at ${room.disconnectedAt})`);
+  // Per D-04: Update consultation status to terminal state
+  if (room.consultationId) {
+    supabase.from('consultations')
+      .update({ status: 'ABANDONED', updated_at: new Date().toISOString() })
+      .eq('id', room.consultationId)
+      .then((result: any) => {
+        if (result.error) {
+          console.error(`[CLEANUP] Failed to update consultation:`, result.error);
+        } else {
+          console.log(`[CLEANUP] Consultation ${room.consultationId} marked ABANDONED`);
+        }
+      });
+    logError('Sessao orfa limpa apos disconnect timeout', 'warning', room.consultationId, { roomId });
+  }
+  // Reuse existing cleanup logic
+  cleanExpiredRoom(roomId);
+}
+
 /**
  * 🔧 Fecha conexão OpenAI de forma segura e registra uso
  * (Stub mantido para compatibilidade, mas lógica removida)
@@ -559,10 +595,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
       const isHostByRole = requesterRole === 'host' || requesterRole === 'doctor';
 
       if (isHostByRole || participantName === room.hostUserName) {
-        console.log(`🔄 Reconexão do host: ${participantName} na sala ${roomId}`);
+        console.log(`[REJOIN] Reconexao do host: ${participantName} na sala ${roomId}`);
         room.hostSocketId = socket.id;
         socketToRoom.set(socket.id, roomId);
-        socket.join(roomId); // ✅ NOVO: Entrar na sala do Socket.IO
+        socket.join(roomId);
+
+        // Per D-08, D-09: Cancel disconnect timer and clear disconnected state on rejoin
+        if (room.disconnectedAt) {
+          console.log(`[REJOIN] Clearing disconnect state for room ${roomId} (was disconnected at ${room.disconnectedAt})`);
+          room.disconnectedAt = null;
+        }
         resetRoomExpiration(roomId);
 
         // ✅ NOVO: Atualizar webrtc_active = true quando o médico entrar na consulta
@@ -681,10 +723,16 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
         // Se é a mesma sala, é reconexão
         if (existingRoom === roomId) {
-          console.log(`🔄 Reconexão do participante: ${participantName} na sala ${roomId}`);
+          console.log(`[REJOIN] Reconexao do participante: ${participantName} na sala ${roomId}`);
           room.participantSocketId = socket.id;
-          room.joinedPatientName = participantName; // ✅ NOVO: Persistir nome do paciente
+          room.joinedPatientName = participantName;
           socketToRoom.set(socket.id, roomId);
+
+          // Per D-08, D-09: Cancel disconnect timer and clear disconnected state on rejoin
+          if (room.disconnectedAt) {
+            console.log(`[REJOIN] Clearing disconnect state for room ${roomId} (was disconnected at ${room.disconnectedAt})`);
+            room.disconnectedAt = null;
+          }
           resetRoomExpiration(roomId);
 
           // ✅ NOVO: Buscar transcrições do banco de dados
@@ -1305,7 +1353,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         const isHostByRole = requesterRole === 'host' || requesterRole === 'doctor';
 
         if (isHostByIdentity || isHostByRole) {
-          console.log(`🔄 Reatando host ao novo socket para finalizar sala ${roomId}`);
+          console.log(`[ENDROOM] Reatando host ao novo socket para finalizar sala ${roomId}`);
           room.hostSocketId = socket.id;
         } else {
           callback({ success: false, error: 'Apenas o host pode finalizar a sala' });
@@ -1313,25 +1361,47 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         }
       }
 
-      console.log(`🏁 Finalizando sala ${roomId}...`);
+      // Per D-08: Mutex prevents concurrent finalization
+      if (!tryAcquireFinalizationLock(roomId)) {
+        callback({ success: true, already_finalizing: true, message: 'Sala ja esta sendo finalizada' });
+        return;
+      }
+
+      // Per D-11: Check DB status before proceeding
+      if (room.consultationId) {
+        const { data: statusCheck } = await supabase
+          .from('consultations')
+          .select('status')
+          .eq('id', room.consultationId)
+          .single();
+
+        if (statusCheck && isTerminalStatus(statusCheck.status)) {
+          releaseFinalizationLock(roomId);
+          callback({ success: true, already_completed: true, message: 'Consulta ja foi finalizada' });
+          return;
+        }
+      }
+
+      console.log(`[ENDROOM] Finalizando sala ${roomId}...`);
 
       let saveResult: any = {
         transcriptionsCount: room.transcriptions.length,
         transcriptions: room.transcriptions
       };
 
+      let dbWriteSuccess = false;
+
       // ==================== SALVAR NO BANCO DE DADOS ====================
       try {
         // 1. Buscar doctor_id pelo userAuth (se necessário para fallback)
         let doctorId = null;
         if (room.userAuth && !room.consultationId) {
-          // Só buscar se não temos consultationId (para fallback)
           const doctor = await db.getDoctorByAuth(room.userAuth);
           if (doctor) {
             doctorId = doctor.id;
-            console.log(`👨‍⚕️ Médico encontrado: ${doctor.name} (${doctorId})`);
+            console.log(`[ENDROOM] Medico encontrado: ${doctor.name} (${doctorId})`);
           } else {
-            console.warn(`⚠️ Médico não encontrado para userAuth: ${room.userAuth}`);
+            console.warn(`[ENDROOM] Medico nao encontrado para userAuth: ${room.userAuth}`);
           }
         }
 
@@ -1339,50 +1409,33 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         let consultationId = room.consultationId || null;
 
         if (consultationId) {
-          // ✅ Consulta já existe (foi criada quando a sala foi criada)
-          // Atualizar status para PROCESSING e registrar fim da consulta
-          try {
-            const { supabase } = await import('../config/database');
+          // Read transcription from DB (crash-safe) per D-07, D-08
+          const { data: txnRecord } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', consultationId)
+            .maybeSingle();
 
-            // ✅ Calcular duração em minutos (duracao é REAL no banco)
-            const duracaoSegundos = calculateDuration(room.createdAt);
-            const duracaoMinutos = duracaoSegundos / 60; // Converter para minutos
-            const consultaFim = new Date().toISOString();
+          const fullText = txnRecord?.raw_text || '';
+          const duracaoSegundos = calculateDuration(room.createdAt);
+          const duracaoMinutos = duracaoSegundos / 60;
 
-            const { error: updateError } = await supabase
-              .from('consultations')
-              .update({
-                status: 'PROCESSING',
-                consulta_finalizada: true,
-                consulta_fim: consultaFim, // ✅ Registrar fim da consulta
-                duracao: duracaoMinutos, // ✅ Duração em minutos
-                updated_at: consultaFim
-              })
-              .eq('id', consultationId);
+          // Per D-10, D-11: Single atomic RPC replaces sequential writes
+          dbWriteSuccess = await finalizeConsultation({
+            consultationId,
+            transcription: fullText,
+            status: 'COMPLETED',
+            durationMinutes: duracaoMinutos,
+            callSessionRoomId: roomId,
+          });
 
-            if (updateError) {
-              console.error('❌ Erro ao atualizar status da consulta:', updateError);
-              logError(
-                `Erro ao atualizar status da consulta para PROCESSING`,
-                'error',
-                consultationId,
-                { roomId, error: updateError.message }
-              );
-            } else {
-              console.log(`📋 Consulta ${consultationId} finalizada e atualizada para PROCESSING (duração: ${duracaoMinutos.toFixed(2)} min)`);
-            }
-          } catch (updateError) {
-            console.error('❌ Erro ao atualizar consulta:', updateError);
-            logError(
-              `Exceção ao atualizar consulta`,
-              'error',
-              consultationId,
-              { roomId, error: updateError instanceof Error ? updateError.message : String(updateError) }
-            );
+          if (dbWriteSuccess) {
+            console.log(`[ENDROOM] Consulta ${consultationId} finalizada atomicamente via RPC (duracao: ${duracaoMinutos.toFixed(2)} min)`);
+          } else {
+            console.error(`[ENDROOM] RPC finalize_consultation falhou para consulta ${consultationId}`);
           }
         } else if (doctorId && room.patientId) {
-          // ✅ Fallback: criar consulta se não foi criada antes (compatibilidade)
-          console.warn('⚠️ Consulta não encontrada na room, criando nova...');
+          console.warn('[ENDROOM] Consulta nao encontrada na room, criando nova...');
           const consultation = await db.createConsultation({
             doctor_id: doctorId,
             patient_id: room.patientId,
@@ -1394,12 +1447,10 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
 
           if (consultation) {
             consultationId = consultation.id;
-            console.log(`📋 Consulta criada (fallback): ${consultationId}`);
+            console.log(`[ENDROOM] Consulta criada (fallback): ${consultationId}`);
             saveResult.consultationId = consultationId;
 
-            // ✅ Atualizar consulta_fim e duracao (já que a consulta foi criada no fim)
             try {
-              const { supabase } = await import('../config/database');
               const duracaoSegundos = calculateDuration(room.createdAt);
               const duracaoMinutos = duracaoSegundos / 60;
 
@@ -1412,18 +1463,18 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
                 })
                 .eq('id', consultationId);
 
-              console.log(`📋 Consulta ${consultationId} atualizada com duração: ${duracaoMinutos.toFixed(2)} min`);
+              console.log(`[ENDROOM] Consulta ${consultationId} atualizada com duracao: ${duracaoMinutos.toFixed(2)} min`);
             } catch (updateError) {
-              console.error('❌ Erro ao atualizar duração da consulta fallback:', updateError);
+              console.error('[ENDROOM] Erro ao atualizar duracao da consulta fallback:', updateError);
               logError(
-                `Erro ao atualizar duração da consulta fallback`,
+                `Erro ao atualizar duracao da consulta fallback`,
                 'error',
                 consultationId,
                 { roomId, error: updateError instanceof Error ? updateError.message : String(updateError) }
               );
             }
           } else {
-            console.warn('⚠️ Falha ao criar consulta no banco');
+            console.warn('[ENDROOM] Falha ao criar consulta no banco');
             logError(
               `Falha ao criar consulta no banco (fallback)`,
               'error',
@@ -1432,154 +1483,92 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             );
           }
         } else {
-          console.warn('⚠️ Consulta não criada/atualizada - faltam doctor_id ou patientId');
+          console.warn('[ENDROOM] Consulta nao criada/atualizada - faltam doctor_id ou patientId');
           logWarning(
-            `Consulta não criada/atualizada - faltam doctor_id ou patientId`,
+            `Consulta nao criada/atualizada - faltam doctor_id ou patientId`,
             null,
             { roomId, hasDoctorId: !!doctorId, hasPatientId: !!room.patientId }
           );
         }
 
-        // 3. Atualizar CALL_SESSION com consultation_id
-        // 3. Atualizar CALL_SESSION (Sempre, usando o roomId)
-        try {
-          const callSessionUpdateData: any = {
-            status: 'ended',
-            ended_at: new Date().toISOString(),
-            webrtc_active: false,
-            metadata: {
-              transcriptionsCount: room.transcriptions.length,
-              duration: calculateDuration(room.createdAt), // Mantendo formato original (segundos?)
-              participantName: room.participantUserName,
-              terminatedBy: socket.id === room.hostSocketId ? 'host' : 'participant'
+        // 3. Atualizar CALL_SESSION para fallback path (RPC ja cuida do main path)
+        if (!room.consultationId) {
+          try {
+            const callSessionUpdateData: any = {
+              status: 'ended',
+              ended_at: new Date().toISOString(),
+              webrtc_active: false,
+              metadata: {
+                transcriptionsCount: room.transcriptions.length,
+                duration: calculateDuration(room.createdAt),
+                participantName: room.participantUserName,
+                terminatedBy: socket.id === room.hostSocketId ? 'host' : 'participant'
+              }
+            };
+
+            if (consultationId) {
+              callSessionUpdateData.consultation_id = consultationId;
             }
-          };
 
-          // Se tiver consultationId, atualiza o vínculo também
-          if (consultationId) {
-            callSessionUpdateData.consultation_id = consultationId;
-          }
+            console.log(`[ENDROOM] Atualizando call_session para ENDED (Room: ${roomId}) [fallback path]`);
+            await db.updateCallSession(roomId, callSessionUpdateData);
+            saveResult.sessionUpdated = true;
+            dbWriteSuccess = true;
 
-          console.log(`💾 Atualizando call_session para ENDED (Room: ${roomId})`);
-          await db.updateCallSession(roomId, callSessionUpdateData);
-          saveResult.sessionUpdated = true;
-
-        } catch (sessionError) {
-          console.error('❌ Erro ao atualizar call_session:', sessionError);
-          logError(
-            `Erro ao atualizar call_session para ended`,
-            'error',
-            consultationId,
-            { roomId, error: sessionError instanceof Error ? sessionError.message : String(sessionError) }
-          );
-        }
-
-        // 4. Salvar TRANSCRIÇÕES (raw_text completo)
-        if (consultationId && room.transcriptions.length > 0) {
-          // Juntar todas as transcrições em um único texto
-          const rawText = room.transcriptions
-            .map((t: any) => `[${t.speaker}] (${t.timestamp}): ${t.text}`)
-            .join('\n');
-
-          const transcription = await db.saveConsultationTranscription({
-            consultation_id: consultationId,
-            raw_text: rawText,
-            language: 'pt-BR',
-            model_used: 'gpt-4o-mini-realtime-preview'
-          });
-
-          // ✅ CORREÇÃO: Salvar também na coluna 'transcricao' da tabela 'consultations' (requisito do usuário)
-          await db.updateConsultation(consultationId, {
-            transcricao: rawText
-          });
-          console.log(`📝 Transcrição salva na consulta ${consultationId} (coluna transcricao)`);
-
-          if (transcription) {
-            console.log(`📝 Transcrição salva: ${transcription.id}`);
-            saveResult.transcriptionId = transcription.id;
-          } else {
-            console.warn('⚠️ Falha ao salvar transcrição no banco');
+          } catch (sessionError) {
+            console.error('[ENDROOM] Erro ao atualizar call_session:', sessionError);
             logError(
-              `Falha ao salvar transcrição completa no banco ao finalizar consulta`,
+              `Erro ao atualizar call_session para ended`,
               'error',
               consultationId,
-              { roomId, transcriptionsCount: room.transcriptions.length }
+              { roomId, error: sessionError instanceof Error ? sessionError.message : String(sessionError) }
             );
           }
         }
 
-        console.log(`✅ Dados salvos no banco de dados com sucesso`);
+        console.log(`[ENDROOM] Dados salvos no banco de dados com sucesso`);
 
-        // 💰 NOVO: Calcular e atualizar valor_consulta
+        // Keep pricing outside the transaction (per D-12)
         if (consultationId) {
           try {
             const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(consultationId);
             if (totalCost !== null) {
-              console.log(`💰 [CONSULTA] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+              console.log(`[ENDROOM] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
             }
           } catch (costError) {
-            console.error('❌ Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
+            console.error('[ENDROOM] Erro ao calcular custo da consulta (nao bloqueia finalizacao):', costError);
           }
         }
 
-        // 📤 CORREÇÃO: Enviar webhook com dados da consulta finalizada para n8n
+        // Per D-05: Use centralized webhook dispatch with retry
         if (consultationId) {
-          try {
-            const { supabase } = await import('../config/database');
-            const { data: consultation } = await supabase
-              .from('consultations')
-              .select('doctor_id, patient_id')
-              .eq('id', consultationId)
-              .single();
+          const { data: consultation } = await supabase
+            .from('consultations')
+            .select('doctor_id, patient_id')
+            .eq('id', consultationId)
+            .single();
 
-            const transcriptionText = (room.transcriptions || [])
-              .map((t: any) => `[${t.speaker}]: ${t.text}`)
-              .join('\n');
+          const { data: txnForWebhook } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', consultationId)
+            .maybeSingle();
 
-            const isHomolog = process.env.NODE_ENV === 'homolog';
-            const webhookUrl = isHomolog
-              ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
-              : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            const env = isHomolog
-              ? 'homolog'
-              : frontendUrl.includes('localhost')
-                ? 'localhost'
-                : 'prod';
-
-            const webhookData = {
-              consultationId,
-              doctorId: consultation?.doctor_id || null,
-              patientId: consultation?.patient_id || room.patientId || 'unknown',
-              transcription: transcriptionText,
-              consulta_finalizada: true,
-              paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
-              env
-            };
-
-            console.log(`📤 [ENDROOM] Enviando webhook para ${webhookUrl}...`);
-
-            const webhookRes = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-              },
-              body: JSON.stringify(webhookData)
-            });
-
-            if (webhookRes.ok) {
-              console.log(`✅ [ENDROOM] Webhook enviado com sucesso (${webhookRes.status})`);
-            } else {
-              console.warn(`⚠️ [ENDROOM] Webhook retornou ${webhookRes.status}`);
-            }
-          } catch (webhookError) {
-            console.error('❌ [ENDROOM] Erro ao enviar webhook (não bloqueia finalização):', webhookError);
-          }
+          const webhookPayload: WebhookPayload = {
+            consultationId,
+            doctorId: consultation?.doctor_id || null,
+            patientId: consultation?.patient_id || room.patientId || 'unknown',
+            transcription: txnForWebhook?.raw_text || '',
+            consulta_finalizada: true,
+            paciente_entrou_sala: !!(room.participantUserName || room.joinedPatientName),
+            tipo_consulta: 'ONLINE',
+            env: getEnv(),
+          };
+          dispatchWebhookWithRetry(consultationId, webhookPayload, 'transcricao');
         }
 
       } catch (error) {
-        console.error('❌ Erro ao salvar no banco de dados:', error);
+        console.error('[ENDROOM] Erro ao salvar no banco de dados:', error);
         saveResult.error = 'Erro ao salvar alguns dados no banco';
         logError(
           `Erro geral ao salvar dados no banco ao finalizar consulta`,
@@ -1587,10 +1576,14 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           room.consultationId || null,
           { roomId, error: error instanceof Error ? error.message : String(error) }
         );
+        // Per D-14, D-15: Room preserved in memory
+        logError('Finalizacao DB write falhou - room preservada na memoria', 'error', room.consultationId || null, { roomId, error: error instanceof Error ? error.message : String(error) });
+      } finally {
+        releaseFinalizationLock(roomId);
       }
       // ================================================================
 
-      // Notificar participante que sala foi finalizada
+      // Notificar participante que sala foi finalizada (always, regardless of dbWriteSuccess)
       if (room.participantSocketId) {
         io.to(room.participantSocketId).emit('roomEnded', {
           roomId: roomId,
@@ -1598,28 +1591,40 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         });
       }
 
-      // Limpar timer do mapa separado
-      if (roomTimers.has(roomId)) {
-        clearTimeout(roomTimers.get(roomId));
-        roomTimers.delete(roomId);
+      // Per D-14, D-16: Only delete room if DB writes succeeded
+      if (dbWriteSuccess) {
+        if (roomTimers.has(roomId)) {
+          clearTimeout(roomTimers.get(roomId));
+          roomTimers.delete(roomId);
+        }
+        if (room.hostUserName) userToRoom.delete(room.hostUserName);
+        if (room.participantUserName) userToRoom.delete(room.participantUserName);
+        socketToRoom.delete(room.hostSocketId);
+        if (room.participantSocketId) socketToRoom.delete(room.participantSocketId);
+        rooms.delete(roomId);
+      } else {
+        // Per D-15: Safety net cleanup after 10 minutes
+        setTimeout(() => {
+          if (rooms.has(roomId)) {
+            if (roomTimers.has(roomId)) {
+              clearTimeout(roomTimers.get(roomId));
+              roomTimers.delete(roomId);
+            }
+            if (room.hostUserName) userToRoom.delete(room.hostUserName);
+            if (room.participantUserName) userToRoom.delete(room.participantUserName);
+            rooms.delete(roomId);
+            logError('Room cleanup timer - room removida apos 10min sem retry', 'error', room.consultationId || null, { roomId });
+          }
+        }, 10 * 60 * 1000);
       }
 
-      // Remover mapeamentos
-      if (room.hostUserName) userToRoom.delete(room.hostUserName);
-      if (room.participantUserName) userToRoom.delete(room.participantUserName);
-      socketToRoom.delete(room.hostSocketId);
-      if (room.participantSocketId) socketToRoom.delete(room.participantSocketId);
-
-      // Remover sala
-      rooms.delete(roomId);
-
-      console.log(`✅ Sala ${roomId} finalizada`);
+      console.log(`[ENDROOM] Sala ${roomId} finalizada`);
 
       callback({
         success: true,
         message: 'Sala finalizada com sucesso',
         saveResult: saveResult,
-        participantUserName: room.participantUserName || room.joinedPatientName  // ✅ NOVO: Usar fallback persistente
+        participantUserName: room.participantUserName || room.joinedPatientName
       });
     });
 
@@ -1634,19 +1639,22 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
         const room = rooms.get(roomId);
 
         if (room) {
+          // Per D-01: Determine role BEFORE nullifying socket IDs
+          const isHost = socket.id === room.hostSocketId;
+          const isParticipant = socket.id === room.participantSocketId;
+
           // Se host desconectou
-          if (socket.id === room.hostSocketId) {
-            console.log(`⚠️ Host desconectou da sala ${roomId}`);
+          if (isHost) {
+            console.log(`[DISCONNECT] Host desconectou da sala ${roomId}`);
             room.hostSocketId = null;
 
-            // ✅ NOVO: Atualizar webrtc_active = false quando host desconecta
-            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (host desconectou)`);
+            console.log(`[DISCONNECT] [WebRTC] Conexao perdida na sala ${roomId} (host desconectou)`);
             db.setWebRTCActive(roomId, false);
           }
 
           // Se participante desconectou
-          if (socket.id === room.participantSocketId) {
-            console.log(`⚠️ Participante desconectou da sala ${roomId}`);
+          if (isParticipant) {
+            console.log(`[DISCONNECT] Participante desconectou da sala ${roomId}`);
             // Liberar vaga do participante para evitar sala ficar "cheia"
             if (room.participantUserName) {
               userToRoom.delete(room.participantUserName);
@@ -1654,18 +1662,35 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             room.participantUserName = null;
             room.participantSocketId = null;
 
-            // ✅ NOVO: Atualizar webrtc_active = false quando participante desconecta
-            console.log(`🔌 [WebRTC] Conexão perdida na sala ${roomId} (participante desconectou)`);
+            console.log(`[DISCONNECT] [WebRTC] Conexao perdida na sala ${roomId} (participante desconectou)`);
             db.setWebRTCActive(roomId, false);
           }
 
-          // Continuar com timer de expiração (permite reconexão)
-          resetRoomExpiration(roomId);
+          // Per D-01: Set disconnected state instead of immediate cleanup
+          room.disconnectedAt = new Date().toISOString();
+
+          // Per D-02: Configurable timeout -- 5 min host, 3 min participant
+          const timeoutMs = isHost ? 5 * 60 * 1000 : 3 * 60 * 1000;
+
+          // Per Pitfall 5: Skip disconnect timer if finalization is already in progress
+          if (!tryAcquireFinalizationLock(roomId)) {
+            // Finalization owns this room -- don't start a competing timer
+            console.log(`[DISCONNECT] Room ${roomId} is being finalized -- skipping disconnect timer`);
+          } else {
+            releaseFinalizationLock(roomId); // We just tested, not actually finalizing
+            // Clear existing timer and set disconnect-specific timeout
+            if (roomTimers.has(roomId)) {
+              clearTimeout(roomTimers.get(roomId));
+            }
+            const timer = setTimeout(() => cleanDisconnectedRoom(roomId), timeoutMs);
+            roomTimers.set(roomId, timer);
+            console.log(`[DISCONNECT] Room ${roomId} -- disconnect timer started (${timeoutMs / 60000} min)`);
+          }
         }
       }
 
-      // 🔧 CORREÇÃO: Fechar conexão OpenAI corretamente quando usuário desconecta
-      closeOpenAIConnection(userName, 'usuário desconectou');
+      // Fechar conexao OpenAI corretamente quando usuario desconecta
+      closeOpenAIConnection(userName, 'usuario desconectou');
 
       socketToRoom.delete(socket.id);
     });

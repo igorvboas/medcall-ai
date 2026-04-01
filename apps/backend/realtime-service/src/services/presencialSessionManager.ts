@@ -1,6 +1,9 @@
 import { whisperService } from './whisperService';
-import { db, logError } from '../config/database';
-import fetch from 'node-fetch';
+import { db, logError, finalizeConsultation } from '../config/database';
+import { getEnv } from '../config/webhookConfig';
+import { dispatchWebhookWithRetry } from './webhookService';
+import type { WebhookPayload } from './webhookService';
+import { isTerminalStatus } from '../shared/finalizationGuard';
 import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
 import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { aiConfig } from '../config';
@@ -54,6 +57,9 @@ interface PresencialSession {
     // Estatísticas
     totalChunks: number;
     totalTranscriptions: number;
+
+    // Disconnect tracking (per D-04, D-05)
+    disconnectedAt?: string | null;
 }
 
 /**
@@ -519,6 +525,13 @@ class PresencialSessionManager {
     }
 
     /**
+     * Returns all active session IDs (for reconnection lookup by consultationId)
+     */
+    getAllSessionIds(): string[] {
+        return Array.from(this.sessions.keys());
+    }
+
+    /**
      * Adiciona chunk de áudio à fila de processamento
      */
     async addAudioChunk(
@@ -814,7 +827,20 @@ class PresencialSessionManager {
         const session = this.sessions.get(sessionId);
 
         if (!session) {
-            throw new Error(`Sessão ${sessionId} não encontrada`);
+            throw new Error(`Sessao ${sessionId} nao encontrada`);
+        }
+
+        // Per D-11, D-17: Check DB status before proceeding
+        const { supabase } = await import('../config/database');
+        const { data: statusCheck } = await supabase
+            .from('consultations')
+            .select('status')
+            .eq('id', session.consultationId)
+            .single();
+
+        if (statusCheck && isTerminalStatus(statusCheck.status)) {
+            console.log(`[PRESENCIAL] Consulta ${session.consultationId} ja esta COMPLETED -- skip`);
+            return;
         }
 
         console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
@@ -832,162 +858,184 @@ class PresencialSessionManager {
 
         // Aguardar processamento completo da fila
         while (this.processingQueue.some(c => c.sessionId === sessionId)) {
-            console.log(`⏳ [PRESENCIAL] Aguardando fila processar...`);
+            console.log(`[PRESENCIAL] Aguardando fila processar...`);
             await this.sleep(500);
         }
 
-        // Salvar transcrições no banco
-        await this.saveTranscriptions(session);
-
-        // Atualizar consultation
         const durationSeconds = Math.floor((session.endTime.getTime() - session.startTime.getTime()) / 1000);
-        const durationMinutes = durationSeconds / 60; // Converter para minutos conforme schema do banco
+        const durationMinutes = durationSeconds / 60;
 
-        const { supabase } = await import('../config/database');
-        await supabase
-            .from('consultations')
-            .update({
-                status: 'PROCESSING',
-                consulta_finalizada: true,
-                consulta_fim: session.endTime.toISOString(),
-                duracao: durationMinutes, // Campo duracao é REAL em minutos
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', session.consultationId);
-
-        // Atualizar call_sessions.status para 'ended'
-        {
-            const { error: csError } = await supabase
-                .from('call_sessions')
-                .update({
-                    status: 'ended',
-                    ended_at: session.endTime.toISOString(),
-                    webrtc_active: false
-                })
-                .eq('room_id', sessionId);
-
-            if (csError) {
-                console.error(`⚠️ [PRESENCIAL] Erro ao atualizar call_sessions:`, csError);
-            } else {
-                console.log(`✅ [PRESENCIAL] call_sessions.status atualizado para 'ended'`);
-            }
-        }
-
-        console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada (${session.totalTranscriptions} transcrições, ${durationMinutes.toFixed(2)} min)`);
-
-        // 💰 NOVO: Calcular e atualizar valor_consulta
+        let dbWriteSuccess = false;
         try {
-            const { aiPricingService } = await import('./aiPricingService');
-            const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
-            if (totalCost !== null) {
-                console.log(`💰 [PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
-            }
-        } catch (costError) {
-            console.error('❌ [PRESENCIAL] Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
-        }
+            // Salvar transcricoes no banco (copies raw_text to consultations.transcricao)
+            await this.saveTranscriptions(session);
 
-        // 📤 NOVO: Enviar webhook com dados da consulta finalizada
-        try {
-            // Montar transcrição completa formatada
-            const transcriptionText = session.transcriptions
-                .map(t => `[${t.speaker}]: ${t.text}`)
-                .join('\n');
+            // Read transcription from DB for the RPC
+            const { data: txnRecord } = await supabase
+                .from('transcriptions')
+                .select('raw_text')
+                .eq('consultation_id', session.consultationId)
+                .maybeSingle();
 
-            // Configurar webhook
-            const isHomolog = process.env.NODE_ENV === 'homolog';
-            const webhookUrl = isHomolog
-                ? 'https://triahook.gst.dev.br/webhook/80a69a11-a580-40c2-95da-7eb19f103d59/:usi-analise-homolog'
-                : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-            const webhookHeaders = {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-            };
+            const fullText = txnRecord?.raw_text || '';
 
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            const env = isHomolog
-              ? 'homolog'
-              : frontendUrl.includes('localhost')
-                ? 'localhost'
-                : 'prod';
-
-            const webhookData = {
+            // Per D-10, D-11: Single atomic RPC replaces sequential writes
+            dbWriteSuccess = await finalizeConsultation({
                 consultationId: session.consultationId,
-                doctorId: session.doctorId,
-                patientId: session.patientId,
-                transcription: transcriptionText,
-                consulta_finalizada: true,
-                paciente_entrou_sala: true, // Em consultas presenciais, sempre true
-                tipo_consulta: 'PRESENCIAL',
-                env
-            };
-
-            console.log(`📤 [PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
-            console.log(`📦 [PRESENCIAL] Dados: consultationId=${session.consultationId}, doctorId=${session.doctorId}, patientId=${session.patientId}`);
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: webhookHeaders,
-                body: JSON.stringify(webhookData)
+                transcription: fullText,
+                status: 'COMPLETED',
+                durationMinutes: durationMinutes,
+                callSessionRoomId: sessionId,
             });
 
-            if (response.ok) {
-                console.log(`✅ [PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
+            if (dbWriteSuccess) {
+                console.log(`[PRESENCIAL] Sessao ${sessionId} finalizada atomicamente via RPC (${durationMinutes.toFixed(2)} min)`);
             } else {
-                console.warn(`⚠️ [PRESENCIAL] Webhook retornou status ${response.status}`);
+                console.error(`[PRESENCIAL] RPC finalize_consultation falhou para sessao ${sessionId}`);
             }
-        } catch (webhookError) {
-            // Não bloquear finalização se webhook falhar
-            console.error(`❌ [PRESENCIAL] Erro ao enviar webhook:`, webhookError);
-            logError(
-                'Erro ao enviar webhook de finalização de consulta presencial',
-                'warning',
-                session.consultationId,
-                {
-                    sessionId,
-                    error: webhookError instanceof Error ? webhookError.message : String(webhookError)
+
+            // Keep pricing outside the transaction (per D-12)
+            if (dbWriteSuccess) {
+                try {
+                    const { aiPricingService } = await import('./aiPricingService');
+                    const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
+                    if (totalCost !== null) {
+                        console.log(`[PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+                    }
+                } catch (costError) {
+                    console.error('[PRESENCIAL] Erro ao calcular custo da consulta (nao bloqueia finalizacao):', costError);
                 }
-            );
+            }
+        } catch (dbError) {
+            console.error('[PRESENCIAL] Erro ao salvar dados da finalizacao:', dbError);
+            logError('Finalizacao presencial DB write falhou - sessao preservada na memoria', 'error', session.consultationId, {
+                sessionId,
+                error: dbError instanceof Error ? dbError.message : String(dbError)
+            });
         }
 
-        // Remover da memória após 5 minutos
-        setTimeout(() => {
-            this.sessions.delete(sessionId);
-            console.log(`🧹 [PRESENCIAL] Sessão ${sessionId} removida da memória`);
-        }, 5 * 60 * 1000);
+        // Per D-05: Use centralized webhook dispatch with retry
+        const { data: txnForWebhook } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const webhookPayload: WebhookPayload = {
+            consultationId: session.consultationId,
+            doctorId: session.doctorId,
+            patientId: session.patientId,
+            transcription: txnForWebhook?.raw_text || '',
+            consulta_finalizada: true,
+            paciente_entrou_sala: true,
+            tipo_consulta: 'PRESENCIAL',
+            env: getEnv(),
+        };
+        dispatchWebhookWithRetry(session.consultationId, webhookPayload, 'transcricao');
+
+        // Per D-14, D-16: Only schedule session cleanup if DB writes succeeded
+        if (dbWriteSuccess) {
+            // Keep existing 5-minute cleanup timer
+            setTimeout(() => {
+                this.sessions.delete(sessionId);
+                console.log(`[PRESENCIAL] Sessao ${sessionId} removida da memoria`);
+            }, 5 * 60 * 1000);
+        } else {
+            // Per D-15: Safety net cleanup after 10 minutes (longer than normal 5min because we want retry window)
+            setTimeout(() => {
+                if (this.sessions.has(sessionId)) {
+                    this.sessions.delete(sessionId);
+                    logError('Sessao presencial cleanup timer - sessao removida apos 10min sem retry', 'error', session.consultationId, { sessionId });
+                }
+            }, 10 * 60 * 1000);
+        }
     }
 
     /**
      * Salva transcrições no banco de dados
      */
     private async saveTranscriptions(session: PresencialSession): Promise<void> {
-        if (session.transcriptions.length === 0) {
-            console.log(`⚠️ [PRESENCIAL] Nenhuma transcrição para salvar`);
+        // Read transcription from DB (crash-safe) per D-07, D-08
+        const { supabase } = await import('../config/database');
+        const { data: txnRecord } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const fullText = txnRecord?.raw_text || '';
+
+        if (!fullText) {
+            console.log(`[PRESENCIAL] Nenhuma transcricao encontrada em transcriptions para consulta ${session.consultationId}`);
             return;
         }
 
-        // Formatar transcrição completa como texto legível
-        const transcriptionText = session.transcriptions.map(t => {
-            const speakerLabel = t.speaker === 'doctor' ? 'MEDICO' :
-                                 t.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
-            const timestamp = t.timestamp.toISOString().substring(11, 19); // HH:mm:ss
-            return `[${speakerLabel}] (${timestamp}): ${t.text}`;
-        }).join('\n');
-
-        // Salvar em consultations.transcricao
-        const { supabase } = await import('../config/database');
+        // Copy to consultations.transcricao
         const { error } = await supabase
             .from('consultations')
             .update({
-                transcricao: transcriptionText
+                transcricao: fullText
             })
             .eq('id', session.consultationId);
 
         if (error) {
-            console.error('❌ [PRESENCIAL] Erro ao salvar transcrições:', error);
+            console.error('[PRESENCIAL] Erro ao salvar transcricoes:', error);
             throw error;
         }
 
-        console.log(`💾 [PRESENCIAL] ${session.transcriptions.length} transcrições salvas em consultations.transcricao`);
+        console.log(`[PRESENCIAL] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
+    }
+
+    /**
+     * Per D-04, D-05: Cleanup a disconnected presencial session after timeout.
+     * Called by the disconnect timer in presencial.ts.
+     */
+    async cleanupDisconnectedSession(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+
+        // If session was reconnected (disconnectedAt cleared), skip cleanup
+        if (!session.disconnectedAt) {
+            console.log(`[PRESENCIAL] Session ${sessionId} was reconnected -- skipping disconnect cleanup`);
+            return;
+        }
+
+        console.log(`[PRESENCIAL] Cleaning disconnected session ${sessionId} (disconnected at ${session.disconnectedAt})`);
+
+        // Update consultation status to terminal state
+        try {
+            const { supabase } = await import('../config/database');
+            await supabase
+                .from('consultations')
+                .update({ status: 'ABANDONED', updated_at: new Date().toISOString() })
+                .eq('id', session.consultationId);
+
+            // Update call_sessions
+            await supabase
+                .from('call_sessions')
+                .update({ status: 'ended', ended_at: new Date().toISOString(), webrtc_active: false })
+                .eq('room_id', sessionId);
+
+            console.log(`[PRESENCIAL] Session ${sessionId} cleaned up -- consultation marked ABANDONED`);
+        } catch (err) {
+            console.error(`[PRESENCIAL] Error cleaning up session ${sessionId}:`, err);
+        }
+
+        // Remove session from memory
+        this.sessions.delete(sessionId);
+        this.accumulators.delete(sessionId);
+        logError('Sessao presencial orfa limpa apos disconnect timeout', 'warning', session.consultationId, { sessionId });
+    }
+
+    /**
+     * Per D-08, D-09: Clear disconnect state when client reconnects.
+     */
+    clearDisconnectState(sessionId: string): void {
+        const session = this.sessions.get(sessionId);
+        if (session && session.disconnectedAt) {
+            console.log(`[PRESENCIAL] Clearing disconnect state for session ${sessionId}`);
+            session.disconnectedAt = null;
+        }
     }
 
     /**

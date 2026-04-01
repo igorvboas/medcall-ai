@@ -23,6 +23,7 @@ export function usePresencialSingleMicCapture({
 }: UsePresencialSingleMicCaptureProps) {
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
+    const [stream, setStream] = useState<MediaStream | null>(null);
 
     const sessionIdRef = useRef<string | null>(null);
     const isRecordingRef = useRef<boolean>(false);
@@ -96,6 +97,7 @@ export function usePresencialSingleMicCapture({
             });
 
             streamRef.current = stream;
+            setStream(stream);
             vadRef.current = new VoiceActivityDetector(stream);
 
             const mimeType = getBestAudioMimeType();
@@ -315,6 +317,7 @@ export function usePresencialSingleMicCapture({
         stopCapture,
         getFullSessionAudio,
         audioLevel,
-        pendingChunks: bufferRef.current.filter(c => !c.sent).length
+        pendingChunks: bufferRef.current.filter(c => !c.sent).length,
+        stream
     };
 }

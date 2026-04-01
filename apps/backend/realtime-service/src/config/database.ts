@@ -1026,58 +1026,22 @@ export const db = {
    */
   async appendConsultationTranscription(consultationId: string, textToAppend: string, speaker: string, timestamp: string): Promise<boolean> {
     try {
-      // 1. Check if a transcription record exists for this consultation
-      const { data: existing, error: fetchError } = await supabase
-        .from('transcriptions')
-        .select('id, raw_text')
-        .eq('consultation_id', consultationId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('❌ [DB] Error fetching transcription for append:', fetchError);
-        return false;
-      }
-
       const formattedLine = `[${speaker}] (${timestamp}): ${textToAppend}`;
-
-      if (existing) {
-        // Append to existing
-        const newText = existing.raw_text ? `${existing.raw_text}\n${formattedLine}` : formattedLine;
-
-        const { error: updateError } = await supabase
-          .from('transcriptions')
-          .update({
-            raw_text: newText,
-            updated_at: new Date().toISOString() // Assuming there's an updated_at, if not it's fine
-          } as any)
-          .eq('id', existing.id);
-
-        if (updateError) {
-          console.error('❌ [DB] Error appending transcription:', updateError);
-          return false;
-        }
-      } else {
-        // Create new
-        const { error: insertError } = await supabase
-          .from('transcriptions')
-          .insert({
-            consultation_id: consultationId,
-            raw_text: formattedLine,
-            language: 'pt-BR',
-            model_used: 'whisper-1-vad',
-            created_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('❌ [DB] Error creating transcription (append):', insertError);
-          return false;
-        }
+      const { error } = await supabase.rpc('append_transcription_text', {
+        p_consultation_id: consultationId,
+        p_text: formattedLine,
+      });
+      if (error) {
+        console.error('[DB] Error in atomic append:', error);
+        logError('Erro no append atomico de transcricao', 'error', consultationId, {
+          error: error.message,
+          code: error.code,
+        });
+        return false;
       }
       return true;
     } catch (e) {
-      console.error('❌ [DB] Exception in appendConsultationTranscription:', e);
+      console.error('[DB] Exception in appendConsultationTranscription:', e);
       return false;
     }
   },
@@ -1464,6 +1428,102 @@ export async function logWarning(
   payload?: Record<string, any>
 ): Promise<void> {
   return logError(motivo, 'warning', consultaId, payload);
+}
+
+/**
+ * Phase 6 (WBHK-03): Record a new webhook delivery in the outbox table.
+ * Returns the delivery ID or null on error.
+ */
+export async function recordWebhookDelivery(data: {
+  consultation_id: string;
+  webhook_url: string;
+  payload: Record<string, any>;
+  status?: string;
+  attempts?: number;
+  max_attempts?: number;
+}): Promise<string | null> {
+  const { data: row, error } = await supabase
+    .from('webhook_deliveries')
+    .insert({
+      consultation_id: data.consultation_id,
+      webhook_url: data.webhook_url,
+      payload: data.payload,
+      status: data.status || 'pending',
+      attempts: data.attempts || 0,
+      max_attempts: data.max_attempts || 3,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Erro ao registrar webhook delivery:', error);
+    return null;
+  }
+  return row.id;
+}
+
+/**
+ * Phase 6 (WBHK-03): Update an existing webhook delivery record.
+ * Returns true on success, false on error.
+ */
+export async function updateWebhookDelivery(
+  id: string,
+  data: Partial<{
+    status: string;
+    attempts: number;
+    last_attempt_at: string;
+    response_status: number;
+    response_body: string;
+    error_message: string;
+  }>
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('webhook_deliveries')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar webhook delivery:', error);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Phase 7 (DBAS-01): Atomic finalization via PostgreSQL RPC.
+ * Replaces sequential DB writes in all 3 finalization paths with a single transaction.
+ * Returns true on success, false on error.
+ */
+export async function finalizeConsultation(params: {
+  consultationId: string;
+  transcription: string;
+  status?: string;
+  durationMinutes?: number;
+  callSessionRoomId?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc('finalize_consultation', {
+      p_consultation_id: params.consultationId,
+      p_transcription: params.transcription,
+      p_status: params.status || 'COMPLETED',
+      p_duration_minutes: params.durationMinutes || null,
+      p_call_session_room_id: params.callSessionRoomId || null,
+    });
+
+    if (error) {
+      console.error('[DB] finalize_consultation RPC failed:', error);
+      logError('finalize_consultation RPC falhou', 'error', params.consultationId, {
+        error: error.message,
+        code: error.code,
+      });
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[DB] Exception in finalizeConsultation:', e);
+    return false;
+  }
 }
 
 export default supabase;

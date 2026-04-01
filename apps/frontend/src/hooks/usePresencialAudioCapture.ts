@@ -26,6 +26,9 @@ export function usePresencialAudioCapture({
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
 
+    // Reactive stream state for downstream consumers (e.g., useMicMonitor)
+    const [doctorStream, setDoctorStream] = useState<MediaStream | null>(null);
+
     // Usar refs para evitar problemas de closure nos callbacks
     const sessionIdRef = useRef<string | null>(null);
     const isRecordingRef = useRef<boolean>(false);
@@ -111,6 +114,7 @@ export function usePresencialAudioCapture({
 
             doctorStreamRef.current = doctorStream;
             patientStreamRef.current = patientStream;
+            setDoctorStream(doctorStream);
 
             // Inicializar VADs
             doctorVADRef.current = new VoiceActivityDetector(doctorStream);
@@ -345,6 +349,7 @@ export function usePresencialAudioCapture({
         // Parar streams
         doctorStreamRef.current?.getTracks().forEach(track => track.stop());
         patientStreamRef.current?.getTracks().forEach(track => track.stop());
+        setDoctorStream(null);
 
         // Limpar VADs
         doctorVADRef.current?.destroy();
@@ -402,6 +407,7 @@ export function usePresencialAudioCapture({
         stopCapture,
         doctorLevel,
         patientLevel,
-        pendingChunks: bufferRef.current.filter(c => !c.sent).length
+        pendingChunks: bufferRef.current.filter(c => !c.sent).length,
+        doctorStream
     };
 }

@@ -2,6 +2,12 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import crypto from 'crypto';
 import { presencialSessionManager } from '../services/presencialSessionManager';
 import { db, logError } from '../config/database';
+import { tryAcquireFinalizationLock, releaseFinalizationLock } from '../shared/finalizationGuard';
+
+// Socket-to-session mapping for disconnect handler (per Pitfall 2)
+const socketToPresencialSession = new Map<string, string>(); // socketId -> sessionId
+// Disconnect timers for presencial sessions
+const presencialDisconnectTimers = new Map<string, NodeJS.Timeout>(); // sessionId -> Timeout
 
 /**
  * Configurar handlers Socket.IO para consultas presenciais
@@ -51,43 +57,78 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
                     return;
                 }
 
-                // Gerar ID da sessão
-                const sessionId = 'pres-' + crypto.randomBytes(6).toString('hex');
-
-                // Criar sessão
-                const session = await presencialSessionManager.createSession({
-                    sessionId,
-                    consultationId: consultation.id,
-                    doctorId: consultation.doctor_id,
-                    patientId: consultation.patient_id,
-                    patientName: consultation.patient_name,
-                    doctorName: consultation.medicos?.name || userName,
-                    doctorMicrophoneId,
-                    patientMicrophoneId
-                });
-
-                // Atualizar consultation para status RECORDING
-                const updateData: any = {
-                    status: 'RECORDING',
-                    updated_at: new Date().toISOString()
-                };
-                // Preencher consulta_inicio se ainda não estiver definido
-                if (!consultation.consulta_inicio) {
-                    updateData.consulta_inicio = new Date().toISOString();
+                // Per D-06, D-08, D-09: Check for existing session (reconnection scenario)
+                // Search all active sessions for this consultationId
+                let existingSessionId: string | null = null;
+                const allSessions = presencialSessionManager.getAllSessionIds?.() || [];
+                for (const sid of allSessions) {
+                    const existingSession = presencialSessionManager.getSession(sid);
+                    if (existingSession && existingSession.consultationId === consultationId && existingSession.status !== 'ended') {
+                        existingSessionId = sid;
+                        break;
+                    }
                 }
-                await supabase
-                    .from('consultations')
-                    .update(updateData)
-                    .eq('id', consultationId);
+
+                let sessionId: string;
+                let session;
+
+                if (existingSessionId) {
+                    // Reconnection: reuse existing session
+                    sessionId = existingSessionId;
+                    session = presencialSessionManager.getSession(sessionId)!;
+
+                    // Per D-08: Cancel disconnect timer on rejoin
+                    if (presencialDisconnectTimers.has(sessionId)) {
+                        clearTimeout(presencialDisconnectTimers.get(sessionId)!);
+                        presencialDisconnectTimers.delete(sessionId);
+                        console.log(`[PRESENCIAL] Disconnect timer cancelled for session ${sessionId} (reconnection)`);
+                    }
+                    // Per D-09: Clear disconnect state
+                    presencialSessionManager.clearDisconnectState(sessionId);
+
+                    console.log(`[PRESENCIAL] Sessao ${sessionId} reconnected by ${userName}`);
+                } else {
+                    // Fresh session: create new
+                    sessionId = 'pres-' + crypto.randomBytes(6).toString('hex');
+
+                    session = await presencialSessionManager.createSession({
+                        sessionId,
+                        consultationId: consultation.id,
+                        doctorId: consultation.doctor_id,
+                        patientId: consultation.patient_id,
+                        patientName: consultation.patient_name,
+                        doctorName: consultation.medicos?.name || userName,
+                        doctorMicrophoneId,
+                        patientMicrophoneId
+                    });
+
+                    // Atualizar consultation para status RECORDING
+                    const updateData: any = {
+                        status: 'RECORDING',
+                        updated_at: new Date().toISOString()
+                    };
+                    // Preencher consulta_inicio se ainda não estiver definido
+                    if (!consultation.consulta_inicio) {
+                        updateData.consulta_inicio = new Date().toISOString();
+                    }
+                    await supabase
+                        .from('consultations')
+                        .update(updateData)
+                        .eq('id', consultationId);
+
+                    console.log(`[PRESENCIAL] Sessao ${sessionId} criada`);
+                }
+
+                // Map socket to session for disconnect handler
+                socketToPresencialSession.set(socket.id, sessionId);
 
                 // Entrar na sala Socket.IO
                 socket.join(sessionId);
 
-                console.log(`✅ [PRESENCIAL] Sessão ${sessionId} criada`);
-
                 callback({
                     success: true,
                     sessionId,
+                    reconnected: !!existingSessionId,
                     session: {
                         sessionId: session.sessionId,
                         consultationId: session.consultationId,
@@ -210,32 +251,42 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
             try {
                 const { sessionId, fullAudioData } = data;
 
-                console.log(`[PRESENCIAL] Finalizando sessão ${sessionId}...`);
-
-                // Se tem audio completo (single-mic), processar diarizacao final
-                if (fullAudioData) {
-                    const audioBuffer = Buffer.from(fullAudioData, 'base64');
-                    console.log(`[PRESENCIAL] Audio completo recebido: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-                    await presencialSessionManager.finalizeWithFullAudio(sessionId, audioBuffer);
+                // Per D-08: Mutex prevents concurrent finalization
+                if (!tryAcquireFinalizationLock(sessionId)) {
+                    callback({ success: true, already_finalizing: true, message: 'Sessao ja esta sendo finalizada' });
+                    return;
                 }
 
-                // Finalizar sessão (salva transcricao, webhook, etc)
-                await presencialSessionManager.endSession(sessionId);
+                try {
+                    console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
 
-                // Sair da sala
-                socket.leave(sessionId);
+                    // Se tem audio completo (single-mic), processar diarizacao final
+                    if (fullAudioData) {
+                        const audioBuffer = Buffer.from(fullAudioData, 'base64');
+                        console.log(`[PRESENCIAL] Audio completo recebido: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+                        await presencialSessionManager.finalizeWithFullAudio(sessionId, audioBuffer);
+                    }
 
-                console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada`);
+                    // Finalizar sessao (salva transcricao, webhook, etc)
+                    await presencialSessionManager.endSession(sessionId);
 
-                callback({
-                    success: true,
-                    message: 'Sessão finalizada com sucesso'
-                });
+                    // Sair da sala
+                    socket.leave(sessionId);
+
+                    console.log(`[PRESENCIAL] Sessao ${sessionId} finalizada`);
+
+                    callback({
+                        success: true,
+                        message: 'Sessao finalizada com sucesso'
+                    });
+                } finally {
+                    releaseFinalizationLock(sessionId);
+                }
             } catch (error) {
-                console.error('[PRESENCIAL] Erro ao finalizar sessão:', error);
+                console.error('[PRESENCIAL] Erro ao finalizar sessao:', error);
 
                 logError(
-                    'Erro ao finalizar sessão presencial',
+                    'Erro ao finalizar sessao presencial',
                     'error',
                     null,
                     {
@@ -392,6 +443,28 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
 
         socket.on('disconnect', (reason) => {
             console.log(`[PRESENCIAL] ${userName} desconectado: ${reason}`);
+
+            const sessionId = socketToPresencialSession.get(socket.id);
+            socketToPresencialSession.delete(socket.id);
+
+            if (!sessionId) return;
+
+            const session = presencialSessionManager.getSession(sessionId);
+            if (!session || session.status === 'ended') return;
+
+            // Per D-01, D-05: Set disconnected state on session
+            (session as any).disconnectedAt = new Date().toISOString();
+
+            // Per D-02, D-05: 5 min timeout for presencial (always the doctor)
+            const PRESENCIAL_DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+
+            console.log(`[PRESENCIAL] Disconnect timer started for session ${sessionId} (5 min)`);
+            const timer = setTimeout(() => {
+                presencialDisconnectTimers.delete(sessionId);
+                presencialSessionManager.cleanupDisconnectedSession(sessionId);
+            }, PRESENCIAL_DISCONNECT_TIMEOUT_MS);
+
+            presencialDisconnectTimers.set(sessionId, timer);
         });
     });
 }
