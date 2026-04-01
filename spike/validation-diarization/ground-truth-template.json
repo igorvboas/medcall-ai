@@ -1,0 +1,18 @@
+{
+  "audioFile": "REPLACE_WITH_FILENAME.webm",
+  "totalDurationSeconds": 0,
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 15.0,
+      "speaker": "doctor",
+      "text_snippet": "Bom dia, como voce esta se sentindo..."
+    },
+    {
+      "start": 15.1,
+      "end": 28.0,
+      "speaker": "patient",
+      "text_snippet": "Estou com dor de cabeca ha tres dias..."
+    }
+  ]
+}

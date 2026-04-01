@@ -36,7 +36,7 @@ export function getWebhookConfig(): WebhookConfig {
 
   return {
     baseUrl: isHomolog
-      ? 'https://webhook.tc1.triacompany.com.br'
+      ? 'https://triahook.gst.dev.br'
       : 'https://triahook.gst.dev.br',
     authHeader: process.env.NEXT_PUBLIC_WEBHOOK_AUTH_HEADER || ''
   };
@@ -54,7 +54,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
 
   const config = getWebhookConfig();
   const prodBase = 'https://triahook.gst.dev.br';
-  const homologBase = 'https://webhook.tc1.triacompany.com.br';
+  const homologBase = 'https://triahook.gst.dev.br';
 
   console.log('🔗🔗 Webhook endpoints configurados:', {
     env,

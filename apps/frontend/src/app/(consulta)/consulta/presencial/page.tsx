@@ -8,11 +8,16 @@ import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft, Cli
 import { DualMicrophoneControl } from '@/components/presencial/DualMicrophoneControl';
 import { PresencialTranscription } from '@/components/presencial/PresencialTranscription';
 import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
-import { formatDuration } from '@/lib/audioUtils';
+import { usePresencialSingleMicCapture } from '@/hooks/usePresencialSingleMicCapture';
+import { MicModeToggle } from '@/components/presencial/MicModeToggle';
+import { SingleMicrophoneControl } from '@/components/presencial/SingleMicrophoneControl';
+import { formatDuration, blobToBase64 } from '@/lib/audioUtils';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { supabase } from '@/lib/supabase';
 
-import { TranscriptionSegment } from '@/types/transcription';
+import { TranscriptionSegment, Speaker } from '@/types/transcription';
+
+const IS_DEV = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_NODE_ENV !== 'production';
 
 function PresencialConsultationContent() {
   const router = useRouter();
@@ -42,30 +47,30 @@ function PresencialConsultationContent() {
   const [allAnamneses, setAllAnamneses] = useState<any[]>([]);
   const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
-  // Estados para monitoramento de níveis de áudio durante setup
+  // Single-mic mode state
+  const [micMode, setMicMode] = useState<'single' | 'dual'>('dual');
+  const [singleMicId, setSingleMicId] = useState('');
+  const [isFinalizingAudio, setIsFinalizingAudio] = useState(false);
+
+  // Estados para monitoramento de niveis de audio durante setup
   const [doctorMicLevel, setDoctorMicLevel] = useState(0);
   const [patientMicLevel, setPatientMicLevel] = useState(0);
+  const [singleMicLevel, setSingleMicLevel] = useState(0);
   const doctorStreamRef = useRef<MediaStream | null>(null);
   const patientStreamRef = useRef<MediaStream | null>(null);
+  const singleStreamRef = useRef<MediaStream | null>(null);
   const doctorAnalyserRef = useRef<AnalyserNode | null>(null);
   const patientAnalyserRef = useRef<AnalyserNode | null>(null);
+  const singleAnalyserRef = useRef<AnalyserNode | null>(null);
   const levelIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Hook de captura de áudio
-  const {
-    isRecording,
-    startCapture,
-    stopCapture,
-    doctorLevel,
-    patientLevel,
-    pendingChunks
-  } = usePresencialAudioCapture({
-    socket,
+  // Hook de captura de audio - BOTH hooks called unconditionally (React rules of hooks)
+  const dualCapture = usePresencialAudioCapture({
+    socket: micMode === 'dual' ? socket : null,
     doctorMicrophoneId,
     patientMicrophoneId
   });
 
-  // Monitorar níveis de áudio durante setup (antes de iniciar sessão)
   // Buscar anamneses do paciente via consultationId
   useEffect(() => {
     if (!consultationId) return;
@@ -79,9 +84,27 @@ function PresencialConsultationContent() {
     })();
   }, [consultationId]);
 
+  const singleCapture = usePresencialSingleMicCapture({
+    socket: micMode === 'single' ? socket : null,
+    microphoneId: singleMicId
+  });
+
+  // Unified capture interface
+  const activeCapture = micMode === 'single' ? {
+    isRecording: singleCapture.isRecording,
+    startCapture: singleCapture.startCapture,
+    stopCapture: singleCapture.stopCapture,
+    pendingChunks: singleCapture.pendingChunks,
+  } : {
+    isRecording: dualCapture.isRecording,
+    startCapture: dualCapture.startCapture,
+    stopCapture: dualCapture.stopCapture,
+    pendingChunks: dualCapture.pendingChunks,
+  };
+
+  // Monitorar niveis de audio durante setup (antes de iniciar sessao)
   useEffect(() => {
     if (sessionStarted) {
-      // Se a sessão já começou, usar os níveis do hook
       return;
     }
 
@@ -93,6 +116,68 @@ function PresencialConsultationContent() {
       if (patientStreamRef.current) {
         patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
+      if (singleStreamRef.current) {
+        singleStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+
+      // Single-mic mode monitoring
+      if (micMode === 'single') {
+        setDoctorMicLevel(0);
+        setPatientMicLevel(0);
+
+        if (!singleMicId) {
+          setSingleMicLevel(0);
+          return;
+        }
+
+        try {
+          const singleStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: singleMicId ? { exact: singleMicId } : undefined,
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+
+          singleStreamRef.current = singleStream;
+
+          const audioContext = new AudioContext();
+          const singleSource = audioContext.createMediaStreamSource(singleStream);
+          const singleAnalyser = audioContext.createAnalyser();
+          singleAnalyser.fftSize = 256;
+          singleSource.connect(singleAnalyser);
+          singleAnalyserRef.current = singleAnalyser;
+
+          const calculateVolumeLevel = (analyser: AnalyserNode): number => {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            return Math.min(average / 128, 1);
+          };
+
+          levelIntervalRef.current = setInterval(() => {
+            if (singleAnalyserRef.current) {
+              const level = calculateVolumeLevel(singleAnalyserRef.current);
+              setSingleMicLevel(level);
+            }
+          }, 100);
+
+        } catch (err) {
+          console.error('Erro ao monitorar nivel de audio (single):', err);
+          setSingleMicLevel(0);
+        }
+
+        return;
+      }
+
+      // Dual-mic mode monitoring (original logic)
+      setSingleMicLevel(0);
 
       if (!doctorMicrophoneId || !patientMicrophoneId) {
         setDoctorMicLevel(0);
@@ -101,11 +186,10 @@ function PresencialConsultationContent() {
       }
 
       try {
-        // Obter streams de áudio
         const doctorStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             deviceId: doctorMicrophoneId ? { exact: doctorMicrophoneId } : undefined,
-            echoCancellation: false, // Desabilitar para melhor detecção de nível
+            echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
           }
@@ -123,7 +207,6 @@ function PresencialConsultationContent() {
         doctorStreamRef.current = doctorStream;
         patientStreamRef.current = patientStream;
 
-        // Criar AudioContext e AnalyserNodes
         const audioContext = new AudioContext();
         const doctorSource = audioContext.createMediaStreamSource(doctorStream);
         const patientSource = audioContext.createMediaStreamSource(patientStream);
@@ -140,22 +223,18 @@ function PresencialConsultationContent() {
         doctorAnalyserRef.current = doctorAnalyser;
         patientAnalyserRef.current = patientAnalyser;
 
-        // Função para calcular nível de volume
         const calculateVolumeLevel = (analyser: AnalyserNode): number => {
           const bufferLength = analyser.frequencyBinCount;
           const dataArray = new Uint8Array(bufferLength);
           analyser.getByteFrequencyData(dataArray);
-
           let sum = 0;
           for (let i = 0; i < bufferLength; i++) {
             sum += dataArray[i];
           }
-
           const average = sum / bufferLength;
-          return Math.min(average / 128, 1); // Normalizar para 0-1
+          return Math.min(average / 128, 1);
         };
 
-        // Atualizar níveis periodicamente
         levelIntervalRef.current = setInterval(() => {
           if (doctorAnalyserRef.current) {
             const level = calculateVolumeLevel(doctorAnalyserRef.current);
@@ -168,8 +247,8 @@ function PresencialConsultationContent() {
           }
         }, 100);
 
-      } catch (error) {
-        console.error('Erro ao monitorar níveis de áudio:', error);
+      } catch (err) {
+        console.error('Erro ao monitorar niveis de audio:', err);
         setDoctorMicLevel(0);
         setPatientMicLevel(0);
       }
@@ -188,10 +267,13 @@ function PresencialConsultationContent() {
       if (patientStreamRef.current) {
         patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
+      if (singleStreamRef.current) {
+        singleStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
     };
-  }, [doctorMicrophoneId, patientMicrophoneId, sessionStarted]);
+  }, [doctorMicrophoneId, patientMicrophoneId, singleMicId, micMode, sessionStarted]);
 
-  // Timer de duração
+  // Timer de duracao
   useEffect(() => {
     if (!sessionStarted) return;
 
@@ -204,99 +286,90 @@ function PresencialConsultationContent() {
 
   // Conectar Socket.IO
   useEffect(() => {
-    // Usar diretamente a URL do Realtime Service (WebSocket)
     let realtimeUrl = process.env.NEXT_PUBLIC_REALTIME_WS_URL || 'ws://localhost:3002';
-    
-    // Verificar se a URL está configurada
+
     if (!process.env.NEXT_PUBLIC_REALTIME_WS_URL && typeof window !== 'undefined') {
-      console.warn('⚠️ NEXT_PUBLIC_REALTIME_WS_URL não configurada, usando fallback');
+      console.warn('NEXT_PUBLIC_REALTIME_WS_URL nao configurada, usando fallback');
     }
 
-    // Socket.IO espera HTTP/HTTPS, não WS/WSS
-    // Converter automaticamente
     if (realtimeUrl.startsWith('wss://')) {
       realtimeUrl = realtimeUrl.replace('wss://', 'https://');
     } else if (realtimeUrl.startsWith('ws://')) {
       realtimeUrl = realtimeUrl.replace('ws://', 'http://');
     }
 
-    console.log('🔌 Conectando Socket.IO para:', realtimeUrl);
+    console.log('Conectando Socket.IO para:', realtimeUrl);
 
-    // Tentar polling primeiro (mais confiável em Cloud Run), depois upgrade para websocket
     const newSocket = io(realtimeUrl, {
       auth: {
         userName: 'Doctor',
         password: 'x'
       },
-      // Tentar polling primeiro, depois websocket (mais confiável quando backend pode estar lento)
       transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      // Forçar upgrade para websocket após conectar via polling
       upgrade: true,
-      // Configurações adicionais para Cloud Run
       forceNew: false,
       rememberUpgrade: true
     });
 
     newSocket.on('connect', () => {
-      console.log('✅ Socket conectado via', newSocket.io.engine.transport.name);
+      console.log('Socket conectado via', newSocket.io.engine.transport.name);
       setSocketConnected(true);
-      setError(null); // Limpar erro ao conectar
+      setError(null);
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.log('❌ Socket desconectado:', reason);
+      console.log('Socket desconectado:', reason);
       setSocketConnected(false);
-      
-      // Se foi desconexão forçada pelo servidor, não tentar reconectar
+
       if (reason === 'io server disconnect') {
-        console.warn('⚠️ Servidor desconectou a conexão');
-        setError('Conexão encerrada pelo servidor');
+        console.warn('Servidor desconectou a conexao');
+        setError('Conexao encerrada pelo servidor');
       }
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('❌ Erro de conexão Socket.IO:', error);
+      console.error('Erro de conexao Socket.IO:', error);
       setSocketConnected(false);
-      
-      // Mensagem de erro mais amigável
-      let errorMessage = 'Erro de conexão WebSocket';
+
+      let errorMessage = 'Erro de conexao WebSocket';
       if (error.message.includes('websocket error')) {
         errorMessage = 'Falha ao conectar ao servidor. Tentando novamente...';
       } else if (error.message.includes('timeout')) {
-        errorMessage = 'Timeout ao conectar. Verifique sua conexão.';
+        errorMessage = 'Timeout ao conectar. Verifique sua conexao.';
       } else {
-        errorMessage = `Erro de conexão: ${error.message}`;
+        errorMessage = `Erro de conexao: ${error.message}`;
       }
-      
+
       setError(errorMessage);
     });
 
-    // Listener para upgrade de transporte (polling -> websocket)
     (newSocket.io as any).on('upgrade', () => {
-      console.log('🔄 Transporte atualizado para:', newSocket.io.engine.transport.name);
+      console.log('Transporte atualizado para:', newSocket.io.engine.transport.name);
     });
 
-    // Listener para erros de upgrade
     (newSocket.io as any).on('upgradeError', (error: any) => {
-      console.warn('⚠️ Erro ao fazer upgrade para websocket, continuando com polling:', error);
-      // Não definir erro aqui, pois polling ainda funciona
+      console.warn('Erro ao fazer upgrade para websocket, continuando com polling:', error);
     });
 
-    // Receber transcrições
+    // Receber transcricoes imediatas (5s chunks)
+    // Salva texto incremental. Diarizacao real acontece no final com audio completo.
     newSocket.on('presencialTranscription', (data: any) => {
-      console.log('📝 Nova transcrição:', data);
-      // mapear para TranscriptionSegment
+      console.log('Nova transcricao:', data);
+      const isMixed = data.speaker === 'mixed' || data.speaker === 'unknown';
+
       const mappedData: TranscriptionSegment = {
-        id: `seq-${data.sequence || Date.now()}`,
+        id: `t-${data.sequence || Date.now()}`,
         text: data.text,
-        speaker: data.speaker === 'doctor' ? 'MEDICO' : 'PACIENTE',
-        timestamp: data.timestamp, // string iso
-        confidence: 1.0, // placeholder
+        speaker: isMixed ? 'UNKNOWN' :
+                 data.speaker === 'doctor' ? 'MEDICO' : 'PACIENTE',
+        participantId: isMixed ? undefined : data.speaker,
+        timestamp: data.timestamp,
+        confidence: 1.0,
       };
       setTranscriptions(prev => [...prev, mappedData]);
     });
@@ -329,18 +402,15 @@ function PresencialConsultationContent() {
 
     loadConsultation();
 
-    // Buscar nome do médico
     const loadDoctor = async () => {
       try {
-        // Buscar usuário autenticado
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
         if (userError || !user) {
-          console.warn('Usuário não autenticado');
+          console.warn('Usuario nao autenticado');
           return;
         }
 
-        // Buscar dados do médico
         const { data: medico, error: medicoError } = await supabase
           .from('medicos')
           .select('*')
@@ -348,10 +418,10 @@ function PresencialConsultationContent() {
           .single();
 
         if (!medicoError && medico) {
-          setDoctorName(medico.name || 'Dr. Médico');
+          setDoctorName(medico.name || 'Dr. Medico');
         }
       } catch (error) {
-        console.error('Erro ao carregar médico:', error);
+        console.error('Erro ao carregar medico:', error);
       }
     };
 
@@ -365,30 +435,34 @@ function PresencialConsultationContent() {
 
   const handleStartSession = async () => {
     if (!socket || !consultationId) {
-      setError('Socket não conectado ou consulta não encontrada');
+      setError('Socket nao conectado ou consulta nao encontrada');
       return;
     }
 
-    if (!doctorMicrophoneId || !patientMicrophoneId) {
+    // Validate based on mode
+    if (micMode === 'single' && !singleMicId) {
+      setError('Selecione o microfone');
+      return;
+    }
+    if (micMode === 'dual' && (!doctorMicrophoneId || !patientMicrophoneId)) {
       setError('Selecione os microfones');
       return;
     }
 
     try {
-      // Iniciar sessão no backend
       socket.emit('startPresencialSession', {
         consultationId,
-        doctorMicrophoneId,
-        patientMicrophoneId
+        micMode: micMode,
+        doctorMicrophoneId: micMode === 'single' ? singleMicId : doctorMicrophoneId,
+        ...(micMode === 'dual' ? { patientMicrophoneId } : {}),
       }, async (response: any) => {
         if (response.success) {
-          console.log('✅ Sessão iniciada:', response.sessionId);
+          console.log('Sessao iniciada:', response.sessionId);
 
-          // IMPORTANTE: Setar sessionId ANTES de iniciar captura
           setSessionId(response.sessionId);
           setSessionStarted(true);
 
-          // Parar streams de monitoramento de nível
+          // Parar streams de monitoramento de nivel
           if (levelIntervalRef.current) {
             clearInterval(levelIntervalRef.current);
           }
@@ -400,42 +474,64 @@ function PresencialConsultationContent() {
             patientStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
             patientStreamRef.current = null;
           }
+          if (singleStreamRef.current) {
+            singleStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+            singleStreamRef.current = null;
+          }
 
-          // Aguardar um pouco para garantir que o estado foi atualizado
           await new Promise(resolve => setTimeout(resolve, 100));
 
-          // Iniciar captura de áudio IMEDIATAMENTE com sessionId do callback
-          console.log('🎬 Iniciando captura de áudio com sessionId:', response.sessionId);
-          await startCapture(response.sessionId);
+          console.log('Iniciando captura de audio com sessionId:', response.sessionId);
+          await activeCapture.startCapture(response.sessionId);
         } else {
-          setError(response.error || 'Erro ao iniciar sessão');
+          setError(response.error || 'Erro ao iniciar sessao');
         }
       });
     } catch (error) {
-      console.error('Erro ao iniciar sessão:', error);
-      setError('Erro ao iniciar sessão');
+      console.error('Erro ao iniciar sessao:', error);
+      setError('Erro ao iniciar sessao');
     }
   };
 
   const handleEndSession = async () => {
     if (!socket || !sessionId) return;
 
-    // Parar captura
-    stopCapture();
+    try {
+      setIsFinalizingAudio(true);
 
-    // Finalizar sessão no backend
-    socket.emit('endPresencialSession', {
-      sessionId
-    }, (response: any) => {
-      if (response.success) {
-        console.log('✅ Sessão finalizada');
-
-        // Redirecionar para lista de consultas
-        router.push('/consultas');
-      } else {
-        setError(response.error || 'Erro ao finalizar sessão');
+      // Em single-mic: pegar audio completo da consulta antes de parar
+      let fullAudioBase64: string | undefined;
+      if (micMode === 'single') {
+        console.log('[EndSession] Obtendo audio completo da consulta...');
+        const fullBlob = await singleCapture.getFullSessionAudio();
+        console.log(`[EndSession] Audio completo: ${(fullBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        if (fullBlob.size > 0) {
+          fullAudioBase64 = await blobToBase64(fullBlob);
+          console.log(`[EndSession] Base64: ${(fullAudioBase64.length / 1024 / 1024).toFixed(2)} MB`);
+        }
       }
-    });
+
+      // Parar captura
+      activeCapture.stopCapture();
+
+      // Enviar para backend com audio completo
+      socket.emit('endPresencialSession', {
+        sessionId,
+        fullAudioData: fullAudioBase64, // undefined se dual-mic
+      }, (response: any) => {
+        setIsFinalizingAudio(false);
+        if (response.success) {
+          console.log('Sessao finalizada');
+          router.push('/consultas');
+        } else {
+          setError(response.error || 'Erro ao finalizar sessao');
+        }
+      });
+    } catch (err) {
+      setIsFinalizingAudio(false);
+      console.error('[EndSession] Erro:', err);
+      setError('Erro ao finalizar consulta');
+    }
   };
 
   if (!consultationId) {
@@ -443,8 +539,8 @@ function PresencialConsultationContent() {
       <div className="presencial-page">
         <div className="error-card">
           <XCircle className="error-icon" size={48} />
-          <h2>Consulta não encontrada</h2>
-          <p>ID da consulta não fornecido</p>
+          <h2>Consulta nao encontrada</h2>
+          <p>ID da consulta nao fornecido</p>
           <button onClick={() => router.push('/consultas')} className="btn btn-primary">
             <ArrowLeft size={18} />
             Voltar para Consultas
@@ -453,6 +549,8 @@ function PresencialConsultationContent() {
       </div>
     );
   }
+
+  const bars = [0.3, 0.5, 0.7, 0.85, 0.95, 1, 0.9, 0.75, 0.6, 0.8, 1, 0.85, 0.7, 0.55, 0.9, 1, 0.8, 0.65, 0.5, 0.35, 0.6, 0.75, 0.9, 0.7, 0.45, 0.8, 0.95, 0.6, 0.4, 0.55];
 
   return (
     <div className="presencial-page">
@@ -469,19 +567,36 @@ function PresencialConsultationContent() {
       )}
 
       {!sessionStarted ? (
-        // Setup: Seleção de microfones
+        // Setup: Selecao de microfones
         <div className="setup-container">
-          <DualMicrophoneControl
-            onMicrophonesSelected={handleMicrophonesSelected}
-            disabled={!socketConnected}
-            doctorLevel={doctorMicLevel}
-            patientLevel={patientMicLevel}
+          <MicModeToggle
+            mode={micMode}
+            onModeChange={setMicMode}
+            disabled={sessionStarted}
           />
+
+          {micMode === 'single' ? (
+            <SingleMicrophoneControl
+              onMicrophoneSelected={setSingleMicId}
+              audioLevel={singleMicLevel}
+              disabled={!socketConnected}
+            />
+          ) : (
+            <DualMicrophoneControl
+              onMicrophonesSelected={handleMicrophonesSelected}
+              disabled={!socketConnected}
+              doctorLevel={doctorMicLevel}
+              patientLevel={patientMicLevel}
+            />
+          )}
 
           <div className="actions">
             <button
               onClick={handleStartSession}
-              disabled={!socketConnected || !doctorMicrophoneId || !patientMicrophoneId}
+              disabled={
+                !socketConnected ||
+                (micMode === 'single' ? !singleMicId : (!doctorMicrophoneId || !patientMicrophoneId))
+              }
               className="btn btn-primary btn-lg"
             >
               {!socketConnected ? 'Conectando...' : 'Iniciar Consulta'}
@@ -509,12 +624,12 @@ function PresencialConsultationContent() {
               </div>
 
               <div className="status-item">
-                <span className="status-label">Duração:</span>
+                <span className="status-label">Duracao:</span>
                 <span className="status-value">{formatDuration(duration)}</span>
               </div>
 
               <div className="status-item">
-                <span className="status-label">Conexão:</span>
+                <span className="status-label">Conexao:</span>
                 <span className={`status-value ${socketConnected ? 'connected' : 'disconnected'}`}>
                   {socketConnected ? (
                     <>
@@ -530,17 +645,31 @@ function PresencialConsultationContent() {
                 </span>
               </div>
 
-              {/* Buffer oculto */}
+              {micMode === 'single' && isFinalizingAudio && (
+                <div className="status-item">
+                  <span className="status-label">Status:</span>
+                  <span className="status-value">Processando audio...</span>
+                </div>
+              )}
             </div>
 
-            <DualMicrophoneControl
-              onMicrophonesSelected={handleMicrophonesSelected}
-              disabled={true}
-              doctorLevel={doctorLevel}
-              patientLevel={patientLevel}
-              initialDoctorMic={doctorMicrophoneId}
-              initialPatientMic={patientMicrophoneId}
-            />
+            {micMode === 'single' ? (
+              <SingleMicrophoneControl
+                onMicrophoneSelected={setSingleMicId}
+                audioLevel={singleCapture.audioLevel}
+                disabled={true}
+                initialMic={singleMicId}
+              />
+            ) : (
+              <DualMicrophoneControl
+                onMicrophonesSelected={handleMicrophonesSelected}
+                disabled={true}
+                doctorLevel={dualCapture.doctorLevel}
+                patientLevel={dualCapture.patientLevel}
+                initialDoctorMic={doctorMicrophoneId}
+                initialPatientMic={patientMicrophoneId}
+              />
+            )}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <button
@@ -570,44 +699,85 @@ function PresencialConsultationContent() {
             </div>
           </div>
 
-          {/* Visualizador de Audio */}
+          {/* Visualizador de Audio / Transcricao */}
           <div className="audio-visualizer-panel">
-            <div className="audio-viz-row">
-              {[
-                { label: 'Profissional', level: doctorLevel || 0, color: '#1B4266' },
-                { label: 'Paciente', level: patientLevel || 0, color: '#22c55e' },
-              ].map((mic) => {
-                const bars = [0.3, 0.5, 0.7, 0.85, 0.95, 1, 0.9, 0.75, 0.6, 0.8, 1, 0.85, 0.7, 0.55, 0.9, 1, 0.8, 0.65, 0.5, 0.35, 0.6, 0.75, 0.9, 0.7, 0.45, 0.8, 0.95, 0.6, 0.4, 0.55];
-                const isActive = mic.level > 0.03;
-                return (
-                  <div key={mic.label} className="audio-viz-card">
-                    <div className="audio-viz-label" style={{ color: isActive ? mic.color : '#94A3B8' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? mic.color : '#E2E8F0', display: 'inline-block', marginRight: 6 }} />
-                      {mic.label}
+            {micMode === 'single' ? (
+              <>
+                <div className="audio-viz-row" style={{ flex: 'none' }}>
+                  <div className="audio-viz-card">
+                    <div className="audio-viz-label" style={{ color: singleCapture.audioLevel > 0.03 ? '#1B4266' : '#94A3B8' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: singleCapture.audioLevel > 0.03 ? '#1B4266' : '#E2E8F0', display: 'inline-block', marginRight: 6 }} />
+                      Microfone Compartilhado
                     </div>
                     <div className="audio-viz-bars">
                       {bars.map((factor, i) => {
-                        const h = isActive ? Math.max(6, mic.level * factor * 100) : 6;
+                        const h = singleCapture.audioLevel > 0.03 ? Math.max(6, singleCapture.audioLevel * factor * 100) : 6;
                         return (
-                          <div key={i} className="audio-viz-bar" style={{ height: `${h}%`, background: isActive ? mic.color : '#E2E8F0' }} />
+                          <div key={i} className="audio-viz-bar" style={{ height: `${h}%`, background: singleCapture.audioLevel > 0.03 ? '#1B4266' : '#E2E8F0' }} />
                         );
                       })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                {IS_DEV && (
+                  <div className="dev-transcription-panel">
+                    <div className="dev-badge">DEV — Transcricao incremental (nao visivel em producao)</div>
+                    <PresencialTranscription
+                      transcriptions={transcriptions}
+                      doctorName={doctorName}
+                      patientName={patientName}
+                      micMode={micMode}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="audio-viz-row">
+                  {[
+                    { label: 'Profissional', level: dualCapture.doctorLevel || 0, color: '#1B4266' },
+                    { label: 'Paciente', level: dualCapture.patientLevel || 0, color: '#22c55e' },
+                  ].map((mic) => {
+                    const isActive = mic.level > 0.03;
+                    return (
+                      <div key={mic.label} className="audio-viz-card">
+                        <div className="audio-viz-label" style={{ color: isActive ? mic.color : '#94A3B8' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? mic.color : '#E2E8F0', display: 'inline-block', marginRight: 6 }} />
+                          {mic.label}
+                        </div>
+                        <div className="audio-viz-bars">
+                          {bars.map((factor, i) => {
+                            const h = isActive ? Math.max(6, mic.level * factor * 100) : 6;
+                            return (
+                              <div key={i} className="audio-viz-bar" style={{ height: `${h}%`, background: isActive ? mic.color : '#E2E8F0' }} />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="transcription-panel">
+                  <PresencialTranscription
+                    transcriptions={transcriptions}
+                    doctorName={doctorName}
+                    patientName={patientName}
+                    micMode={micMode}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Modal de confirmação para finalizar consulta */}
+      {/* Modal de confirmacao para finalizar consulta */}
       <ConfirmModal
         isOpen={showConfirmEndModal}
         onClose={() => setShowConfirmEndModal(false)}
         onConfirm={handleEndSession}
         title="Finalizar Consulta"
-        message="Tem certeza que deseja finalizar esta consulta? Esta ação não pode ser desfeita. A gravação será encerrada e a consulta será concluída."
+        message="Tem certeza que deseja finalizar esta consulta? O audio completo sera processado para identificar quem falou o que."
         confirmText="Sim, Finalizar"
         cancelText="Cancelar"
         variant="danger"
@@ -718,6 +888,17 @@ function PresencialConsultationContent() {
         </div>
       )}
 
+      {/* Overlay de finalizacao */}
+      {isFinalizingAudio && (
+        <div className="finalizing-overlay">
+          <div className="finalizing-card">
+            <div className="finalizing-spinner" />
+            <h3>Finalizando consulta...</h3>
+            <p>Processando audio e identificando speakers. Isso pode levar alguns segundos.</p>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         .presencial-page {
           min-height: 100vh;
@@ -729,41 +910,41 @@ function PresencialConsultationContent() {
           flex-direction: column;
           box-sizing: border-box;
         }
-        
+
         .page-header {
           text-align: center;
           color: #1B4266;
           margin-bottom: 4px;
           flex-shrink: 0;
         }
-        
+
         .page-header h1 {
           font-size: 20px;
           margin: 0 0 2px 0;
           font-weight: 700;
           color: #1B4266;
         }
-        
+
         .page-header p {
           font-size: 13px;
           color: #5B5B5B;
           font-weight: 500;
           margin: 0;
         }
-        
+
         .page-header h1 {
           font-size: 32px;
           margin: 0 0 8px 0;
           font-weight: 700;
           color: #1B4266;
         }
-        
+
         .page-header p {
           font-size: 18px;
           color: #5B5B5B;
           font-weight: 500;
         }
-        
+
         .error-banner {
           background: #fee2e2;
           color: #b91c1c;
@@ -776,7 +957,7 @@ function PresencialConsultationContent() {
           font-weight: 500;
           border-left: 4px solid #dc2626;
         }
-        
+
         .error-card {
           background: white;
           padding: 60px 40px;
@@ -790,15 +971,15 @@ function PresencialConsultationContent() {
           align-items: center;
           gap: 16px;
         }
-        
+
         .error-icon {
           color: #dc2626;
         }
-        
+
         .error-card h2 {
           margin: 0;
         }
-        
+
         .setup-container {
           max-width: 900px;
           margin: 0 auto;
@@ -806,13 +987,13 @@ function PresencialConsultationContent() {
           flex-direction: column;
           gap: 24px;
         }
-        
+
         .actions {
           display: flex;
           gap: 16px;
           justify-content: center;
         }
-        
+
         .consultation-wrapper {
           flex: 1;
           min-height: 0;
@@ -820,7 +1001,7 @@ function PresencialConsultationContent() {
           display: flex;
           flex-direction: column;
         }
-        
+
         .consultation-container {
           display: grid;
           grid-template-columns: 360px 1fr;
@@ -831,14 +1012,14 @@ function PresencialConsultationContent() {
           align-items: stretch;
           flex: 1;
         }
-        
+
         .consultation-controls {
           display: flex;
           flex-direction: column;
           gap: 12px;
           height: fit-content;
         }
-        
+
         .status-bar {
           background: white;
           padding: 16px;
@@ -850,7 +1031,7 @@ function PresencialConsultationContent() {
           border: 1px solid #E5E7EB;
           flex-shrink: 0;
         }
-        
+
         .status-item {
           display: flex;
           justify-content: space-between;
@@ -858,64 +1039,97 @@ function PresencialConsultationContent() {
           padding-bottom: 10px;
           border-bottom: 1px solid #F3F4F6;
         }
-        
+
         .status-item:last-child {
           border-bottom: none;
           padding-bottom: 0;
         }
-        
+
         .status-label {
           font-size: 14px;
           color: #6b7280;
           font-weight: 500;
         }
-        
+
         .status-value {
           font-size: 14px;
           font-weight: 600;
           color: #111827;
         }
-        
+
         .status-value {
           display: inline-flex;
           align-items: center;
           gap: 6px;
         }
-        
+
         .status-icon {
           flex-shrink: 0;
         }
-        
+
         .recording-icon {
           color: #dc2626;
         }
-        
+
         .status-value.recording {
           color: #dc2626;
         }
-        
+
         .status-value.connected {
           color: #10b981;
         }
-        
+
         .status-value.connected .status-icon {
           color: #10b981;
         }
-        
+
         .status-value.disconnected {
           color: #ef4444;
         }
-        
+
         .status-value.disconnected .status-icon {
           color: #ef4444;
         }
-        
+
+        .speaker-0-active {
+          color: #1B4266;
+        }
+
+        .speaker-1-active {
+          color: #10B981;
+        }
+
         .transcription-panel {
-          min-height: 600px;
+          min-height: 400px;
           max-height: calc(100vh - 100px);
           overflow-y: auto;
           display: flex;
           flex-direction: column;
+          flex: 1;
+        }
+
+        .dev-transcription-panel {
+          position: relative;
+          border: 2px dashed #F59E0B;
+          border-radius: 12px;
+          overflow: hidden;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 300px;
+          max-height: calc(100vh - 100px);
+          opacity: 0.85;
+        }
+
+        .dev-badge {
+          background: #F59E0B;
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          text-align: center;
+          padding: 4px 0;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
 
         .audio-visualizer-panel {
@@ -973,7 +1187,7 @@ function PresencialConsultationContent() {
           margin-top: auto;
           padding-top: 12px;
         }
-        
+
         .btn {
           padding: 14px 28px;
           border: none;
@@ -987,64 +1201,64 @@ function PresencialConsultationContent() {
           justify-content: center;
           gap: 8px;
         }
-        
+
         .btn-lg {
           padding: 12px 24px;
           font-size: 16px;
           width: 100%;
           flex-shrink: 0;
         }
-        
+
         .btn-primary {
           background: #1B4266;
           color: white;
           box-shadow: 0 2px 4px rgba(27, 66, 102, 0.2);
         }
-        
+
         .btn-primary:hover:not(:disabled) {
           background: #153350;
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(27, 66, 102, 0.3);
         }
-        
+
         .btn-secondary {
           background: white;
           color: #1B4266;
           border: 2px solid #1B4266;
         }
-        
+
         .btn-secondary:hover {
           background: #F3F4F6;
         }
-        
+
         .btn-danger {
           background: #dc2626;
           color: white;
           box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
         }
-        
+
         .btn-danger:hover {
           background: #b91c1c;
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
         }
-        
+
         .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
           transform: none !important;
         }
-        
+
         @media (max-width: 1024px) {
           .consultation-container {
             grid-template-columns: 1fr;
             gap: 12px;
           }
-          
+
           .consultation-controls {
             order: 2;
           }
-          
+
           .transcription-panel {
             order: 1;
             max-height: 500px;
@@ -1056,12 +1270,60 @@ function PresencialConsultationContent() {
             padding-top: 0;
           }
         }
-        
+
         @media (max-height: 800px) {
           .transcription-panel {
             max-height: calc(100vh - 200px);
             min-height: 400px;
           }
+        }
+
+        .finalizing-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .finalizing-card {
+          background: white;
+          border-radius: 16px;
+          padding: 40px;
+          text-align: center;
+          max-width: 400px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .finalizing-card h3 {
+          margin: 16px 0 8px;
+          color: #1B4266;
+          font-size: 20px;
+        }
+
+        .finalizing-card p {
+          margin: 0;
+          color: #6B7280;
+          font-size: 14px;
+        }
+
+        .finalizing-spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #E5E7EB;
+          border-top-color: #1B4266;
+          border-radius: 50%;
+          margin: 0 auto;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

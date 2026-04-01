@@ -357,7 +357,7 @@ CREATE FUNCTION public.check_stuck_consultations() RETURNS void
     AS $$
 DECLARE
   consultation_record RECORD;
-  webhook_url TEXT := 'https://webhook.tc1.triacompany.com.br/webhook/e9b44bff-5c5c-4e19-bfd3-88de49266b5c/:usi-suporte-v2';
+  webhook_url TEXT := 'https://triahook.gst.dev.br/webhook/e9b44bff-5c5c-4e19-bfd3-88de49266b5c/:usi-suporte-v2';
   payload JSONB;
   request_id INTEGER;
   error_message TEXT;
@@ -602,7 +602,7 @@ CREATE FUNCTION public.check_stuck_consultations_debug() RETURNS TABLE(debug_inf
     AS $$
 DECLARE
   consultation_record RECORD;
-  webhook_url TEXT := 'https://webhook.tc1.triacompany.com.br/webhook/e9b44bff-5c5c-4e19-bfd3-88de49266b5c/:usi-suporte-v2';
+  webhook_url TEXT := 'https://triahook.gst.dev.br/webhook/e9b44bff-5c5c-4e19-bfd3-88de49266b5c/:usi-suporte-v2';
   payload JSONB;
   request_id INTEGER;
   error_message TEXT;
@@ -1312,7 +1312,7 @@ BEGIN
       resp := (
         SELECT content::json
         FROM http_post(
-          'https://webhook.tc1.triacompany.com.br/webhook/agentes-1-finalizados',
+          'https://triahook.gst.dev.br/webhook/agentes-1-finalizados',
           json_build_object(
             'id', NEW.id,
             'consulta_id', NEW.consulta_id,
@@ -1333,7 +1333,7 @@ BEGIN
       resp := (
         SELECT content::json
         FROM http_post(
-          'https://webhook.tc1.triacompany.com.br/webhook/agentes-1-finalizados',
+          'https://triahook.gst.dev.br/webhook/agentes-1-finalizados',
           json_build_object(
             'id', NEW.id,
             'consulta_id', NEW.consulta_id,

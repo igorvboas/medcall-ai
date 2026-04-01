@@ -151,7 +151,7 @@ export async function linkExames(req: AuthenticatedRequest, res: Response) {
     // Disparar webhook de exames (fire-and-forget)
     const isHomolog = process.env.NODE_ENV === 'homolog';
     const examesWebhookUrl = isHomolog
-      ? 'https://webhook.tc1.triacompany.com.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-homolog'
+      ? 'https://triahook.gst.dev.br/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-homolog'
       : 'https://triahook.gst.dev.br/webhook/input-at-exames-usi-v2';
     fetch(examesWebhookUrl, {
       method: 'POST',
