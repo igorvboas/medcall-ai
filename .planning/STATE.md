@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Consulta Presencial com Microfone Unico
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-04-01T02:08:41.175Z"
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-01T02:13:52.653Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 71
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 7
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-01
 
 Progress: [███████░░░] 71%
@@ -69,6 +69,7 @@ Progress: [███████░░░] 71%
 - [Phase 07]: Presencial endSession uses atomic finalizeConsultation() RPC instead of sequential writes
 - [Phase 07]: Presencial disconnect handler starts 5-min cleanup timer; reconnection cancels timer and reuses session
 - [Phase 08]: useMicMonitor creates own VAD instance; only doctorStream exposed from capture hook; usePresencialSingleMicCapture deferred to merge
+- [Phase 08]: streamToMonitor selects stream based on micMode; ConsultationRoom protects tab on isRecording OR isCallActive
 
 ### Pending Todos
 
@@ -82,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T02:08:41.173Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-04-01T02:13:52.627Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

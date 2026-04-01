@@ -162,7 +162,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — useMicMonitor hook, useBeforeUnloadProtection hook, MicAlertBanner component, and capture hook stream exposure
-- [ ] 08-02-PLAN.md — Wire hooks and alerts into presencial page.tsx and ConsultationRoom.tsx
+- [x] 08-02-PLAN.md — Wire hooks and alerts into presencial page.tsx and ConsultationRoom.tsx
 
 ## Progress
 
@@ -178,4 +178,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. Core Data Path | v2.0 | 0/2 | Not started | - |
 | 6. Webhook Reliability & Finalization Guards | v2.0 | 0/2 | Not started | - |
 | 7. Session Resilience & DB Integrity | v2.0 | 0/3 | Not started | - |
-| 8. Frontend Protections | v2.0 | 0/2 | Not started | - |
+| 8. Frontend Protections | v2.0 | 2/2 | Complete   | 2026-04-01 |
