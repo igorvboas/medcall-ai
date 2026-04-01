@@ -161,7 +161,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 08-01-PLAN.md — useMicMonitor hook, useBeforeUnloadProtection hook, MicAlertBanner component, and capture hook stream exposure
+- [x] 08-01-PLAN.md — useMicMonitor hook, useBeforeUnloadProtection hook, MicAlertBanner component, and capture hook stream exposure
 - [ ] 08-02-PLAN.md — Wire hooks and alerts into presencial page.tsx and ConsultationRoom.tsx
 
 ## Progress

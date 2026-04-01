@@ -32,12 +32,12 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 - [x] **SESS-01**: Sessões órfãs limpas automaticamente após timeout de inatividade no disconnect WebSocket
 - [x] **SESS-02**: Reconexão WebSocket com rejoin automático de sala (manter transcrição fluindo)
-- [ ] **SESS-03**: Proteção contra tab crash com `beforeunload` handler durante gravação ativa
+- [x] **SESS-03**: Proteção contra tab crash com `beforeunload` handler durante gravação ativa
 
 ### Áudio e Microfone
 
-- [ ] **AUDM-01**: Detecção de mic desconectado via `track.onended` com alerta visual ao médico
-- [ ] **AUDM-02**: Detecção de mic silencioso prolongado com alerta visual ao médico
+- [x] **AUDM-01**: Detecção de mic desconectado via `track.onended` com alerta visual ao médico
+- [x] **AUDM-02**: Detecção de mic silencioso prolongado com alerta visual ao médico
 
 ### Banco de Dados
 
@@ -90,9 +90,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FINL-04 | Phase 6 | Complete |
 | SESS-01 | Phase 7 | Complete |
 | SESS-02 | Phase 7 | Complete |
-| SESS-03 | Phase 8 | Pending |
-| AUDM-01 | Phase 8 | Pending |
-| AUDM-02 | Phase 8 | Pending |
+| SESS-03 | Phase 8 | Complete |
+| AUDM-01 | Phase 8 | Complete |
+| AUDM-02 | Phase 8 | Complete |
 | DBAS-01 | Phase 7 | Complete |
 | DBAS-02 | Phase 7 | Complete |
 
