@@ -67,6 +67,11 @@ export function CreateConsultationRoom({
   const [selectedMicrophone, setSelectedMicrophone] = useState('');
   const [microphones, setMicrophones] = useState<AudioDevice[]>([]);
   const [consent, setConsent] = useState(false);
+  // Presencial mic config
+  const [presencialMicMode, setPresencialMicMode] = useState<'single' | 'dual'>('single');
+  const [presencialDoctorMic, setPresencialDoctorMic] = useState('');
+  const [presencialPatientMic, setPresencialPatientMic] = useState('');
+  const [showDualMicWarning, setShowDualMicWarning] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
 
@@ -287,6 +292,10 @@ export function CreateConsultationRoom({
         // Selecionar primeiro microfone por padrão
         if (audioInputs.length > 0) {
           setSelectedMicrophone(audioInputs[0].deviceId);
+          setPresencialDoctorMic(audioInputs[0].deviceId);
+          if (audioInputs.length > 1) {
+            setPresencialPatientMic(audioInputs[1].deviceId);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dispositivos de áudio:', error);
@@ -603,9 +612,12 @@ export function CreateConsultationRoom({
 
         console.log('✅ Consulta presencial criada:', consultation.id);
 
-        // Redirecionar para página de consulta presencial
+        // Redirecionar para página de consulta presencial com configuração de mic
         const baseUrl = window.location.origin;
-        const presencialUrl = `${baseUrl}/consulta/presencial?consultationId=${consultation.id}`;
+        const micParams = presencialMicMode === 'single'
+          ? `&micMode=single&singleMicId=${encodeURIComponent(presencialDoctorMic)}`
+          : `&micMode=dual&doctorMic=${encodeURIComponent(presencialDoctorMic)}&patientMic=${encodeURIComponent(presencialPatientMic)}`;
+        const presencialUrl = `${baseUrl}/consulta/presencial?consultationId=${consultation.id}&autoStart=true${micParams}`;
         console.log('🚀 Redirecionando para consulta presencial:', presencialUrl);
         window.location.href = presencialUrl;
         return;
@@ -1135,6 +1147,122 @@ export function CreateConsultationRoom({
 
               <p className="help-text">
                 Selecione a data e horário para agendar a consulta
+              </p>
+            </>
+          ) : consultationType === 'presencial' && creationType === 'instantanea' ? (
+            <>
+              <div className="card-title-wrapper">
+                <h2 className="card-title">Configuração de Microfone</h2>
+              </div>
+
+              {/* Toggle single/dual */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: showDualMicWarning ? 0 : 16 }}>
+                <button
+                  type="button"
+                  onClick={() => { setPresencialMicMode('single'); setShowDualMicWarning(false); }}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background: presencialMicMode === 'single' ? '#1B4266' : '#F1F5F9',
+                    color: presencialMicMode === 'single' ? '#fff' : '#64748B',
+                  }}
+                >
+                  1 Microfone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (presencialMicMode === 'single') {
+                      setShowDualMicWarning(true);
+                      return;
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background: presencialMicMode === 'dual' ? '#1B4266' : '#F1F5F9',
+                    color: presencialMicMode === 'dual' ? '#fff' : '#64748B',
+                  }}
+                >
+                  2 Microfones
+                </button>
+              </div>
+
+              {/* Aviso inline ao mudar para 2 microfones */}
+              {showDualMicWarning && (
+                <div style={{
+                  margin: '12px 0 16px', padding: '14px 16px', borderRadius: 10,
+                  background: '#FEF3C7', border: '1.5px solid #FCD34D',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>Mudar para 2 microfones?</div>
+                      <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.5, margin: 0 }}>
+                        Você precisará selecionar um microfone para o profissional e outro para o paciente. Use este modo quando cada pessoa tiver seu próprio microfone.
+                      </p>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button type="button" onClick={() => { setPresencialMicMode('dual'); setShowDualMicWarning(false); }}
+                          style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#D97706', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Sim, mudar
+                        </button>
+                        <button type="button" onClick={() => setShowDualMicWarning(false)}
+                          style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #FCD34D', background: '#fff', color: '#92400E', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {presencialMicMode === 'single' ? (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone</label>
+                  <select
+                    value={presencialDoctorMic}
+                    onChange={(e) => setPresencialDoctorMic(e.target.value)}
+                    className="form-select-figma"
+                  >
+                    <option value="">Selecione o Microfone</option>
+                    {microphones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Um microfone captura o áudio de ambos (profissional e paciente)</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone do Profissional</label>
+                    <select
+                      value={presencialDoctorMic}
+                      onChange={(e) => setPresencialDoctorMic(e.target.value)}
+                      className="form-select-figma"
+                    >
+                      <option value="">Selecione</option>
+                      {microphones.map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone do Paciente</label>
+                    <select
+                      value={presencialPatientMic}
+                      onChange={(e) => setPresencialPatientMic(e.target.value)}
+                      className="form-select-figma"
+                    >
+                      <option value="">Selecione</option>
+                      {microphones.filter(m => m.deviceId !== presencialDoctorMic).map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <p className="help-text" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 12 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                {presencialMicMode === 'single' ? 'Modo microfone único — captura todo o áudio da sala' : 'Modo dois microfones — um para cada participante'}
               </p>
             </>
           ) : consultationType === 'online' && creationType === 'instantanea' ? (

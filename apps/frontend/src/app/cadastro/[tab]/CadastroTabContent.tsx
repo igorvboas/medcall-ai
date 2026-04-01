@@ -194,8 +194,8 @@ const TABS: { key: TabType; label: string; icon: React.ElementType; adminOnly?: 
 
 // Empty initial data - all fetched from API
 const INITIAL_DATA: Record<TabType, CadastroItem[]> = {
-  clinica: [],
   pacientes: [],
+  clinica: [],
   alimentos: [],
   refeicoes: [],
   treinos: [],
@@ -413,10 +413,11 @@ export default function CadastroTabContent() {
 
   const handleToggleFavoritoTreino = async (id: string) => {
     try {
+      setTreinos(prev => prev.map(t => t.id === id ? { ...t, favorito: !t.favorito } : t));
       await gatewayClient.patch(`/cadastro-treinos/${id}/favorito`, {});
-      fetchTreinos(treinoPagination.page, treinoSearch);
     } catch (err) {
       showError('Erro ao atualizar favorito');
+      fetchTreinos(treinoPagination.page, treinoSearch);
     }
   };
 
@@ -549,9 +550,7 @@ export default function CadastroTabContent() {
   // Debounce busca de pacientes
   useEffect(() => {
     if (activeTab !== 'pacientes') return;
-    const timeoutId = setTimeout(() => {
-      fetchPatients(1, patientSearch);
-    }, 500);
+    const timeoutId = setTimeout(() => { fetchPatients(1, patientSearch); }, 500);
     return () => clearTimeout(timeoutId);
   }, [patientSearch]);
 
@@ -657,10 +656,13 @@ export default function CadastroTabContent() {
   // Toggle favorito refeição
   const handleToggleFavoritoRefeicao = async (id: string) => {
     try {
+      setRefeicoes(prev => prev.map(r => r.id === id ? { ...r, favorito: !r.favorito } : r));
+      if (selectedRefeicao?.id === id) setSelectedRefeicao(prev => prev ? { ...prev, favorito: !prev.favorito } : prev);
+      if (editingRefeicao?.id === id) setEditingRefeicao(prev => prev ? { ...prev, favorito: !prev.favorito } : prev);
       await gatewayClient.patch(`/cadastro-refeicoes/${id}/favorito`, {});
-      fetchRefeicoes(refeicaoPagination.page, refeicaoSearch);
     } catch (err) {
       showError('Erro ao atualizar favorito');
+      fetchRefeicoes(refeicaoPagination.page, refeicaoSearch);
     }
   };
 
@@ -814,10 +816,11 @@ export default function CadastroTabContent() {
 
   const handleToggleFavoritoPrescricao = async (prescricao: any) => {
     try {
+      setPrescricoes(prev => prev.map(p => p.id === prescricao.id ? { ...p, favorito: !p.favorito } : p));
       await gatewayClient.patch(`/cadastro-prescricoes/${prescricao._tipo}/${prescricao.id}/favorito`, {});
-      fetchPrescricoes(prescricaoSearch);
     } catch (err) {
       showError('Erro ao atualizar favorito');
+      fetchPrescricoes(prescricaoSearch);
     }
   };
 
@@ -916,10 +919,12 @@ export default function CadastroTabContent() {
 
   const handleToggleFavoritoAlimento = async (id: string) => {
     try {
+      // Optimistic update
+      setAlimentosList(prev => prev.map(a => a.id === id ? { ...a, favorito: !a.favorito } : a));
       await gatewayClient.patch(`/cadastro/alimentos/${id}/favorito`, {});
-      fetchAlimentosTab(alimentosTabSearch);
     } catch (err) {
       showError('Erro ao atualizar favorito');
+      fetchAlimentosTab(alimentosTabSearch); // Revert on error
     }
   };
 
@@ -1262,7 +1267,6 @@ export default function CadastroTabContent() {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'pacientes': return 'Pacientes';
       case 'refeicoes': return 'Refeicoes';
       case 'treinos': return 'Exercicios';
       case 'prescricoes': return 'Prescricoes';
@@ -1272,7 +1276,6 @@ export default function CadastroTabContent() {
 
   const getTabSubtitle = () => {
     switch (activeTab) {
-      case 'pacientes': return 'Gerencie seus pacientes cadastrados';
       case 'refeicoes': return 'Cadastre refeicoes para usar nos planos alimentares';
       case 'treinos': return 'Cadastre exercicios para montar protocolos de treino';
       case 'prescricoes': return 'Suplementos e fitoterapicos com dosagens personalizadas';
@@ -1418,7 +1421,7 @@ export default function CadastroTabContent() {
           <div className="cadastro-header-content">
             <div>
               <h1 className="cadastro-title">Cadastro</h1>
-              <p className="cadastro-subtitle">Gerencie seus cadastros de pacientes, refeicoes, treinos, suplementos e fitoterapicos.</p>
+              <p className="cadastro-subtitle">Gerencie seus cadastros de alimentos, refeicoes, treinos, suplementos e fitoterapicos.</p>
             </div>
           </div>
         </div>
@@ -1427,7 +1430,7 @@ export default function CadastroTabContent() {
         <div className="cadastro-tabs">
           {TABS.filter(tab => !tab.adminOnly || isClinicAdmin).map(tab => {
             const Icon = tab.icon;
-            const count = tab.key === 'pacientes' ? patientsPagination.total : tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'treinos' ? treinoPagination.total : tab.key === 'prescricoes' ? prescricoes.length : tab.key === 'alimentos' ? alimentosList.length : 0;
+            const count = tab.key === 'refeicoes' ? refeicaoPagination.total : tab.key === 'treinos' ? treinoPagination.total : tab.key === 'prescricoes' ? prescricoes.length : tab.key === 'alimentos' ? alimentosList.length : 0;
             return (
               <Link
                 key={tab.key}
@@ -1467,19 +1470,12 @@ export default function CadastroTabContent() {
                     Novo Paciente
                   </button>
                 </div>
-
-                {/* Busca de pacientes */}
                 <div className="cadastro-filters">
                   <div className="cadastro-search">
                     <Search />
-                    <input
-                      placeholder="Buscar pacientes..."
-                      value={patientSearch}
-                      onChange={e => setPatientSearch(e.target.value)}
-                    />
+                    <input placeholder="Buscar pacientes..." value={patientSearch} onChange={e => setPatientSearch(e.target.value)} />
                   </div>
                 </div>
-
                 {patientsLoading ? (
                   <div className="cadastro-empty">
                     <Loader2 size={28} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
@@ -1487,90 +1483,41 @@ export default function CadastroTabContent() {
                   </div>
                 ) : patients.length === 0 ? (
                   <div className="cadastro-empty">
-                    <div className="cadastro-empty-icon">
-                      <UserPlus size={28} />
-                    </div>
-                    <h3 className="cadastro-empty-title">
-                      {patientSearch ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado'}
-                    </h3>
-                    <p className="cadastro-empty-text">
-                      {patientSearch ? 'Tente buscar com outros termos.' : 'Clique no botao acima para cadastrar um novo paciente.'}
-                    </p>
-                    {!patientSearch && (
-                      <button className="cadastro-empty-btn" onClick={() => setShowPatientForm(true)}>
-                        <Plus size={16} />
-                        Novo Paciente
-                      </button>
-                    )}
+                    <div className="cadastro-empty-icon"><UserPlus size={28} /></div>
+                    <h3 className="cadastro-empty-title">{patientSearch ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado'}</h3>
+                    <p className="cadastro-empty-text">{patientSearch ? 'Tente buscar com outros termos.' : 'Clique no botao acima para cadastrar.'}</p>
                   </div>
                 ) : (
                   <div className="cadastro-grid">
-                    {patients.map(patient => {
-                      const age = calculateAge(patient.birth_date);
-                      return (
-                        <div key={patient.id} className="cadastro-card">
-                          <div className="cadastro-card-header">
-                            <div>
-                              <h3 className="cadastro-card-title">{patient.name}</h3>
-                              <span className="cadastro-card-category">
-                                {patient.status === 'active' ? 'Ativo' : patient.status === 'inactive' ? 'Inativo' : 'Arquivado'}
-                              </span>
-                            </div>
-                            <div className="cadastro-card-actions">
-                              <Link href={`/pacientes/detalhes?id=${patient.id}`} title="Ver detalhes">
-                                <button className="cadastro-card-btn">
-                                  <Eye size={16} />
-                                </button>
-                              </Link>
-                            </div>
+                    {patients.map(patient => (
+                      <div key={patient.id} className="cadastro-card">
+                        <div className="cadastro-card-header">
+                          <div>
+                            <h3 className="cadastro-card-title">{patient.name}</h3>
+                            <span className="cadastro-card-category">{patient.status === 'active' ? 'Ativo' : 'Inativo'}</span>
                           </div>
-                          <div className="cadastro-card-body">
-                            <div className="cadastro-card-info">
-                              {patient.email && (
-                                <span className="cadastro-card-tag"><Mail size={12} /> {patient.email}</span>
-                              )}
-                              {patient.phone && (
-                                <span className="cadastro-card-tag"><Phone size={12} /> {patient.phone}</span>
-                              )}
-                              {age !== null && (
-                                <span className="cadastro-card-tag"><Calendar size={12} /> {age} anos</span>
-                              )}
-                              {patient.city && patient.state && (
-                                <span className="cadastro-card-tag">{patient.city}/{patient.state}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="cadastro-card-footer">
-                            <span className="cadastro-card-date">
-                              Cadastrado em {new Date(patient.created_at).toLocaleDateString('pt-BR')}
-                            </span>
-                            {patient.anamnese && (
-                              <span className="cadastro-card-badge-fav" style={{
-                                background: patient.anamnese.status === 'preenchida' ? '#ECFDF5' : '#FEF3C7',
-                                color: patient.anamnese.status === 'preenchida' ? '#059669' : '#D97706'
-                              }}>
-                                {patient.anamnese.status === 'preenchida' ? 'Anamnese preenchida' : 'Anamnese pendente'}
-                              </span>
-                            )}
+                          <div className="cadastro-card-actions">
+                            <Link href={`/pacientes/detalhes?id=${patient.id}`} title="Ver detalhes">
+                              <button className="cadastro-card-btn"><Eye size={16} /></button>
+                            </Link>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="cadastro-card-body">
+                          <div className="cadastro-card-info">
+                            {patient.email && <span className="cadastro-card-tag"><Mail size={12} /> {patient.email}</span>}
+                            {patient.phone && <span className="cadastro-card-tag"><Phone size={12} /> {patient.phone}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                {/* Paginacao */}
                 {patientsPagination.totalPages > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '20px' }}>
                     {Array.from({ length: patientsPagination.totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => fetchPatients(page, patientSearch)}
+                      <button key={page} onClick={() => fetchPatients(page, patientSearch)}
                         className={`cadastro-card-btn ${page === patientsPagination.page ? 'favorite' : ''}`}
-                        style={{ minWidth: '36px', padding: '6px 10px', borderRadius: '8px' }}
-                      >
-                        {page}
-                      </button>
+                        style={{ minWidth: '36px', padding: '6px 10px', borderRadius: '8px' }}>{page}</button>
                     ))}
                   </div>
                 )}
@@ -1987,24 +1934,6 @@ export default function CadastroTabContent() {
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
-                      </div>
-                      <div className="cadastro-form-group">
-                        <label className="cadastro-form-label">Favorito</label>
-                        <div
-                          className={`cadastro-form-toggle ${editingRefeicao?.favorito ? 'active' : ''}`}
-                          onClick={() => {
-                            if (editingRefeicao) {
-                              handleToggleFavoritoRefeicao(editingRefeicao.id);
-                              setEditingRefeicao({ ...editingRefeicao, favorito: !editingRefeicao.favorito });
-                            }
-                          }}
-                          style={{ height: '42px', cursor: editingRefeicao ? 'pointer' : 'default' }}
-                        >
-                          <Star size={16} className="cadastro-form-toggle-star" fill={editingRefeicao?.favorito ? 'currentColor' : 'none'} />
-                          <span className="cadastro-form-toggle-text" style={{ fontSize: '13px' }}>
-                            {editingRefeicao?.favorito ? 'Favorito' : 'Não favorito'}
-                          </span>
-                        </div>
                       </div>
                     </div>
                     <div className="cadastro-form-group">
@@ -2575,15 +2504,6 @@ export default function CadastroTabContent() {
                           <option value="">Selecione</option>
                           {['Musculação', 'Funcional', 'Cardio', 'HIIT', 'Yoga', 'Pilates', 'Alongamento', 'Reabilitação'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
-                      </div>
-                      <div className="cadastro-form-group">
-                        <label className="cadastro-form-label">Favorito</label>
-                        <div className={`cadastro-form-toggle ${editingTreino?.favorito ? 'active' : ''}`}
-                          onClick={() => { if (editingTreino) { handleToggleFavoritoTreino(editingTreino.id); setEditingTreino({ ...editingTreino, favorito: !editingTreino.favorito }); } }}
-                          style={{ height: '42px', cursor: editingTreino ? 'pointer' : 'default' }}>
-                          <Star size={16} className="cadastro-form-toggle-star" fill={editingTreino?.favorito ? 'currentColor' : 'none'} />
-                          <span className="cadastro-form-toggle-text" style={{ fontSize: '13px' }}>{editingTreino?.favorito ? 'Favorito' : 'Não favorito'}</span>
-                        </div>
                       </div>
                     </div>
                     <div className="cadastro-form-group">
@@ -3249,18 +3169,6 @@ export default function CadastroTabContent() {
 
               {renderFormFields()}
 
-              <div className="cadastro-form-group">
-                <div
-                  className={`cadastro-form-toggle ${formData.favorito ? 'active' : ''}`}
-                  onClick={() => setFormData(p => ({ ...p, favorito: !p.favorito }))}
-                >
-                  <Star size={20} className="cadastro-form-toggle-star" fill={formData.favorito ? 'currentColor' : 'none'} />
-                  <div>
-                    <div className="cadastro-form-toggle-text">Marcar como favorito</div>
-                    <div className="cadastro-form-toggle-hint">Itens favoritos aparecem em destaque nos protocolos</div>
-                  </div>
-                </div>
-              </div>
             </div>
             <div className="cadastro-modal-footer">
               <button className="cadastro-btn-cancel" onClick={() => setShowModal(false)}>Cancelar</button>

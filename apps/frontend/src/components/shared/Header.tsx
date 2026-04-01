@@ -88,12 +88,27 @@ export function Header() {
   };
 
   // Tutorial: titulo da pagina para o modal de video
+  const PAGE_VIDEO_MAP: Record<string, { title: string; url: string }> = {
+    '/dashboard': { title: 'Home', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=64ac31ae-3355-46fd-b793-f32e0f30bc38' },
+    '/consultas': { title: 'Análise de Consultas', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=57f89471-a9e7-41b1-89a4-a256a4b14d19' },
+    '/agenda': { title: 'Home', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=64ac31ae-3355-46fd-b793-f32e0f30bc38' },
+    '/pacientes': { title: 'Como cadastrar e gerenciar seus pacientes', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=373a51cc-5775-4b5d-ac8b-66229822a978' },
+    '/consulta/nova': { title: 'Como criar uma consulta online', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=904afd55-a7ec-4d45-bd99-dd5a3a0941e8' },
+    '/configuracoes': { title: 'Configurações', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=768c5ec4-96d0-416d-9ddd-9f1c20936056' },
+    '/cadastro': { title: 'Cadastro', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=4989a010-2833-43ea-96ec-4f03c8dadae6' },
+    '/treinamento': { title: 'Boas vindas à plataforma', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=a383051d-1155-49bd-81d0-66d560ee5a1e' },
+  };
+
+  const getPageVideo = () => {
+    // Tentar match exato, depois por prefixo
+    if (PAGE_VIDEO_MAP[pathname]) return PAGE_VIDEO_MAP[pathname];
+    const prefix = Object.keys(PAGE_VIDEO_MAP).find(k => pathname.startsWith(k) && k !== '/');
+    if (prefix) return PAGE_VIDEO_MAP[prefix];
+    return { title: 'Boas vindas à plataforma', url: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=a383051d-1155-49bd-81d0-66d560ee5a1e' };
+  };
+
   const getPageTitle = () => {
-    const map: Record<string, string> = {
-      '/dashboard': 'Dashboard', '/consultas': 'Consultas', '/agenda': 'Agenda',
-      '/pacientes': 'Pacientes', '/consulta/nova': 'Nova Consulta', '/configuracoes': 'Configuracoes',
-    };
-    return map[pathname] || 'Plataforma';
+    return getPageVideo().title;
   };
 
   // Fechar dropdown ao clicar fora
@@ -320,8 +335,14 @@ export function Header() {
                 <X size={18} />
               </button>
             </div>
-            <div style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400, color: 'var(--text-secondary, #94A3B8)', fontSize: 16 }}>
-              Video em breve
+            <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+              <iframe
+                src={getPageVideo().url}
+                title={getPageVideo().title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+              />
             </div>
           </div>
         </div>

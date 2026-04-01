@@ -32,165 +32,110 @@ interface Lesson {
 const categories: { key: string; label: string }[] = [
   { key: 'todos', label: 'Todos' },
   { key: 'primeiros-passos', label: 'Primeiros Passos' },
-  { key: 'funcionalidades', label: 'Funcionalidades' },
   { key: 'consultas', label: 'Consultas' },
+  { key: 'analise', label: 'Análise e Diagnóstico' },
   { key: 'gestao', label: 'Gestão' },
-  { key: 'configuracoes', label: 'Configurações' },
 ];
 
 const lessons: Lesson[] = [
   {
-    id: 'intro-plataforma',
-    title: 'Introdução à Plataforma',
-    description:
-      'Conheça a plataforma completa, entenda como navegar e descubra todas as funcionalidades disponíveis para otimizar seu atendimento.',
-    duration: '5:30',
+    id: 'boas-vindas',
+    title: 'Boas vindas à plataforma',
+    description: 'Conheça a plataforma Auton Health, entenda como ela funciona e descubra como otimizar seus atendimentos.',
+    duration: '',
     category: 'primeiros-passos',
     icon: <Home size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=a383051d-1155-49bd-81d0-66d560ee5a1e',
   },
   {
-    id: 'dashboard-visao-geral',
-    title: 'Dashboard — Visão Geral',
-    description:
-      'Aprenda a interpretar os dados do dashboard, acompanhe métricas importantes e tenha uma visão completa da sua clínica em tempo real.',
-    duration: '7:15',
+    id: 'home',
+    title: 'Home',
+    description: 'Explore a tela inicial da plataforma, atalhos rápidos e visão geral do seu dia a dia.',
+    duration: '',
     category: 'primeiros-passos',
     icon: <BarChart3 size={48} />,
-  },
-  {
-    id: 'func-home',
-    title: 'Funcionalidade: Home',
-    description:
-      'Explore a tela inicial da plataforma, atalhos rápidos e como personalizar sua experiência no dia a dia.',
-    duration: '6:00',
-    category: 'funcionalidades',
-    icon: <Home size={48} />,
-  },
-  {
-    id: 'func-nova-consulta',
-    title: 'Funcionalidade: Nova Consulta',
-    description:
-      'Veja como iniciar uma nova consulta de forma rápida e eficiente, preenchendo todos os campos necessários.',
-    duration: '5:15',
-    category: 'funcionalidades',
-    icon: <FileText size={48} />,
-  },
-  {
-    id: 'func-consultas',
-    title: 'Funcionalidade: Consultas',
-    description:
-      'Gerencie todas as suas consultas em um só lugar — filtre, pesquise e acompanhe o histórico completo.',
-    duration: '5:30',
-    category: 'funcionalidades',
-    icon: <MessageCircle size={48} />,
-  },
-  {
-    id: 'func-agenda',
-    title: 'Funcionalidade: Agenda',
-    description:
-      'Domine a agenda integrada: crie, edite e organize seus agendamentos de forma prática e visual.',
-    duration: '5:45',
-    category: 'funcionalidades',
-    icon: <Calendar size={48} />,
-  },
-  {
-    id: 'func-pacientes',
-    title: 'Funcionalidade: Pacientes',
-    description:
-      'Cadastre e gerencie seus pacientes com facilidade, acesse prontuários e mantenha tudo organizado.',
-    duration: '6:20',
-    category: 'funcionalidades',
-    icon: <Users size={48} />,
-  },
-  {
-    id: 'func-configuracoes',
-    title: 'Funcionalidade: Configurações',
-    description:
-      'Personalize a plataforma de acordo com suas necessidades — perfil, notificações e preferências gerais.',
-    duration: '4:00',
-    category: 'funcionalidades',
-    icon: <Settings size={48} />,
-  },
-  {
-    id: 'func-treinamento',
-    title: 'Funcionalidade: Treinamento',
-    description:
-      'Saiba como acessar e aproveitar ao máximo a área de treinamento e videoaulas da plataforma.',
-    duration: '3:00',
-    category: 'funcionalidades',
-    icon: <BookOpen size={48} />,
-  },
-  {
-    id: 'nova-consulta',
-    title: 'Nova Consulta — Passo a Passo',
-    description:
-      'Acompanhe o fluxo completo de criação de uma consulta, desde a seleção do paciente até a finalização.',
-    duration: '6:45',
-    category: 'consultas',
-    icon: <FileText size={48} />,
-  },
-  {
-    id: 'consulta-telemedicina',
-    title: 'Consulta por Telemedicina',
-    description:
-      'Aprenda a realizar consultas online com vídeo integrado, compartilhamento de tela e gravação de sessão.',
-    duration: '8:20',
-    category: 'consultas',
-    icon: <Video size={48} />,
-  },
-  {
-    id: 'consulta-presencial',
-    title: 'Consulta Presencial',
-    description:
-      'Veja como registrar consultas presenciais, utilizar gravação de áudio e preencher todos os campos clínicos.',
-    duration: '6:10',
-    category: 'consultas',
-    icon: <Mic size={48} />,
-  },
-  {
-    id: 'lista-consultas',
-    title: 'Lista de Consultas',
-    description:
-      'Navegue pela lista de consultas realizadas, aplique filtros avançados e exporte relatórios quando necessário.',
-    duration: '5:00',
-    category: 'consultas',
-    icon: <MessageCircle size={48} />,
-  },
-  {
-    id: 'agenda',
-    title: 'Gestão da Agenda',
-    description:
-      'Organize sua agenda de atendimentos, configure horários disponíveis e evite conflitos de agendamento.',
-    duration: '6:30',
-    category: 'gestao',
-    icon: <Calendar size={48} />,
-  },
-  {
-    id: 'pacientes',
-    title: 'Gestão de Pacientes',
-    description:
-      'Administre sua base de pacientes, atualize cadastros e acesse o histórico completo de atendimentos.',
-    duration: '7:00',
-    category: 'gestao',
-    icon: <Users size={48} />,
-  },
-  {
-    id: 'historico-sessoes',
-    title: 'Histórico de Sessões',
-    description:
-      'Revise o histórico de todas as sessões realizadas, acompanhe a evolução dos pacientes e gere relatórios.',
-    duration: '4:45',
-    category: 'gestao',
-    icon: <Clock size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=64ac31ae-3355-46fd-b793-f32e0f30bc38',
   },
   {
     id: 'configuracoes',
-    title: 'Configurações Gerais',
-    description:
-      'Ajuste todas as configurações da plataforma — dados do perfil, integrações, segurança e preferências.',
-    duration: '4:00',
-    category: 'configuracoes',
+    title: 'Configurações',
+    description: 'Personalize a plataforma de acordo com suas necessidades — perfil, logo, integrações e preferências.',
+    duration: '',
+    category: 'primeiros-passos',
     icon: <Settings size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=768c5ec4-96d0-416d-9ddd-9f1c20936056',
+  },
+  {
+    id: 'cadastrar-pacientes',
+    title: 'Como cadastrar e gerenciar seus pacientes',
+    description: 'Cadastre e gerencie seus pacientes com facilidade, acesse prontuários e mantenha tudo organizado.',
+    duration: '',
+    category: 'gestao',
+    icon: <Users size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=373a51cc-5775-4b5d-ac8b-66229822a978',
+  },
+  {
+    id: 'consulta-online',
+    title: 'Como criar uma consulta online',
+    description: 'Aprenda a realizar consultas online com vídeo integrado, gravação de sessão e transcrição automática.',
+    duration: '',
+    category: 'consultas',
+    icon: <Video size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=904afd55-a7ec-4d45-bd99-dd5a3a0941e8',
+  },
+  {
+    id: 'consulta-presencial',
+    title: 'Como criar uma consulta presencial',
+    description: 'Veja como registrar consultas presenciais, utilizar gravação de áudio e captura com microfone.',
+    duration: '',
+    category: 'consultas',
+    icon: <Mic size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=c8d3e79a-fa82-443a-8a40-114ae7d89d37',
+  },
+  {
+    id: 'analise-consultas',
+    title: 'Análise de consultas',
+    description: 'Entenda como acessar e interpretar a análise completa gerada após cada consulta.',
+    duration: '',
+    category: 'analise',
+    icon: <FileText size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=57f89471-a9e7-41b1-89a4-a256a4b14d19',
+  },
+  {
+    id: 'diagnostico',
+    title: 'Diagnóstico',
+    description: 'Aprenda a navegar pelo diagnóstico integrado e entender os dados gerados pela IA.',
+    duration: '',
+    category: 'analise',
+    icon: <MessageCircle size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=1ace1754-f060-42ca-a47b-86112b28df65',
+  },
+  {
+    id: 'cadastro',
+    title: 'Cadastro',
+    description: 'Aprenda a cadastrar alimentos, refeições, treinos e prescrições para usar nos protocolos.',
+    duration: '',
+    category: 'gestao',
+    icon: <BookOpen size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=4989a010-2833-43ea-96ec-4f03c8dadae6',
+  },
+  {
+    id: 'anexar-exames',
+    title: 'Como e quando anexar os exames',
+    description: 'Saiba como e em qual momento anexar exames do paciente para enriquecer a análise da consulta.',
+    duration: '',
+    category: 'consultas',
+    icon: <FileText size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=b06043a7-41cd-4df1-8324-5f7fbc31b88a',
+  },
+  {
+    id: 'evolucao-paciente',
+    title: 'Como acompanhar a evolução do paciente',
+    description: 'Acompanhe a evolução dos seus pacientes com métricas, gráficos e histórico de consultas.',
+    duration: '',
+    category: 'gestao',
+    icon: <Clock size={48} />,
+    videoUrl: 'https://player-vz-b0562e45-7aa.tv.pandavideo.com.br/embed/?v=1d0267af-983f-4425-866f-6550d2942eb5',
   },
 ];
 
@@ -256,7 +201,7 @@ export default function TreinamentoPage() {
               <div className="treinamento-thumb">
                 <span className="treinamento-thumb-icon">{lesson.icon}</span>
                 <PlayCircle size={56} className="treinamento-play-icon" />
-                <span className="treinamento-duration">{lesson.duration}</span>
+                {lesson.duration && <span className="treinamento-duration">{lesson.duration}</span>}
               </div>
 
               {/* Body */}
