@@ -1489,4 +1489,41 @@ export async function updateWebhookDelivery(
   return true;
 }
 
+/**
+ * Phase 7 (DBAS-01): Atomic finalization via PostgreSQL RPC.
+ * Replaces sequential DB writes in all 3 finalization paths with a single transaction.
+ * Returns true on success, false on error.
+ */
+export async function finalizeConsultation(params: {
+  consultationId: string;
+  transcription: string;
+  status?: string;
+  durationMinutes?: number;
+  callSessionRoomId?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc('finalize_consultation', {
+      p_consultation_id: params.consultationId,
+      p_transcription: params.transcription,
+      p_status: params.status || 'COMPLETED',
+      p_duration_minutes: params.durationMinutes || null,
+      p_call_session_room_id: params.callSessionRoomId || null,
+    });
+
+    if (error) {
+      console.error('[DB] finalize_consultation RPC failed:', error);
+      logError('finalize_consultation RPC falhou', 'error', params.consultationId, {
+        error: error.message,
+        code: error.code,
+      });
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[DB] Exception in finalizeConsultation:', e);
+    return false;
+  }
+}
+
 export default supabase;
