@@ -147,7 +147,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — SQL migrations (finalize_consultation RPC + NOT NULL constraint) and database.ts wrapper
 - [ ] 07-02-PLAN.md — Wire HTTP and WebSocket finalization to RPC, add online room disconnect/reconnect handling
-- [ ] 07-03-PLAN.md — Wire presencial finalization to RPC, add presencial disconnect/reconnect handling
+- [x] 07-03-PLAN.md — Wire presencial finalization to RPC, add presencial disconnect/reconnect handling
 
 ### Phase 8: Frontend Protections
 **Goal**: The doctor is alerted when microphone issues occur during recording, and transcription data is not lost on accidental tab closure

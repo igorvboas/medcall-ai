@@ -30,8 +30,8 @@ Requirements para milestone v2.0. Cada um mapeia para fases do roadmap.
 
 ### Sessão e Conexão
 
-- [ ] **SESS-01**: Sessões órfãs limpas automaticamente após timeout de inatividade no disconnect WebSocket
-- [ ] **SESS-02**: Reconexão WebSocket com rejoin automático de sala (manter transcrição fluindo)
+- [x] **SESS-01**: Sessões órfãs limpas automaticamente após timeout de inatividade no disconnect WebSocket
+- [x] **SESS-02**: Reconexão WebSocket com rejoin automático de sala (manter transcrição fluindo)
 - [ ] **SESS-03**: Proteção contra tab crash com `beforeunload` handler durante gravação ativa
 
 ### Áudio e Microfone
@@ -88,8 +88,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FINL-02 | Phase 6 | Complete |
 | FINL-03 | Phase 6 | Complete |
 | FINL-04 | Phase 6 | Complete |
-| SESS-01 | Phase 7 | Pending |
-| SESS-02 | Phase 7 | Pending |
+| SESS-01 | Phase 7 | Complete |
+| SESS-02 | Phase 7 | Complete |
 | SESS-03 | Phase 8 | Pending |
 | AUDM-01 | Phase 8 | Pending |
 | AUDM-02 | Phase 8 | Pending |
