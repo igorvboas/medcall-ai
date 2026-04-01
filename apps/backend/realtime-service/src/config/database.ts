@@ -1314,4 +1314,63 @@ export async function logWarning(
   return logError(motivo, 'warning', consultaId, payload);
 }
 
+/**
+ * Phase 6 (WBHK-03): Record a new webhook delivery in the outbox table.
+ * Returns the delivery ID or null on error.
+ */
+export async function recordWebhookDelivery(data: {
+  consultation_id: string;
+  webhook_url: string;
+  payload: Record<string, any>;
+  status?: string;
+  attempts?: number;
+  max_attempts?: number;
+}): Promise<string | null> {
+  const { data: row, error } = await supabase
+    .from('webhook_deliveries')
+    .insert({
+      consultation_id: data.consultation_id,
+      webhook_url: data.webhook_url,
+      payload: data.payload,
+      status: data.status || 'pending',
+      attempts: data.attempts || 0,
+      max_attempts: data.max_attempts || 3,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Erro ao registrar webhook delivery:', error);
+    return null;
+  }
+  return row.id;
+}
+
+/**
+ * Phase 6 (WBHK-03): Update an existing webhook delivery record.
+ * Returns true on success, false on error.
+ */
+export async function updateWebhookDelivery(
+  id: string,
+  data: Partial<{
+    status: string;
+    attempts: number;
+    last_attempt_at: string;
+    response_status: number;
+    response_body: string;
+    error_message: string;
+  }>
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('webhook_deliveries')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar webhook delivery:', error);
+    return false;
+  }
+  return true;
+}
+
 export default supabase;
