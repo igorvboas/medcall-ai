@@ -3,7 +3,7 @@
 ## Milestones
 
 - 🚧 **v1.0 Consulta Presencial com Microfone Unico** - Phases 1-4 (in progress)
-- 📋 **v2.0 Robustez da Consulta Online** - Phases 5-8 (planned)
+- ✅ **v2.0 Robustez da Consulta Online** - Phases 5-8 (complete)
 
 ## Phases
 
@@ -175,7 +175,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. Backend Diarization | v1.0 | 3/3 | Complete | - |
 | 3. Frontend Single-Mic | v1.0 | 2/3 | In progress | - |
 | 4. Integration & Compatibility | v1.0 | 0/TBD | Not started | - |
-| 5. Core Data Path | v2.0 | 0/2 | Not started | - |
-| 6. Webhook Reliability & Finalization Guards | v2.0 | 0/2 | Not started | - |
-| 7. Session Resilience & DB Integrity | v2.0 | 0/3 | Not started | - |
-| 8. Frontend Protections | v2.0 | 2/2 | Complete   | 2026-04-01 |
+| 5. Core Data Path | v2.0 | 2/2 | Complete | 2026-03-31 |
+| 6. Webhook Reliability & Finalization Guards | v2.0 | 2/2 | Complete | 2026-03-31 |
+| 7. Session Resilience & DB Integrity | v2.0 | 3/3 | Complete | 2026-04-01 |
+| 8. Frontend Protections | v2.0 | 2/2 | Complete | 2026-04-01 |
