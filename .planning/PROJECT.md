@@ -53,8 +53,8 @@ Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e
 - [x] Transcrição consolidada salva em `consultation.transcricao` na finalização — Validated in Phase 5
 - [x] Webhook disparado para N8N com payload correto e URL baseada em NODE_ENV — Validated in Phase 5
 - [x] Operação atômica no save de transcrição (eliminar race condition read-modify-write) — Validated in Phase 5
-- [ ] Webhook outbox pattern com retry e tracking de entregas
-- [ ] Guards de finalização (idempotência, mutex, status transitions)
+- [x] Webhook outbox pattern com retry e tracking de entregas — Validated in Phase 6
+- [x] Guards de finalização (idempotência, mutex, status transitions) — Validated in Phase 6
 - [ ] Limpeza de sessões órfãs em disconnect WebSocket
 - [ ] Reconexão WebSocket com rejoin automático de sala
 - [ ] Proteção contra tab crash (beforeunload + persistência local)
@@ -78,9 +78,9 @@ Nenhum dado de consulta médica pode ser perdido — transcrição, gravação e
 - `transcriptions_med` usa read-modify-write de JSON sem lock — race condition com falas simultâneas (FIXED: Phase 5 atomic RPC)
 - `consultations.transcricao` agora lido do DB na finalização — crash antes disso ainda preserva raw_text (FIXED: Phase 5)
 - Webhook centralizado em `webhookConfig.ts` com URLs por NODE_ENV (FIXED: Phase 5)
-- Webhook sem retry — falha silenciosa perde pipeline de análise AI (anamnese, diagnóstico)
-- Room deletada da memória mesmo quando DB write falha — perda irreversível
-- Finalização pode ser disparada por HTTP e WebSocket simultaneamente — sem mutex
+- Webhook com retry exponencial (3 tentativas, 5s/15s/45s) e outbox tracking em `webhook_deliveries` (FIXED: Phase 6)
+- Room preservada em memória quando DB write falha, com safety timer de 10min (FIXED: Phase 6)
+- Finalização protegida por mutex in-memory Set + status transition guard one-directional (FIXED: Phase 6)
 - Sessões órfãs ficam em RECORDING para sempre quando WebSocket desconecta
 - NODE_ENV configurado em: gateway (.env:82), realtime-service (.env:87), frontend (.env:2)
 - Webhook auth via env var WEBHOOK_AUTH_HEADER
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after Phase 5 completion*
+*Last updated: 2026-04-01 after Phase 6 completion*
