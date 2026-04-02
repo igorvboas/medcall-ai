@@ -34,6 +34,15 @@ import emailRoutes from './routes/email';
 import whatsappRoutes from './routes/whatsapp';
 import aiRoutes from './routes/ai';
 import conexaoRoutes from './routes/conexao';
+import cadastroRoutes from './routes/cadastro';
+import cadastroRefeicaoRoutes from './routes/cadastro-refeicoes';
+import cadastroAlimentosRoutes from './routes/cadastro-alimentos';
+import alimentosNutricionaisRoutes from './routes/alimentos-nutricionais';
+import cadastroTreinosRoutes from './routes/cadastro-treinos';
+import cadastroExerciciosRoutes from './routes/cadastro-exercicios';
+import cadastroPrescricoesRoutes from './routes/cadastro-prescricoes';
+import documentosRoutes from './routes/documentos';
+import liberacaoMedicosRoutes from './routes/liberacao-medicos';
 
 // Rotas de Proxy
 import proxyRoutes from './routes/proxy';
@@ -56,12 +65,11 @@ const allowedOrigins = getCorsOrigins();
 console.log('🔧 [GATEWAY] CORS Origins:', allowedOrigins);
 
 // ===== MIDDLEWARE CRÍTICO: Interceptar OPTIONS ANTES de tudo =====
-// Este middleware DEVE ser o primeiro para evitar redirects que quebram CORS preflight
-// Usar app.all() para interceptar antes do roteamento
-app.all('*', (req, res, next) => {
+// Usar app.use() (não app.all) para rodar como middleware puro ANTES do routing layer,
+// evitando que o Express faça 308 redirect no preflight OPTIONS
+app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     console.log('🔍 [OPTIONS HANDLER] Interceptando requisição OPTIONS:', req.url);
-    // Aplicar CORS manualmente
     const origin = req.headers.origin;
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
@@ -184,6 +192,15 @@ app.use('/admin/consultations', consultasAdminRoutes);
 app.use('/email', emailRoutes);
 app.use('/whatsapp', whatsappRoutes);
 app.use('/conexao', conexaoRoutes);
+app.use('/cadastro', cadastroRoutes);
+app.use('/cadastro-refeicoes', cadastroRefeicaoRoutes);
+app.use('/cadastro-alimentos', cadastroAlimentosRoutes);
+app.use('/alimentos-nutricionais', alimentosNutricionaisRoutes);
+app.use('/cadastro-treinos', cadastroTreinosRoutes);
+app.use('/cadastro-exercicios', cadastroExerciciosRoutes);
+app.use('/cadastro-prescricoes', cadastroPrescricoesRoutes);
+app.use('/documentos', documentosRoutes);
+app.use('/liberacao-medicos', liberacaoMedicosRoutes);
 
 // Health check do Gateway (para Cloud Run e Docker)
 app.get('/health', (req, res) => {

@@ -41,7 +41,8 @@ export async function getPatients(req: AuthenticatedRequest, res: Response) {
     let query = supabase
       .from('patients')
       .select('*', { count: 'exact' })
-      .eq('doctor_id', medico.id);
+      .eq('doctor_id', medico.id)
+      .eq('deletado', false);
 
     // Aplicar filtro de status
     if (status !== 'all') {
@@ -637,7 +638,7 @@ export async function deletePatient(req: AuthenticatedRequest, res: Response) {
     // Verificar se o paciente existe e pertence ao médico
     const { data: existingPatient, error: checkError } = await supabase
       .from('patients')
-      .select('id')
+      .select('id, name')
       .eq('id', id)
       .eq('doctor_id', medico.id)
       .single();
@@ -649,10 +650,13 @@ export async function deletePatient(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    // Deletar paciente
+    // Soft delete: marcar como deletado e renomear
     const { error: deleteError } = await supabase
       .from('patients')
-      .delete()
+      .update({
+        deletado: true,
+        name: `[DELETADO] ${existingPatient.name}`
+      })
       .eq('id', id);
 
     if (deleteError) {
@@ -915,32 +919,7 @@ export async function syncPatientUser(req: AuthenticatedRequest, res: Response) 
     let whatsappSent = false;
     let whatsappError: string | null = null;
     let whatsappUsedDefaultDevice = false;
-    let generatedPassword: string | null = null;
-
-    // Função para gerar senha temporária segura
-    const generateTemporaryPassword = (): string => {
-      const length = 12;
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-      const numbers = '0123456789';
-      const special = '!@#$%&*';
-      const allChars = uppercase + lowercase + numbers + special;
-
-      let password = '';
-      // Garantir pelo menos um de cada tipo
-      password += uppercase[Math.floor(Math.random() * uppercase.length)];
-      password += lowercase[Math.floor(Math.random() * lowercase.length)];
-      password += numbers[Math.floor(Math.random() * numbers.length)];
-      password += special[Math.floor(Math.random() * special.length)];
-
-      // Preencher o resto
-      for (let i = password.length; i < length; i++) {
-        password += allChars[Math.floor(Math.random() * allChars.length)];
-      }
-
-      // Embaralhar
-      return password.split('').sort(() => Math.random() - 0.5).join('');
-    };
+    let generatedPassword: string | undefined = undefined;
 
     // Criar ou atualizar usuário no banco de dados (Supabase Auth)
 
@@ -980,7 +959,7 @@ export async function syncPatientUser(req: AuthenticatedRequest, res: Response) 
         const accessLink = await generateRecoveryLink(patient.email!);
 
         console.log('📧 [USER] Tentando enviar email com link de acesso para:', patient.email);
-        await sendAccessLinkEmail(patient.email!, patient.name, patient.email!, accessLink, generatedPassword || undefined);
+        await sendAccessLinkEmail(patient.email!, patient.name, patient.email!, accessLink, generatedPassword);
         emailSent = true;
         console.log('✅ [USER] Email com link de acesso enviado com sucesso para:', patient.email);
 
@@ -990,7 +969,7 @@ export async function syncPatientUser(req: AuthenticatedRequest, res: Response) 
         console.log('📱 [USER] Telefone do paciente:', patientPhone ? `presente (***${patientPhone.slice(-4)})` : 'ausente');
         if (patientPhone) {
           try {
-            const result = await sendAccessLinkWhatsApp(patientPhone, patient.name, patient.email!, accessLink, patient.doctor_id);
+            const result = await sendAccessLinkWhatsApp(patientPhone, patient.name, patient.email!, accessLink, patient.doctor_id, generatedPassword);
             whatsappSent = result.success;
             whatsappError = result.error || null;
             whatsappUsedDefaultDevice = result.usedDefaultDevice || false;
@@ -1234,7 +1213,19 @@ export async function resendPatientCredentials(req: AuthenticatedRequest, res: R
       });
     }
 
-    // Gerar link de recuperação de senha (sem expor senha em texto plano)
+    // Gerar nova senha temporária e atualizar no Auth
+    const newPassword = generateTemporaryPassword();
+    try {
+      await supabase.auth.admin.updateUserById(authUser.user.id, {
+        password: newPassword,
+        user_metadata: { ...authUser.user.user_metadata, temporary_password: true }
+      });
+      console.log('🔑 [REENVIO-CRED] Nova senha temporária gerada');
+    } catch (pwErr: any) {
+      console.error('Erro ao atualizar senha:', pwErr);
+    }
+
+    // Gerar link de recuperação
     let accessLink: string;
     try {
       accessLink = await generateRecoveryLink(authUser.user.email!);
@@ -1246,12 +1237,12 @@ export async function resendPatientCredentials(req: AuthenticatedRequest, res: R
       });
     }
 
-    // Enviar email com link de acesso
+    // Enviar email com link de acesso e senha
     let emailSent = false;
     let emailError: any = null;
     try {
-      console.log('📧 [REENVIO-CRED] Email: reenviando link de acesso para:', patient.email);
-      await sendAccessLinkEmail(patient.email!, patient.name, authUser.user.email!, accessLink);
+      console.log('📧 [REENVIO-CRED] Email: reenviando credenciais para:', patient.email);
+      await sendAccessLinkEmail(patient.email!, patient.name, authUser.user.email!, accessLink, newPassword);
       emailSent = true;
       console.log('✅ [REENVIO-CRED] Email enviado (Resend). WhatsApp é via Evolution API.');
     } catch (err: any) {
@@ -1307,6 +1298,27 @@ export async function resendPatientCredentials(req: AuthenticatedRequest, res: R
 /**
  * Gera um link de recuperação/definição de senha via Supabase Auth
  */
+function generateTemporaryPassword(): string {
+  const length = 12;
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%&*';
+  const allChars = uppercase + lowercase + numbers + special;
+
+  let password = '';
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
 async function generateRecoveryLink(userEmail: string): Promise<string> {
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'recovery',
@@ -1420,15 +1432,15 @@ async function sendAccessLinkEmail(
 
           <div style="text-align: center; margin: 30px 0;">
             <a
-              href="${accessLink}"
+              href="${process.env.PATIENT_LOGIN_URL || 'https://pacientes.autonhealth.com.br'}"
               style="display: inline-block; background: linear-gradient(135deg, #1B4266 0%, #153350 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);">
-              Definir Senha e Acessar
+              ${temporaryPassword ? 'Acessar o Sistema' : 'Definir Senha e Acessar'}
             </a>
           </div>
 
           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 0; font-size: 14px; color: #92400e;">
-              <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo link ao seu médico.
+              <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo link ao seu profissional.
             </p>
           </div>
 
@@ -1442,7 +1454,7 @@ async function sendAccessLinkEmail(
           </div>
 
           <p style="font-size: 14px; color: #6b7280; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-            Se você não solicitou esta conta ou tiver alguma dúvida, entre em contato com seu médico ou suporte.
+            Se você não solicitou esta conta ou tiver alguma dúvida, entre em contato com seu profissional ou suporte.
           </p>
 
           <p style="font-size: 12px; color: #9ca3af; margin-top: 20px; text-align: center;">

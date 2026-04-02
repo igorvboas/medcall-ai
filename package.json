@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "dev:all": "concurrently -n GATEWAY,FRONTEND -c magenta,cyan \"npm run dev --workspace=apps/gateway\" \"npm run dev --workspace=apps/frontend\"",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=packages/shared-types --workspace=packages/ui-components --if-present && npm run build --workspace=apps/frontend --workspace=apps/backend/gateway --workspace=apps/backend/realtime-service --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",

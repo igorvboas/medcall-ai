@@ -18,7 +18,7 @@ import './webrtc-styles.css';
 
 import { getPatientNameById, supabase } from '@/lib/supabase';
 import { gatewayClient } from '@/lib/gatewayClient';
-import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle, Clock, Scale, Ruler, Droplet, User as UserIcon, FileText, ShieldAlert, X } from 'lucide-react';
+import { Video, Mic, CheckCircle, Copy, Check, Brain, Sparkles, ChevronDown, ChevronUp, MoreVertical, Minimize2, Maximize2, Circle, Clock, Scale, Ruler, Droplet, User as UserIcon, FileText, ShieldAlert, X, ClipboardList } from 'lucide-react';
 import Image from 'next/image';
 import { useRecording } from '@/hooks/useRecording';
 import { useAdaptiveQuality, QualityMode } from '@/hooks/useAdaptiveQuality';
@@ -31,6 +31,9 @@ import { DeviceSettings } from './DeviceSettings';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { ExamUploadModal } from '@/components/modals/ExamUploadModal';
 import { UploadedFile } from '@/components/FileUpload';
+import { useMicMonitor } from '@/hooks/useMicMonitor';
+import { useBeforeUnloadProtection } from '@/hooks/useBeforeUnloadProtection';
+import { MicAlertBanner } from '@/components/alerts/MicAlertBanner';
 
 
 
@@ -174,6 +177,10 @@ export function ConsultationRoom({
 
   // ✅ UPLOAD EXAMES: Estado para modal de upload
   const [showExamUploadModal, setShowExamUploadModal] = useState(false);
+  const [showAnamnesePopup, setShowAnamnesePopup] = useState(false);
+  const [showQuestionarioPopup, setShowQuestionarioPopup] = useState(false);
+  const [allAnamneses, setAllAnamneses] = useState<any[]>([]);
+  const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
   // ✅ GRAVAÇÃO: Estados para controle de gravação da consulta
   const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
@@ -198,6 +205,10 @@ export function ConsultationRoom({
   // ✅ STATES para VideoPlayer (reativos)
   const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
+
+  // Mic monitoring and tab protection
+  const { isMicConnected, isSilent } = useMicMonitor(localStreamState, recordingState.isRecording);
+  useBeforeUnloadProtection(recordingState.isRecording || isCallActive);
 
   // ✅ NOVO: Refs para WebRTC
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -242,8 +253,19 @@ export function ConsultationRoom({
 
   const hasJoinedRoomRef = useRef<boolean>(false);
 
+  // ✅ CORREÇÃO: Flag que persiste "estava na sala" durante ciclo disconnect→reconnect
+  // hasJoinedRoomRef é resetado no disconnect, mas wasInRoomRef sobrevive para guiar o rejoin
+  const wasInRoomRef = useRef<boolean>(false);
+
   // ✅ NOVO: Contador de tentativas de reconexão (para backoff exponencial)
   const reconnectAttemptsRef = useRef<number>(0);
+
+  // ✅ AUTO-RECORDING: Gravação automática de áudio (audio-only, sem vídeo)
+  const autoRecorderRef = useRef<MediaRecorder | null>(null);
+  const autoRecorderChunksRef = useRef<Blob[]>([]);
+  const autoRecorderContextRef = useRef<AudioContext | null>(null);
+  const autoRecorderDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const autoRecordingStartedRef = useRef<boolean>(false);
 
   // ✅ PERFECT NEGOTIATION: Refs para evitar "glare" (colisão de ofertas)
   const makingOfferRef = useRef<boolean>(false);
@@ -447,19 +469,30 @@ export function ConsultationRoom({
             setPatientData(patientResponse.patient);
           }
 
-          // Buscar dados do cadastro de anamnese (peso, altura, tipo sanguíneo)
+          // Buscar TODAS as anamneses do paciente (historico)
           try {
-            const anamneseResponse = await gatewayClient.get(`/cadastro-anamnese/${patientId}`);
-            if (anamneseResponse.success) {
-              console.log('✅ ConsultationRoom: Dados da anamnese recebidos:', anamneseResponse.cadastro);
-              console.log('  - peso_atual:', anamneseResponse.cadastro?.peso_atual);
-              console.log('  - altura:', anamneseResponse.cadastro?.altura);
-              console.log('  - idade:', anamneseResponse.cadastro?.idade);
-              console.log('  - tipo_saguineo:', anamneseResponse.cadastro?.tipo_saguineo);
-              setPatientAnamnese(anamneseResponse.cadastro);
+            const { supabase } = await import('@/lib/supabase');
+            const { data: anamneseList } = await supabase
+              .from('a_cadastro_anamnese')
+              .select('*')
+              .eq('paciente_id', patientId)
+              .order('created_at', { ascending: false });
+
+            if (anamneseList && anamneseList.length > 0) {
+              setAllAnamneses(anamneseList);
+              setPatientAnamnese(anamneseList[0]); // mais recente como padrao
+              setSelectedAnamneseIndex(0);
             }
           } catch (err) {
-            console.warn('⚠️ Não foi possível buscar cadastro de anamnese:', err);
+            console.warn('Nao foi possivel buscar anamneses:', err);
+            // Fallback: buscar via API
+            try {
+              const anamneseResponse = await gatewayClient.get(`/cadastro-anamnese/${patientId}`);
+              if (anamneseResponse.success && anamneseResponse.cadastro) {
+                setPatientAnamnese(anamneseResponse.cadastro);
+                setAllAnamneses([anamneseResponse.cadastro]);
+              }
+            } catch {}
           }
         } catch (error) {
           console.error('Erro ao buscar dados do paciente:', error);
@@ -904,7 +937,9 @@ export function ConsultationRoom({
         setupSocketListeners();
 
         // 6. Rejuntar à sala se já estava na sala
-        if (hasJoinedRoom && roomId) {
+        // CORREÇÃO: usar wasInRoomRef (sobrevive ao disconnect) em vez de hasJoinedRoom (closure stale)
+        if (wasInRoomRef.current && roomId) {
+          wasInRoomRef.current = false;
           setPendingAction('rejoin'); // ✅ REACTIVE: usar pendingAction ao invés de setTimeout
         }
       });
@@ -1020,10 +1055,13 @@ export function ConsultationRoom({
 
         setIsConnected(false);
 
-        // ✅ CORREÇÃO: Resetar flags ao desconectar
+        // ✅ CORREÇÃO: Resetar flags ao desconectar, mas preservar wasInRoomRef para reconnect
+        if (hasJoinedRoomRef.current) {
+          wasInRoomRef.current = true; // Lembrar que estávamos na sala antes do disconnect
+        }
         hasJoinedRoomRef.current = false;
         isRejoiningRef.current = false;
-        console.log('🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false');
+        console.log(`🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false, wasInRoomRef = ${wasInRoomRef.current}`);
 
 
 
@@ -1064,9 +1102,10 @@ export function ConsultationRoom({
 
 
         // ✅ CRÍTICO: Rejuntar à sala após reconexão
-
-        if (roomId && hasJoinedRoom) {
-
+        // CORREÇÃO: Usar wasInRoomRef (persiste durante disconnect→reconnect)
+        // hasJoinedRoomRef é resetado no disconnect, então não serve aqui
+        if (roomId && wasInRoomRef.current) {
+          wasInRoomRef.current = false; // Resetar para evitar rejoin duplicado
           console.log(`🔄 RECONEXÃO: Rejuntando à sala ${roomId} após ${attemptNumber} tentativa(s)`);
 
 
@@ -1713,6 +1752,10 @@ export function ConsultationRoom({
           }
 
         } else {
+
+          // ✅ CORREÇÃO: Resetar flag em caso de erro (estava faltando!)
+          isRejoiningRef.current = false;
+          console.error('❌ Erro ao entrar como host, isRejoiningRef = false');
 
           showError('Erro ao entrar na sala: ' + response.error, 'Erro ao Entrar');
 
@@ -3710,6 +3753,17 @@ export function ConsultationRoom({
 
 
 
+    // Limpar auto-recording se ainda estiver ativo
+    if (autoRecorderRef.current && autoRecorderRef.current.state !== 'inactive') {
+      autoRecorderRef.current.stop();
+    }
+    if (autoRecorderContextRef.current) {
+      autoRecorderContextRef.current.close().catch(() => {});
+      autoRecorderContextRef.current = null;
+    }
+    autoRecorderDestRef.current = null;
+    autoRecordingStartedRef.current = false;
+
     // Parar streams
 
     if (localStreamRef.current) {
@@ -4070,6 +4124,242 @@ export function ConsultationRoom({
     setShowEndRoomConfirm(true);
   };
 
+  // ✅ AUTO-RECORDING: Iniciar gravação automática de áudio quando a call fica ativa
+  const startAutoAudioRecording = useCallback(() => {
+    if (autoRecordingStartedRef.current) return;
+    if (userType !== 'doctor') return; // Só o host grava
+
+    const localStream = localStreamRef.current;
+    const remoteStream = remoteStreamRef.current;
+
+    // Precisa de pelo menos um stream com áudio
+    const hasLocalAudio = localStream && localStream.getAudioTracks().length > 0;
+    const hasRemoteAudio = remoteStream && remoteStream.getAudioTracks().length > 0;
+
+    if (!hasLocalAudio && !hasRemoteAudio) {
+      console.log('🎙️ [AUTO-REC] Nenhum stream de áudio disponível, adiando...');
+      return;
+    }
+
+    try {
+      console.log('🎙️ [AUTO-REC] Iniciando gravação automática de áudio...', {
+        hasLocalAudio,
+        hasRemoteAudio
+      });
+
+      // Criar AudioContext para mixar streams
+      const audioContext = new AudioContext();
+      autoRecorderContextRef.current = audioContext;
+
+      const destination = audioContext.createMediaStreamDestination();
+      autoRecorderDestRef.current = destination;
+
+      // Conectar áudio local
+      if (hasLocalAudio) {
+        const localSource = audioContext.createMediaStreamSource(
+          new MediaStream([localStream!.getAudioTracks()[0]])
+        );
+        const localGain = audioContext.createGain();
+        localGain.gain.value = 1.0;
+        localSource.connect(localGain);
+        localGain.connect(destination);
+        console.log('🎙️ [AUTO-REC] Áudio local conectado');
+      }
+
+      // Conectar áudio remoto
+      if (hasRemoteAudio) {
+        const remoteSource = audioContext.createMediaStreamSource(
+          new MediaStream([remoteStream!.getAudioTracks()[0]])
+        );
+        const remoteGain = audioContext.createGain();
+        remoteGain.gain.value = 1.0;
+        remoteSource.connect(remoteGain);
+        remoteGain.connect(destination);
+        console.log('🎙️ [AUTO-REC] Áudio remoto conectado');
+      }
+
+      // Detectar melhor codec de áudio
+      const audioMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ];
+      let selectedMime = '';
+      for (const mime of audioMimeTypes) {
+        if (MediaRecorder.isTypeSupported(mime)) {
+          selectedMime = mime;
+          break;
+        }
+      }
+
+      if (!selectedMime) {
+        console.error('🎙️ [AUTO-REC] Nenhum codec de áudio suportado');
+        return;
+      }
+
+      console.log('🎙️ [AUTO-REC] Codec:', selectedMime);
+
+      autoRecorderChunksRef.current = [];
+      const recorder = new MediaRecorder(destination.stream, {
+        mimeType: selectedMime,
+        audioBitsPerSecond: 128000,
+      });
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          autoRecorderChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(10000); // Chunks a cada 10s
+      autoRecorderRef.current = recorder;
+      autoRecordingStartedRef.current = true;
+
+      console.log('🎙️ [AUTO-REC] Gravação automática iniciada');
+    } catch (error) {
+      console.error('🎙️ [AUTO-REC] Erro ao iniciar gravação automática:', error);
+    }
+  }, [userType]);
+
+  // ✅ AUTO-RECORDING: Parar e fazer upload do áudio
+  const stopAutoAudioRecording = useCallback(async (): Promise<void> => {
+    if (!autoRecordingStartedRef.current || !autoRecorderRef.current) return;
+
+    return new Promise<void>((resolve) => {
+      const recorder = autoRecorderRef.current!;
+
+      recorder.onstop = async () => {
+        console.log('🎙️ [AUTO-REC] Gravação parada, preparando upload...');
+
+        const chunks = autoRecorderChunksRef.current;
+        if (chunks.length === 0) {
+          console.warn('🎙️ [AUTO-REC] Nenhum chunk gravado');
+          resolve();
+          return;
+        }
+
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const finalBlob = new Blob(chunks, { type: mimeType });
+        console.log(`🎙️ [AUTO-REC] Tamanho final: ${(finalBlob.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // Obter IDs necessários
+        let sessionId = roomId;
+        let consultationId = currentConsultationId;
+
+        try {
+          if (!consultationId) {
+            const { data: callSession } = await supabase
+              .from('call_sessions')
+              .select('id, consultation_id')
+              .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+              .single();
+
+            if (callSession?.id) sessionId = callSession.id;
+            if (callSession?.consultation_id) consultationId = callSession.consultation_id;
+          }
+        } catch (e) {
+          console.warn('🎙️ [AUTO-REC] Erro ao buscar session/consultation:', e);
+        }
+
+        // Upload via endpoint existente
+        let gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
+        gatewayUrl = gatewayUrl.replace(/^wss:\/\//i, 'https://').replace(/^ws:\/\//i, 'http://');
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && gatewayUrl.startsWith('http://')) {
+          gatewayUrl = gatewayUrl.replace(/^http:\/\//i, 'https://');
+        }
+
+        try {
+          const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+          const formData = new FormData();
+          const blobWithType = new Blob([finalBlob], { type: mimeType });
+          formData.append('recording', blobWithType, `auto_audio_${sessionId}_final.${ext}`);
+          formData.append('sessionId', sessionId);
+          formData.append('roomId', roomId);
+          formData.append('chunkIndex', '0');
+          formData.append('isFinal', 'true');
+          formData.append('timestamp', Date.now().toString());
+          if (consultationId) {
+            formData.append('consultationId', consultationId);
+          }
+
+          console.log('🎙️ [AUTO-REC] Enviando áudio para:', `${gatewayUrl}/api/recordings/upload`);
+
+          const response = await fetch(`${gatewayUrl}/api/recordings/upload`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('🎙️ [AUTO-REC] Upload concluído:', result?.url);
+          } else {
+            const errText = await response.text();
+            console.error('🎙️ [AUTO-REC] Erro no upload:', response.status, errText);
+          }
+        } catch (uploadError) {
+          console.error('🎙️ [AUTO-REC] Erro no upload:', uploadError);
+        }
+
+        // Limpar recursos
+        if (autoRecorderContextRef.current) {
+          autoRecorderContextRef.current.close().catch(() => {});
+          autoRecorderContextRef.current = null;
+        }
+        autoRecorderDestRef.current = null;
+        autoRecorderChunksRef.current = [];
+        autoRecorderRef.current = null;
+        autoRecordingStartedRef.current = false;
+
+        resolve();
+      };
+
+      if (recorder.state !== 'inactive') {
+        recorder.stop();
+      } else {
+        resolve();
+      }
+    });
+  }, [roomId, currentConsultationId]);
+
+  // ✅ AUTO-RECORDING: Iniciar quando a call fica ativa e temos streams
+  useEffect(() => {
+    if (isCallActive && userType === 'doctor' && !autoRecordingStartedRef.current) {
+      // Pequeno delay para garantir que os streams estejam prontos
+      const timer = setTimeout(() => {
+        startAutoAudioRecording();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCallActive, userType, startAutoAudioRecording]);
+
+  // ✅ AUTO-RECORDING: Reconectar áudio remoto quando chegar depois
+  useEffect(() => {
+    if (
+      autoRecordingStartedRef.current &&
+      autoRecorderContextRef.current &&
+      autoRecorderDestRef.current &&
+      remoteStreamState
+    ) {
+      const remoteTracks = remoteStreamState.getAudioTracks();
+      if (remoteTracks.length > 0) {
+        try {
+          const ctx = autoRecorderContextRef.current;
+          const dest = autoRecorderDestRef.current;
+          const remoteSource = ctx.createMediaStreamSource(
+            new MediaStream([remoteTracks[0]])
+          );
+          const remoteGain = ctx.createGain();
+          remoteGain.gain.value = 1.0;
+          remoteSource.connect(remoteGain);
+          remoteGain.connect(dest);
+          console.log('🎙️ [AUTO-REC] Áudio remoto reconectado após chegada do participante');
+        } catch (e) {
+          console.warn('🎙️ [AUTO-REC] Erro ao reconectar áudio remoto:', e);
+        }
+      }
+    }
+  }, [remoteStreamState]);
+
   // ✅ GRAVAÇÃO: Funções de controle
   const handleStartRecording = async () => {
     console.log('🎬 [RECORDING] handleStartRecording chamado');
@@ -4228,10 +4518,16 @@ export function ConsultationRoom({
     // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
     console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
 
-    // ✅ GRAVAÇÃO: Parar gravação antes de finalizar
+    // ✅ GRAVAÇÃO MANUAL: Parar gravação antes de finalizar
     if (recordingState.isRecording) {
-      console.log('⏹️ [RECORDING] Parando gravação antes de finalizar sala...');
+      console.log('⏹️ [RECORDING] Parando gravação manual antes de finalizar sala...');
       await stopRecording();
+    }
+
+    // ✅ AUTO-RECORDING: Parar e fazer upload do áudio automático
+    if (autoRecordingStartedRef.current) {
+      console.log('🎙️ [AUTO-REC] Parando gravação automática antes de finalizar sala...');
+      await stopAutoAudioRecording();
     }
 
     setIsEndingRoom(true);
@@ -4392,6 +4688,9 @@ export function ConsultationRoom({
         status={networkQuality.status}
         packetLoss={networkQuality.packetLoss}
       />
+
+      {/* Mic protection alerts */}
+      <MicAlertBanner isMicConnected={isMicConnected} isSilent={isSilent} />
 
       {/* ✅ GRAVAÇÃO: Indicador flutuante de gravação */}
       {recordingState.isRecording && (
@@ -4749,7 +5048,28 @@ export function ConsultationRoom({
               </button>
 
               {/* Gerar/Acessar Anamnese */}
+              {/* Botao Ver Anamnese */}
               <button
+                className="patient-action-btn action-btn-primary"
+                onClick={() => { setSelectedAnamneseIndex(0); setShowAnamnesePopup(true); }}
+                disabled={allAnamneses.length === 0}
+                style={{ opacity: allAnamneses.length > 0 ? 1 : 0.5 }}
+              >
+                <FileText size={14} />
+                <span style={{ fontSize: '13px' }}>Ver Anamnese</span>
+              </button>
+
+              {/* Botao Questionario */}
+              <button
+                className="patient-action-btn action-btn-primary"
+                onClick={() => setShowQuestionarioPopup(true)}
+                style={{ background: '#0F172A' }}
+              >
+                <ClipboardList size={14} />
+                <span style={{ fontSize: '13px' }}>Questionário</span>
+              </button>
+
+              {false && <button
                 className="patient-action-btn action-btn-primary"
                 onClick={async () => {
                   // Se anamnese está pronta, abrir em nova aba
@@ -4863,7 +5183,7 @@ export function ConsultationRoom({
                 <span style={{ fontSize: '13px' }}>
                   {isGeneratingAnamnese ? 'Gerando...' : anamneseReady ? 'Acessar Anamnese' : 'Gerar Anamnese'}
                 </span>
-              </button>
+              </button>}
 
               {/* Anexar Exame */}
               <button
@@ -5072,6 +5392,7 @@ export function ConsultationRoom({
               }}
               disabled={isGeneratingAnamnese}
               style={{
+                display: 'none',
                 opacity: isGeneratingAnamnese ? 0.7 : 1,
                 cursor: isGeneratingAnamnese ? 'not-allowed' : 'pointer',
                 color: anamneseReady ? '#3b82f6' : '#1B4266',
@@ -5253,9 +5574,328 @@ export function ConsultationRoom({
         onUpload={handleUploadExam}
       />
 
+      {/* Popup Anamnese do Paciente */}
+      {showAnamnesePopup && (
+        <div onClick={() => { setShowAnamnesePopup(false); setSelectedAnamneseIndex(-1); }} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, backdropFilter: 'blur(4px)',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 700,
+            maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
+              background: '#F8FAFC',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#1B4266', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={18} color="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Historico de Anamneses</div>
+                  <div style={{ fontSize: 12, color: '#64748B' }}>{patientData?.name || patientAnamnese?.nome_completo || ''} - {allAnamneses.length} anamnese{allAnamneses.length !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+              <button onClick={() => { setShowAnamnesePopup(false); setSelectedAnamneseIndex(-1); }} style={{
+                width: 32, height: 32, borderRadius: 8, border: 'none',
+                background: '#F1F5F9', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#64748B',
+              }}>
+                <X size={18} />
+              </button>
+            </div>
 
+            {/* Layout: sidebar de datas + conteudo */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Lista de anamneses (sidebar esquerda) */}
+              <div style={{ width: 200, borderRight: '1px solid #E2E8F0', overflowY: 'auto', background: '#F8FAFC', flexShrink: 0 }}>
+                <div style={{ padding: '12px 14px', fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selecione uma data</div>
+                {allAnamneses.map((an, idx) => (
+                  <button key={idx} onClick={() => setSelectedAnamneseIndex(idx)}
+                    style={{
+                      display: 'flex', flexDirection: 'column', width: '100%', padding: '12px 14px',
+                      border: 'none', borderLeft: selectedAnamneseIndex === idx ? '3px solid #1B4266' : '3px solid transparent',
+                      background: selectedAnamneseIndex === idx ? '#fff' : 'transparent',
+                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, fontWeight: 700, color: selectedAnamneseIndex === idx ? '#1B4266' : '#0F172A' }}>
+                      {an.created_at ? new Date(an.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : `Anamnese ${idx + 1}`}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                      {idx === 0 ? 'Mais recente' : `Anamnese ${allAnamneses.length - idx}`}
+                    </span>
+                    {an.status === 'preenchida' && (
+                      <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, marginTop: 4 }}>Preenchida</span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-      {/* 🤖 Painel de Sugestões de IA - Apenas para médicos - Só aparece se estiver habilitado e visível */}
+              {/* Conteudo da anamnese selecionada */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                {selectedAnamneseIndex < 0 || !allAnamneses[selectedAnamneseIndex] ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94A3B8', gap: 12 }}>
+                    <FileText size={40} style={{ opacity: 0.3 }} />
+                    <span style={{ fontSize: 14 }}>Selecione uma anamnese ao lado</span>
+                  </div>
+                ) : (() => {
+                  const a = allAnamneses[selectedAnamneseIndex];
+                  const sections = [
+                    { title: 'Dados Pessoais', items: [
+                      { label: 'Nome', value: a.nome_completo },
+                      { label: 'Email', value: a.email },
+                      { label: 'Telefone', value: a.telefone },
+                      { label: 'Data de Nascimento', value: a.data_nascimento },
+                      { label: 'Sexo', value: a.genero },
+                      { label: 'Profissao', value: a.profissao },
+                      { label: 'CPF', value: a.cpf },
+                      { label: 'Tipo Sanguineo', value: a.tipo_saguineo },
+                    ]},
+                    { title: 'Medidas', items: [
+                      { label: 'Peso Atual', value: a.peso_atual ? `${a.peso_atual} kg` : null },
+                      { label: 'Altura', value: a.altura ? `${a.altura} cm` : null },
+                      { label: 'Peso Desejado', value: a.peso_desejado ? `${a.peso_desejado} kg` : null },
+                    ]},
+                    { title: 'Sono, Agua e Jejum', items: [
+                      { label: 'Avaliacao do Sono', value: a.avaliacao_sono ? `${a.avaliacao_sono}/10` : null },
+                      { label: 'Consumo de Agua', value: a.consumo_agua },
+                      { label: 'Cor da Urina', value: a.cor_urina },
+                      { label: 'Pratica Jejum', value: a.pratica_jejum },
+                      { label: 'Duracao Jejum', value: a.duracao_jejum },
+                    ]},
+                    { title: 'Objetivo e Atividade Fisica', items: [
+                      { label: 'Objetivo Principal', value: a.objetivo_principal },
+                      { label: 'Pratica Atividade', value: a.patrica_atividade_fisica },
+                      { label: 'Nivel', value: a.nivel_atividade },
+                      { label: 'Modalidades', value: Array.isArray(a.modalidades) ? a.modalidades.join(', ') : a.modalidades },
+                      { label: 'Frequencia', value: a.frequencia_semanal },
+                      { label: 'Periodo', value: a.periodo_treino },
+                    ]},
+                    { title: 'Preferencias Alimentares', items: [
+                      { label: 'Proteinas', value: Array.isArray(a.proteinas) ? a.proteinas.join(', ') : null },
+                      { label: 'Carboidratos', value: Array.isArray(a.carboidratos) ? a.carboidratos.join(', ') : null },
+                      { label: 'Vegetais', value: Array.isArray(a.vegetais) ? a.vegetais.join(', ') : null },
+                      { label: 'Leguminosas', value: Array.isArray(a.leguminosas) ? a.leguminosas.join(', ') : null },
+                      { label: 'Gorduras', value: Array.isArray(a.gorduras) ? a.gorduras.join(', ') : null },
+                      { label: 'Frutas', value: Array.isArray(a.frutas) ? a.frutas.join(', ') : null },
+                    ]},
+                    { title: 'Saude e Medicamentos', items: [
+                      { label: 'Toma Medicamentos', value: a.toma_medicamentos },
+                      { label: 'Medicamentos', value: a.medicamentos_detalhes },
+                      { label: 'Suplementos', value: Array.isArray(a.suplementos) ? a.suplementos.join(', ') : a.suplementos },
+                      { label: 'Condicoes', value: Array.isArray(a.condicoes_diagnosticadas) ? a.condicoes_diagnosticadas.join(', ') : a.condicoes_diagnosticadas },
+                      { label: 'Cirurgias', value: a.cirurgias_anteriores },
+                    ]},
+                    { title: 'Saude Digestiva', items: [
+                      { label: 'Mastigacao', value: a.mastigacao },
+                      { label: 'Alergias', value: Array.isArray(a.alergias_sensibilidades) ? a.alergias_sensibilidades.join(', ') : a.alergias_sensibilidades },
+                      { label: 'Desconfortos', value: Array.isArray(a.desconfortos_intestinais) ? a.desconfortos_intestinais.join(', ') : a.desconfortos_intestinais },
+                      { label: 'Avaliacao Intestino', value: a.avaliacao_intestino ? `${a.avaliacao_intestino}/10` : null },
+                      { label: 'Escala Bristol', value: a.tipo_bristol ? `Tipo ${a.tipo_bristol}` : null },
+                    ]},
+                  ];
+
+                  return (
+                    <>
+                      {sections.map((section) => {
+                        const validItems = section.items.filter(i => i.value);
+                        if (validItems.length === 0) return null;
+                        return (
+                          <div key={section.title} style={{ marginBottom: 20 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', marginBottom: 10, paddingBottom: 6, borderBottom: '1.5px solid #F1F5F9', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                              {section.title}
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
+                              {validItems.map((item) => (
+                                <div key={item.label} style={{ padding: '6px 0' }}>
+                                  <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
+                                  <div style={{ fontSize: 13, color: '#0F172A', fontWeight: 500, lineHeight: 1.4 }}>{item.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Questionário */}
+      {showQuestionarioPopup && (
+        <div onClick={() => setShowQuestionarioPopup(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '90vw', maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ClipboardList size={18} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Roteiro de Condução Clínica</h3>
+              </div>
+              <button onClick={() => setShowQuestionarioPopup(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, textAlign: 'center', fontStyle: 'italic' }}>Roteiro com o objetivo de encontrar a CAUSA RAIZ</p>
+
+              {/* Módulo 1 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 1 — Abertura do Campo</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: estabilizar o campo emocional e identificar a queixa principal de entrada</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>1. O que hoje mais te incomoda na sua vida ou na sua saúde?</div>
+                  <div>2. O que você gostaria de melhorar neste momento?</div>
+                  <div>3. Se pudesse resolver apenas uma coisa agora, qual seria?</div>
+                </div>
+              </div>
+
+              {/* Módulo 2 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 2 — Leitura da Queixa</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: mapear palavras-chave, linguagem emocional, padrão de ameaça e início da suspeita de Reino</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>4. Desde quando isso começou?</div>
+                  <div>5. O que estava acontecendo na sua vida nessa época?</div>
+                  <div>6. Isso surgiu de forma súbita ou foi aos poucos? <span style={{ color: '#94A3B8' }}>□ Súbita □ Aos poucos □ Não sabe</span></div>
+                  <div>7. O que isso te impede de fazer hoje?</div>
+                  <div>8. Em quais momentos piora?</div>
+                  <div>9. Em quais momentos melhora?</div>
+                  <div>10. Se esse sintoma pudesse falar, o que ele diria?</div>
+                </div>
+              </div>
+
+              {/* Módulo 3 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 3 — Sensação Corporal (Reino)</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: classificar o padrão sensorial em Vegetal, Mineral ou Animal</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>11. Qual é a sensação exata no corpo?</div>
+                  <div>12. É pressão, aperto, peso, queimação, bloqueio, invasão ou fragilidade? <span style={{ color: '#94A3B8' }}>□ Pressão □ Aperto □ Peso □ Queimação □ Bloqueio □ Invasão □ Fragilidade □ Outro</span></div>
+                  <div>13. Onde exatamente você sente isso?</div>
+                  <div>14. Essa sensação se move ou fica fixa? <span style={{ color: '#94A3B8' }}>□ Move □ Fixa □ Varia</span></div>
+                  <div>15. Isso te lembra algo da sua vida?</div>
+                </div>
+              </div>
+
+              {/* Módulo 4 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 4 — Emoção de Sobrevivência (Eixo HPA)</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: identificar o medo dominante, padrão de defesa e ativação simpática ou colapso</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>16. O que você mais teme perder hoje?</div>
+                  <div>17. O que mais te gera medo?</div>
+                  <div>18. O que mais te gera raiva?</div>
+                  <div>19. Você se sente ameaçado, pressionado, abandonado ou desvalorizado? <span style={{ color: '#94A3B8' }}>□ Ameaçado □ Pressionado □ Abandonado □ Desvalorizado</span></div>
+                  <div>20. Você sente que precisa se defender da vida? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Às vezes</span></div>
+                </div>
+              </div>
+
+              {/* Módulo 5 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 5 — Projeto de Vida (IKIGAI)</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: avaliar presença ou ausência de propósito, bloqueio existencial e coerência de vida</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>21. Qual é seu projeto de vida hoje?</div>
+                  <div>22. Como você se imagina daqui a 5 anos?</div>
+                  <div>23. O que te dá sentido para viver?</div>
+                  <div>24. O que você gostaria de estar vivendo e não consegue?</div>
+                </div>
+              </div>
+
+              {/* Módulo 6 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 6 — História de Vida (Mapa do Miasma)</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: detectar padrões repetitivos, traumas não resolvidos e origem do conflito</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>25. Como foi sua infância?</div>
+                  <div>26. Como eram seus pais com você?</div>
+                  <div>27. Houve perdas importantes? <span style={{ color: '#94A3B8' }}>□ Sim □ Não</span></div>
+                  <div>28. Houve mudanças bruscas na sua vida? <span style={{ color: '#94A3B8' }}>□ Sim □ Não</span></div>
+                  <div>29. Existe algo que se repete na sua vida e você não entende por quê?</div>
+                </div>
+              </div>
+
+              {/* Módulo 7 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 7 — Histórico Gestacional</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: correlacionar ansiedade precoce, eixo HPA, microbiota e comportamento desde a gestação</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>30. A gestação foi planejada ou surpresa? <span style={{ color: '#94A3B8' }}>□ Planejada □ Surpresa □ Não sabe</span></div>
+                  <div>31. Como sua mãe se sentia durante a gravidez?</div>
+                  <div>32. Houve medo, rejeição ou estresse? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Não sabe</span></div>
+                  <div>33. Houve intercorrências na gestação ou parto? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Não sabe</span></div>
+                </div>
+              </div>
+
+              {/* Módulo 8 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 8 — Setênios (Localização do Trauma)</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: identificar o ponto de ruptura e início do padrão em cada fase da vida</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>34. Entre 0 e 7 anos, algo marcou sua vida?</div>
+                  <div>35. Entre 7 e 14 anos?</div>
+                  <div>36. Entre 14 e 21 anos?</div>
+                  <div>37. Em qual fase você sente que algo mudou dentro de você?</div>
+                </div>
+              </div>
+
+              {/* Módulo 9 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 9 — Eixos Fisiológicos</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: avaliar padrões de sono, intestino e metabolismo como indicadores de disfunção sistêmica</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div style={{ fontWeight: 600, color: '#1B4266', marginTop: 8 }}>Sono</div>
+                  <div>38. Você dorme bem? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Regularmente</span></div>
+                  <div>39. Acorda cansado(a)? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Às vezes</span></div>
+                  <div>40. Acorda durante a noite? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Às vezes</span></div>
+                  <div style={{ fontWeight: 600, color: '#1B4266', marginTop: 8 }}>Intestino</div>
+                  <div>41. Como é seu intestino?</div>
+                  <div>42. Tem gases, distensão ou constipação? <span style={{ color: '#94A3B8' }}>□ Gases □ Distensão □ Constipação □ Nenhum</span></div>
+                  <div style={{ fontWeight: 600, color: '#1B4266', marginTop: 8 }}>Metabolismo</div>
+                  <div>43. Tem ganho de peso? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Estável</span></div>
+                  <div>44. Tem desejo por doces? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Às vezes</span></div>
+                  <div>45. Já teve alteração de glicose? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Não sabe</span></div>
+                </div>
+              </div>
+
+              {/* Módulo 10 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 10 — Hábitos e Estilo de Vida</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: mapear fatores externos que impactam o processo saúde-doença</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>46. Como é sua alimentação?</div>
+                  <div>47. Você pratica atividade física? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Às vezes</span></div>
+                  <div>48. Como é sua rotina de trabalho?</div>
+                  <div>49. Você tem momentos de descanso? <span style={{ color: '#94A3B8' }}>□ Sim □ Não □ Raramente</span></div>
+                </div>
+              </div>
+
+              {/* Módulo 11 */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Módulo 11 — Fechamento do Campo</div>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginBottom: 10 }}>Objetivo: integrar a percepção do paciente sobre seu próprio processo e alinhar expectativas terapêuticas</p>
+                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2 }}>
+                  <div>50. O que você acredita que seu corpo está tentando te mostrar?</div>
+                  <div>51. O que você espera desse tratamento?</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Painel de Sugestoes de IA */}
 
       {userType === 'doctor' && suggestionsEnabled && suggestionsPanelVisible && aiSuggestions.length > 0 && (
 

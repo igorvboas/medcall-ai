@@ -3,11 +3,12 @@
 import { Layout } from '@/components/shared/Layout';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Users } from 'lucide-react';
+import { BarChart3, Users, UserCheck } from 'lucide-react';
 
 const tabs = [
   { href: '/administracao', label: 'Dashboard', icon: BarChart3, exact: true },
   { href: '/administracao/acompanhamento-medicos', label: 'Acompanhamento Médicos', icon: Users },
+  { href: '/administracao/liberacao-medicos', label: 'Liberação Médicos', icon: UserCheck },
 ];
 
 export default function AdministracaoLayout({

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from './index';
+import type { DiarizedUtterance } from '../types/diarization';
 
 // Configuração do cliente Supabase
 // ✅ IMPORTANTE: Usar service role key para bypassar RLS
@@ -628,7 +629,7 @@ export const db = {
    * Salva tudo em um único registro, atualizando o array conforme novas transcrições chegam
    */
   async addTranscriptionToSession(sessionId: string, transcription: {
-    speaker: 'doctor' | 'patient' | 'system';
+    speaker: 'doctor' | 'patient' | 'system' | 'unknown';
     speaker_id: string;
     text: string;
     confidence?: number;
@@ -1025,58 +1026,22 @@ export const db = {
    */
   async appendConsultationTranscription(consultationId: string, textToAppend: string, speaker: string, timestamp: string): Promise<boolean> {
     try {
-      // 1. Check if a transcription record exists for this consultation
-      const { data: existing, error: fetchError } = await supabase
-        .from('transcriptions')
-        .select('id, raw_text')
-        .eq('consultation_id', consultationId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('❌ [DB] Error fetching transcription for append:', fetchError);
-        return false;
-      }
-
       const formattedLine = `[${speaker}] (${timestamp}): ${textToAppend}`;
-
-      if (existing) {
-        // Append to existing
-        const newText = existing.raw_text ? `${existing.raw_text}\n${formattedLine}` : formattedLine;
-
-        const { error: updateError } = await supabase
-          .from('transcriptions')
-          .update({
-            raw_text: newText,
-            updated_at: new Date().toISOString() // Assuming there's an updated_at, if not it's fine
-          } as any)
-          .eq('id', existing.id);
-
-        if (updateError) {
-          console.error('❌ [DB] Error appending transcription:', updateError);
-          return false;
-        }
-      } else {
-        // Create new
-        const { error: insertError } = await supabase
-          .from('transcriptions')
-          .insert({
-            consultation_id: consultationId,
-            raw_text: formattedLine,
-            language: 'pt-BR',
-            model_used: 'whisper-1-vad',
-            created_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('❌ [DB] Error creating transcription (append):', insertError);
-          return false;
-        }
+      const { error } = await supabase.rpc('append_transcription_text', {
+        p_consultation_id: consultationId,
+        p_text: formattedLine,
+      });
+      if (error) {
+        console.error('[DB] Error in atomic append:', error);
+        logError('Erro no append atomico de transcricao', 'error', consultationId, {
+          error: error.message,
+          code: error.code,
+        });
+        return false;
       }
       return true;
     } catch (e) {
-      console.error('❌ [DB] Exception in appendConsultationTranscription:', e);
+      console.error('[DB] Exception in appendConsultationTranscription:', e);
       return false;
     }
   },
@@ -1239,6 +1204,157 @@ export const db = {
     console.log('🗑️ [DB] Gravação removida:', recordingId);
     return true;
   },
+
+  /**
+   * Salva utterances diarizadas como linhas individuais em transcriptions_med
+   * Cada utterance vira uma row separada com speaker_id e batch_id
+   */
+  async saveDiarizedUtterances(
+    sessionId: string,
+    batchId: string,
+    utterances: Array<{
+      speaker: 'doctor' | 'patient' | 'unknown';
+      speakerId: string | null;
+      text: string;
+      startMs: number;
+      endMs: number;
+      confidence: number;
+      diarizationConfidence: number;
+      needsReview: boolean;
+      doctorName?: string;
+    }>
+  ): Promise<boolean> {
+    try {
+      const rows = utterances.map((u) => ({
+        session_id: sessionId,
+        speaker: u.speaker,
+        speaker_id: u.speakerId,
+        text: u.text,
+        is_final: true,
+        start_ms: u.startMs,
+        end_ms: u.endMs,
+        confidence: u.confidence,
+        diarization_confidence: u.diarizationConfidence,
+        batch_id: batchId,
+        needs_review: u.needsReview,
+        processing_status: 'completed',
+        doctor_name: u.doctorName || null,
+      }));
+
+      const { error } = await supabase
+        .from('transcriptions_med')
+        .insert(rows);
+
+      if (error) {
+        console.error(`[DIARIZATION-SAVE] Error saving utterances for batch ${batchId}:`, error);
+        return false;
+      }
+
+      console.log(`[DIARIZATION-SAVE] Saved ${utterances.length} utterances for batch ${batchId}`);
+      return true;
+    } catch (error) {
+      console.error(`[DIARIZATION-SAVE] Exception saving utterances for batch ${batchId}:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Atualiza o mapeamento de speaker (speaker_0/speaker_1 -> doctor/patient) para uma sessao
+   * Retroativamente atribui roles a todas as utterances da sessao
+   */
+  async updateSpeakerMapping(
+    sessionId: string,
+    mapping: { speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' }
+  ): Promise<boolean> {
+    try {
+      for (const [speakerKey, role] of Object.entries(mapping)) {
+        const { error } = await supabase
+          .from('transcriptions_med')
+          .update({ speaker: role, needs_review: false })
+          .eq('session_id', sessionId)
+          .eq('speaker_id', speakerKey);
+
+        if (error) {
+          console.error(`[SPEAKER-MAPPING] Error updating ${speakerKey} -> ${role} for session ${sessionId}:`, error);
+          return false;
+        }
+      }
+
+      console.log(`[SPEAKER-MAPPING] Updated speaker mapping for session ${sessionId}`);
+      return true;
+    } catch (error) {
+      console.error(`[SPEAKER-MAPPING] Exception updating mapping for session ${sessionId}:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Regenera o raw_text da transcricao com labels de speaker apos mapeamento
+   * Busca todas as utterances diarizadas e formata como [MEDICO/PACIENTE] (HH:mm:ss): texto
+   */
+  async regenerateRawTextWithSpeakers(
+    sessionId: string,
+    consultationId: string,
+    mapping: { speaker_0: 'doctor' | 'patient'; speaker_1: 'doctor' | 'patient' }
+  ): Promise<boolean> {
+    try {
+      const { data: rows, error: fetchError } = await supabase
+        .from('transcriptions_med')
+        .select('*')
+        .eq('session_id', sessionId)
+        .not('batch_id', 'is', null)
+        .order('start_ms', { ascending: true });
+
+      if (fetchError) {
+        console.error(`[REGENERATE-TEXT] Error fetching utterances for session ${sessionId}:`, fetchError);
+        return false;
+      }
+
+      if (!rows || rows.length === 0) {
+        console.warn(`[REGENERATE-TEXT] No diarized utterances found for session ${sessionId}`);
+        return false;
+      }
+
+      const lines = rows.map((row: any) => {
+        let label: string;
+        switch (row.speaker) {
+          case 'doctor':
+            label = 'MEDICO';
+            break;
+          case 'patient':
+            label = 'PACIENTE';
+            break;
+          default:
+            label = 'SPEAKER';
+        }
+
+        const totalSecs = Math.floor(row.start_ms / 1000);
+        const hh = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalSecs % 60).padStart(2, '0');
+
+        return `[${label}] (${hh}:${mm}:${ss}): ${row.text}`;
+      });
+
+      const rawText = lines.join('\n');
+
+      const { error: updateError } = await supabase
+        .from('transcriptions')
+        .update({ raw_text: rawText })
+        .eq('consultation_id', consultationId);
+
+      if (updateError) {
+        console.error(`[REGENERATE-TEXT] Error updating raw_text for consultation ${consultationId}:`, updateError);
+        return false;
+      }
+
+      console.log(`[REGENERATE-TEXT] Regenerated raw_text with ${rows.length} utterances for consultation ${consultationId}`);
+      return true;
+    } catch (error) {
+      console.error(`[REGENERATE-TEXT] Exception for session ${sessionId}:`, error);
+      return false;
+    }
+  },
 };
 
 // ==================== LOG DE ERROS ====================
@@ -1312,6 +1428,102 @@ export async function logWarning(
   payload?: Record<string, any>
 ): Promise<void> {
   return logError(motivo, 'warning', consultaId, payload);
+}
+
+/**
+ * Phase 6 (WBHK-03): Record a new webhook delivery in the outbox table.
+ * Returns the delivery ID or null on error.
+ */
+export async function recordWebhookDelivery(data: {
+  consultation_id: string;
+  webhook_url: string;
+  payload: Record<string, any>;
+  status?: string;
+  attempts?: number;
+  max_attempts?: number;
+}): Promise<string | null> {
+  const { data: row, error } = await supabase
+    .from('webhook_deliveries')
+    .insert({
+      consultation_id: data.consultation_id,
+      webhook_url: data.webhook_url,
+      payload: data.payload,
+      status: data.status || 'pending',
+      attempts: data.attempts || 0,
+      max_attempts: data.max_attempts || 3,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Erro ao registrar webhook delivery:', error);
+    return null;
+  }
+  return row.id;
+}
+
+/**
+ * Phase 6 (WBHK-03): Update an existing webhook delivery record.
+ * Returns true on success, false on error.
+ */
+export async function updateWebhookDelivery(
+  id: string,
+  data: Partial<{
+    status: string;
+    attempts: number;
+    last_attempt_at: string;
+    response_status: number;
+    response_body: string;
+    error_message: string;
+  }>
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('webhook_deliveries')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar webhook delivery:', error);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Phase 7 (DBAS-01): Atomic finalization via PostgreSQL RPC.
+ * Replaces sequential DB writes in all 3 finalization paths with a single transaction.
+ * Returns true on success, false on error.
+ */
+export async function finalizeConsultation(params: {
+  consultationId: string;
+  transcription: string;
+  status?: string;
+  durationMinutes?: number;
+  callSessionRoomId?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc('finalize_consultation', {
+      p_consultation_id: params.consultationId,
+      p_transcription: params.transcription,
+      p_status: params.status || 'COMPLETED',
+      p_duration_minutes: params.durationMinutes || null,
+      p_call_session_room_id: params.callSessionRoomId || null,
+    });
+
+    if (error) {
+      console.error('[DB] finalize_consultation RPC failed:', error);
+      logError('finalize_consultation RPC falhou', 'error', params.consultationId, {
+        error: error.message,
+        code: error.code,
+      });
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[DB] Exception in finalizeConsultation:', e);
+    return false;
+  }
 }
 
 export default supabase;

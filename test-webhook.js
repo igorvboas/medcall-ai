@@ -6,7 +6,7 @@ const testWebhook = async () => {
     const suffix = isDevelopment ? '-teste' : '';
     const authHeader = process.env.WEBHOOK_AUTH_HEADER || '';
     
-    const webhookUrl = `https://webhook.tc1.triacompany.com.br/webhook/usi-input-edicao-diagnostico${suffix}`;
+    const webhookUrl = `https://triahook.gst.dev.br/webhook/usi-input-edicao-diagnostico${suffix}`;
     
     const requestBody = {
       origem: 'IA',

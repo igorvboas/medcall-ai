@@ -172,7 +172,7 @@ class WhisperService {
      */
     async transcribeAudioChunk(
         audioBuffer: Buffer,
-        speaker: 'doctor' | 'patient' = 'doctor',
+        speaker: 'doctor' | 'patient' | 'mixed' = 'doctor',
         language: string = 'pt',
         consultaId?: string
     ): Promise<{ text: string; duration?: number }> {

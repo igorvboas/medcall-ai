@@ -882,7 +882,7 @@ export function buildSolutionsDocxPremiumV3(solutions: SolutionsDataForDocx): Do
   children.push(divider());
   children.push(
     para(
-      "Este documento reúne as orientações e o plano definidos na sua consulta. Use-o como guia no dia a dia. Em caso de dúvidas, converse com seu médico.",
+      "Este documento reúne as orientações e o plano definidos na sua consulta. Use-o como guia no dia a dia. Em caso de dúvidas, converse com seu profissional.",
       { color: COLOR.secondary, size: SIZE.md, align: AlignmentType.CENTER, after: SPACING.md }
     )
   );
@@ -959,7 +959,7 @@ export function buildSolutionsDocxPremiumV3(solutions: SolutionsDataForDocx): Do
 
     children.push(
       highlightBox(
-        "Siga as porções como referência diária. Use as substituições quando necessário. Ajuste qualquer ponto apenas com orientação do seu médico/nutricionista.",
+        "Siga as porções como referência diária. Use as substituições quando necessário. Ajuste qualquer ponto apenas com orientação do seu profissional/nutricionista.",
         { fill: COLOR.foodLight, borderColor: COLOR.food }
       )
     );
@@ -1065,7 +1065,7 @@ export function buildSolutionsDocxPremiumV3(solutions: SolutionsDataForDocx): Do
 
     children.push(
       highlightBox(
-        "Se houver qualquer reação adversa, suspenda e contate seu médico. Evite alterar dose/horário sem orientação. Siga o período de início/término e reavaliação.",
+        "Se houver qualquer reação adversa, suspenda e contate seu profissional. Evite alterar dose/horário sem orientação. Siga o período de início/término e reavaliação.",
         { fill: COLOR.suppLight, borderColor: COLOR.supp }
       )
     );
@@ -1168,7 +1168,7 @@ export function buildSolutionsDocxPremiumV3(solutions: SolutionsDataForDocx): Do
   children.push(emptyLine(SPACING.sm));
   children.push(
     highlightBox(
-      "Em caso de dúvidas ou para ajustar seu plano, entre em contato com seu médico. Este documento é um guia de apoio e não substitui avaliação clínica individual.",
+      "Em caso de dúvidas ou para ajustar seu plano, entre em contato com seu profissional. Este documento é um guia de apoio e não substitui avaliação clínica individual.",
       { fill: COLOR.primaryLight, borderColor: COLOR.primary }
     )
   );

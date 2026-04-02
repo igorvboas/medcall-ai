@@ -27,6 +27,8 @@ import { StatusBadge, mapBackendStatus } from '../../../components/StatusBadge';
 import { ConsultationStatusChart } from '../../../components/ConsultationStatusChart';
 import { LoadingScreen } from '../../../components/shared/LoadingScreen';
 import { ActiveConsultationBanner } from '../../../components/dashboard/ActiveConsultationBanner';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { DASHBOARD_STEPS } from '@/components/dashboard/tutorialSteps';
 import '../../../components/Calendar.css';
 
 interface DashboardData {
@@ -870,6 +872,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <TutorialPopup steps={DASHBOARD_STEPS} pageKey="dashboard" showWelcome={true} />
     </div>
   );
 }

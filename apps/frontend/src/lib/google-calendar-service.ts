@@ -191,7 +191,7 @@ export async function createGoogleCalendarEvent(
     const consultationLink = getConsultationLink(consultation.id);
     
     // Nome do médico (usar valor passado ou fallback)
-    const doctorName = consultation.doctor_name || 'seu médico';
+    const doctorName = consultation.doctor_name || 'seu profissional';
 
     // Montar descrição personalizada
     const description = `${consultation.patient_name}, você tem uma consulta agendada com ${doctorName} no dia ${formattedDate} às ${formattedTime}.
@@ -269,7 +269,7 @@ export async function updateGoogleCalendarEvent(
     const consultationLink = getConsultationLink(consultation.id);
     
     // Nome do médico (usar valor passado ou fallback)
-    const doctorName = consultation.doctor_name || 'seu médico';
+    const doctorName = consultation.doctor_name || 'seu profissional';
 
     // Montar descrição personalizada
     const description = `${consultation.patient_name}, você tem uma consulta agendada com ${doctorName} no dia ${formattedDate} às ${formattedTime}.

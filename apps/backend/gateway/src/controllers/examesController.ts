@@ -148,6 +148,19 @@ export async function linkExames(req: AuthenticatedRequest, res: Response) {
       });
     }
 
+    // Disparar webhook de exames (fire-and-forget)
+    const isHomolog = process.env.NODE_ENV === 'homolog';
+    const examesWebhookUrl = isHomolog
+      ? 'https://triahook.gst.dev.br/webhook/input-at-exames-usi-homolog'
+      : 'https://triahook.gst.dev.br/webhook/input-at-exames-usi-v2';
+    fetch(examesWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consulta_id: consultaId }),
+    })
+      .then(resp => console.log(`[linkExames] Webhook disparado para consulta ${consultaId}, status: ${resp.status}`))
+      .catch(err => console.error(`[linkExames] Erro ao disparar webhook para consulta ${consultaId}:`, err));
+
     return res.json({
       success: true,
       message: `${fileUrls.length} exame(s) vinculado(s) com sucesso`,

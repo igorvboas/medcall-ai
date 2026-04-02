@@ -85,7 +85,7 @@ export async function sendAccessLinkEmail({
 
             <div style="background: #fef3c7; border-left: 4px solid #fbbf24; padding: 15px; margin: 20px 0; border-radius: 4px;">
               <p style="margin: 0; font-size: 14px; color: #92400e;">
-                <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu médico.
+                <strong>⏱️ Importante:</strong> Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu profissional.
               </p>
             </div>
 
@@ -110,7 +110,7 @@ Sua conta foi criada com sucesso! Clique no link abaixo para definir sua senha e
 E-mail: ${email}
 Link de acesso: ${accessLink}
 
-Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu médico.
+Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu profissional.
 
 Se você não solicitou esta conta, por favor ignore este email.
       `.trim()
@@ -185,7 +185,7 @@ export async function sendAnamneseEmail({
             </p>
             
             <p style="font-size: 16px; margin-bottom: 20px;">
-              Seu médico solicitou que você preencha sua <strong>Anamnese Inicial</strong>. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
+              Seu profissional solicitou que você preencha sua <strong>Anamnese Inicial</strong>. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
             </p>
             
             <p style="font-size: 16px; margin-bottom: 20px;">
@@ -208,7 +208,7 @@ export async function sendAnamneseEmail({
             </div>
             
             <p style="font-size: 14px; color: #6b7280; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-              Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu médico.
+              Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu profissional.
             </p>
             
             <p style="font-size: 12px; color: #9ca3af; margin-top: 20px; text-align: center;">
@@ -223,7 +223,7 @@ Anamnese Inicial
 
 Olá ${patientName},
 
-Seu médico solicitou que você preencha sua Anamnese Inicial. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
+Seu profissional solicitou que você preencha sua Anamnese Inicial. Esta é uma etapa importante para que possamos realizar uma avaliação completa e personalizada.
 
 Acesse o link abaixo para preencher o formulário:
 
@@ -231,7 +231,7 @@ ${anamneseLink}
 
 Tempo estimado: 10-15 minutos
 
-Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu médico.
+Se você não solicitou este formulário ou tiver alguma dúvida, entre em contato com seu profissional.
       `.trim()
     });
 

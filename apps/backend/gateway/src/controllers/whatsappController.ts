@@ -118,7 +118,7 @@ Sua anamnese Chegou pela plataforma Auton Health.
 Acesse o link abaixo para preencher:
 ${anamneseLink}
 
-Em caso de dúvidas, entre em contato com seu médico.
+Em caso de dúvidas, entre em contato com seu profissional.
 Esta é uma mensagem automática.`;
 
     const url = `${EVOLUTION_API_URL}/message/sendText/${instanceName}`;
@@ -172,7 +172,8 @@ export async function sendAccessLinkWhatsApp(
   patientName: string,
   userEmail: string,
   accessLink: string,
-  doctorId?: string
+  doctorId?: string,
+  temporaryPassword?: string
 ): Promise<{ success: boolean; error?: string; code?: string; usedDefaultDevice?: boolean }> {
   const rawPhone = (phone || '').trim();
   if (!rawPhone) {
@@ -204,11 +205,11 @@ export async function sendAccessLinkWhatsApp(
 Sua conta de acesso ao *${appName}* foi criada.
 
 📧 *E-mail:* ${userEmail}
-
-🔗 Clique no link abaixo para definir sua senha e acessar o sistema:
+${temporaryPassword ? `🔑 *Senha:* ${temporaryPassword}\n` : ''}
+🔗 Acesse o sistema:
 ${accessLink}
 
-⏱️ Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu médico.
+${temporaryPassword ? '⚠️ Recomendamos que altere sua senha após o primeiro acesso.\n' : ''}⏱️ Este link é válido por tempo limitado. Se expirar, solicite um novo ao seu profissional.
 Esta é uma mensagem automática.`;
 
   // Verificar se o número possui WhatsApp

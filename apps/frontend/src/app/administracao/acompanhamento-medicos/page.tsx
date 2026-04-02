@@ -27,6 +27,7 @@ interface DoctorFunnel {
   data_primeiro_login: string | null;
   data_primeira_consulta: string | null;
   data_consulta_finalizada: string | null;
+  total_consultas: number;
 }
 
 interface TrackingData {
@@ -172,6 +173,7 @@ export default function AcompanhamentoMedicosPage() {
       'Data Primeira Consulta',
       'Consulta Finalizada',
       'Data Consulta Finalizada',
+      'Qtd. Consultas',
     ];
 
     const rows = filteredDoctors.map((d) => [
@@ -192,6 +194,7 @@ export default function AcompanhamentoMedicosPage() {
       formatDate(d.data_primeira_consulta),
       d.primeira_consulta_finalizada ? 'Sim' : 'Não',
       formatDate(d.data_consulta_finalizada),
+      String(d.total_consultas || 0),
     ]);
 
     const csvContent = [
@@ -400,6 +403,7 @@ export default function AcompanhamentoMedicosPage() {
                       <th>Fez Login</th>
                       <th>1a Consulta</th>
                       <th>Consulta Finalizada</th>
+                      <th>Qtd. Consultas</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -429,6 +433,9 @@ export default function AcompanhamentoMedicosPage() {
                         </td>
                         <td>
                           <StatusBadge done={doctor.primeira_consulta_finalizada} date={doctor.data_consulta_finalizada} formatDate={formatDate} />
+                        </td>
+                        <td>
+                          <span className="consultation-count">{doctor.total_consultas}</span>
                         </td>
                       </tr>
                     ))}

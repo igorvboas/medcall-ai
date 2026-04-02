@@ -21,16 +21,23 @@ export interface WebhookEndpoints {
 }
 
 /**
+ * Detecta o ambiente atual (homolog, development, production)
+ */
+function getEnvironment(): string {
+  return process.env.NEXT_PUBLIC_ENV || process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV || 'production';
+}
+
+/**
  * Retorna a configuração de webhook baseada no ambiente
  */
 export function getWebhookConfig(): WebhookConfig {
-  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
-  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
-  const isDevelopment = nodeEnv === 'development';
+  const env = getEnvironment();
+  const isHomolog = env === 'homolog';
 
   return {
-    baseUrl: 'https://triahook.gst.dev.br',
-    //baseUrl: 'https://webhook.tc1.triacompany.com.br',
+    baseUrl: isHomolog
+      ? 'https://triahook.gst.dev.br'
+      : 'https://triahook.gst.dev.br',
     authHeader: process.env.NEXT_PUBLIC_WEBHOOK_AUTH_HEADER || ''
   };
 }
@@ -39,19 +46,36 @@ export function getWebhookConfig(): WebhookConfig {
  * Retorna os endpoints de webhook baseados no ambiente
  */
 export function getWebhookEndpoints(): WebhookEndpoints {
-  const config = getWebhookConfig();
-  // Usar NEXT_PUBLIC_NODE_ENV para client-side, fallback para NODE_ENV no server-side
-  const nodeEnv = process.env.NEXT_PUBLIC_NODE_ENV || process.env.NODE_ENV;
-  const isDevelopment = nodeEnv === 'development';
+  const env = getEnvironment();
+  const isHomolog = env === 'homolog';
+  const isDevelopment = env === 'development';
 
   const suffix = isDevelopment ? '-teste' : '';
 
+  const config = getWebhookConfig();
+  const prodBase = 'https://triahook.gst.dev.br';
+  const homologBase = 'https://triahook.gst.dev.br';
+
   console.log('🔗🔗 Webhook endpoints configurados:', {
-    baseUrl: config.baseUrl,
-    suffix,
-    isDevelopment,
-    nodeEnv
+    env,
+    isHomolog,
+    isDevelopment
   });
+
+  if (isHomolog) {
+    return {
+      anamnese: `${homologBase}/webhook/usi-anamnese-preenchimento-homolog`,
+      edicaoAnamnese: `${homologBase}/webhook/usi-input-edicao-analise-homolog`,
+      transcricao: `${homologBase}/webhook/usi-analise-homolog`,
+      edicaoDiagnostico: `${homologBase}/webhook/usi-input-edicao-diagnostico-homolog`,
+      diagnosticoPrincipal: `${homologBase}/webhook/diagnostico-principal-homolog`,
+      edicaoSolucao: `${homologBase}/webhook/usi-input-edicao-solucao-homolog`,
+      edicaoLivroDaVida: `${prodBase}/webhook/usi-solucao-homolog`,
+      triggerSolucao: `${homologBase}/webhook/usi-trigger-solucao-homolog`,
+      solucaoCriacaoEntregaveis: `${homologBase}/webhook/usi-solucao-criacao-entregaveis-homolog`,
+      exames: `${homologBase}/webhook/input-at-exames-usi-homolog`
+    };
+  }
 
   return {
     anamnese: `${config.baseUrl}/webhook/usi-anamnese-preenchimento-v2`,

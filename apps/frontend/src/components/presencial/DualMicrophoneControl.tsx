@@ -136,7 +136,7 @@ export function DualMicrophoneControl({
             <div className="microphone-section">
                 <div className="microphone-header">
                     <Stethoscope className="header-icon" size={20} />
-                    <h4>Microfone do Médico</h4>
+                    <h4>Microfone do Profissional</h4>
                 </div>
                 <select
                     value={doctorMic}

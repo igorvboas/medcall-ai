@@ -67,11 +67,16 @@ export function CreateConsultationRoom({
   const [selectedMicrophone, setSelectedMicrophone] = useState('');
   const [microphones, setMicrophones] = useState<AudioDevice[]>([]);
   const [consent, setConsent] = useState(false);
+  // Presencial mic config
+  const [presencialMicMode, setPresencialMicMode] = useState<'single' | 'dual'>('single');
+  const [presencialDoctorMic, setPresencialDoctorMic] = useState('');
+  const [presencialPatientMic, setPresencialPatientMic] = useState('');
+  const [showDualMicWarning, setShowDualMicWarning] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
 
   // Novos estados para agendamento
-  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento'>('instantanea');
+  const [creationType, setCreationType] = useState<'instantanea' | 'agendamento' | ''>('instantanea');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
 
@@ -80,6 +85,11 @@ export function CreateConsultationRoom({
 
   // Estado para tipo de retorno (Novo/Retorno)
   const [patientReturnType, setPatientReturnType] = useState<'novo' | 'retorno'>('novo');
+
+  // Estado para searchbox de pacientes
+  const [patientSearch, setPatientSearch] = useState('');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const patientSearchRef = useRef<HTMLDivElement>(null);
 
   // Estados para captura de áudio em tempo real
   const [audioLevel, setAudioLevel] = useState(0);
@@ -108,10 +118,11 @@ export function CreateConsultationRoom({
   }, [agendamentoId, preselectedPatientId, preselectedConsultationType]);
 
   // Efeito para iniciar automaticamente a consulta quando vier de um agendamento
+  const agendamentoAutoStarted = useRef(false);
   useEffect(() => {
     if (
       isFromAgendamento &&
-      // socketConnected && // Removido: socket conecta sob demanda agora
+      !agendamentoAutoStarted.current &&
       !loadingDoctor &&
       !loadingPatients &&
       selectedPatient &&
@@ -119,6 +130,7 @@ export function CreateConsultationRoom({
       !isCreatingRoom &&
       !roomCreated
     ) {
+      agendamentoAutoStarted.current = true;
       console.log('🚀 Iniciando consulta automaticamente a partir do agendamento');
       handleCreateRoom();
     }
@@ -229,10 +241,7 @@ export function CreateConsultationRoom({
         const patientsData = await getPatients();
         setPatients(patientsData);
 
-        // Selecionar primeiro paciente por padrão, EXCETO se vier de um agendamento
-        if (patientsData.length > 0 && !preselectedPatientId) {
-          setSelectedPatient(patientsData[0].id);
-        }
+        // Não pré-selecionar nenhum paciente — o searchbox inicia vazio
       } catch (error) {
         console.error('Erro ao carregar pacientes:', error);
       } finally {
@@ -242,6 +251,25 @@ export function CreateConsultationRoom({
 
     loadPatients();
   }, [preselectedPatientId]);
+
+  // Fechar dropdown de pacientes ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (patientSearchRef.current && !patientSearchRef.current.contains(e.target as Node)) {
+        setShowPatientDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Preencher o search quando paciente é pré-selecionado (agendamento)
+  useEffect(() => {
+    if (selectedPatient && patients.length > 0) {
+      const patient = patients.find((p) => p.id === selectedPatient);
+      if (patient) setPatientSearch(patient.name);
+    }
+  }, [selectedPatient, patients]);
 
   // Carregar dispositivos de áudio (microfones)
   useEffect(() => {
@@ -264,6 +292,10 @@ export function CreateConsultationRoom({
         // Selecionar primeiro microfone por padrão
         if (audioInputs.length > 0) {
           setSelectedMicrophone(audioInputs[0].deviceId);
+          setPresencialDoctorMic(audioInputs[0].deviceId);
+          if (audioInputs.length > 1) {
+            setPresencialPatientMic(audioInputs[1].deviceId);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dispositivos de áudio:', error);
@@ -580,9 +612,12 @@ export function CreateConsultationRoom({
 
         console.log('✅ Consulta presencial criada:', consultation.id);
 
-        // Redirecionar para página de consulta presencial
+        // Redirecionar para página de consulta presencial com configuração de mic
         const baseUrl = window.location.origin;
-        const presencialUrl = `${baseUrl}/consulta/presencial?consultationId=${consultation.id}`;
+        const micParams = presencialMicMode === 'single'
+          ? `&micMode=single&singleMicId=${encodeURIComponent(presencialDoctorMic)}`
+          : `&micMode=dual&doctorMic=${encodeURIComponent(presencialDoctorMic)}&patientMic=${encodeURIComponent(presencialPatientMic)}`;
+        const presencialUrl = `${baseUrl}/consulta/presencial?consultationId=${consultation.id}&autoStart=true${micParams}`;
         console.log('🚀 Redirecionando para consulta presencial:', presencialUrl);
         window.location.href = presencialUrl;
         return;
@@ -699,11 +734,13 @@ export function CreateConsultationRoom({
           showInfo('Mensagem enviada pelo dispositivo padrão. Conecte seu WhatsApp em Conexão para enviar pelo seu número.', 'WhatsApp');
         }
       } else {
+        showError('Erro ao enviar mensagem. Tente novamente.', 'Erro');
       }
     } catch (error) {
-      setIsCreatingRoom(false);
-      console.error('Erro ao criar sala:', error);
-      showError('Erro ao criar sala. Tente novamente.', 'Erro');
+      console.error('Erro ao enviar WhatsApp:', error);
+      showError('Erro ao enviar mensagem. Tente novamente.', 'Erro');
+    } finally {
+      setSendingWhatsapp(false);
     }
   };
 
@@ -896,22 +933,89 @@ export function CreateConsultationRoom({
             <span className="card-title-asterisk">*</span>
           </div>
 
-          <select
-            value={selectedPatient}
-            onChange={(e) => setSelectedPatient(e.target.value)}
-            className="form-select-figma"
-            required
-            disabled={loadingPatients || loadingDoctor || isFromAgendamento}
-          >
-            <option value="">
-              {loadingPatients ? 'Carregando pacientes...' : 'Selecione um paciente'}
-            </option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
+          <div className="patient-search-container" ref={patientSearchRef}>
+            <div className="patient-search-box">
+              <svg className="patient-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                type="text"
+                className="patient-search-input"
+                placeholder={loadingPatients ? 'Carregando pacientes...' : 'Digite o nome do paciente...'}
+                value={patientSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPatientSearch(val);
+                  setShowPatientDropdown(true);
+                  if (selectedPatient) {
+                    setSelectedPatient('');
+                  }
+                }}
+                onFocus={() => setShowPatientDropdown(true)}
+                disabled={loadingPatients || loadingDoctor || isFromAgendamento}
+                autoComplete="off"
+              />
+              {patientSearch && (
+                <button
+                  type="button"
+                  className="patient-search-clear"
+                  onClick={() => {
+                    setPatientSearch('');
+                    setSelectedPatient('');
+                    setShowPatientDropdown(false);
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            {showPatientDropdown && !selectedPatient && (() => {
+              const filtered = patientSearch
+                ? patients.filter((p) => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                : patients;
+              if (filtered.length === 0) {
+                return (
+                  <ul className="patient-search-dropdown">
+                    <li className="patient-search-item patient-search-empty">
+                      Nenhum paciente encontrado
+                    </li>
+                  </ul>
+                );
+              }
+              return (
+                <ul className="patient-search-dropdown">
+                  {filtered.map((patient) => {
+                    // Highlight do texto que deu match
+                    const name = patient.name;
+                    const idx = patientSearch ? name.toLowerCase().indexOf(patientSearch.toLowerCase()) : -1;
+                    return (
+                      <li
+                        key={patient.id}
+                        className="patient-search-item"
+                        onMouseDown={() => {
+                          setSelectedPatient(patient.id);
+                          setPatientSearch(patient.name);
+                          setShowPatientDropdown(false);
+                        }}
+                      >
+                        {idx >= 0 ? (
+                          <>
+                            {name.slice(0, idx)}
+                            <strong>{name.slice(idx, idx + patientSearch.length)}</strong>
+                            {name.slice(idx + patientSearch.length)}
+                          </>
+                        ) : (
+                          name
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              );
+            })()}
+            <input type="hidden" name="selectedPatient" value={selectedPatient} required />
+          </div>
 
           {/* Foto do paciente */}
           <div className="patient-photo-container">
@@ -989,7 +1093,7 @@ export function CreateConsultationRoom({
           </label>
         </div>
 
-        {/* Card 3: Microfone do Médico ou Agendamento */}
+        {/* Card 3: Microfone do Profissional ou Agendamento */}
         <div className="consultation-card">
           {creationType === 'agendamento' ? (
             <>
@@ -1047,10 +1151,126 @@ export function CreateConsultationRoom({
                 Selecione a data e horário para agendar a consulta
               </p>
             </>
+          ) : consultationType === 'presencial' && creationType === 'instantanea' ? (
+            <>
+              <div className="card-title-wrapper">
+                <h2 className="card-title">Configuração de Microfone</h2>
+              </div>
+
+              {/* Toggle single/dual */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: showDualMicWarning ? 0 : 16 }}>
+                <button
+                  type="button"
+                  onClick={() => { setPresencialMicMode('single'); setShowDualMicWarning(false); }}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background: presencialMicMode === 'single' ? '#1B4266' : '#F1F5F9',
+                    color: presencialMicMode === 'single' ? '#fff' : '#64748B',
+                  }}
+                >
+                  1 Microfone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (presencialMicMode === 'single') {
+                      setShowDualMicWarning(true);
+                      return;
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background: presencialMicMode === 'dual' ? '#1B4266' : '#F1F5F9',
+                    color: presencialMicMode === 'dual' ? '#fff' : '#64748B',
+                  }}
+                >
+                  2 Microfones
+                </button>
+              </div>
+
+              {/* Aviso inline ao mudar para 2 microfones */}
+              {showDualMicWarning && (
+                <div style={{
+                  margin: '12px 0 16px', padding: '14px 16px', borderRadius: 10,
+                  background: '#FEF3C7', border: '1.5px solid #FCD34D',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>Mudar para 2 microfones?</div>
+                      <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.5, margin: 0 }}>
+                        Você precisará selecionar um microfone para o profissional e outro para o paciente. Use este modo quando cada pessoa tiver seu próprio microfone.
+                      </p>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button type="button" onClick={() => { setPresencialMicMode('dual'); setShowDualMicWarning(false); }}
+                          style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#D97706', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Sim, mudar
+                        </button>
+                        <button type="button" onClick={() => setShowDualMicWarning(false)}
+                          style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #FCD34D', background: '#fff', color: '#92400E', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {presencialMicMode === 'single' ? (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone</label>
+                  <select
+                    value={presencialDoctorMic}
+                    onChange={(e) => setPresencialDoctorMic(e.target.value)}
+                    className="form-select-figma"
+                  >
+                    <option value="">Selecione o Microfone</option>
+                    {microphones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Um microfone captura o áudio de ambos (profissional e paciente)</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone do Profissional</label>
+                    <select
+                      value={presencialDoctorMic}
+                      onChange={(e) => setPresencialDoctorMic(e.target.value)}
+                      className="form-select-figma"
+                    >
+                      <option value="">Selecione</option>
+                      {microphones.map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#374151' }}>Microfone do Paciente</label>
+                    <select
+                      value={presencialPatientMic}
+                      onChange={(e) => setPresencialPatientMic(e.target.value)}
+                      className="form-select-figma"
+                    >
+                      <option value="">Selecione</option>
+                      {microphones.filter(m => m.deviceId !== presencialDoctorMic).map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <p className="help-text" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 12 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                {presencialMicMode === 'single' ? 'Modo microfone único — captura todo o áudio da sala' : 'Modo dois microfones — um para cada participante'}
+              </p>
+            </>
           ) : consultationType === 'online' && creationType === 'instantanea' ? (
             <>
               <div className="card-title-wrapper">
-                <h2 className="card-title">Microfone do Médico</h2>
+                <h2 className="card-title">Microfone do Profissional</h2>
                 <span className="card-title-asterisk">*</span>
               </div>
 
@@ -1095,74 +1315,51 @@ export function CreateConsultationRoom({
                 Não esqueça de permitir o uso do microfone em seu navegador
               </p>
             </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#A3A3A3', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-              Clique em Criar Consulta para configurar os microfones que serão usados na consulta
-            </div>
-          )}
+          ) : null}
         </div>
       </form>
 
-      {/* Seletor de tipo de consulta */}
+      {/* Botao Iniciar Consulta */}
       {!isFromAgendamento && (
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'center',
-          marginTop: '30px',
-          marginBottom: '20px'
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, marginBottom: 16 }}>
           <button
-            type="button"
-            onClick={() => {
-              setCreationType('instantanea');
-              setScheduledDate('');
-              setScheduledTime('');
+            type="submit"
+            form="consultation-form"
+            onClick={(e) => {
+              e.preventDefault();
+              handleCreateRoom();
             }}
-            className={creationType === 'instantanea' ? 'consultation-type-btn active' : 'consultation-type-btn'}
-            disabled={isCreatingRoom}
-          >
-            Consulta Imediata
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCreationType('agendamento');
-              setSelectedMicrophone('');
+            disabled={
+              isCreatingRoom ||
+              loadingPatients ||
+              loadingDoctor ||
+              !selectedPatient ||
+              !consent ||
+              (consultationType === 'online' && !selectedMicrophone)
+            }
+            style={{
+              padding: '14px 36px',
+              borderRadius: 10,
+              border: 'none',
+              background: '#22c55e',
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.2s',
+              opacity: (isCreatingRoom || !selectedPatient || !consent || (consultationType === 'online' && !selectedMicrophone)) ? 0.5 : 1,
+              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
             }}
-            className={creationType === 'agendamento' ? 'consultation-type-btn active' : 'consultation-type-btn'}
-            disabled={isCreatingRoom}
+            onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#16a34a'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#22c55e'; }}
           >
-            <img src="/calendar.svg" alt="Calendário" className="btn-icon-calendar" />
-            Agendar Consulta
+            {isCreatingRoom ? 'Criando...' : 'Iniciar Consulta'}
           </button>
         </div>
       )}
-
-      {/* Botões de ação */}
-      <div className="action-buttons-container">
-        <button
-          type="submit"
-          form="consultation-form"
-          onClick={(e) => {
-            e.preventDefault();
-            handleCreateRoom();
-          }}
-          className="btn-criar"
-          disabled={
-            isCreatingRoom ||
-            loadingPatients ||
-            loadingDoctor ||
-            !selectedPatient ||
-            !consent ||
-            (creationType === 'instantanea' && consultationType === 'online' && !selectedMicrophone) ||
-            (creationType === 'agendamento' && (!scheduledDate || !scheduledTime))
-          }
-        >
-          Criar Consulta
-          <img src="/arrow-left.svg" alt="Seta" className="btn-arrow" />
-        </button>
-      </div>
 
       {isCreatingRoom && (
         <div className="loading-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>

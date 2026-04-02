@@ -18,12 +18,18 @@ const evoApiKey = config.EVO_APIKEY;
  * A Evolution vai chamar: POST {gatewayUrl}/conexao/webhook
  */
 function getWebhookUrl(): string {
-  const frontendUrl = config.FRONTEND_URL || '';
-  // Derivar gateway URL a partir da FRONTEND_URL ou usar variável específica
-  const gatewayUrl = process.env.GATEWAY_PUBLIC_URL
-    || process.env.NEXT_PUBLIC_GATEWAY_URL
-    || (frontendUrl ? frontendUrl.replace(':3000', ':8080') : 'http://localhost:8080');
-  return `${gatewayUrl.replace(/\/$/, '')}/conexao/webhook`;
+  // Se tiver GATEWAY_PUBLIC_URL explícita, usar ela
+  if (process.env.GATEWAY_PUBLIC_URL) {
+    return `${process.env.GATEWAY_PUBLIC_URL.replace(/\/$/, '')}/conexao/webhook`;
+  }
+
+  // Senão, derivar baseado no NODE_ENV
+  const isHomolog = config.NODE_ENV === 'homolog';
+  const gatewayUrl = isHomolog
+    ? 'https://medcall-gateway-281254277760.southamerica-east1.run.app'
+    : 'https://medcall-gateway-491009251646.southamerica-east1.run.app';
+
+  return `${gatewayUrl}/conexao/webhook`;
 }
 
 /**

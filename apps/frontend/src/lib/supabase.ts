@@ -151,6 +151,7 @@ export async function getPatients() {
       .from('patients')
       .select('*')
       .eq('doctor_id', medico.id) // ✅ Usar medicos.id, não auth.users.id
+      .eq('deletado', false)
       .order('created_at', { ascending: false });
 
     if (error) {

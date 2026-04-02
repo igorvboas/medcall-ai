@@ -122,9 +122,11 @@ export default function ConexaoPage() {
         <div className="conexao-header">
           <h1 className="conexao-title">Conexao WhatsApp</h1>
         </div>
-        <div className="conexao-card" style={{ textAlign: 'center', padding: '60px' }}>
-          <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto', color: '#6b7280' }} />
-          <p style={{ marginTop: '16px', color: '#6b7280' }}>Carregando...</p>
+        <div className="conexao-card">
+          <div className="conexao-loading">
+            <Loader2 size={32} className="conexao-loading-spinner" />
+            <p>Carregando...</p>
+          </div>
         </div>
       </div>
     );
@@ -140,12 +142,12 @@ export default function ConexaoPage() {
       </div>
 
       <div className="conexao-card">
-        {/* Status da conexao */}
+        {/* Status Banner */}
         <div className={`conexao-status ${status}`}>
           <div className="conexao-status-icon">
-            {status === 'disconnected' && <WifiOff size={24} />}
-            {status === 'connecting' && <Loader2 size={24} className="animate-spin" />}
-            {status === 'connected' && <Wifi size={24} />}
+            {status === 'disconnected' && <WifiOff size={22} />}
+            {status === 'connecting' && <Loader2 size={22} className="animate-spin" />}
+            {status === 'connected' && <Wifi size={22} />}
           </div>
           <div className="conexao-status-info">
             <h3 className="conexao-status-title">
@@ -154,126 +156,115 @@ export default function ConexaoPage() {
               {status === 'connected' && 'Conectado'}
             </h3>
             <p className="conexao-status-text">
-              {status === 'disconnected' && 'Nenhum WhatsApp conectado. Clique no botao abaixo para conectar.'}
-              {status === 'connecting' && 'Escaneie o QR Code com seu WhatsApp para conectar.'}
-              {status === 'connected' && 'Seu WhatsApp esta conectado e pronto para enviar mensagens.'}
+              {status === 'disconnected' && 'Nenhum WhatsApp conectado'}
+              {status === 'connecting' && 'Escaneie o QR Code para conectar'}
+              {status === 'connected' && 'Pronto para enviar mensagens'}
             </p>
           </div>
         </div>
 
-        {error && (
-          <div className="conexao-status disconnected" style={{ marginBottom: '16px' }}>
-            <div className="conexao-status-info">
-              <p className="conexao-status-text">{error}</p>
+        {/* Card Body */}
+        <div className="conexao-card-body">
+          {error && (
+            <div className="conexao-error">
+              <WifiOff size={16} />
+              {error}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Secao principal */}
-        <h2 className="conexao-section-title">
-          <MessageSquare size={22} />
-          WhatsApp do Medico
-        </h2>
+          <h2 className="conexao-section-title">
+            <MessageSquare size={20} />
+            WhatsApp do Medico
+          </h2>
 
-        <p className="conexao-description">
-          Ao conectar seu numero, as notificacoes de consulta (lembretes, confirmacoes e mensagens ao paciente)
-          serao enviadas pelo seu proprio WhatsApp, dando mais confianca e proximidade ao paciente.
-        </p>
-
-        {/* Estado: Desconectado */}
-        {status === 'disconnected' && (
-          <button
-            className="btn-connect"
-            onClick={handleConnect}
-            disabled={actionLoading}
-          >
-            {actionLoading ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                Conectando...
-              </>
-            ) : (
-              <>
-                <Smartphone size={20} />
-                Conectar WhatsApp
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Estado: Conectando (QR Code) */}
-        {status === 'connecting' && (
-          <div className="qrcode-container">
-            <div className="qrcode-box">
-              {qrCode ? (
-                <img
-                  src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-                  alt="QR Code WhatsApp"
-                />
-              ) : (
-                <div className="qrcode-placeholder">
-                  <div className="qrcode-spinner" />
-                  <span>Gerando QR Code...</span>
-                </div>
-              )}
-            </div>
-
-            <div className="qrcode-instructions">
-              <h4>Como conectar:</h4>
-              <ol>
-                <li>Abra o WhatsApp no seu celular</li>
-                <li>Toque em <strong>Menu</strong> ou <strong>Configuracoes</strong></li>
-                <li>Toque em <strong>Dispositivos conectados</strong></li>
-                <li>Toque em <strong>Conectar um dispositivo</strong></li>
-                <li>Aponte a camera para o QR Code acima</li>
-              </ol>
-            </div>
-          </div>
-        )}
-
-        {/* Estado: Conectado */}
-        {status === 'connected' && (
-          <>
-            <div className="connected-info">
-              <div className="connected-avatar">
-                <CheckCircle2 size={28} />
-              </div>
-              <div className="connected-details">
-                <h4 className="connected-name">{instanceName || 'WhatsApp'}</h4>
-                <p className="connected-phone">Instancia ativa e pronta para envio</p>
-              </div>
-            </div>
-
-            <div className="conexao-actions">
-              <button
-                className="btn-disconnect"
-                onClick={handleDisconnect}
-                disabled={actionLoading}
-              >
-                {actionLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Desconectando...
-                  </>
-                ) : (
-                  <>
-                    <LogOut size={18} />
-                    Desconectar
-                  </>
-                )}
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Info box */}
-        <div className="conexao-info-box">
-          <Info size={20} className="info-icon" />
-          <p>
-            As mensagens enviadas pelo seu WhatsApp incluem lembretes de consulta,
-            confirmacoes de agendamento e orientacoes ao paciente.
-            Seus dados e conversas pessoais nao sao acessados.
+          <p className="conexao-description">
+            Ao conectar seu numero, as notificacoes de consulta (lembretes, confirmacoes e mensagens ao paciente)
+            serao enviadas pelo seu proprio WhatsApp, dando mais confianca e proximidade ao paciente.
           </p>
+
+          {/* Desconectado */}
+          {status === 'disconnected' && (
+            <button
+              className="btn-connect"
+              onClick={handleConnect}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <><Loader2 size={18} className="animate-spin" /> Conectando...</>
+              ) : (
+                <><Smartphone size={18} /> Conectar WhatsApp</>
+              )}
+            </button>
+          )}
+
+          {/* Conectando (QR Code) */}
+          {status === 'connecting' && (
+            <div className="qrcode-container">
+              <div className="qrcode-box">
+                {qrCode ? (
+                  <img
+                    src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                    alt="QR Code WhatsApp"
+                  />
+                ) : (
+                  <div className="qrcode-placeholder">
+                    <div className="qrcode-spinner" />
+                    <span>Gerando QR Code...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="qrcode-instructions">
+                <h4>Como conectar:</h4>
+                <ol>
+                  <li>Abra o WhatsApp no seu celular</li>
+                  <li>Toque em <strong>Menu</strong> ou <strong>Configuracoes</strong></li>
+                  <li>Toque em <strong>Dispositivos conectados</strong></li>
+                  <li>Toque em <strong>Conectar um dispositivo</strong></li>
+                  <li>Aponte a camera para o QR Code acima</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {/* Conectado */}
+          {status === 'connected' && (
+            <>
+              <div className="connected-info">
+                <div className="connected-avatar">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div className="connected-details">
+                  <h4 className="connected-name">{instanceName || 'WhatsApp'}</h4>
+                  <p className="connected-phone">Instancia ativa e pronta para envio</p>
+                </div>
+              </div>
+
+              <div className="conexao-actions">
+                <button
+                  className="btn-disconnect"
+                  onClick={handleDisconnect}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <><Loader2 size={16} className="animate-spin" /> Desconectando...</>
+                  ) : (
+                    <><LogOut size={16} /> Desconectar</>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Info box */}
+          <div className="conexao-info-box">
+            <Info size={18} className="info-icon" />
+            <p>
+              As mensagens enviadas incluem lembretes de consulta,
+              confirmacoes de agendamento e orientacoes ao paciente.
+              Seus dados e conversas pessoais nao sao acessados.
+            </p>
+          </div>
         </div>
       </div>
     </div>

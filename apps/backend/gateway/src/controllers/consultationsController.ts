@@ -65,6 +65,7 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
         )
       `, { count: 'exact' })
       .eq('doctor_id', effectiveDoctorId)
+      .eq('deletado', false)
       .order('created_at', { ascending: false });
 
     // Aplicar filtros
@@ -449,10 +450,10 @@ export async function deleteConsultation(req: AuthenticatedRequest, res: Respons
       }
     }
 
-    // Deletar consulta do banco
+    // Soft delete: marcar como deletado
     const { error } = await supabase
       .from('consultations')
-      .delete()
+      .update({ deletado: true })
       .eq('id', id)
       .eq('doctor_id', medico.id);
 

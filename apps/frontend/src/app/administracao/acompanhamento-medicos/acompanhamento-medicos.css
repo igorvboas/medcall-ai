@@ -437,6 +437,20 @@
   color: #f87171 !important;
 }
 
+/* Consultation count */
+.consultation-count {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+  text-align: center;
+  min-width: 28px;
+}
+
+.dark .consultation-count {
+  color: #e2e8f0 !important;
+}
+
 /* Loading */
 .loading-container {
   display: flex;

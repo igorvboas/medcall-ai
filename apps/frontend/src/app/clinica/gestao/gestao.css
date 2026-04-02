@@ -51,6 +51,11 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
+  align-items: start;
+}
+
+.clinica-gestao-grid > div {
+  align-self: start;
 }
 
 @media (min-width: 1024px) {
@@ -66,8 +71,6 @@
   border-radius: 3px;
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
   overflow: hidden;
-  position: sticky;
-  top: 88px;
 }
 
 /* Dark mode cadastro card */

@@ -72,8 +72,15 @@ export const getActiveConsultations = async (req: Request, res: Response) => {
 
     console.log(`✅ [ADMIN] Encontradas ${sessionsData?.length || 0} sessões ativas`);
 
+    // Filtrar sessões cujas consultas já foram finalizadas (status terminal)
+    const terminalStatuses = ['COMPLETED', 'PROCESSING', 'CANCELLED'];
+    const activeSessions = (sessionsData || []).filter((s: any) => {
+      const consultationStatus = s.consultations?.status;
+      return !terminalStatuses.includes(consultationStatus);
+    });
+
     // Mapear dados para o formato esperado pelo frontend
-    const consultations = (sessionsData || []).map((s: any) => {
+    const consultations = activeSessions.map((s: any) => {
       const c = s.consultations;
       return {
         id: c.id,

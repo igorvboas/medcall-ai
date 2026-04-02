@@ -1,16 +1,20 @@
 import { whisperService } from './whisperService';
-import { db, logError } from '../config/database';
-import fetch from 'node-fetch';
+import { db, logError, finalizeConsultation } from '../config/database';
+import { getEnv } from '../config/webhookConfig';
+import { dispatchWebhookWithRetry } from './webhookService';
+import type { WebhookPayload } from './webhookService';
+import { isTerminalStatus } from '../shared/finalizationGuard';
 import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
 import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { aiConfig } from '../config';
+import { AudioAccumulator, DiarizedUtterance, BatchResult, DeepgramDiarizedUtterance, DeepgramWordWithSpeaker } from '../types/diarization';
 
 /**
  * Interface para chunk de áudio em fila
  */
 interface AudioChunk {
     sequence: number;
-    speaker: 'doctor' | 'patient';
+    speaker: 'doctor' | 'patient' | 'mixed';
     audioBuffer: Buffer;
     timestamp: Date;
     sessionId: string;
@@ -20,10 +24,11 @@ interface AudioChunk {
  * Interface para transcrição
  */
 interface Transcription {
-    speaker: 'doctor' | 'patient';
+    speaker: 'doctor' | 'patient' | 'unknown';
     text: string;
     timestamp: Date;
     sequence: number;
+    detectedSpeaker?: string; // speaker_0 / speaker_1 from Deepgram diarization
 }
 
 /**
@@ -52,6 +57,9 @@ interface PresencialSession {
     // Estatísticas
     totalChunks: number;
     totalTranscriptions: number;
+
+    // Disconnect tracking (per D-04, D-05)
+    disconnectedAt?: string | null;
 }
 
 /**
@@ -61,6 +69,15 @@ interface PresencialSession {
 class PresencialSessionManager {
     // Sessões ativas em memória
     private sessions = new Map<string, PresencialSession>();
+
+    // Audio accumulators for 60s batch diarization (per D-01)
+    private accumulators = new Map<string, AudioAccumulator>();
+
+    // Socket.IO server reference for emitting events
+    private io: any = null;
+
+    // Confidence threshold for speaker attribution (per D-16, D-18)
+    private diarizationConfidenceThreshold: number;
 
     // Fila de chunks para processar
     private processingQueue: AudioChunk[] = [];
@@ -76,10 +93,276 @@ class PresencialSessionManager {
 
         if (this.useDeepgram) {
             this.deepgramClient = createDeepgramClient(apiKey);
-            console.log('✅ [PRESENCIAL] Deepgram habilitado para transcrição');
+            console.log('[PRESENCIAL] Deepgram habilitado para transcricao');
         } else {
-            console.log('⚠️ [PRESENCIAL] Usando Whisper para transcrição (fallback)');
+            console.log('[PRESENCIAL] Usando Whisper para transcricao (fallback)');
         }
+
+        this.diarizationConfidenceThreshold = parseFloat(process.env.DIARIZATION_CONFIDENCE_THRESHOLD || '0.7');
+        console.log(`[PRESENCIAL] Diarization confidence threshold: ${this.diarizationConfidenceThreshold}`);
+    }
+
+    /**
+     * Set Socket.IO server reference for emitting diarized batch events
+     */
+    setIO(io: any): void {
+        this.io = io;
+    }
+
+    // ==================== ACCUMULATOR LIFECYCLE ====================
+
+    /**
+     * Start audio accumulator for batch diarization (per D-01, D-03)
+     */
+    private startAccumulator(sessionId: string): void {
+        const acc: AudioAccumulator = {
+            chunks: [],
+            timer: null,
+            batchNumber: 0,
+            startTime: new Date(),
+            totalDurationMs: 0,
+        };
+        this.accumulators.set(sessionId, acc);
+        this.scheduleFlush(sessionId);
+        console.log(`[DIARIZATION] Accumulator started for session ${sessionId}`);
+    }
+
+    /**
+     * Schedule next 60s flush using setTimeout chain (not setInterval) to prevent overlap
+     */
+    private scheduleFlush(sessionId: string): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        acc.timer = setTimeout(async () => {
+            await this.flushBatch(sessionId);
+            // Re-schedule only if accumulator still exists (session not ended)
+            if (this.accumulators.has(sessionId)) {
+                this.scheduleFlush(sessionId);
+            }
+        }, 60_000);
+    }
+
+    /**
+     * Add audio chunk to accumulator (called from processAudioChunkAndReturn)
+     */
+    private addChunkToAccumulator(sessionId: string, audioBuffer: Buffer): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        acc.chunks.push(audioBuffer);
+        acc.totalDurationMs += 5000; // Each chunk is 5s per D-01
+        console.log(`[DIARIZATION] Chunk added to accumulator for ${sessionId} (${acc.chunks.length} chunks, ${acc.totalDurationMs / 1000}s)`);
+    }
+
+    /**
+     * Flush accumulated audio batch to Deepgram with diarization (per D-01, D-02, D-05)
+     */
+    private async flushBatch(sessionId: string): Promise<void> {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc || acc.chunks.length === 0) return;
+
+        const batchId = `batch-${sessionId.substring(0, 8)}-${acc.batchNumber++}`;
+        const chunksToProcess = [...acc.chunks];
+        // Clear accumulator immediately so new chunks go to next batch
+        acc.chunks = [];
+        acc.totalDurationMs = 0;
+
+        const concatenated = Buffer.concat(chunksToProcess);
+        console.log(`[DIARIZATION] Flushing batch ${batchId}: ${chunksToProcess.length} chunks, ${concatenated.length} bytes`);
+
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            console.error(`[DIARIZATION] Session ${sessionId} not found for batch ${batchId}`);
+            return;
+        }
+
+        try {
+            const utterances = await this.transcribeWithDiarization(concatenated, session.consultationId);
+            await this.processDiarizedUtterances(sessionId, batchId, utterances);
+        } catch (err) {
+            console.error(`[DIARIZATION] Batch ${batchId} failed:`, err);
+            // Do NOT re-throw — don't crash the timer chain
+        }
+    }
+
+    /**
+     * Stop accumulator and clear timer (per Pitfall 5 from RESEARCH.md)
+     */
+    private stopAccumulator(sessionId: string): void {
+        const acc = this.accumulators.get(sessionId);
+        if (!acc) return;
+
+        if (acc.timer) {
+            clearTimeout(acc.timer);
+        }
+        this.accumulators.delete(sessionId);
+        console.log(`[DIARIZATION] Accumulator stopped for session ${sessionId}`);
+    }
+
+    // ==================== DIARIZATION PROCESSING ====================
+
+    /**
+     * Transcribe audio buffer using Deepgram pre-recorded API with utterances + diarize (per D-05, D-06)
+     */
+    private async transcribeWithDiarization(
+        audioBuffer: Buffer,
+        consultationId: string
+    ): Promise<DeepgramDiarizedUtterance[]> {
+        if (!this.deepgramClient) {
+            throw new Error('Deepgram client nao inicializado');
+        }
+
+        const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
+            audioBuffer,
+            {
+                model: 'nova-3',
+                language: 'pt-BR',
+                smart_format: true,
+                punctuate: true,
+                numerals: true,
+                diarize: true,
+                utterances: true,
+                keyterm: [
+                    'paciente', 'doutor', 'doutora',
+                    'pressao arterial', 'frequencia cardiaca',
+                    'hemograma', 'diagnostico', 'medicamento',
+                ],
+            }
+        );
+
+        if (error) {
+            throw new Error(`Deepgram diarization API error: ${JSON.stringify(error)}`);
+        }
+
+        const utterances = (result as any)?.results?.utterances || [];
+
+        // Log cost tracking (same pattern as existing transcribeWithDeepgram)
+        try {
+            const duration = (result as any)?.metadata?.duration || 0;
+            const { aiPricingService } = await import('./aiPricingService');
+            await aiPricingService.logWhisperUsage(
+                duration * 1000,
+                consultationId,
+                `[BATCH-DIARIZATION] ${utterances.length} utterances`,
+                { provider: 'deepgram', model: 'nova-2' }
+            );
+        } catch (e) {
+            // Don't block transcription for logging errors
+        }
+
+        return utterances as DeepgramDiarizedUtterance[];
+    }
+
+    /**
+     * Process diarized utterances: map, filter, save, emit (per D-10, D-11, D-16)
+     */
+    private async processDiarizedUtterances(
+        sessionId: string,
+        batchId: string,
+        utterances: DeepgramDiarizedUtterance[]
+    ): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+
+        // Map Deepgram utterances to our DiarizedUtterance type
+        const mappedUtterances: DiarizedUtterance[] = utterances
+            .map((utt) => {
+                const diarizationConfidence = utt.words && utt.words.length > 0
+                    ? utt.words.reduce((sum, w) => sum + (w.speaker_confidence || 0), 0) / utt.words.length
+                    : 0;
+
+                return {
+                    speakerId: `speaker_${utt.speaker}`,
+                    transcript: utt.transcript,
+                    startMs: Math.round(utt.start * 1000),
+                    endMs: Math.round(utt.end * 1000),
+                    transcriptionConfidence: utt.confidence,
+                    diarizationConfidence,
+                    needsReview: diarizationConfidence < this.diarizationConfidenceThreshold,
+                };
+            })
+            .filter((u) => u.transcript && u.transcript.trim().length > 0 && isValidTranscriptionText(u.transcript.trim()));
+
+        if (mappedUtterances.length === 0) {
+            console.log(`[DIARIZATION] Batch ${batchId} had no valid utterances after filtering`);
+            return;
+        }
+
+        // Save to transcriptions_med (speaker is always 'unknown' until doctor maps via DIAR-06)
+        await db.saveDiarizedUtterances(
+            session.callSessionId,
+            batchId,
+            mappedUtterances.map((u) => ({
+                speaker: 'unknown' as const,
+                speakerId: u.speakerId,
+                text: u.transcript,
+                startMs: u.startMs,
+                endMs: u.endMs,
+                confidence: u.transcriptionConfidence,
+                diarizationConfidence: u.diarizationConfidence,
+                needsReview: u.needsReview,
+                doctorName: session.doctorName,
+            }))
+        );
+
+        // Append to transcriptions.raw_text (per D-15)
+        const lines = mappedUtterances.map((u) => {
+            const ts = this.formatMs(u.startMs);
+            return `[${u.speakerId.toUpperCase()}] (${ts}): ${u.transcript}`;
+        });
+        await db.appendConsultationTranscription(
+            session.consultationId,
+            lines.join('\n'),
+            'BATCH',
+            new Date().toISOString().substring(11, 19)
+        );
+
+        // Emit presencialDiarizedBatch event (per D-09)
+        if (this.io) {
+            this.io.to(sessionId).emit('presencialDiarizedBatch', {
+                sessionId,
+                batchId,
+                utterances: mappedUtterances.map((u) => ({
+                    speakerId: u.speakerId,
+                    text: u.transcript,
+                    startMs: u.startMs,
+                    endMs: u.endMs,
+                    diarizationConfidence: u.diarizationConfidence,
+                    needsReview: u.needsReview,
+                })),
+            });
+        }
+
+        console.log(`[DIARIZATION] Batch ${batchId} processed: ${mappedUtterances.length} utterances`);
+    }
+
+    /**
+     * Process a diarization batch from frontend (valid 30s WebM file)
+     * Called directly via Socket.IO event instead of backend accumulator
+     */
+    async processDiarizationBatch(sessionId: string, audioBuffer: Buffer): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            throw new Error(`Sessão ${sessionId} não encontrada`);
+        }
+
+        const batchId = `batch-${sessionId.substring(0, 8)}-${Date.now()}`;
+        console.log(`[DIARIZATION] Processing frontend batch ${batchId}: ${audioBuffer.length} bytes`);
+
+        const utterances = await this.transcribeWithDiarization(audioBuffer, session.consultationId);
+        await this.processDiarizedUtterances(sessionId, batchId, utterances);
+    }
+
+    /**
+     * Convert milliseconds to HH:mm:ss format
+     */
+    private formatMs(ms: number): string {
+        const totalSecs = Math.floor(ms / 1000);
+        const hh = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalSecs % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
     }
 
     /**
@@ -88,10 +371,10 @@ class PresencialSessionManager {
      */
     private async transcribeWithDeepgram(
         audioBuffer: Buffer,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         language: string = 'pt-BR',
         consultationId?: string
-    ): Promise<{ text: string; confidence: number; duration: number }> {
+    ): Promise<{ text: string; confidence: number; duration: number; detectedSpeaker?: string }> {
         if (!this.deepgramClient) {
             throw new Error('Deepgram client não inicializado');
         }
@@ -100,16 +383,16 @@ class PresencialSessionManager {
             const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
                 audioBuffer,
                 {
-                    model: 'nova-2',
+                    model: 'nova-3',
                     language: language,
                     smart_format: true,
                     punctuate: true,
                     numerals: true,
                     diarize: true,
-                    keywords: [
-                        'paciente:2', 'doutor:2', 'doutora:2',
-                        'pressão arterial:3', 'frequência cardíaca:3',
-                        'hemograma:3', 'diagnóstico:2', 'medicamento:2',
+                    keyterm: [
+                        'paciente', 'doutor', 'doutora',
+                        'pressão arterial', 'frequência cardíaca',
+                        'hemograma', 'diagnóstico', 'medicamento',
                     ],
                 }
             );
@@ -123,6 +406,26 @@ class PresencialSessionManager {
             const confidence = transcript?.confidence || 0;
             const duration = result?.metadata?.duration || 0;
 
+            // Extract dominant speaker from words (for single-mic mode)
+            let detectedSpeaker: string | undefined;
+            if (speaker === 'mixed') {
+                const words = (transcript as any)?.words || [];
+                if (words.length > 0) {
+                    // Count words per speaker, pick the dominant one
+                    const speakerCounts: Record<number, number> = {};
+                    for (const w of words) {
+                        if (w.speaker !== undefined) {
+                            speakerCounts[w.speaker] = (speakerCounts[w.speaker] || 0) + 1;
+                        }
+                    }
+                    const dominant = Object.entries(speakerCounts)
+                        .sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+                    if (dominant) {
+                        detectedSpeaker = `speaker_${dominant[0]}`;
+                    }
+                }
+            }
+
             // Registrar uso para monitoramento de custos
             try {
                 const { aiPricingService } = await import('./aiPricingService');
@@ -130,13 +433,13 @@ class PresencialSessionManager {
                     duration * 1000,
                     consultationId,
                     text,
-                    { provider: 'deepgram', model: 'nova-2' }
+                    { provider: 'deepgram', model: 'nova-3' }
                 );
             } catch (e) {
                 // Não bloquear transcrição por erro de logging
             }
 
-            return { text, confidence, duration: duration * 1000 };
+            return { text, confidence, duration: duration * 1000, detectedSpeaker };
         } catch (error) {
             console.error(`❌ [PRESENCIAL-DEEPGRAM] Erro na transcrição:`, error);
             throw error;
@@ -206,7 +509,10 @@ class PresencialSessionManager {
 
         this.sessions.set(data.sessionId, session);
 
-        console.log(`✅ [PRESENCIAL] Sessão ${data.sessionId} criada`);
+        // Start batch accumulator for diarization (per D-01)
+        this.startAccumulator(data.sessionId);
+
+        console.log(`[PRESENCIAL] Sessao ${data.sessionId} criada`);
 
         return session;
     }
@@ -219,11 +525,18 @@ class PresencialSessionManager {
     }
 
     /**
+     * Returns all active session IDs (for reconnection lookup by consultationId)
+     */
+    getAllSessionIds(): string[] {
+        return Array.from(this.sessions.keys());
+    }
+
+    /**
      * Adiciona chunk de áudio à fila de processamento
      */
     async addAudioChunk(
         sessionId: string,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         audioBuffer: Buffer,
         sequence: number
     ): Promise<void> {
@@ -265,7 +578,7 @@ class PresencialSessionManager {
      */
     async processAudioChunkAndReturn(
         sessionId: string,
-        speaker: 'doctor' | 'patient',
+        speaker: 'doctor' | 'patient' | 'mixed',
         audioBuffer: Buffer,
         sequence: number
     ): Promise<Transcription | null> {
@@ -281,10 +594,13 @@ class PresencialSessionManager {
 
         session.totalChunks++;
 
-        console.log(`🎵 [PRESENCIAL] Processando chunk síncrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
+        // Note: batch diarization is now handled by frontend sending valid 60s WebM
+        // via presencialDiarizationBatch event (no more backend accumulator for single-mic)
+
+        console.log(`[PRESENCIAL] Processando chunk sincrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
 
         try {
-            let result: { text: string; confidence?: number; duration?: number };
+            let result: { text: string; confidence?: number; duration?: number; detectedSpeaker?: string };
 
             if (this.useDeepgram) {
                 // Deepgram (pre-recorded API para chunks WebM)
@@ -306,7 +622,7 @@ class PresencialSessionManager {
                 );
             }
 
-            console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)`);
+            console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)${result.detectedSpeaker ? ` [${result.detectedSpeaker}]` : ''}`);
 
             if (!result.text || result.text.trim().length === 0) {
                 console.log(`⚠️ [PRESENCIAL] Chunk ${speaker} #${sequence} sem transcrição (silêncio)`);
@@ -320,11 +636,14 @@ class PresencialSessionManager {
             }
 
             // Criar transcrição
+            // Map 'mixed' (single-mic mode) to 'unknown' for DB constraint compatibility
+            const dbSpeaker = speaker === 'mixed' ? 'unknown' as const : speaker;
             const transcription: Transcription = {
-                speaker: speaker,
+                speaker: dbSpeaker,
                 text: result.text,
                 timestamp: new Date(),
-                sequence: sequence
+                sequence: sequence,
+                detectedSpeaker: result.detectedSpeaker,
             };
 
             // Adicionar à sessão (memória)
@@ -440,8 +759,10 @@ class PresencialSessionManager {
         }
 
         // Adicionar transcrição à sessão
+        // Map 'mixed' (single-mic mode) to 'unknown' for DB constraint compatibility
+        const dbSpeaker = chunk.speaker === 'mixed' ? 'unknown' as const : chunk.speaker;
         const transcription: Transcription = {
-            speaker: chunk.speaker,
+            speaker: dbSpeaker,
             text: result.text,
             timestamp: chunk.timestamp,
             sequence: chunk.sequence
@@ -462,23 +783,27 @@ class PresencialSessionManager {
      */
     private async saveTranscriptionIncrementally(session: PresencialSession, transcription: Transcription): Promise<void> {
         try {
-            const speakerId = transcription.speaker === 'doctor' ? session.doctorId : session.patientId;
             const timestamp = transcription.timestamp.toISOString().substring(11, 19); // HH:mm:ss
 
-            // 1. Salvar em transcriptions_med (array de conversas por sessão)
-            const saved = await db.addTranscriptionToSession(session.callSessionId, {
-                speaker: transcription.speaker,
-                speaker_id: speakerId,
-                text: transcription.text,
-                doctor_name: session.doctorName,
-            });
+            // 1. Salvar em transcriptions_med apenas se speaker é conhecido (dual-mic mode)
+            // No single-mic mode, speaker='unknown' — salva só na transcriptions até o mapeamento
+            if (transcription.speaker !== 'unknown') {
+                const speakerId = transcription.speaker === 'doctor' ? session.doctorId : session.patientId;
+                const saved = await db.addTranscriptionToSession(session.callSessionId, {
+                    speaker: transcription.speaker,
+                    speaker_id: speakerId,
+                    text: transcription.text,
+                    doctor_name: session.doctorName,
+                });
 
-            if (saved) {
-                console.log(`💾 [PRESENCIAL] Transcrição salva em transcriptions_med (session: ${session.callSessionId})`);
+                if (saved) {
+                    console.log(`💾 [PRESENCIAL] Transcrição salva em transcriptions_med (session: ${session.callSessionId})`);
+                }
             }
 
-            // 2. Salvar em transcriptions (raw_text append)
-            const speakerLabel = transcription.speaker === 'doctor' ? 'MEDICO' : 'PACIENTE';
+            // 2. Salvar em transcriptions (raw_text append) — sempre, independente do modo
+            const speakerLabel = transcription.speaker === 'doctor' ? 'MEDICO' :
+                                 transcription.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
             const appended = await db.appendConsultationTranscription(
                 session.consultationId,
                 transcription.text,
@@ -502,160 +827,215 @@ class PresencialSessionManager {
         const session = this.sessions.get(sessionId);
 
         if (!session) {
-            throw new Error(`Sessão ${sessionId} não encontrada`);
+            throw new Error(`Sessao ${sessionId} nao encontrada`);
         }
 
-        console.log(`🏁 [PRESENCIAL] Finalizando sessão ${sessionId}...`);
+        // Per D-11, D-17: Check DB status before proceeding
+        const { supabase } = await import('../config/database');
+        const { data: statusCheck } = await supabase
+            .from('consultations')
+            .select('status')
+            .eq('id', session.consultationId)
+            .single();
+
+        if (statusCheck && isTerminalStatus(statusCheck.status)) {
+            console.log(`[PRESENCIAL] Consulta ${session.consultationId} ja esta COMPLETED -- skip`);
+            return;
+        }
+
+        console.log(`[PRESENCIAL] Finalizando sessao ${sessionId}...`);
+
+        // Flush remaining audio in accumulator and stop timer (per D-03, D-04)
+        const acc = this.accumulators.get(sessionId);
+        if (acc && acc.chunks.length > 0) {
+            console.log(`[DIARIZATION] Flushing remaining ${acc.chunks.length} chunks on session end`);
+            await this.flushBatch(sessionId);
+        }
+        this.stopAccumulator(sessionId);
 
         session.status = 'ended';
         session.endTime = new Date();
 
         // Aguardar processamento completo da fila
         while (this.processingQueue.some(c => c.sessionId === sessionId)) {
-            console.log(`⏳ [PRESENCIAL] Aguardando fila processar...`);
+            console.log(`[PRESENCIAL] Aguardando fila processar...`);
             await this.sleep(500);
         }
 
-        // Salvar transcrições no banco
-        await this.saveTranscriptions(session);
-
-        // Atualizar consultation
         const durationSeconds = Math.floor((session.endTime.getTime() - session.startTime.getTime()) / 1000);
-        const durationMinutes = durationSeconds / 60; // Converter para minutos conforme schema do banco
+        const durationMinutes = durationSeconds / 60;
 
-        const { supabase } = await import('../config/database');
-        await supabase
-            .from('consultations')
-            .update({
-                status: 'PROCESSING',
-                consulta_finalizada: true,
-                consulta_fim: session.endTime.toISOString(),
-                duracao: durationMinutes, // Campo duracao é REAL em minutos
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', session.consultationId);
-
-        // Atualizar call_sessions.status para 'ended'
-        {
-            const { error: csError } = await supabase
-                .from('call_sessions')
-                .update({
-                    status: 'ended',
-                    ended_at: session.endTime.toISOString(),
-                    webrtc_active: false
-                })
-                .eq('room_id', sessionId);
-
-            if (csError) {
-                console.error(`⚠️ [PRESENCIAL] Erro ao atualizar call_sessions:`, csError);
-            } else {
-                console.log(`✅ [PRESENCIAL] call_sessions.status atualizado para 'ended'`);
-            }
-        }
-
-        console.log(`✅ [PRESENCIAL] Sessão ${sessionId} finalizada (${session.totalTranscriptions} transcrições, ${durationMinutes.toFixed(2)} min)`);
-
-        // 💰 NOVO: Calcular e atualizar valor_consulta
+        let dbWriteSuccess = false;
         try {
-            const { aiPricingService } = await import('./aiPricingService');
-            const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
-            if (totalCost !== null) {
-                console.log(`💰 [PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
-            }
-        } catch (costError) {
-            console.error('❌ [PRESENCIAL] Erro ao calcular custo da consulta (não bloqueia finalização):', costError);
-        }
+            // Salvar transcricoes no banco (copies raw_text to consultations.transcricao)
+            await this.saveTranscriptions(session);
 
-        // 📤 NOVO: Enviar webhook com dados da consulta finalizada
-        try {
-            // Montar transcrição completa formatada
-            const transcriptionText = session.transcriptions
-                .map(t => `[${t.speaker}]: ${t.text}`)
-                .join('\n');
+            // Read transcription from DB for the RPC
+            const { data: txnRecord } = await supabase
+                .from('transcriptions')
+                .select('raw_text')
+                .eq('consultation_id', session.consultationId)
+                .maybeSingle();
 
-            // Configurar webhook
-            const webhookUrl = 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
-            const webhookHeaders = {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.WEBHOOK_AUTH_HEADER || ''
-            };
+            const fullText = txnRecord?.raw_text || '';
 
-            const webhookData = {
+            // Per D-10, D-11: Single atomic RPC replaces sequential writes
+            dbWriteSuccess = await finalizeConsultation({
                 consultationId: session.consultationId,
-                doctorId: session.doctorId,
-                patientId: session.patientId,
-                transcription: transcriptionText,
-                consulta_finalizada: true,
-                paciente_entrou_sala: true, // Em consultas presenciais, sempre true
-                tipo_consulta: 'PRESENCIAL'
-            };
-
-            console.log(`📤 [PRESENCIAL] Enviando webhook para ${webhookUrl}...`);
-            console.log(`📦 [PRESENCIAL] Dados: consultationId=${session.consultationId}, doctorId=${session.doctorId}, patientId=${session.patientId}`);
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: webhookHeaders,
-                body: JSON.stringify(webhookData)
+                transcription: fullText,
+                status: 'PROCESSING',
+                durationMinutes: durationMinutes,
+                callSessionRoomId: sessionId,
             });
 
-            if (response.ok) {
-                console.log(`✅ [PRESENCIAL] Webhook enviado com sucesso (status: ${response.status})`);
+            if (dbWriteSuccess) {
+                console.log(`[PRESENCIAL] Sessao ${sessionId} finalizada atomicamente via RPC (${durationMinutes.toFixed(2)} min)`);
             } else {
-                console.warn(`⚠️ [PRESENCIAL] Webhook retornou status ${response.status}`);
+                console.error(`[PRESENCIAL] RPC finalize_consultation falhou para sessao ${sessionId}`);
             }
-        } catch (webhookError) {
-            // Não bloquear finalização se webhook falhar
-            console.error(`❌ [PRESENCIAL] Erro ao enviar webhook:`, webhookError);
-            logError(
-                'Erro ao enviar webhook de finalização de consulta presencial',
-                'warning',
-                session.consultationId,
-                {
-                    sessionId,
-                    error: webhookError instanceof Error ? webhookError.message : String(webhookError)
+
+            // Keep pricing outside the transaction (per D-12)
+            if (dbWriteSuccess) {
+                try {
+                    const { aiPricingService } = await import('./aiPricingService');
+                    const totalCost = await aiPricingService.calculateAndUpdateConsultationCost(session.consultationId);
+                    if (totalCost !== null) {
+                        console.log(`[PRESENCIAL] Custo total calculado e salvo: $${totalCost.toFixed(6)}`);
+                    }
+                } catch (costError) {
+                    console.error('[PRESENCIAL] Erro ao calcular custo da consulta (nao bloqueia finalizacao):', costError);
                 }
-            );
+            }
+        } catch (dbError) {
+            console.error('[PRESENCIAL] Erro ao salvar dados da finalizacao:', dbError);
+            logError('Finalizacao presencial DB write falhou - sessao preservada na memoria', 'error', session.consultationId, {
+                sessionId,
+                error: dbError instanceof Error ? dbError.message : String(dbError)
+            });
         }
 
-        // Remover da memória após 5 minutos
-        setTimeout(() => {
-            this.sessions.delete(sessionId);
-            console.log(`🧹 [PRESENCIAL] Sessão ${sessionId} removida da memória`);
-        }, 5 * 60 * 1000);
+        // Per D-05: Use centralized webhook dispatch with retry
+        const { data: txnForWebhook } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const webhookPayload: WebhookPayload = {
+            consultationId: session.consultationId,
+            doctorId: session.doctorId,
+            patientId: session.patientId,
+            transcription: txnForWebhook?.raw_text || '',
+            consulta_finalizada: true,
+            paciente_entrou_sala: true,
+            tipo_consulta: 'PRESENCIAL',
+            env: getEnv(),
+        };
+        dispatchWebhookWithRetry(session.consultationId, webhookPayload, 'transcricao');
+
+        // Per D-14, D-16: Only schedule session cleanup if DB writes succeeded
+        if (dbWriteSuccess) {
+            // Keep existing 5-minute cleanup timer
+            setTimeout(() => {
+                this.sessions.delete(sessionId);
+                console.log(`[PRESENCIAL] Sessao ${sessionId} removida da memoria`);
+            }, 5 * 60 * 1000);
+        } else {
+            // Per D-15: Safety net cleanup after 10 minutes (longer than normal 5min because we want retry window)
+            setTimeout(() => {
+                if (this.sessions.has(sessionId)) {
+                    this.sessions.delete(sessionId);
+                    logError('Sessao presencial cleanup timer - sessao removida apos 10min sem retry', 'error', session.consultationId, { sessionId });
+                }
+            }, 10 * 60 * 1000);
+        }
     }
 
     /**
      * Salva transcrições no banco de dados
      */
     private async saveTranscriptions(session: PresencialSession): Promise<void> {
-        if (session.transcriptions.length === 0) {
-            console.log(`⚠️ [PRESENCIAL] Nenhuma transcrição para salvar`);
+        // Read transcription from DB (crash-safe) per D-07, D-08
+        const { supabase } = await import('../config/database');
+        const { data: txnRecord } = await supabase
+            .from('transcriptions')
+            .select('raw_text')
+            .eq('consultation_id', session.consultationId)
+            .maybeSingle();
+
+        const fullText = txnRecord?.raw_text || '';
+
+        if (!fullText) {
+            console.log(`[PRESENCIAL] Nenhuma transcricao encontrada em transcriptions para consulta ${session.consultationId}`);
             return;
         }
 
-        // Formatar transcrições como JSON
-        const transcriptionJSON = session.transcriptions.map(t => ({
-            speaker: t.speaker,
-            text: t.text,
-            timestamp: t.timestamp.toISOString()
-        }));
-
-        // Salvar em consultations.transcricao
-        const { supabase } = await import('../config/database');
+        // Copy to consultations.transcricao
         const { error } = await supabase
             .from('consultations')
             .update({
-                transcricao: JSON.stringify(transcriptionJSON)
+                transcricao: fullText
             })
             .eq('id', session.consultationId);
 
         if (error) {
-            console.error('❌ [PRESENCIAL] Erro ao salvar transcrições:', error);
+            console.error('[PRESENCIAL] Erro ao salvar transcricoes:', error);
             throw error;
         }
 
-        console.log(`💾 [PRESENCIAL] ${session.transcriptions.length} transcrições salvas no banco`);
+        console.log(`[PRESENCIAL] Transcricao consolidada de transcriptions.raw_text para consultations.transcricao`);
+    }
+
+    /**
+     * Per D-04, D-05: Cleanup a disconnected presencial session after timeout.
+     * Called by the disconnect timer in presencial.ts.
+     */
+    async cleanupDisconnectedSession(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+
+        // If session was reconnected (disconnectedAt cleared), skip cleanup
+        if (!session.disconnectedAt) {
+            console.log(`[PRESENCIAL] Session ${sessionId} was reconnected -- skipping disconnect cleanup`);
+            return;
+        }
+
+        console.log(`[PRESENCIAL] Cleaning disconnected session ${sessionId} (disconnected at ${session.disconnectedAt})`);
+
+        // Update consultation status to terminal state
+        try {
+            const { supabase } = await import('../config/database');
+            await supabase
+                .from('consultations')
+                .update({ status: 'ABANDONED', updated_at: new Date().toISOString() })
+                .eq('id', session.consultationId);
+
+            // Update call_sessions
+            await supabase
+                .from('call_sessions')
+                .update({ status: 'ended', ended_at: new Date().toISOString(), webrtc_active: false })
+                .eq('room_id', sessionId);
+
+            console.log(`[PRESENCIAL] Session ${sessionId} cleaned up -- consultation marked ABANDONED`);
+        } catch (err) {
+            console.error(`[PRESENCIAL] Error cleaning up session ${sessionId}:`, err);
+        }
+
+        // Remove session from memory
+        this.sessions.delete(sessionId);
+        this.accumulators.delete(sessionId);
+        logError('Sessao presencial orfa limpa apos disconnect timeout', 'warning', session.consultationId, { sessionId });
+    }
+
+    /**
+     * Per D-08, D-09: Clear disconnect state when client reconnects.
+     */
+    clearDisconnectState(sessionId: string): void {
+        const session = this.sessions.get(sessionId);
+        if (session && session.disconnectedAt) {
+            console.log(`[PRESENCIAL] Clearing disconnect state for session ${sessionId}`);
+            session.disconnectedAt = null;
+        }
     }
 
     /**
@@ -664,6 +1044,142 @@ class PresencialSessionManager {
     getTranscriptions(sessionId: string): Transcription[] {
         const session = this.sessions.get(sessionId);
         return session?.transcriptions || [];
+    }
+
+    /**
+     * Processa audio completo da consulta ao finalizar (single-mic mode):
+     * 1. Envia audio inteiro para Deepgram com diarizacao
+     * 2. Atualiza transcricoes com speaker correto (speaker_0 → doctor, speaker_1 → patient)
+     * 3. Salva audio no Supabase storage
+     * 4. Atualiza consultation.transcricao e consultation.url_audio
+     */
+    async finalizeWithFullAudio(sessionId: string, audioBuffer: Buffer): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            throw new Error(`Sessão ${sessionId} não encontrada`);
+        }
+
+        console.log(`[FINALIZE] Processando audio completo: ${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+        // 1. Diarizar audio completo
+        const utterances = await this.transcribeWithDiarization(audioBuffer, session.consultationId);
+        console.log(`[FINALIZE] Diarizacao completa: ${utterances.length} utterances`);
+
+        if (utterances.length === 0) {
+            console.warn('[FINALIZE] Nenhuma utterance encontrada no audio');
+            return;
+        }
+
+        // 2. Mapear speakers: speaker_0 = doctor (primeiro a falar, normalmente o medico)
+        const speakerMapping: Record<string, 'doctor' | 'patient'> = {
+            '0': 'doctor',
+            '1': 'patient',
+        };
+
+        // Verificar se o mapeamento ja foi feito manualmente (salvo em metadata)
+        try {
+            const { supabase } = await import('../config/database');
+            const { data: callSession } = await supabase
+                .from('call_sessions')
+                .select('metadata')
+                .eq('room_id', sessionId)
+                .single();
+
+            if (callSession?.metadata?.speakerMapping) {
+                const savedMapping = callSession.metadata.speakerMapping;
+                // savedMapping format: { speaker_0: 'doctor', speaker_1: 'patient' }
+                speakerMapping['0'] = savedMapping.speaker_0 || 'doctor';
+                speakerMapping['1'] = savedMapping.speaker_1 || 'patient';
+                console.log(`[FINALIZE] Usando mapeamento salvo: speaker_0=${speakerMapping['0']}, speaker_1=${speakerMapping['1']}`);
+            }
+        } catch (e) {
+            console.warn('[FINALIZE] Erro ao buscar mapeamento salvo, usando padrao (speaker_0=doctor)');
+        }
+
+        // 3. Formatar transcricao final com speakers corretos
+        const finalTranscriptions: Transcription[] = utterances
+            .filter(utt => utt.transcript && utt.transcript.trim().length > 0 && isValidTranscriptionText(utt.transcript.trim()))
+            .map((utt, idx) => {
+                const speakerNum = String(utt.speaker);
+                const role = speakerMapping[speakerNum] || 'doctor';
+                return {
+                    speaker: role as 'doctor' | 'patient',
+                    text: utt.transcript.trim(),
+                    timestamp: new Date(session.startTime.getTime() + Math.round(utt.start * 1000)),
+                    sequence: idx,
+                };
+            });
+
+        // Substituir transcricoes incrementais com as diarizadas
+        session.transcriptions = finalTranscriptions;
+        console.log(`[FINALIZE] ${finalTranscriptions.length} transcricoes com speaker correto`);
+
+        // 4. Reescrever transcriptions.raw_text com speakers corretos
+        try {
+            const { supabase: supa, db: dbUtil } = await import('../config/database');
+            const rawText = finalTranscriptions.map(t => {
+                const label = t.speaker === 'doctor' ? 'MEDICO' : t.speaker === 'patient' ? 'PACIENTE' : 'DESCONHECIDO';
+                const ts = t.timestamp.toISOString().substring(11, 19);
+                return `[${label}] (${ts}): ${t.text}`;
+            }).join('\n');
+
+            // Sobrescrever raw_text na tabela transcriptions
+            const { error: rawErr } = await supa
+                .from('transcriptions')
+                .update({ raw_text: rawText, updated_at: new Date().toISOString() })
+                .eq('consultation_id', session.consultationId);
+
+            if (rawErr) {
+                console.error(`[FINALIZE] Erro ao atualizar transcriptions.raw_text:`, rawErr);
+            } else {
+                console.log(`[FINALIZE] transcriptions.raw_text atualizado com speakers corretos`);
+            }
+        } catch (rawTextError) {
+            console.error(`[FINALIZE] Erro ao reescrever raw_text:`, rawTextError);
+        }
+
+        // 5. Upload audio para Supabase storage
+        try {
+            const { supabase } = await import('../config/database');
+            const fileName = `consulta_${session.consultationId}.webm`;
+            const bucket = 'audios';
+
+            const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, audioBuffer, {
+                    contentType: 'audio/webm',
+                    upsert: true, // sobrescrever se existir
+                });
+
+            if (uploadError) {
+                console.error(`[FINALIZE] Erro ao fazer upload do audio:`, uploadError);
+            } else {
+                // Gerar URL publica
+                const { data: urlData } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(fileName);
+
+                const audioUrl = urlData?.publicUrl;
+                console.log(`[FINALIZE] Audio salvo: ${audioUrl}`);
+
+                // Salvar url_audio na consultation
+                if (audioUrl) {
+                    const { error: updateError } = await supabase
+                        .from('consultations')
+                        .update({ url_audio: audioUrl })
+                        .eq('id', session.consultationId);
+
+                    if (updateError) {
+                        console.error(`[FINALIZE] Erro ao salvar url_audio:`, updateError);
+                    } else {
+                        console.log(`[FINALIZE] url_audio salvo na consultation`);
+                    }
+                }
+            }
+        } catch (storageError) {
+            // Nao bloquear finalizacao se storage falhar
+            console.error(`[FINALIZE] Erro no storage:`, storageError);
+        }
     }
 
     /**

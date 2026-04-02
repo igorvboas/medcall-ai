@@ -107,6 +107,25 @@ function SignInContent() {
 
   return (
     <div className="signin-page">
+      {process.env.NEXT_PUBLIC_ENV === 'homolog' && (
+        <span style={{
+          position: 'fixed',
+          top: '16px',
+          left: '16px',
+          background: '#dc2626',
+          color: '#fff',
+          fontSize: '11px',
+          fontWeight: 700,
+          padding: '2px 10px',
+          borderRadius: '4px',
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          userSelect: 'none',
+          zIndex: 50,
+        }}>
+          HOMOLOG
+        </span>
+      )}
       <div className="signin-container">
         {/* Logo Section */}
         <div className="signin-logo-section">
