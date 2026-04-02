@@ -964,7 +964,7 @@ function AnamneseSection({
       {shouldShowSection('Síntese') && sinteseAnalitica && (
         <CollapsibleSection title="Sintese Analitica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
           <div onClick={() => setViewPopupSection('sintese')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1015,7 +1015,7 @@ function AnamneseSection({
             </div>
           ) : cadastroAnamnese ? (
             <div onClick={() => setViewPopupSection('dados_paciente')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
                 <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   Expandir e Editar
@@ -1083,7 +1083,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1177,7 +1177,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1268,7 +1268,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1415,7 +1415,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1499,7 +1499,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1601,7 +1601,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1700,7 +1700,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1784,7 +1784,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1864,7 +1864,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2904,7 +2904,7 @@ function DiagnosticoSection({
       {shouldShowSection('1. Diagnóstico Principal') && (
         <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={activeTab === 'Diagnóstico Principal' || !activeTab}>
           <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2934,7 +2934,7 @@ function DiagnosticoSection({
       {shouldShowSection('2. Estado Geral') && (
         <CollapsibleSection title="2. Estado Geral" defaultOpen={activeTab === 'Estado Geral' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2966,7 +2966,7 @@ function DiagnosticoSection({
       {shouldShowSection('3. Estado Mental') && (
         <CollapsibleSection title="3. Estado Mental" defaultOpen={activeTab === 'Estado Mental' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2999,7 +2999,7 @@ function DiagnosticoSection({
       {shouldShowSection('4. Estado Fisiológico (Resumo - devido ao volume de campos)') && (
         <CollapsibleSection title="4. Estado Fisiologico" defaultOpen={activeTab === 'Estado Fisiológico' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -3037,7 +3037,7 @@ function DiagnosticoSection({
       {shouldShowSection('5. Integração Diagnóstica') && (
         <CollapsibleSection title="5. Integracao Diagnostica" defaultOpen={activeTab === 'Integração Diagnóstica' || !activeTab}>
           <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -3067,7 +3067,7 @@ function DiagnosticoSection({
       {shouldShowSection('6. Hábitos de Vida (Resumo dos 5 Pilares)') && (
         <CollapsibleSection title="6. Habitos de Vida (5 Pilares)" defaultOpen={activeTab === 'Hábitos de Vida' || !activeTab}>
           <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -4218,7 +4218,7 @@ function MentalidadeSection({
     return (
       <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
         <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -4263,7 +4263,7 @@ function MentalidadeSection({
     return (
       <CollapsibleSection title={`Padrao ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
         <div onClick={() => setViewLivroPopup({ type: 'padrao', padraoNum: numero })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 600, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -4349,7 +4349,7 @@ function MentalidadeSection({
       {/* Resumo Executivo */}
       <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
         <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
