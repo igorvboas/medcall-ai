@@ -54,5 +54,5 @@ export function canTransitionTo(currentStatus: string, targetStatus: string): bo
  * Per D-11, D-17: If status is COMPLETED, finalization returns idempotently.
  */
 export function isTerminalStatus(status: string): boolean {
-  return status === 'COMPLETED';
+  return status === 'COMPLETED' || status === 'PROCESSING';
 }

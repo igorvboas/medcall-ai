@@ -93,6 +93,7 @@ export default function AgendaPage() {
   const today = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Carregar status do Google Calendar
   // Buscar pacientes para o dropdown
@@ -183,8 +184,8 @@ export default function AgendaPage() {
       if (res.success) {
         setNotification({ type: 'success', message: 'Consulta agendada com sucesso!' });
         setScheduleModalOpen(false);
-        // Forcar reload das consultas mudando o mes e voltando
-        setCurrentDate(new Date(currentDate));
+        // Forçar reload das consultas
+        setRefreshKey(k => k + 1);
       } else {
         setNotification({ type: 'error', message: res.error || 'Erro ao agendar.' });
       }
@@ -331,7 +332,7 @@ export default function AgendaPage() {
       setConsultations(mapped);
     };
     load();
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, refreshKey]);
 
   // Navegação
   const navigateMonth = (direction: 'prev' | 'next') => {

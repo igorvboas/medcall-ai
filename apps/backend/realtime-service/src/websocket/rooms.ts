@@ -1424,7 +1424,7 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
           dbWriteSuccess = await finalizeConsultation({
             consultationId,
             transcription: fullText,
-            status: 'COMPLETED',
+            status: 'PROCESSING',
             durationMinutes: duracaoMinutos,
             callSessionRoomId: roomId,
           });

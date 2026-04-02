@@ -28,6 +28,7 @@ interface DoctorFunnel {
   data_primeiro_login: string | null;
   data_primeira_consulta: string | null;
   data_consulta_finalizada: string | null;
+  total_consultas: number;
 }
 
 /**
@@ -139,12 +140,13 @@ export const getDoctorTracking = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Erro ao buscar consultas' });
     }
 
-    // Build a map of doctor_id -> first consultation info
-    const doctorFirstConsultation: Record<string, { started: string | null; completed: string | null }> = {};
+    // Build a map of doctor_id -> first consultation info + total count
+    const doctorFirstConsultation: Record<string, { started: string | null; completed: string | null; total: number }> = {};
     consultations?.forEach((c) => {
       if (!doctorFirstConsultation[c.doctor_id]) {
-        doctorFirstConsultation[c.doctor_id] = { started: null, completed: null };
+        doctorFirstConsultation[c.doctor_id] = { started: null, completed: null, total: 0 };
       }
+      doctorFirstConsultation[c.doctor_id].total++;
       // First consultation started
       if (!doctorFirstConsultation[c.doctor_id].started) {
         doctorFirstConsultation[c.doctor_id].started = c.consulta_inicio || c.created_at;
@@ -213,6 +215,7 @@ export const getDoctorTracking = async (req: Request, res: Response) => {
         data_primeiro_login: firstLoginDate,
         data_primeira_consulta: consultationInfo?.started || null,
         data_consulta_finalizada: consultationInfo?.completed || null,
+        total_consultas: consultationInfo?.total || 0,
       });
     });
 

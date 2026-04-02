@@ -41,7 +41,8 @@ export async function getPatients(req: AuthenticatedRequest, res: Response) {
     let query = supabase
       .from('patients')
       .select('*', { count: 'exact' })
-      .eq('doctor_id', medico.id);
+      .eq('doctor_id', medico.id)
+      .eq('deletado', false);
 
     // Aplicar filtro de status
     if (status !== 'all') {
@@ -637,7 +638,7 @@ export async function deletePatient(req: AuthenticatedRequest, res: Response) {
     // Verificar se o paciente existe e pertence ao médico
     const { data: existingPatient, error: checkError } = await supabase
       .from('patients')
-      .select('id')
+      .select('id, name')
       .eq('id', id)
       .eq('doctor_id', medico.id)
       .single();
@@ -649,10 +650,13 @@ export async function deletePatient(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    // Deletar paciente
+    // Soft delete: marcar como deletado e renomear
     const { error: deleteError } = await supabase
       .from('patients')
-      .delete()
+      .update({
+        deletado: true,
+        name: `[DELETADO] ${existingPatient.name}`
+      })
       .eq('id', id);
 
     if (deleteError) {

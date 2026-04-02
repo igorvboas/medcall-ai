@@ -292,9 +292,22 @@ function PresencialConsultationContent() {
     };
   }, [doctorMicrophoneId, patientMicrophoneId, singleMicId, micMode, sessionStarted]);
 
-  // Timer de duracao
+  // Ref para armazenar o timestamp real de início (para calcular duração correta)
+  const consultationStartTimeRef = useRef<string | null>(null);
+
+  // Timer de duracao — calcula a partir de consulta_inicio real (sobrevive a reload)
   useEffect(() => {
     if (!sessionStarted) return;
+
+    // Se temos o timestamp real de inicio, calcular duração inicial correta
+    if (consultationStartTimeRef.current) {
+      const startMs = new Date(consultationStartTimeRef.current).getTime();
+      const elapsedSec = Math.floor((Date.now() - startMs) / 1000);
+      if (elapsedSec > 0) {
+        setDuration(elapsedSec);
+        console.log(`⏱️ [TIMER] Restaurando duração: ${elapsedSec}s desde ${consultationStartTimeRef.current}`);
+      }
+    }
 
     const interval = setInterval(() => {
       setDuration(d => d + 1);
@@ -490,9 +503,57 @@ function PresencialConsultationContent() {
         ...(micMode === 'dual' ? { patientMicrophoneId } : {}),
       }, async (response: any) => {
         if (response.success) {
-          console.log('Sessao iniciada:', response.sessionId);
+          console.log('Sessao iniciada:', response.sessionId, response.reconnected ? '(RECONEXÃO)' : '(NOVA)');
 
           setSessionId(response.sessionId);
+
+          // ✅ FIX TIMER: Salvar startTime da sessão para calcular duração correta
+          if (response.session?.startTime) {
+            consultationStartTimeRef.current = response.session.startTime;
+            console.log(`⏱️ [TIMER] startTime da sessão: ${response.session.startTime}`);
+          }
+
+          // ✅ FIX TIMER: Buscar consulta_inicio do banco para calcular duração exata
+          try {
+            const { data: consultaData } = await supabase
+              .from('consultations')
+              .select('consulta_inicio')
+              .eq('id', consultationId)
+              .single();
+
+            if (consultaData?.consulta_inicio) {
+              consultationStartTimeRef.current = consultaData.consulta_inicio;
+              console.log(`⏱️ [TIMER] consulta_inicio do banco: ${consultaData.consulta_inicio}`);
+            }
+          } catch (e) {
+            console.warn('⏱️ [TIMER] Erro ao buscar consulta_inicio:', e);
+          }
+
+          // ✅ FIX TRANSCRIÇÕES: Se reconectou, buscar transcrições históricas
+          if (response.reconnected) {
+            console.log('🔄 [RECONEXÃO] Buscando transcrições históricas...');
+            socket.emit('getPresencialTranscriptions', { sessionId: response.sessionId }, (txnResponse: any) => {
+              if (txnResponse.success && txnResponse.transcriptions?.length > 0) {
+                const historicalSegments: TranscriptionSegment[] = txnResponse.transcriptions.map((t: any) => {
+                  const isMixed = t.speaker === 'mixed' || t.speaker === 'unknown';
+                  return {
+                    id: `t-${t.sequence || Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    text: t.text,
+                    speaker: isMixed ? 'UNKNOWN' as Speaker :
+                             t.speaker === 'doctor' ? 'MEDICO' as Speaker : 'PACIENTE' as Speaker,
+                    participantId: isMixed ? undefined : t.speaker,
+                    timestamp: t.timestamp,
+                    confidence: 1.0,
+                  };
+                });
+                setTranscriptions(historicalSegments);
+                console.log(`🔄 [RECONEXÃO] ${historicalSegments.length} transcrições restauradas`);
+              } else {
+                console.log('🔄 [RECONEXÃO] Nenhuma transcrição histórica encontrada');
+              }
+            });
+          }
+
           setSessionStarted(true);
 
           // Parar streams de monitoramento de nivel
@@ -852,11 +913,11 @@ function PresencialConsultationContent() {
             const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(filePath);
             if (publicUrlData.publicUrl) uploadedUrls.push(publicUrlData.publicUrl);
           }
-          // Vincular ao campo url_exames da consulta
-          const { data: existing } = await supabase.from('consultations').select('url_exames').eq('id', consultationId).maybeSingle();
-          const currentExams = existing?.url_exames || [];
+          // Vincular ao campo exames da consulta
+          const { data: existing } = await supabase.from('consultations').select('exames').eq('id', consultationId).maybeSingle();
+          const currentExams = existing?.exames || [];
           const allExams = [...(Array.isArray(currentExams) ? currentExams : []), ...uploadedUrls];
-          await supabase.from('consultations').update({ url_exames: allExams }).eq('id', consultationId);
+          await supabase.from('consultations').update({ exames: allExams }).eq('id', consultationId);
         }}
       />
 

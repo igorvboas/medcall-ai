@@ -8647,13 +8647,28 @@ function ConsultasPageContent() {
         return;
       }
 
+      let hasError = false;
+
       if (patientEmail) {
-        await gatewayClient.post('/email/anamnese', { to: patientEmail, patientName, anamneseLink });
+        const emailResult = await gatewayClient.post('/email/anamnese', { to: patientEmail, patientName, anamneseLink });
+        if (!emailResult.success) {
+          console.error('Erro ao enviar email:', emailResult.error);
+          hasError = true;
+        }
       }
       if (patientPhone) {
-        await gatewayClient.post('/whatsapp/send-anamnese', { phone: patientPhone, patientName, anamneseLink });
+        const whatsappResult = await gatewayClient.post('/whatsapp/anamnese', { phone: patientPhone, patientName, anamneseLink });
+        if (!whatsappResult.success) {
+          console.error('Erro ao enviar WhatsApp:', whatsappResult.error);
+          hasError = true;
+        }
       }
-      showSuccess('Anamnese enviada com sucesso!');
+
+      if (hasError) {
+        showError('Erro ao enviar anamnese. Verifique os dados do paciente.');
+      } else {
+        showSuccess('Anamnese enviada com sucesso!');
+      }
     } catch (err) {
       console.error('Erro ao enviar anamnese:', err);
       showError('Erro ao enviar anamnese.');
@@ -9879,7 +9894,9 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultation-details-overview-title">Detalhes da Consulta - Anamnese</h1>
+            <h1 className="consultation-details-overview-title">
+              {consultaDetails.status === 'VALID_ANAMNESE' ? 'Detalhes da Consulta - Análise' : 'Detalhes da Consulta - Anamnese'}
+            </h1>
           </div>
 
           {/* Cards de Informação no Topo */}

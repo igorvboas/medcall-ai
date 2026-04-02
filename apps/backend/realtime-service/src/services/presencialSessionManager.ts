@@ -883,7 +883,7 @@ class PresencialSessionManager {
             dbWriteSuccess = await finalizeConsultation({
                 consultationId: session.consultationId,
                 transcription: fullText,
-                status: 'COMPLETED',
+                status: 'PROCESSING',
                 durationMinutes: durationMinutes,
                 callSessionRoomId: sessionId,
             });

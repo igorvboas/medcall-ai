@@ -260,6 +260,13 @@ export function ConsultationRoom({
   // ✅ NOVO: Contador de tentativas de reconexão (para backoff exponencial)
   const reconnectAttemptsRef = useRef<number>(0);
 
+  // ✅ AUTO-RECORDING: Gravação automática de áudio (audio-only, sem vídeo)
+  const autoRecorderRef = useRef<MediaRecorder | null>(null);
+  const autoRecorderChunksRef = useRef<Blob[]>([]);
+  const autoRecorderContextRef = useRef<AudioContext | null>(null);
+  const autoRecorderDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const autoRecordingStartedRef = useRef<boolean>(false);
+
   // ✅ PERFECT NEGOTIATION: Refs para evitar "glare" (colisão de ofertas)
   const makingOfferRef = useRef<boolean>(false);
   const ignoreOfferRef = useRef<boolean>(false);
@@ -3746,6 +3753,17 @@ export function ConsultationRoom({
 
 
 
+    // Limpar auto-recording se ainda estiver ativo
+    if (autoRecorderRef.current && autoRecorderRef.current.state !== 'inactive') {
+      autoRecorderRef.current.stop();
+    }
+    if (autoRecorderContextRef.current) {
+      autoRecorderContextRef.current.close().catch(() => {});
+      autoRecorderContextRef.current = null;
+    }
+    autoRecorderDestRef.current = null;
+    autoRecordingStartedRef.current = false;
+
     // Parar streams
 
     if (localStreamRef.current) {
@@ -4106,6 +4124,242 @@ export function ConsultationRoom({
     setShowEndRoomConfirm(true);
   };
 
+  // ✅ AUTO-RECORDING: Iniciar gravação automática de áudio quando a call fica ativa
+  const startAutoAudioRecording = useCallback(() => {
+    if (autoRecordingStartedRef.current) return;
+    if (userType !== 'doctor') return; // Só o host grava
+
+    const localStream = localStreamRef.current;
+    const remoteStream = remoteStreamRef.current;
+
+    // Precisa de pelo menos um stream com áudio
+    const hasLocalAudio = localStream && localStream.getAudioTracks().length > 0;
+    const hasRemoteAudio = remoteStream && remoteStream.getAudioTracks().length > 0;
+
+    if (!hasLocalAudio && !hasRemoteAudio) {
+      console.log('🎙️ [AUTO-REC] Nenhum stream de áudio disponível, adiando...');
+      return;
+    }
+
+    try {
+      console.log('🎙️ [AUTO-REC] Iniciando gravação automática de áudio...', {
+        hasLocalAudio,
+        hasRemoteAudio
+      });
+
+      // Criar AudioContext para mixar streams
+      const audioContext = new AudioContext();
+      autoRecorderContextRef.current = audioContext;
+
+      const destination = audioContext.createMediaStreamDestination();
+      autoRecorderDestRef.current = destination;
+
+      // Conectar áudio local
+      if (hasLocalAudio) {
+        const localSource = audioContext.createMediaStreamSource(
+          new MediaStream([localStream!.getAudioTracks()[0]])
+        );
+        const localGain = audioContext.createGain();
+        localGain.gain.value = 1.0;
+        localSource.connect(localGain);
+        localGain.connect(destination);
+        console.log('🎙️ [AUTO-REC] Áudio local conectado');
+      }
+
+      // Conectar áudio remoto
+      if (hasRemoteAudio) {
+        const remoteSource = audioContext.createMediaStreamSource(
+          new MediaStream([remoteStream!.getAudioTracks()[0]])
+        );
+        const remoteGain = audioContext.createGain();
+        remoteGain.gain.value = 1.0;
+        remoteSource.connect(remoteGain);
+        remoteGain.connect(destination);
+        console.log('🎙️ [AUTO-REC] Áudio remoto conectado');
+      }
+
+      // Detectar melhor codec de áudio
+      const audioMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ];
+      let selectedMime = '';
+      for (const mime of audioMimeTypes) {
+        if (MediaRecorder.isTypeSupported(mime)) {
+          selectedMime = mime;
+          break;
+        }
+      }
+
+      if (!selectedMime) {
+        console.error('🎙️ [AUTO-REC] Nenhum codec de áudio suportado');
+        return;
+      }
+
+      console.log('🎙️ [AUTO-REC] Codec:', selectedMime);
+
+      autoRecorderChunksRef.current = [];
+      const recorder = new MediaRecorder(destination.stream, {
+        mimeType: selectedMime,
+        audioBitsPerSecond: 128000,
+      });
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          autoRecorderChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(10000); // Chunks a cada 10s
+      autoRecorderRef.current = recorder;
+      autoRecordingStartedRef.current = true;
+
+      console.log('🎙️ [AUTO-REC] Gravação automática iniciada');
+    } catch (error) {
+      console.error('🎙️ [AUTO-REC] Erro ao iniciar gravação automática:', error);
+    }
+  }, [userType]);
+
+  // ✅ AUTO-RECORDING: Parar e fazer upload do áudio
+  const stopAutoAudioRecording = useCallback(async (): Promise<void> => {
+    if (!autoRecordingStartedRef.current || !autoRecorderRef.current) return;
+
+    return new Promise<void>((resolve) => {
+      const recorder = autoRecorderRef.current!;
+
+      recorder.onstop = async () => {
+        console.log('🎙️ [AUTO-REC] Gravação parada, preparando upload...');
+
+        const chunks = autoRecorderChunksRef.current;
+        if (chunks.length === 0) {
+          console.warn('🎙️ [AUTO-REC] Nenhum chunk gravado');
+          resolve();
+          return;
+        }
+
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const finalBlob = new Blob(chunks, { type: mimeType });
+        console.log(`🎙️ [AUTO-REC] Tamanho final: ${(finalBlob.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // Obter IDs necessários
+        let sessionId = roomId;
+        let consultationId = currentConsultationId;
+
+        try {
+          if (!consultationId) {
+            const { data: callSession } = await supabase
+              .from('call_sessions')
+              .select('id, consultation_id')
+              .or(`room_name.eq.${roomId},room_id.eq.${roomId}`)
+              .single();
+
+            if (callSession?.id) sessionId = callSession.id;
+            if (callSession?.consultation_id) consultationId = callSession.consultation_id;
+          }
+        } catch (e) {
+          console.warn('🎙️ [AUTO-REC] Erro ao buscar session/consultation:', e);
+        }
+
+        // Upload via endpoint existente
+        let gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
+        gatewayUrl = gatewayUrl.replace(/^wss:\/\//i, 'https://').replace(/^ws:\/\//i, 'http://');
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && gatewayUrl.startsWith('http://')) {
+          gatewayUrl = gatewayUrl.replace(/^http:\/\//i, 'https://');
+        }
+
+        try {
+          const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+          const formData = new FormData();
+          const blobWithType = new Blob([finalBlob], { type: mimeType });
+          formData.append('recording', blobWithType, `auto_audio_${sessionId}_final.${ext}`);
+          formData.append('sessionId', sessionId);
+          formData.append('roomId', roomId);
+          formData.append('chunkIndex', '0');
+          formData.append('isFinal', 'true');
+          formData.append('timestamp', Date.now().toString());
+          if (consultationId) {
+            formData.append('consultationId', consultationId);
+          }
+
+          console.log('🎙️ [AUTO-REC] Enviando áudio para:', `${gatewayUrl}/api/recordings/upload`);
+
+          const response = await fetch(`${gatewayUrl}/api/recordings/upload`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('🎙️ [AUTO-REC] Upload concluído:', result?.url);
+          } else {
+            const errText = await response.text();
+            console.error('🎙️ [AUTO-REC] Erro no upload:', response.status, errText);
+          }
+        } catch (uploadError) {
+          console.error('🎙️ [AUTO-REC] Erro no upload:', uploadError);
+        }
+
+        // Limpar recursos
+        if (autoRecorderContextRef.current) {
+          autoRecorderContextRef.current.close().catch(() => {});
+          autoRecorderContextRef.current = null;
+        }
+        autoRecorderDestRef.current = null;
+        autoRecorderChunksRef.current = [];
+        autoRecorderRef.current = null;
+        autoRecordingStartedRef.current = false;
+
+        resolve();
+      };
+
+      if (recorder.state !== 'inactive') {
+        recorder.stop();
+      } else {
+        resolve();
+      }
+    });
+  }, [roomId, currentConsultationId]);
+
+  // ✅ AUTO-RECORDING: Iniciar quando a call fica ativa e temos streams
+  useEffect(() => {
+    if (isCallActive && userType === 'doctor' && !autoRecordingStartedRef.current) {
+      // Pequeno delay para garantir que os streams estejam prontos
+      const timer = setTimeout(() => {
+        startAutoAudioRecording();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCallActive, userType, startAutoAudioRecording]);
+
+  // ✅ AUTO-RECORDING: Reconectar áudio remoto quando chegar depois
+  useEffect(() => {
+    if (
+      autoRecordingStartedRef.current &&
+      autoRecorderContextRef.current &&
+      autoRecorderDestRef.current &&
+      remoteStreamState
+    ) {
+      const remoteTracks = remoteStreamState.getAudioTracks();
+      if (remoteTracks.length > 0) {
+        try {
+          const ctx = autoRecorderContextRef.current;
+          const dest = autoRecorderDestRef.current;
+          const remoteSource = ctx.createMediaStreamSource(
+            new MediaStream([remoteTracks[0]])
+          );
+          const remoteGain = ctx.createGain();
+          remoteGain.gain.value = 1.0;
+          remoteSource.connect(remoteGain);
+          remoteGain.connect(dest);
+          console.log('🎙️ [AUTO-REC] Áudio remoto reconectado após chegada do participante');
+        } catch (e) {
+          console.warn('🎙️ [AUTO-REC] Erro ao reconectar áudio remoto:', e);
+        }
+      }
+    }
+  }, [remoteStreamState]);
+
   // ✅ GRAVAÇÃO: Funções de controle
   const handleStartRecording = async () => {
     console.log('🎬 [RECORDING] handleStartRecording chamado');
@@ -4264,10 +4518,16 @@ export function ConsultationRoom({
     // 🔍 DEBUG [REFERENCIA] Iniciando processo de finalização da sala
     console.log('🔍 DEBUG [REFERENCIA] Iniciando finalização da sala...');
 
-    // ✅ GRAVAÇÃO: Parar gravação antes de finalizar
+    // ✅ GRAVAÇÃO MANUAL: Parar gravação antes de finalizar
     if (recordingState.isRecording) {
-      console.log('⏹️ [RECORDING] Parando gravação antes de finalizar sala...');
+      console.log('⏹️ [RECORDING] Parando gravação manual antes de finalizar sala...');
       await stopRecording();
+    }
+
+    // ✅ AUTO-RECORDING: Parar e fazer upload do áudio automático
+    if (autoRecordingStartedRef.current) {
+      console.log('🎙️ [AUTO-REC] Parando gravação automática antes de finalizar sala...');
+      await stopAutoAudioRecording();
     }
 
     setIsEndingRoom(true);
