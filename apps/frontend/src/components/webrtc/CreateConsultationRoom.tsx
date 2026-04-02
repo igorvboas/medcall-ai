@@ -734,11 +734,13 @@ export function CreateConsultationRoom({
           showInfo('Mensagem enviada pelo dispositivo padrão. Conecte seu WhatsApp em Conexão para enviar pelo seu número.', 'WhatsApp');
         }
       } else {
+        showError('Erro ao enviar mensagem. Tente novamente.', 'Erro');
       }
     } catch (error) {
-      setIsCreatingRoom(false);
-      console.error('Erro ao criar sala:', error);
-      showError('Erro ao criar sala. Tente novamente.', 'Erro');
+      console.error('Erro ao enviar WhatsApp:', error);
+      showError('Erro ao enviar mensagem. Tente novamente.', 'Erro');
+    } finally {
+      setSendingWhatsapp(false);
     }
   };
 

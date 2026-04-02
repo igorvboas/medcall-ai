@@ -253,6 +253,10 @@ export function ConsultationRoom({
 
   const hasJoinedRoomRef = useRef<boolean>(false);
 
+  // ✅ CORREÇÃO: Flag que persiste "estava na sala" durante ciclo disconnect→reconnect
+  // hasJoinedRoomRef é resetado no disconnect, mas wasInRoomRef sobrevive para guiar o rejoin
+  const wasInRoomRef = useRef<boolean>(false);
+
   // ✅ NOVO: Contador de tentativas de reconexão (para backoff exponencial)
   const reconnectAttemptsRef = useRef<number>(0);
 
@@ -926,7 +930,9 @@ export function ConsultationRoom({
         setupSocketListeners();
 
         // 6. Rejuntar à sala se já estava na sala
-        if (hasJoinedRoom && roomId) {
+        // CORREÇÃO: usar wasInRoomRef (sobrevive ao disconnect) em vez de hasJoinedRoom (closure stale)
+        if (wasInRoomRef.current && roomId) {
+          wasInRoomRef.current = false;
           setPendingAction('rejoin'); // ✅ REACTIVE: usar pendingAction ao invés de setTimeout
         }
       });
@@ -1042,10 +1048,13 @@ export function ConsultationRoom({
 
         setIsConnected(false);
 
-        // ✅ CORREÇÃO: Resetar flags ao desconectar
+        // ✅ CORREÇÃO: Resetar flags ao desconectar, mas preservar wasInRoomRef para reconnect
+        if (hasJoinedRoomRef.current) {
+          wasInRoomRef.current = true; // Lembrar que estávamos na sala antes do disconnect
+        }
         hasJoinedRoomRef.current = false;
         isRejoiningRef.current = false;
-        console.log('🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false');
+        console.log(`🔌 Flags resetados: hasJoinedRoomRef = false, isRejoiningRef = false, wasInRoomRef = ${wasInRoomRef.current}`);
 
 
 
@@ -1086,9 +1095,10 @@ export function ConsultationRoom({
 
 
         // ✅ CRÍTICO: Rejuntar à sala após reconexão
-
-        if (roomId && hasJoinedRoom) {
-
+        // CORREÇÃO: Usar wasInRoomRef (persiste durante disconnect→reconnect)
+        // hasJoinedRoomRef é resetado no disconnect, então não serve aqui
+        if (roomId && wasInRoomRef.current) {
+          wasInRoomRef.current = false; // Resetar para evitar rejoin duplicado
           console.log(`🔄 RECONEXÃO: Rejuntando à sala ${roomId} após ${attemptNumber} tentativa(s)`);
 
 
@@ -1735,6 +1745,10 @@ export function ConsultationRoom({
           }
 
         } else {
+
+          // ✅ CORREÇÃO: Resetar flag em caso de erro (estava faltando!)
+          isRejoiningRef.current = false;
+          console.error('❌ Erro ao entrar como host, isRejoiningRef = false');
 
           showError('Erro ao entrar na sala: ' + response.error, 'Erro ao Entrar');
 

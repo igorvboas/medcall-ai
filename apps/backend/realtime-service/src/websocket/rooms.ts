@@ -1666,25 +1666,25 @@ export function setupRoomsWebSocket(io: SocketIOServer): void {
             db.setWebRTCActive(roomId, false);
           }
 
-          // Per D-01: Set disconnected state instead of immediate cleanup
-          room.disconnectedAt = new Date().toISOString();
+          // Per D-01: Only mark fully disconnected when BOTH are gone
+          const bothDisconnected = room.hostSocketId === null && room.participantSocketId === null;
+          if (bothDisconnected) {
+            room.disconnectedAt = new Date().toISOString();
+          }
 
-          // Per D-02: Configurable timeout -- 5 min host, 3 min participant
-          const timeoutMs = isHost ? 5 * 60 * 1000 : 3 * 60 * 1000;
-
+          // Per D-02: Use room expiration timer (30 min for active rooms) instead of
+          // short disconnect timers. Short timers (5 min) caused premature room deletion
+          // when doctor reloaded the page during an active consultation.
           // Per Pitfall 5: Skip disconnect timer if finalization is already in progress
           if (!tryAcquireFinalizationLock(roomId)) {
             // Finalization owns this room -- don't start a competing timer
             console.log(`[DISCONNECT] Room ${roomId} is being finalized -- skipping disconnect timer`);
           } else {
             releaseFinalizationLock(roomId); // We just tested, not actually finalizing
-            // Clear existing timer and set disconnect-specific timeout
-            if (roomTimers.has(roomId)) {
-              clearTimeout(roomTimers.get(roomId));
-            }
-            const timer = setTimeout(() => cleanDisconnectedRoom(roomId), timeoutMs);
-            roomTimers.set(roomId, timer);
-            console.log(`[DISCONNECT] Room ${roomId} -- disconnect timer started (${timeoutMs / 60000} min)`);
+            // Use the smart room expiration logic which gives 30 min for active rooms
+            startRoomExpiration(roomId);
+            const hasOtherPeer = room.hostSocketId !== null || room.participantSocketId !== null;
+            console.log(`[DISCONNECT] Room ${roomId} -- expiration timer started (otherPeerConnected=${hasOtherPeer}, wasActive=${room.status === 'active'})`);
           }
         }
       }
