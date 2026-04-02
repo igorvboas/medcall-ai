@@ -5616,20 +5616,6 @@ export function ConsultationRoom({
                 </div>
               </div>
 
-              {/* Processamento */}
-              <div style={{ marginBottom: 16, padding: 16, background: '#F8FAFC', borderRadius: 10, border: '1.5px solid #E2E8F0' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Processamento — Análise AUTON</div>
-                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2.2 }}>
-                  <div><strong>Reino predominante:</strong> _______________</div>
-                  <div><strong>Miasma ativo:</strong> _______________</div>
-                  <div><strong>Eixos comprometidos:</strong> _______________</div>
-                  <div><strong>Prioridade terapêutica:</strong> _______________</div>
-                  <div style={{ marginTop: 10 }}><strong>Sequência terapêutica sugerida:</strong></div>
-                  <div style={{ color: '#64748B' }}>□ 1. Sistema nervoso □ 2. Intestino □ 3. Inflamação □ 4. Hormonal □ 5. Emocional □ 6. Propósito</div>
-                </div>
-              </div>
-
-              <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', fontStyle: 'italic', marginTop: 20 }}>"Não escute apenas o que o paciente diz. Escute o que o corpo dele está tentando resolver." — AUTON USI</p>
             </div>
           </div>
         </div>

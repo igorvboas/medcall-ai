@@ -226,6 +226,17 @@ CREATE TABLE IF NOT EXISTS cadastro_suplemento_prescricao (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- =============================================
+-- ALTERACOES NA TABELA MEDICOS
+-- Adicionadas em 2026-04-01
+-- =============================================
+
+-- Logo do medico para documentos/receitas
+ALTER TABLE medicos ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+-- Flag de tutorial concluido (persiste no banco, nao apenas localStorage)
+ALTER TABLE medicos ADD COLUMN IF NOT EXISTS tutorial_concluido BOOLEAN DEFAULT false;
+
 -- Prescricoes de fitoterapicos (por medico)
 CREATE TABLE IF NOT EXISTS cadastro_fitoterapico_prescricao (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -4,7 +4,9 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { useRouter, useSearchParams } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
-import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft, ClipboardList, X, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, Radio, AlertTriangle, ArrowLeft, ClipboardList, X, FileText, Paperclip } from 'lucide-react';
+import { ExamUploadModal } from '@/components/modals/ExamUploadModal';
+import type { UploadedFile } from '@/components/FileUpload';
 import { DualMicrophoneControl } from '@/components/presencial/DualMicrophoneControl';
 import { PresencialTranscription } from '@/components/presencial/PresencialTranscription';
 import { usePresencialAudioCapture } from '@/hooks/usePresencialAudioCapture';
@@ -52,6 +54,7 @@ function PresencialConsultationContent() {
   const [showConfirmEndModal, setShowConfirmEndModal] = useState(false);
   const [showQuestionarioPopup, setShowQuestionarioPopup] = useState(false);
   const [showAnamnesePopup, setShowAnamnesePopup] = useState(false);
+  const [showExamUploadModal, setShowExamUploadModal] = useState(false);
   const [allAnamneses, setAllAnamneses] = useState<any[]>([]);
   const [selectedAnamneseIndex, setSelectedAnamneseIndex] = useState(0);
 
@@ -726,6 +729,13 @@ function PresencialConsultationContent() {
                 <ClipboardList size={16} />
                 Questionário
               </button>
+              <button
+                onClick={() => setShowExamUploadModal(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 9, border: 'none', background: '#1B4266', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <Paperclip size={16} />
+                Anexar Exame
+              </button>
             </div>
 
             <div className="finish-button">
@@ -822,6 +832,34 @@ function PresencialConsultationContent() {
         variant="danger"
       />
 
+      {/* Modal Anexar Exame */}
+      <ExamUploadModal
+        isOpen={showExamUploadModal}
+        onClose={() => setShowExamUploadModal(false)}
+        onUpload={async (files: UploadedFile[]) => {
+          if (!consultationId) throw new Error('Consulta não encontrada');
+          // Buscar patient_id da consulta
+          const { data: consulta } = await supabase.from('consultations').select('patient_id').eq('id', consultationId).maybeSingle();
+          if (!consulta?.patient_id) throw new Error('Paciente não encontrado');
+          const uploadedUrls: string[] = [];
+          for (const fileObj of files) {
+            const file = fileObj.file;
+            const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const fileName = `${Date.now()}_${sanitizedName}`;
+            const filePath = `exames/${consulta.patient_id}/${fileName}`;
+            const { error } = await supabase.storage.from('documents').upload(filePath, file, { cacheControl: '3600', upsert: false });
+            if (error) throw error;
+            const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+            if (publicUrlData.publicUrl) uploadedUrls.push(publicUrlData.publicUrl);
+          }
+          // Vincular ao campo url_exames da consulta
+          const { data: existing } = await supabase.from('consultations').select('url_exames').eq('id', consultationId).maybeSingle();
+          const currentExams = existing?.url_exames || [];
+          const allExams = [...(Array.isArray(currentExams) ? currentExams : []), ...uploadedUrls];
+          await supabase.from('consultations').update({ url_exames: allExams }).eq('id', consultationId);
+        }}
+      />
+
       {/* Popup Anamnese */}
       {showAnamnesePopup && allAnamneses.length > 0 && (
         <div onClick={() => setShowAnamnesePopup(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
@@ -910,18 +948,6 @@ function PresencialConsultationContent() {
                   </div>
                 </div>
               ))}
-              <div style={{ marginBottom: 16, padding: 16, background: '#F8FAFC', borderRadius: 10, border: '1.5px solid #E2E8F0' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', paddingBottom: 8, borderBottom: '2px solid #EBF3F6', marginBottom: 12 }}>Processamento — Análise AUTON</div>
-                <div style={{ fontSize: 13, color: '#0F172A', lineHeight: 2.2 }}>
-                  <div><strong>Reino predominante:</strong> _______________</div>
-                  <div><strong>Miasma ativo:</strong> _______________</div>
-                  <div><strong>Eixos comprometidos:</strong> _______________</div>
-                  <div><strong>Prioridade terapêutica:</strong> _______________</div>
-                  <div style={{ marginTop: 10 }}><strong>Sequência terapêutica sugerida:</strong></div>
-                  <div style={{ color: '#64748B' }}>□ 1. Sistema nervoso □ 2. Intestino □ 3. Inflamação □ 4. Hormonal □ 5. Emocional □ 6. Propósito</div>
-                </div>
-              </div>
-              <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', fontStyle: 'italic', marginTop: 20 }}>"Não escute apenas o que o paciente diz. Escute o que o corpo dele está tentando resolver." — AUTON USI</p>
             </div>
           </div>
         </div>
