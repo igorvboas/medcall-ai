@@ -43,10 +43,10 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       doctor_id: queryDoctorId
     } = req.query;
 
-    // Se admin enviou doctor_id, usar o doctor_id do médico selecionado
-    let effectiveDoctorId = medico.id;
-    if (queryDoctorId && medico.admin === true) {
-      effectiveDoctorId = queryDoctorId as string;
+    // Admin sem doctor_id → ver todas; admin com doctor_id → filtrar; não-admin → próprio id
+    let effectiveDoctorId: string | null = medico.id;
+    if (medico.admin === true) {
+      effectiveDoctorId = queryDoctorId ? (queryDoctorId as string) : null;
     }
 
     const pageNum = parseInt(page as string);
@@ -62,11 +62,19 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
           email,
           phone,
           profile_pic
+        ),
+        medicos:doctor_id (
+          id,
+          name,
+          email
         )
       `, { count: 'exact' })
-      .eq('doctor_id', effectiveDoctorId)
       .eq('deletado', false)
       .order('created_at', { ascending: false });
+
+    if (effectiveDoctorId) {
+      query = query.eq('doctor_id', effectiveDoctorId);
+    }
 
     // Aplicar filtros
     if (search) {
@@ -131,10 +139,12 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Usar o nome atualizado de patients.name se disponível
+    // Usar o nome atualizado de patients.name e adicionar doctor_name
     const enrichedConsultations = (consultations || []).map((c: any) => ({
       ...c,
       patient_name: c.patients?.name || c.patient_name,
+      doctor_name: c.medicos?.name || null,
+      doctor_email: c.medicos?.email || null,
     }));
 
     return res.json({
