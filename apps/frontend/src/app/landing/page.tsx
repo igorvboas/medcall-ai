@@ -6,7 +6,6 @@ import ApplicationSection from '@/components/landing-lp/application-section/Appl
 import FeaturesSection from '@/components/landing-lp/features-section/FeaturesSection';
 import AgentsSection from '@/components/landing-lp/agents-section/AgentsSection';
 import ADSMethodSection from '@/components/landing-lp/ads-method-section/ADSMethodSection';
-import TestimonialsSection from '@/components/landing-lp/testimonials-section/TestimonialsSection';
 import PricingSection from '@/components/landing-lp/pricing-section/PricingSection';
 import FAQSection from '@/components/landing-lp/faq-section/FAQSection';
 import CTASection from '@/components/landing-lp/cta-section/CTASection';
@@ -24,7 +23,6 @@ export default function LandingPage() {
         <FeaturesSection />
         <AgentsSection />
         <ADSMethodSection />
-        <TestimonialsSection />
         <PricingSection />
         <FAQSection />
         <CTASection />

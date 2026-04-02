@@ -60,7 +60,7 @@ export default function HeroImage() {
         >
           <Image
             src="/hero-medica.png"
-            alt="Médica em jaleco branco conversando com paciente"
+            alt="Profissional de saúde em jaleco branco conversando com paciente"
             fill
             className="object-cover"
             priority

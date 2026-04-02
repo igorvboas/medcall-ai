@@ -27,7 +27,7 @@ export default function VideoSection() {
         <strong className="text-[#1a365d] font-semibold">
           decisões clínicas claras, previsíveis e replicáveis
         </strong>
-        , elevando o nível de prática médica e os resultados entregues ao paciente.
+        , elevando o nível da prática clínica e os resultados entregues ao paciente.
       </p>
 
       {/* Container do Vídeo */}
@@ -65,7 +65,7 @@ export default function VideoSection() {
       <div className="flex justify-center">
         <a href="#checkout">
           <Button variant="primary" className="text-[16px] px-10 py-4 font-medium">
-            Iniciar Avaliação Gratuita
+            Inscreva-se agora
           </Button>
         </a>
       </div>

@@ -10,6 +10,8 @@ import { aiPricingService } from './aiPricingService';
 import { aiConfig } from '../config';
 import { VoiceActivityDetector } from '../utils/vad';
 import { TranscriptionSegment, Speaker } from '@medcall/shared-types';
+import { filterWhisperResponse, isValidTranscriptionText, WhisperVerboseResponse } from '../utils/antiHallucinationFilter';
+import { deepgramService } from './deepgramService';
 
 interface AudioChunk {
   data: Buffer;
@@ -30,11 +32,14 @@ export class TranscriptionService extends EventEmitter {
   private activeRooms: Map<string, Set<string>> = new Map();
   // ✅ Armazenar metadados junto com o buffer
   private audioBuffers: Map<string, { data: Buffer; sampleRate: number }[]> = new Map();
-  // private processingQueue: Map<string, NodeJS.Timeout> = new Map(); // Removed: timer-based queue
-  private vadInstances: Map<string, VoiceActivityDetector> = new Map(); // Added: VAD instances
-  private roomConsultations: Map<string, string> = new Map(); // ✅ Mapeamento roomName -> consultationId
+  private vadInstances: Map<string, VoiceActivityDetector> = new Map();
+  private roomConsultations: Map<string, string> = new Map();
 
-  // Azure OpenAI config
+  // Deepgram: mapeamento participantId -> connectionKey
+  private deepgramConnections: Map<string, string> = new Map();
+  private useDeepgram: boolean;
+
+  // Azure OpenAI config (fallback)
   private azureEndpoint: string;
   private azureApiKey: string;
   private azureDeployment: string;
@@ -43,7 +48,16 @@ export class TranscriptionService extends EventEmitter {
   constructor() {
     super();
 
-    // Configurar Azure OpenAI
+    // Verificar se Deepgram está disponível
+    this.useDeepgram = deepgramService.isEnabled();
+    if (this.useDeepgram) {
+      console.log('🎙️ [TRANSCRIPTION] Usando Deepgram para transcrição em tempo real');
+      this.setupDeepgramListeners();
+    } else {
+      console.log('🎙️ [TRANSCRIPTION] Deepgram não disponível, usando Azure Whisper (fallback)');
+    }
+
+    // Configurar Azure OpenAI (fallback)
     this.azureEndpoint = aiConfig.azure.endpoint;
     this.azureApiKey = aiConfig.azure.apiKey;
     this.azureDeployment = aiConfig.azure.deployments.whisper;
@@ -53,6 +67,94 @@ export class TranscriptionService extends EventEmitter {
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+  }
+
+  /**
+   * Configura listeners do DeepgramService para processar transcrições
+   */
+  private setupDeepgramListeners(): void {
+    // Quando uma utterance completa é recebida (pausa na fala detectada pelo Deepgram)
+    deepgramService.on('utteranceEnd', async (data) => {
+      const { sessionId, participantId, role, text } = data;
+
+      // Encontrar roomName a partir do sessionId
+      const roomName = this.findRoomBySessionOrParticipant(sessionId, participantId);
+      if (!roomName) {
+        console.warn(`⚠️ [DEEPGRAM] Room não encontrada para sessão ${sessionId}`);
+        return;
+      }
+
+      const consultaId = this.roomConsultations.get(roomName);
+
+      // Registrar uso para monitoramento de custos
+      try {
+        await aiPricingService.logWhisperUsage(
+          1000, // estimativa de duração
+          consultaId,
+          text,
+          { provider: 'deepgram', model: 'nova-2' }
+        );
+      } catch (e) {
+        // Não bloquear transcrição por erro de logging
+      }
+
+      let speaker: Speaker = 'UNKNOWN';
+      if (role === 'doctor') speaker = 'MEDICO';
+      else if (role === 'patient') speaker = 'PACIENTE';
+
+      await this.sendTranscriptionToRoom(roomName, {
+        id: randomUUID(),
+        text,
+        participantId,
+        participantName: await this.getParticipantName(participantId),
+        timestamp: new Date().toISOString(),
+        final: true,
+        confidence: 0.95, // Deepgram nova-2 tem alta confiança
+        language: 'pt-BR',
+        speaker,
+      });
+    });
+
+    // Log de transcrições parciais (para debug)
+    deepgramService.on('transcription', (data) => {
+      const { result, role } = data;
+      if (result.isFinal && result.text) {
+        // Log apenas finais para não poluir
+        console.log(`🎙️ [DEEPGRAM] [${role}] partial-final: "${result.text}" (${(result.confidence * 100).toFixed(0)}%)`);
+      }
+    });
+  }
+
+  /**
+   * Encontra o roomName baseado em sessionId ou participantId
+   */
+  private findRoomBySessionOrParticipant(sessionId: string, participantId: string): string | null {
+    // 1. sessionId É o roomName (quando usamos roomName como dgSessionId)
+    if (this.activeRooms.has(sessionId)) {
+      return sessionId;
+    }
+
+    // 2. Mapeamento reverso do Deepgram
+    const mappedRoom = this.deepgramSessionToRoom?.get(sessionId);
+    if (mappedRoom && this.activeRooms.has(mappedRoom)) {
+      return mappedRoom;
+    }
+
+    // 3. Procurar em rooms ativas por participantId
+    for (const [roomName, participants] of this.activeRooms) {
+      if (participants.has(participantId)) {
+        return roomName;
+      }
+    }
+
+    // 4. Procurar pelo mapeamento de consultas (consultationId -> roomName)
+    for (const [roomName, consultId] of this.roomConsultations) {
+      if (consultId === sessionId) {
+        return roomName;
+      }
+    }
+
+    return null;
   }
 
   async startTranscription(roomName: string, consultationId: string): Promise<void> {
@@ -116,8 +218,21 @@ export class TranscriptionService extends EventEmitter {
         }
       }
 
+      // Fechar conexões Deepgram associadas à sala
+      if (this.useDeepgram) {
+        // Fechar pelo roomName (usado como dgSessionId)
+        await deepgramService.closeSession(roomName);
+        // Limpar mapeamentos
+        for (const [key, connKey] of this.deepgramConnections) {
+          if (key.startsWith(`${roomName}-`)) {
+            this.deepgramConnections.delete(key);
+          }
+        }
+        this.deepgramSessionToRoom?.delete(roomName);
+      }
+
       this.activeRooms.delete(roomName);
-      this.roomConsultations.delete(roomName); // ✅ Limpar mapeamento
+      this.roomConsultations.delete(roomName);
 
     } catch (error) {
       console.error('Erro ao parar transcrição:', error);
@@ -131,83 +246,22 @@ export class TranscriptionService extends EventEmitter {
     }
   }
 
-  // ✅ Armazenar metadados junto com o buffer
+  // ✅ Armazenar metadados junto com o buffer (usado apenas no fallback Whisper)
   private prerollBuffers: Map<string, { data: Buffer; sampleRate: number }[]> = new Map();
   private isSpeakingMap: Map<string, boolean> = new Map();
 
   async processAudioChunk(audioChunk: AudioChunk, roomName: string): Promise<void> {
     try {
       const { data, participantId, sampleRate } = audioChunk;
-      const bufferKey = `${roomName}-${participantId}`;
-      const chunkData = { data, sampleRate: sampleRate || 16000 };
 
-      // DEBUG: Log para verificar se audio do médico está chegando
-      // console.log(`🎤 [AUDIO-CHUNK] Recebido de ${participantId} (${data.length} bytes) - Key: ${bufferKey}`);
-
-      // Inicializar VAD se não existir
-      if (!this.vadInstances.has(bufferKey)) {
-        console.log(`🎙️ [VAD] Inicializando para ${participantId} na sala ${roomName}`);
-
-        const vad = new VoiceActivityDetector({
-          sampleRate: chunkData.sampleRate, // Use chunk sample rate
-          energyThreshold: 0.02, // 0.02 para evitar respiracão/ruído
-          silenceDuration: 1000,  // 1s silêncio = fim
-          minSpeechDuration: 500  // Min 0.5s fala
-        });
-
-        // Inicializar estados
-        this.prerollBuffers.set(bufferKey, []);
-        this.isSpeakingMap.set(bufferKey, false);
-        this.audioBuffers.set(bufferKey, []);
-
-        // Evento: Início de fala detectado
-        vad.on('speechStart', () => {
-          console.log(`🗣️ [VAD] Fala detectada: ${participantId} (Room: ${roomName})`);
-          this.isSpeakingMap.set(bufferKey, true);
-
-          // Mover preroll para o buffer principal (para não perder o início da frase)
-          const preroll = this.prerollBuffers.get(bufferKey) || [];
-          const mainBuffer = this.audioBuffers.get(bufferKey) || [];
-          this.audioBuffers.set(bufferKey, [...preroll, ...mainBuffer]); // Type safety ensured by map definition
-          this.prerollBuffers.set(bufferKey, []); // Limpar preroll
-        });
-
-        // Evento: Fim de fala detectado (Silêncio) -> Enviar para Whisper
-        vad.on('speechEnd', async ({ duration }) => {
-          console.log(`🤐 [VAD] Silêncio detectado para ${participantId} (Fala: ${duration}ms). Processando transcrição...`);
-          this.isSpeakingMap.set(bufferKey, false);
-          await this.processBufferedAudio(bufferKey, roomName, participantId);
-        });
-
-        this.vadInstances.set(bufferKey, vad);
+      // ========== DEEPGRAM: Streaming direto ==========
+      if (this.useDeepgram) {
+        await this.processAudioChunkDeepgram(audioChunk, roomName);
+        return;
       }
 
-      // Processar no VAD (dispara eventos acima)
-      const vad = this.vadInstances.get(bufferKey);
-      if (vad) {
-        vad.processAudio(data);
-      }
-
-      // LÓGICA DE BUFFERIZACAO INTELIGENTE (GATED)
-      const isSpeaking = this.isSpeakingMap.get(bufferKey) || false;
-
-      if (isSpeaking) {
-        // Se está falando, grava no buffer principal
-        if (!this.audioBuffers.has(bufferKey)) this.audioBuffers.set(bufferKey, []);
-        this.audioBuffers.get(bufferKey)!.push(chunkData);
-      } else {
-        // Se NÃO está falando, grava apenas no Ring Buffer (Preroll)
-        if (!this.prerollBuffers.has(bufferKey)) this.prerollBuffers.set(bufferKey, []);
-
-        const preroll = this.prerollBuffers.get(bufferKey)!;
-        preroll.push(chunkData);
-
-        // Manter apenas ~600ms de áudio no preroll (aprox 20 chunks de 30ms se assumirmos chunks pequenos, ou baseado em bytes)
-        // Se data.length for 2000 bytes (aprox 60ms a 16khz), manter 10 chunks = 600ms
-        if (preroll.length > 20) {
-          preroll.shift(); // Remove o mais antigo
-        }
-      }
+      // ========== WHISPER FALLBACK: VAD + Buffer + Batch ==========
+      await this.processAudioChunkWhisper(audioChunk, roomName);
 
     } catch (error) {
       console.error('Erro ao processar chunk de áudio:', error);
@@ -217,6 +271,114 @@ export class TranscriptionService extends EventEmitter {
         null,
         { roomName, participantId: audioChunk.participantId, error: error instanceof Error ? error.message : String(error) }
       );
+    }
+  }
+
+  // Mapeamento reverso: deepgramSessionId -> roomName (para encontrar room nos callbacks)
+  private deepgramSessionToRoom: Map<string, string> = new Map();
+
+  /**
+   * Processa áudio via Deepgram (streaming em tempo real)
+   * O áudio é enviado diretamente para o Deepgram que faz VAD, endpointing e transcrição
+   */
+  private async processAudioChunkDeepgram(audioChunk: AudioChunk, roomName: string): Promise<void> {
+    const { data, participantId, sampleRate } = audioChunk;
+    const bufferKey = `${roomName}-${participantId}`;
+
+    // Criar conexão Deepgram se não existir
+    if (!this.deepgramConnections.has(bufferKey)) {
+      // Usar roomName como sessionId do Deepgram (mais simples e direto)
+      const dgSessionId = roomName;
+      const role = this.getParticipantRole(participantId);
+
+      try {
+        // Registrar participante no room
+        if (!this.activeRooms.has(roomName)) {
+          this.activeRooms.set(roomName, new Set());
+        }
+        this.activeRooms.get(roomName)!.add(participantId);
+
+        // Guardar mapeamento reverso para o callback de utteranceEnd
+        this.deepgramSessionToRoom.set(dgSessionId, roomName);
+
+        const connKey = await deepgramService.createConnection({
+          sessionId: dgSessionId,
+          participantId,
+          role: role === 'system' ? 'patient' : role,
+          sampleRate: sampleRate || 16000,
+          encoding: 'linear16',
+          channels: 1,
+        });
+
+        this.deepgramConnections.set(bufferKey, connKey);
+        console.log(`🎙️ [DEEPGRAM] Conexão streaming criada: ${participantId} -> sala ${roomName}`);
+      } catch (error) {
+        console.error(`❌ [DEEPGRAM] Falha ao criar conexão para ${participantId}:`, error);
+        await this.processAudioChunkWhisper(audioChunk, roomName);
+        return;
+      }
+    }
+
+    // Enviar áudio para o Deepgram (bufferiza automaticamente se conexão ainda abrindo)
+    deepgramService.sendAudio(roomName, participantId, data);
+  }
+
+  /**
+   * Processa áudio via Whisper (fallback: VAD local + buffer + batch)
+   */
+  private async processAudioChunkWhisper(audioChunk: AudioChunk, roomName: string): Promise<void> {
+    const { data, participantId, sampleRate } = audioChunk;
+    const bufferKey = `${roomName}-${participantId}`;
+    const chunkData = { data, sampleRate: sampleRate || 16000 };
+
+    // Inicializar VAD se não existir
+    if (!this.vadInstances.has(bufferKey)) {
+      console.log(`🎙️ [VAD] Inicializando para ${participantId} na sala ${roomName}`);
+
+      const vad = new VoiceActivityDetector({
+        sampleRate: chunkData.sampleRate,
+        energyThreshold: 0.08,
+        silenceDuration: 1000,
+        minSpeechDuration: 500
+      });
+
+      this.prerollBuffers.set(bufferKey, []);
+      this.isSpeakingMap.set(bufferKey, false);
+      this.audioBuffers.set(bufferKey, []);
+
+      vad.on('speechStart', () => {
+        this.isSpeakingMap.set(bufferKey, true);
+        const preroll = this.prerollBuffers.get(bufferKey) || [];
+        const mainBuffer = this.audioBuffers.get(bufferKey) || [];
+        this.audioBuffers.set(bufferKey, [...preroll, ...mainBuffer]);
+        this.prerollBuffers.set(bufferKey, []);
+      });
+
+      vad.on('speechEnd', async ({ duration }) => {
+        this.isSpeakingMap.set(bufferKey, false);
+        await this.processBufferedAudio(bufferKey, roomName, participantId);
+      });
+
+      this.vadInstances.set(bufferKey, vad);
+    }
+
+    const vad = this.vadInstances.get(bufferKey);
+    if (vad) {
+      vad.processAudio(data);
+    }
+
+    const isSpeaking = this.isSpeakingMap.get(bufferKey) || false;
+
+    if (isSpeaking) {
+      if (!this.audioBuffers.has(bufferKey)) this.audioBuffers.set(bufferKey, []);
+      this.audioBuffers.get(bufferKey)!.push(chunkData);
+    } else {
+      if (!this.prerollBuffers.has(bufferKey)) this.prerollBuffers.set(bufferKey, []);
+      const preroll = this.prerollBuffers.get(bufferKey)!;
+      preroll.push(chunkData);
+      if (preroll.length > 20) {
+        preroll.shift();
+      }
     }
   }
 
@@ -265,29 +427,16 @@ export class TranscriptionService extends EventEmitter {
       if (transcription && transcription.text.trim()) {
         const text = transcription.text.trim();
 
-        // 🛡️ FILTRO ANTI-ALUCINAÇÃO
-        // Whisper tende a gerar essas frases em silêncio absoluto
-        const HALLUCINATIONS = [
-          'Sous-titres', 'Amara.org', 'Obrigado.', 'Súbricas',
-          'Subtitles by', 'Translated by', 'Unara.org',
-          'Aguarde um momento.'
-        ];
-
-        // 1. Verificar frases bloqueadas
-        if (HALLUCINATIONS.some(h => text.includes(h)) || text === '.') {
-          console.log(`🛡️ [ANTI-HALLUCINATION] Texto descartado (frase proibida): "${text}"`);
+        // 🛡️ FILTRO ANTI-ALUCINAÇÃO CENTRALIZADO
+        const filterResult = filterWhisperResponse(transcription as WhisperVerboseResponse);
+        if (!filterResult.isValid) {
+          console.log(`🛡️ [ANTI-HALLUCINATION] Texto descartado: ${filterResult.reason} | "${text.substring(0, 60)}"`);
           return;
         }
 
-        // 2. Verificar caracteres repetidos ou símbolos isolados
-        if (text.length < 3 && !['Oi', 'Sim', 'Não', 'Ok'].includes(text)) {
-          console.log(`🛡️ [ANTI-HALLUCINATION] Texto descartado (muito curto): "${text}"`);
-          return;
-        }
-
-        // 3. Verificar repetição de caracteres especiais (ex: "???")
-        if (/^[?.!,\s]+$/.test(text)) {
-          console.log(`🛡️ [ANTI-HALLUCINATION] Texto descartado (apenas pontuação): "${text}"`);
+        // Verificação adicional com filtro de texto
+        if (!isValidTranscriptionText(text)) {
+          console.log(`🛡️ [ANTI-HALLUCINATION] Texto inválido descartado: "${text.substring(0, 60)}"`);
           return;
         }
 
@@ -347,7 +496,7 @@ export class TranscriptionService extends EventEmitter {
       formData.append('temperature', '0'); // Temperatura 0 para determinismo
 
       // ✅ Prompt para contexto médico e redução de alucinações
-      formData.append('prompt', 'Transcrição de uma consulta médica entre doutor e paciente. Evite alucinações em silêncio.');
+      formData.append('prompt', 'Esta é uma consulta médica profissional em português brasileiro entre médico e paciente. Transcreva APENAS o que foi realmente dito na consulta. Use terminologia médica adequada. NÃO invente palavras ou frases. NÃO transcreva ruído ou silêncio como palavras.');
 
       console.log(`🌐 [TRANSCRIPTION-SERVICE] Enviando para Azure: ${azureUrl}`);
 

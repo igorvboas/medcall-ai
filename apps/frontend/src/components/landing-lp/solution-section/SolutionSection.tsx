@@ -8,7 +8,7 @@ import DecorativeDots from '../hero/DecorativeDots'
 export default function SolutionSection() {
   const solutions = [
     "Integrar dados clínicos fragmentados",
-    "Estruturar o raciocínio médico em tempo real",
+    "Estruturar o raciocínio clínico em tempo real",
     "Revelar padrões fisiopatológicos invisíveis",
     "Construir tratamentos personalizados da causa raiz"
   ]
@@ -27,7 +27,7 @@ export default function SolutionSection() {
 
         {/* Título Principal */}
         <h2 className="text-[#1a365d] text-[32px] lg:text-[42px] font-bold text-center leading-tight mb-12 lg:mb-16">
-          O AUTON REVOLUCIONA O ATENDIMENTO CLÍNICO AO
+          A AUTON REVOLUCIONA O ATENDIMENTO CLÍNICO AO
         </h2>
 
         {/* Cards de Solução */}

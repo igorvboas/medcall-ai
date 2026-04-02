@@ -1,6 +1,9 @@
 import { whisperService } from './whisperService';
 import { db, logError } from '../config/database';
 import fetch from 'node-fetch';
+import { isValidTranscriptionText } from '../utils/antiHallucinationFilter';
+import { createClient as createDeepgramClient } from '@deepgram/sdk';
+import { aiConfig } from '../config';
 
 /**
  * Interface para chunk de áudio em fila
@@ -62,6 +65,83 @@ class PresencialSessionManager {
     // Fila de chunks para processar
     private processingQueue: AudioChunk[] = [];
     private isProcessing = false;
+
+    // Deepgram client para transcrição pre-recorded
+    private deepgramClient: ReturnType<typeof createDeepgramClient> | null = null;
+    private useDeepgram: boolean;
+
+    constructor() {
+        const apiKey = aiConfig.deepgram?.apiKey || process.env.DEEPGRAM_API_KEY || '';
+        this.useDeepgram = !!(aiConfig.deepgram?.enabled && apiKey);
+
+        if (this.useDeepgram) {
+            this.deepgramClient = createDeepgramClient(apiKey);
+            console.log('✅ [PRESENCIAL] Deepgram habilitado para transcrição');
+        } else {
+            console.log('⚠️ [PRESENCIAL] Usando Whisper para transcrição (fallback)');
+        }
+    }
+
+    /**
+     * Transcreve um buffer de áudio usando Deepgram (pre-recorded API)
+     * Aceita WebM, WAV, ou qualquer formato suportado pelo Deepgram
+     */
+    private async transcribeWithDeepgram(
+        audioBuffer: Buffer,
+        speaker: 'doctor' | 'patient',
+        language: string = 'pt-BR',
+        consultationId?: string
+    ): Promise<{ text: string; confidence: number; duration: number }> {
+        if (!this.deepgramClient) {
+            throw new Error('Deepgram client não inicializado');
+        }
+
+        try {
+            const { result, error } = await this.deepgramClient.listen.prerecorded.transcribeFile(
+                audioBuffer,
+                {
+                    model: 'nova-2',
+                    language: language,
+                    smart_format: true,
+                    punctuate: true,
+                    numerals: true,
+                    diarize: true,
+                    keywords: [
+                        'paciente:2', 'doutor:2', 'doutora:2',
+                        'pressão arterial:3', 'frequência cardíaca:3',
+                        'hemograma:3', 'diagnóstico:2', 'medicamento:2',
+                    ],
+                }
+            );
+
+            if (error) {
+                throw new Error(`Deepgram API error: ${JSON.stringify(error)}`);
+            }
+
+            const transcript = result?.results?.channels?.[0]?.alternatives?.[0];
+            const text = transcript?.transcript || '';
+            const confidence = transcript?.confidence || 0;
+            const duration = result?.metadata?.duration || 0;
+
+            // Registrar uso para monitoramento de custos
+            try {
+                const { aiPricingService } = await import('./aiPricingService');
+                await aiPricingService.logWhisperUsage(
+                    duration * 1000,
+                    consultationId,
+                    text,
+                    { provider: 'deepgram', model: 'nova-2' }
+                );
+            } catch (e) {
+                // Não bloquear transcrição por erro de logging
+            }
+
+            return { text, confidence, duration: duration * 1000 };
+        } catch (error) {
+            console.error(`❌ [PRESENCIAL-DEEPGRAM] Erro na transcrição:`, error);
+            throw error;
+        }
+    }
 
     /**
      * Cria nova sessão presencial
@@ -204,19 +284,38 @@ class PresencialSessionManager {
         console.log(`🎵 [PRESENCIAL] Processando chunk síncrono: ${speaker} #${sequence} (${audioBuffer.length} bytes)`);
 
         try {
-            // Transcrever com Whisper
-            console.log(`🔄 [PRESENCIAL] Enviando para Whisper API: ${speaker} #${sequence}`);
-            const result = await whisperService.transcribeAudioChunk(
-                audioBuffer,
-                speaker,
-                'pt',
-                session.consultationId  // ✅ NOVO: Registrar custos vinculados à consulta
-            );
+            let result: { text: string; confidence?: number; duration?: number };
 
-            console.log(`✅ [PRESENCIAL] Whisper retornou: "${result.text}" (duração: ${result.duration}ms)`);
+            if (this.useDeepgram) {
+                // Deepgram (pre-recorded API para chunks WebM)
+                console.log(`🔄 [PRESENCIAL] Enviando para Deepgram: ${speaker} #${sequence}`);
+                result = await this.transcribeWithDeepgram(
+                    audioBuffer,
+                    speaker,
+                    'pt-BR',
+                    session.consultationId
+                );
+            } else {
+                // Whisper fallback
+                console.log(`🔄 [PRESENCIAL] Enviando para Whisper API: ${speaker} #${sequence}`);
+                result = await whisperService.transcribeAudioChunk(
+                    audioBuffer,
+                    speaker,
+                    'pt',
+                    session.consultationId
+                );
+            }
+
+            console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)`);
 
             if (!result.text || result.text.trim().length === 0) {
                 console.log(`⚠️ [PRESENCIAL] Chunk ${speaker} #${sequence} sem transcrição (silêncio)`);
+                return null;
+            }
+
+            // 🛡️ FILTRO ANTI-ALUCINAÇÃO: validar texto antes de salvar
+            if (!isValidTranscriptionText(result.text.trim())) {
+                console.log(`🛡️ [PRESENCIAL] Chunk ${speaker} #${sequence} descartado (alucinação): "${result.text.trim().substring(0, 60)}"`);
                 return null;
             }
 
@@ -308,18 +407,35 @@ class PresencialSessionManager {
 
         console.log(`🎙️ [PRESENCIAL] Processando chunk ${chunk.speaker} #${chunk.sequence} (${chunk.audioBuffer.length} bytes)...`);
 
-        // Transcrever com Whisper
-        console.log(`🔄 [PRESENCIAL] Enviando para Whisper API: ${chunk.speaker} #${chunk.sequence}`);
-        const result = await whisperService.transcribeAudioChunk(
-            chunk.audioBuffer,
-            chunk.speaker,
-            'pt'
-        );
+        let result: { text: string; confidence?: number; duration?: number };
 
-        console.log(`✅ [PRESENCIAL] Whisper retornou: "${result.text}" (duração: ${result.duration}ms)`);
+        if (this.useDeepgram) {
+            console.log(`🔄 [PRESENCIAL] Enviando para Deepgram: ${chunk.speaker} #${chunk.sequence}`);
+            result = await this.transcribeWithDeepgram(
+                chunk.audioBuffer,
+                chunk.speaker,
+                'pt-BR',
+                session.consultationId
+            );
+        } else {
+            console.log(`🔄 [PRESENCIAL] Enviando para Whisper API: ${chunk.speaker} #${chunk.sequence}`);
+            result = await whisperService.transcribeAudioChunk(
+                chunk.audioBuffer,
+                chunk.speaker,
+                'pt'
+            );
+        }
+
+        console.log(`✅ [PRESENCIAL] Transcrição retornou: "${result.text}" (duração: ${result.duration || 0}ms)`);
 
         if (!result.text || result.text.trim().length === 0) {
             console.log(`⚠️ [PRESENCIAL] Chunk ${chunk.speaker} #${chunk.sequence} sem transcrição (silêncio)`);
+            return;
+        }
+
+        // 🛡️ FILTRO ANTI-ALUCINAÇÃO: validar texto antes de salvar
+        if (!isValidTranscriptionText(result.text.trim())) {
+            console.log(`🛡️ [PRESENCIAL] Chunk ${chunk.speaker} #${chunk.sequence} descartado (alucinação): "${result.text.trim().substring(0, 60)}"`);
             return;
         }
 

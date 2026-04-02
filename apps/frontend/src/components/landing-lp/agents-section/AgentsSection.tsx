@@ -44,12 +44,12 @@ export default function AgentsSection() {
 
         {/* Texto Descritivo */}
         <p className="text-[#4a5568] text-[17px] lg:text-[19px] text-center max-w-[900px] mx-auto mb-5 leading-relaxed">
-          O Auton AI é composto por <strong className="text-[#1a365d] font-semibold">167 agentes de IA especializados</strong>, organizados em camadas clínicas, cada uma responsável por uma parte do raciocínio integrativo.
+          A Auton AI é composta por <strong className="text-[#1a365d] font-semibold">167 agentes de IA especializados</strong>, organizados em camadas clínicas, cada uma responsável por uma parte do raciocínio integrativo.
         </p>
 
         {/* Subtexto */}
         <p className="text-[#4a5568] text-[16px] lg:text-[18px] text-center max-w-[900px] mx-auto mb-10 lg:mb-12 leading-relaxed">
-          Esses agentes trabalham de forma orquestrada, como uma <strong className="text-[#1a365d] font-semibold">equipe multidisciplinar invisível</strong>, disponível 24/7 ao médico com domínio clínico em:
+          Esses agentes trabalham de forma orquestrada, como uma <strong className="text-[#1a365d] font-semibold">equipe multidisciplinar invisível</strong>, disponível 24/7 ao profissional com domínio clínico em:
         </p>
 
         {/* Grid de Cards */}

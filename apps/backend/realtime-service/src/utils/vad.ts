@@ -20,7 +20,7 @@ export class VoiceActivityDetector extends EventEmitter {
         this.options = {
             sampleRate: options.sampleRate || 16000,
             fftSize: options.fftSize || 512,
-            energyThreshold: options.energyThreshold || 0.01,
+            energyThreshold: options.energyThreshold || 0.08,
             silenceDuration: options.silenceDuration || 800, // 800ms of silence = end of utterance
             minSpeechDuration: options.minSpeechDuration || 200, // Ignore clicks/pops < 200ms
         };

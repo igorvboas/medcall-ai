@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as os from 'os';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import { filterWhisperResponse, WhisperVerboseResponse } from '../utils/antiHallucinationFilter';
 
 // Configurar path do ffmpeg
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -40,7 +41,7 @@ class WhisperService {
         highpassFreq: 200,   // Remove ruído abaixo de 200Hz (hum, ventiladores)
         lowpassFreq: 3400,   // Remove ruído acima de 3.4kHz (ruído branco, chiado)
         noiseFactor: 5,      // Nível moderado de redução (ajustar conforme feedback)
-        volumeBoost: 1.5     // Amplifica áudio limpo após filtragem
+        volumeBoost: 1.0     // Amplifica áudio limpo após filtragem
     };
 
     constructor() {
@@ -236,8 +237,9 @@ class WhisperService {
                 contentType: 'audio/wav'
             });
             formData.append('language', language);
-            formData.append('response_format', 'json');
+            formData.append('response_format', 'verbose_json');
             formData.append('temperature', '0');
+            formData.append('prompt', 'Esta é uma consulta médica profissional em português brasileiro entre médico e paciente. Transcreva APENAS o que foi realmente dito na consulta. NÃO invente palavras ou frases. NÃO transcreva ruído ou silêncio como palavras.');
 
             console.log(`🌐 [WHISPER] Enviando para Azure: ${azureUrl}`);
 
@@ -258,8 +260,9 @@ class WhisperService {
                         contentType: `audio/${audioFormat}`
                     });
                     freshFormData.append('language', language);
-                    freshFormData.append('response_format', 'json');
+                    freshFormData.append('response_format', 'verbose_json');
                     freshFormData.append('temperature', '0');
+                    freshFormData.append('prompt', 'Esta é uma consulta médica profissional em português brasileiro entre médico e paciente. Transcreva APENAS o que foi realmente dito na consulta. NÃO invente palavras ou frases. NÃO transcreva ruído ou silêncio como palavras.');
 
                     const retryResponse = await nodeFetch(azureUrl, {
                         method: 'POST',
@@ -271,7 +274,16 @@ class WhisperService {
                     });
 
                     if (retryResponse.ok) {
-                        const result = await retryResponse.json() as { text?: string };
+                        const result = await retryResponse.json() as WhisperVerboseResponse;
+
+                        // 🛡️ FILTRO ANTI-ALUCINAÇÃO
+                        const filterResult = filterWhisperResponse(result);
+                        if (!filterResult.isValid) {
+                            console.log(`🛡️ [WHISPER] Retry transcrição descartada: ${filterResult.reason}`);
+                            try { fs.unlinkSync(tempFilePath); } catch (e) { }
+                            return { text: '', duration: Date.now() - startTime };
+                        }
+
                         const text = result.text || '';
                         const duration = Date.now() - startTime;
                         console.log(`✅ [WHISPER] Retry ${attempt} bem-sucedido!`);
@@ -313,7 +325,25 @@ class WhisperService {
                 });
 
                 if (response.ok) {
-                    const result = await response.json() as { text?: string };
+                    const result = await response.json() as WhisperVerboseResponse;
+
+                    // 🔍 DEBUG: Log dos segmentos para diagnóstico de alucinação
+                    if (result.segments && result.segments.length > 0) {
+                        const seg = result.segments[0];
+                        console.log(`🔍 [WHISPER] Segmento[0]: no_speech_prob=${seg.no_speech_prob?.toFixed(3)}, avg_logprob=${seg.avg_logprob?.toFixed(3)}, compression_ratio=${seg.compression_ratio?.toFixed(2)}, text="${(result.text || '').substring(0, 50)}"`);
+                    } else {
+                        console.log(`🔍 [WHISPER] SEM SEGMENTOS na resposta. Texto: "${(result.text || '').substring(0, 50)}" | Keys: ${Object.keys(result).join(', ')}`);
+                    }
+
+                    // 🛡️ FILTRO ANTI-ALUCINAÇÃO
+                    const filterResult = filterWhisperResponse(result);
+                    if (!filterResult.isValid) {
+                        console.log(`🛡️ [WHISPER] Transcrição descartada: ${filterResult.reason}`);
+                        // Limpar arquivo temporário
+                        try { fs.unlinkSync(tempFilePath); } catch (e) { }
+                        return { text: '', duration: Date.now() - startTime };
+                    }
+
                     const text = result.text || '';
                     const duration = Date.now() - startTime;
 

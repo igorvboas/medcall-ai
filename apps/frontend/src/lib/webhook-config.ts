@@ -63,7 +63,7 @@ export function getWebhookEndpoints(): WebhookEndpoints {
     edicaoLivroDaVida: `${config.baseUrl}/webhook/usi-solucao-livro-vida-v2`,
     triggerSolucao: `${config.baseUrl}/webhook/usi-trigger-solucao${suffix}`,
     solucaoCriacaoEntregaveis: `${config.baseUrl}/webhook/usi-solucao-criacao-entregaveis${suffix}`,
-    exames: `${config.baseUrl}/webhook/5d03fec8-6a3a-4399-8ddc-a4839e0db3ea/:input-at-exames-usi-v2`
+    exames: `${config.baseUrl}/webhook/input-at-exames-usi-v2`
   };
 }
 
