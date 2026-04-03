@@ -511,7 +511,7 @@
 }
 
 .day-consultations {
-  max-height: 500px;
+  max-height: calc(100vh - 280px);
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;

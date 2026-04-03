@@ -57,6 +57,8 @@ interface Consultation {
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
   status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
   from?: string | null;
+  doctor_name?: string | null;
+  doctor_email?: string | null;
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
   solucao_etapa?: 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA';
   duration?: number;
@@ -146,7 +148,8 @@ async function fetchConsultations(
   limit: number = 20,
   search: string = '',
   status: string = 'all',
-  dateFilter?: { type: 'day' | 'week' | 'month', date: string }
+  dateFilter?: { type: 'day' | 'week' | 'month', date: string },
+  doctorId?: string | null
 ): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -159,6 +162,7 @@ async function fetchConsultations(
     params.append('dateFilter', dateFilter.type);
     params.append('date', dateFilter.date);
   }
+  if (doctorId) params.append('doctor_id', doctorId);
 
   const queryParams: Record<string, string | number | boolean> = {};
   params.forEach((value, key) => {
@@ -964,7 +968,7 @@ function AnamneseSection({
       {shouldShowSection('Síntese') && sinteseAnalitica && (
         <CollapsibleSection title="Sintese Analitica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
           <div onClick={() => setViewPopupSection('sintese')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1015,7 +1019,7 @@ function AnamneseSection({
             </div>
           ) : cadastroAnamnese ? (
             <div onClick={() => setViewPopupSection('dados_paciente')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
                 <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   Expandir e Editar
@@ -1083,7 +1087,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1177,7 +1181,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1268,7 +1272,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1415,7 +1419,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1499,7 +1503,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1601,7 +1605,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1700,7 +1704,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1784,7 +1788,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -1864,7 +1868,7 @@ function AnamneseSection({
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}
           >
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2904,7 +2908,7 @@ function DiagnosticoSection({
       {shouldShowSection('1. Diagnóstico Principal') && (
         <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={activeTab === 'Diagnóstico Principal' || !activeTab}>
           <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2934,7 +2938,7 @@ function DiagnosticoSection({
       {shouldShowSection('2. Estado Geral') && (
         <CollapsibleSection title="2. Estado Geral" defaultOpen={activeTab === 'Estado Geral' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2966,7 +2970,7 @@ function DiagnosticoSection({
       {shouldShowSection('3. Estado Mental') && (
         <CollapsibleSection title="3. Estado Mental" defaultOpen={activeTab === 'Estado Mental' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -2999,7 +3003,7 @@ function DiagnosticoSection({
       {shouldShowSection('4. Estado Fisiológico (Resumo - devido ao volume de campos)') && (
         <CollapsibleSection title="4. Estado Fisiologico" defaultOpen={activeTab === 'Estado Fisiológico' || !activeTab}>
           <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -3037,7 +3041,7 @@ function DiagnosticoSection({
       {shouldShowSection('5. Integração Diagnóstica') && (
         <CollapsibleSection title="5. Integracao Diagnostica" defaultOpen={activeTab === 'Integração Diagnóstica' || !activeTab}>
           <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -3067,7 +3071,7 @@ function DiagnosticoSection({
       {shouldShowSection('6. Hábitos de Vida (Resumo dos 5 Pilares)') && (
         <CollapsibleSection title="6. Habitos de Vida (5 Pilares)" defaultOpen={activeTab === 'Hábitos de Vida' || !activeTab}>
           <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -3575,7 +3579,7 @@ function MentalidadeSection({
 
       setLivroVidaData({
         resumo_executivo: data.resumo_executivo || '',
-        higiene_sono: data.higiene_sono || mockData.higiene_sono,
+        higiene_sono: data.higiene_sono || null,
         padrao_01: data.padrao_01 || null,
         padrao_02: data.padrao_02 || null,
         padrao_03: data.padrao_03 || null,
@@ -3626,7 +3630,7 @@ function MentalidadeSection({
       if (data.mentalidade_data) {
         setLivroVidaData({
           resumo_executivo: data.mentalidade_data.resumo_executivo || '',
-          higiene_sono: data.mentalidade_data.higiene_sono || mockData.higiene_sono,
+          higiene_sono: data.mentalidade_data.higiene_sono || null,
           padrao_01: data.mentalidade_data.padrao_01 || null,
           padrao_02: data.mentalidade_data.padrao_02 || null,
           padrao_03: data.mentalidade_data.padrao_03 || null,
@@ -3650,135 +3654,9 @@ function MentalidadeSection({
   };
 
   // Dados mockados como fallback (mantido para compatibilidade)
-  const mockData: any = {
-    resumo_executivo: "Lucas, após análise profunda de sua trajetória, foram identificados 8 padrões mentais, emocionais e relacionais centrais que mantêm seu quadro de fadiga crônica, autocrítica severa e dificuldade de avançar para uma vida plena. Os padrões raiz principais são: 'Crença de Inadequação Pessoal (Não sou suficiente)', 'Padrão de Hiperalerta/Vigília Crônica', 'Autocrítica Severa e Perfeccionismo', e 'Procrastinação Autoprotetora'. Estes padrões, originados em experiências gestacionais e familiares marcadas por insegurança e conflito, desencadeiam sentimentos de fracasso, insegurança existencial e bloqueios ao prazer e à autocompaixão.\n\nA boa notícia é que, com empenho genuíno e aplicação consistente das orientações integradas aqui propostas, é plenamente possível reverter este ciclo e construir uma Nova Vida Extraordinária. Transformar padrões tão antigos exige coragem, método e perseverança, mas cada passo dado na direção certa gera efeito dominó positivo em múltiplas áreas da sua vida. O caminho é profundo, mas absolutamente viável: você não está preso ao seu passado, e sim pronto para ressignificá-lo. Com a sequência estratégica sugerida, a restauração da energia vital, do prazer e do sentido de viver será não apenas possível, mas provável.",
-    higiene_sono: {
-      horario_dormir_recomendado: "23:00",
-      horario_acordar_recomendado: "07:00",
-      duracao_alvo: "8h",
-      janela_sono_semana: "23:00-07:00",
-      janela_sono_fds: "23:00-07:00",
-      consistencia_horario: "Variação máxima ±30min entre semana e fins de semana",
-      rotina_pre_sono: [
-        "22:00 - Desligar telas e luz branca",
-        "22:20 - Banho morno ou técnica respiratória/mindfulness",
-        "22:40 - Leitura leve com luz tênue",
-        "23:00 - Deitar no horário combinado"
-      ],
-      gatilhos_evitar: [
-        "Cafeína após 16h",
-        "Exercício intenso noturno (após 20h)",
-        "Telas ou reuniões após 21h",
-        "Refeições pesadas após 20h"
-      ],
-      progressao_ajuste: "Reduzir horário de dormir 15 minutos a cada 3 dias até atingir 23:00 sem perda do despertar fixo às 07:00.",
-      observacoes_clinicas: "Sono cronicamente curto e superficial, mente ativa e jet-lag social moderado (>1h2min). Prioridade máxima para saúde neurocognitiva e metabólica. Impacto de olheiras, fadiga e desempenho oscilante exige ajuste imediato na rotina."
-    },
-    padrao_01: {
-      padrao: "Crença de Inadequação Pessoal ('Não sou suficiente')",
-      categorias: ["crença_limitante"],
-      prioridade: 1,
-      areas_impacto: ["autoestima", "identidade", "bem_estar_emocional", "relacionamentos", "carreira", "propósito", "qualidade_vida"],
-      origem_estimada: {
-        periodo: "Gestação e Primeira Infância (0-7 anos)",
-        contexto_provavel: "Possivelmente desenvolvida durante a gestação e primeiros anos de vida, em ambiente marcado por insegurança materna, amargura e conflitos conjugais. A internalização do estado de alerta e a ausência de validação emocional materna podem ter gerado uma autoimagem de insuficiência e desvalor. Originalmente, esse padrão serviu como tentativa de garantir amor e aceitação pela performance e vigilância. Tornou-se limitante ao bloquear a autoconfiança e alimentar ciclos de autossabotagem e perfeccionismo."
-      },
-      conexoes_padroes: {
-        raiz_de: ["Autocrítica Severa e Perfeccionismo", "Procrastinação Autoprotetora", "Medo de Fracasso e Desesperança", "Bloqueio à Autocompaixão", "Desconexão de Propósito e Prazer"],
-        explicacao: "A crença de inadequação pessoal é alimentada pelo estado crônico de hiperalerta, que reforça a sensação de nunca ser suficiente. Ela é raiz de padrões como autocrítica, perfeccionismo, procrastinação, medo de fracasso e bloqueio ao prazer, pois a percepção central de insuficiência gera necessidade constante de provar valor e evita o risco de exposição ao erro. Relaciona-se com a crença de que só é seguro ser aceito mediante desempenho (segurança condicional).",
-        alimentado_por: ["Padrão de Hiperalerta/Vigília Crônica"],
-        relacionado_com: ["Padrão de Segurança Condicional"]
-      },
-      manifestacoes_atuais: [
-        "Pensamento recorrente: 'Não sou suficiente, não estou me esforçando o bastante'",
-        "Dificuldade de aceitar elogios, desqualificando conquistas",
-        "Sensação crônica de fracasso ao não cumprir metas diárias",
-        "Medo intenso de depender dos pais, visto como fracasso existencial",
-        "Evita iniciar projetos por antecipar que não será capaz",
-        "Vincula valor pessoal a desempenho e produtividade"
-      ],
-      orientacoes_transformacao: [
-        {
-          nome: "Consciência e Mapeamento dos Pensamentos de Inadequação",
-          passo: 1,
-          como_fazer: "Mantenha um caderno ao lado da cama e anote, ao acordar e ao longo do dia, situações que despertam o pensamento 'não sou suficiente'. Escreva a situação, o pensamento exato e a emoção sentida (escala 0-10). Não tente mudar nada ainda, apenas observe e documente. Repita diariamente para mapear padrões de gatilho.",
-          o_que_fazer: "Registrar, durante 7 dias, cada vez que pensamentos de insuficiência ou autodepreciação surgirem.",
-          porque_funciona: "Tornar consciente o padrão automático ativa o córtex pré-frontal, interrompendo o ciclo inconsciente de autossabotagem. Segundo a TCC e neuroplasticidade, o primeiro passo para mudar uma crença é identificá-la em tempo real, criando distanciamento e possibilidade de escolha."
-        },
-        {
-          nome: "Questionamento Socrático e Desafio com Evidências",
-          passo: 2,
-          como_fazer: "Para cada pensamento de insuficiência registrado, responda: (1) Qual a evidência real de que sou insuficiente? (2) Que exemplos concretos tenho de competência/superação? (3) Como eu falaria com um amigo nessa situação? (4) O que mudou desde a infância? Escreva as respostas e releia diariamente.",
-          o_que_fazer: "Desafiar ativamente a crença de insuficiência usando perguntas estruturadas.",
-          porque_funciona: "O questionamento socrático, base da TCC, ajuda a enfraquecer crenças disfuncionais ao confrontar distorções cognitivas, promovendo reestruturação neural e maior autoconfiança."
-        }
-      ]
-    },
-    padrao_02: {
-      padrao: "Padrão de Hiperalerta/Vigília Crônica",
-      categorias: ["padrão_mental_negativo", "trauma_não_processado"],
-      prioridade: 2,
-      areas_impacto: ["saúde_física", "saúde_mental", "bem_estar_emocional", "autoestima", "relacionamentos", "qualidade_vida"],
-      origem_estimada: {
-        periodo: "Gestação e Primeira Infância (0-7 anos)",
-        contexto_provavel: "Provavelmente instalado intrauterinamente, devido ao estado de alerta, amargura e insegurança materna gerados pela infidelidade paterna. O padrão foi reforçado por um lar tenso, onde emoções negativas eram projetadas nos filhos. Inicialmente, serviu para proteger Lucas de sentir-se vulnerável ou exposto a traições e ameaças. Tornou-se limitante ao impedir relaxamento, prazer e recuperação energética, cristalizando-se em insônia, fadiga e sensação de ameaça constante."
-      },
-      conexoes_padroes: {
-        raiz_de: ["Crença de Inadequação Pessoal ('Não sou suficiente')", "Autocrítica Severa e Perfeccionismo", "Procrastinação Autoprotetora", "Medo de Fracasso e Desesperança"],
-        explicacao: "O hiperalerta é a base fisiológica e emocional que alimenta a crença de insuficiência, pois mantém o sistema nervoso em estado de ameaça, dificultando o descanso e a autopercepção positiva. Ele gera fadiga, insônia e impede a restauração do prazer, alimentando autocrítica e procrastinação. Relaciona-se com o bloqueio à autocompaixão, pois dificulta o relaxamento necessário para o autocuidado.",
-        alimentado_por: [],
-        relacionado_com: ["Bloqueio à Autocompaixão"]
-      },
-      manifestacoes_atuais: [
-        "Sono superficial e não restaurador, sensação de fadiga ao acordar",
-        "Dificuldade de relaxar mesmo fora de situações de risco",
-        "Tensão corporal persistente (ombros, mandíbula, peito)",
-        "Pensamentos de vigilância: 'Preciso estar sempre alerta para não ser pego de surpresa'",
-        "Sensação de perigo iminente ao tentar relaxar ou se permitir prazer",
-        "Dificuldade de confiar em processos de descanso e recuperação"
-      ],
-      orientacoes_transformacao: [
-        {
-          nome: "Reconhecimento do Estado de Alerta",
-          passo: 1,
-          como_fazer: "Ao acordar e em momentos de tensão, pause e observe: onde está a tensão no corpo? Que pensamentos surgem? Nomeie: 'Estou em estado de alerta'. Anote no caderno e observe padrões de ativação. Repita 3-4 vezes ao dia.",
-          o_que_fazer: "Identificar e nomear o estado de hiperalerta no corpo e na mente ao longo do dia.",
-          porque_funciona: "A autoconsciência corporal e emocional é o primeiro passo para regular o sistema nervoso. A nomeação ativa o córtex pré-frontal, reduzindo a dominância do sistema límbico e preparando para intervenções de regulação."
-        }
-      ]
-    },
-    padrao_03: null,
-    padrao_04: null,
-    padrao_05: null,
-    padrao_06: null,
-    padrao_07: null,
-    padrao_08: null,
-    padrao_09: null,
-    padrao_10: null
-  };
+  const mockData: any = {};;
 
   // Parsear os dados mockados - os padrões 03-08 vêm do JSON fornecido
-  const parsePadrao = (jsonString: string | null): PadraoItem | null => {
-    if (!jsonString) return null;
-    try {
-      return typeof jsonString === 'string' ? JSON.parse(jsonString) as PadraoItem : jsonString;
-    } catch {
-      return null;
-    }
-  };
-
-  // Dados parseados dos padrões 03-08 do exemplo fornecido
-  const padrao03Data = parsePadrao("{\"padrao\": \"Autocrítica Severa e Perfeccionismo\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 3, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"carreira\", \"relacionamentos\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente reforçado pela convivência com uma mãe crítica, insatisfeita e controladora, e por um ambiente familiar onde o amor parecia condicional ao desempenho. Originalmente, a autocrítica e o perfeccionismo serviram para evitar críticas externas e conquistar aceitação. Tornaram-se limitantes ao gerar paralisia, procrastinação e sofrimento emocional intenso.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Procrastinação Autoprotetora\", \"Bloqueio à Autocompaixão\"], \"explicacao\": \"A autocrítica e o perfeccionismo são consequências diretas da crença de insuficiência e do hiperalerta, pois buscam garantir segurança por meio do controle absoluto. Eles alimentam a procrastinação (medo de errar paralisa) e bloqueiam a autocompaixão (autoexigência impede acolhimento). Relacionam-se com o medo de fracasso, pois o erro é visto como ameaça existencial.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Medo de Fracasso e Desesperança\"]}, \"manifestacoes_atuais\": [\"Diálogo interno brutal: 'Você é um fracasso', 'Nunca faz o suficiente'\", \"Revisão obsessiva de tarefas, nunca satisfeito com o resultado\", \"Dificuldade de iniciar projetos por medo de não atingir o ideal\", \"Desqualificação de conquistas ('Foi só sorte, qualquer um faria melhor')\", \"Sentimento de culpa e vergonha ao descansar ou se permitir prazer\", \"Comparação constante com outros, sempre se sentindo abaixo\"], \"orientacoes_transformacao\": [{\"nome\": \"Identificação e Registro da Voz Crítica\", \"passo\": 1, \"como_fazer\": \"Durante 7 dias, sempre que notar autocrítica, escreva a frase exata e o contexto. Exemplo: 'Após errar em tarefa X, pensei: sou incompetente'. Mapeie padrões e horários mais frequentes.\", \"o_que_fazer\": \"Observar e anotar frases autocríticas recorrentes ao longo do dia.\", \"porque_funciona\": \"O registro consciente da voz crítica cria distanciamento e reduz a fusão com o crítico interno, base do trabalho de IFS e CFT.\"}, {\"nome\": \"Diálogo com o Crítico Interno (Cadeira Vazia/IFS)\", \"passo\": 2, \"como_fazer\": \"Sente-se em frente a uma cadeira vazia e imagine que nela está seu crítico interno. Pergunte: 'O que você está tentando proteger em mim?'. Depois, troque de lugar e responda como o crítico. Em seguida, acolha essa parte e proponha uma nova forma de proteção baseada em encorajamento, não ataque.\", \"o_que_fazer\": \"Dialogar ativamente com a parte autocrítica, buscando entender sua intenção e oferecer uma alternativa compassiva.\", \"porque_funciona\": \"O diálogo interno, validado por IFS e Gestalt, permite integrar partes internas e transformar o crítico em aliado, promovendo autocompaixão e redução do perfeccionismo.\"}, {\"nome\": \"Experimentos Comportamentais de 'Bom o Suficiente'\", \"passo\": 3, \"como_fazer\": \"Escolha uma tarefa simples (ex: responder e-mails, arrumar a cama) e faça-a com o objetivo de terminar, não de perfeição. Observe o desconforto e registre o que aconteceu: houve consequências negativas reais? Repita com tarefas progressivamente mais desafiadoras.\", \"o_que_fazer\": \"Executar tarefas intencionalmente sem buscar perfeição, aceitando erros como parte do processo.\", \"porque_funciona\": \"A exposição comportamental, central na TCC, prova ao cérebro que o erro não é fatal, reduzindo o medo de fracasso e flexibilizando padrões rígidos.\"}]}");
-
-  const padrao04Data = parsePadrao("{\"padrao\": \"Procrastinação Autoprotetora\", \"categorias\": [\"padrão_mental_negativo\", \"padrão_emocional\"], \"prioridade\": 4, \"areas_impacto\": [\"carreira\", \"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"propósito\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Adolescência e Vida Adulta Jovem (14-26 anos)\", \"contexto_provavel\": \"Provavelmente reforçada pela pressão excessiva para desempenho e pelo medo de fracassar ou decepcionar figuras parentais. A procrastinação surgiu como defesa para evitar a dor do fracasso e a autocrítica. Tornou-se limitante ao bloquear a iniciativa e reforçar a sensação de incapacidade e estagnação.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Medo de Fracasso e Desesperança\"], \"explicacao\": \"A procrastinação é alimentada pela crença de insuficiência e pelo perfeccionismo, pois o medo de errar paralisa a ação. Ela se torna raiz do medo de fracasso, pois quanto mais se posterga, maior a sensação de impotência e desesperança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Autocrítica Severa e Perfeccionismo\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Dificuldade extrema de iniciar tarefas, especialmente pela manhã\", \"Sensação de paralisia ao pensar em metas grandes\", \"Uso de distrações para evitar enfrentar desafios (celular, redes sociais)\", \"Culpa intensa após adiar tarefas importantes\", \"Sensação de tempo perdido e angústia com o 'contador regressivo'\"], \"orientacoes_transformacao\": [{\"nome\": \"Quebra de Tarefas e Microcompromissos\", \"passo\": 1, \"como_fazer\": \"Pegue uma meta (ex: exercício matinal) e divida em passos micro (ex: apenas levantar, vestir roupa de treino, sair do quarto). Estabeleça o compromisso de realizar apenas o primeiro passo por dia. Após cumprir, decida se continua. Registre cada microvitória.\", \"o_que_fazer\": \"Dividir grandes metas em pequenas ações concretas e assumir compromissos mínimos diários.\", \"porque_funciona\": \"A ação mínima reduz a sobrecarga do perfeccionismo e ativa o circuito de recompensa do cérebro, tornando mais provável a continuidade. O método é validado por TCC, ACT e neurociência motivacional.\"}, {\"nome\": \"Ação Comprometida Mesmo com Desconforto (ACT)\", \"passo\": 2, \"como_fazer\": \"Antes de uma tarefa, pergunte: 'Isso está alinhado com quem desejo ser?'. Se sim, dê o primeiro passo, mesmo que pequeno, e observe o desconforto sem tentar eliminá-lo. Anote após: 'O que aprendi ao agir mesmo inseguro?'.\", \"o_que_fazer\": \"Agir apesar da dúvida ou desconforto, focando nos valores pessoais e não no resultado imediato.\", \"porque_funciona\": \"A ACT ensina que a ação orientada por valores, mesmo com medo ou desconforto, amplia a autoconfiança e reduz o domínio da procrastinação sobre a vida.\"}]}");
-
-  const padrao05Data = parsePadrao("{\"padrao\": \"Medo de Fracasso e Desesperança\", \"categorias\": [\"crença_limitante\", \"padrão_mental_negativo\"], \"prioridade\": 5, \"areas_impacto\": [\"autoestima\", \"carreira\", \"propósito\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância, Adolescência e Vida Adulta Jovem (5-26 anos)\", \"contexto_provavel\": \"Pode ter se consolidado após experiências repetidas de crítica, frustração de expectativas e internalização da narrativa familiar de que falhar é inaceitável. Inicialmente, serviu como proteção para evitar novas decepções. Tornou-se limitante ao bloquear a iniciativa e gerar sensação de impotência crônica.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O medo de fracasso é alimentado pela crença de insuficiência e reforçado pela procrastinação. Relaciona-se com a autocrítica e o perfeccionismo, pois cada erro é visto como confirmação da inadequação. Não é raiz de outros padrões, mas perpetua o ciclo de estagnação.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\", \"Procrastinação Autoprotetora\"], \"relacionado_com\": [\"Autocrítica Severa e Perfeccionismo\"]}, \"manifestacoes_atuais\": [\"Ansiedade intensa diante de metas e avaliações\", \"Evitação de desafios por antecipar decepção\", \"Desesperança sobre a possibilidade de mudança\", \"Sensação de que qualquer insucesso é fracasso total\", \"Dificuldade de celebrar avanços, foco no que falta\"], \"orientacoes_transformacao\": [{\"nome\": \"Ressignificação do Fracasso e Exposição Gradual\", \"passo\": 1, \"como_fazer\": \"Escolha tarefas onde o risco de erro é baixo e execute-as sem buscar perfeição. Ao errar, registre o que realmente aconteceu versus o que temia. Dialogue internamente: 'O que posso aprender com isso?'. Repita o processo, aumentando gradualmente a complexidade das tarefas.\", \"o_que_fazer\": \"Redefinir fracasso como parte do processo de crescimento e se expor gradualmente a pequenas falhas seguras.\", \"porque_funciona\": \"A exposição gradual e a ressignificação do erro (TCC, PNL) reduzem o medo paralisante e ensinam o cérebro que falhar não é catastrófico, ampliando a zona de conforto e a resiliência.\"}]}");
-
-  const padrao06Data = parsePadrao("{\"padrao\": \"Bloqueio à Autocompaixão\", \"categorias\": [\"padrão_emocional\"], \"prioridade\": 6, \"areas_impacto\": [\"autoestima\", \"saúde_mental\", \"bem_estar_emocional\", \"relacionamentos\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente desenvolvido em ambiente onde a autocrítica era modelo e o autocuidado visto como fraqueza ou preguiça. Originalmente, serviu para tentar evitar críticas externas e buscar aprovação. Tornou-se limitante ao bloquear o acesso ao acolhimento interno e dificultar o enfrentamento de desafios.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"O bloqueio à autocompaixão é alimentado pela autocrítica e pelo estado de alerta, pois o autocuidado é visto como ameaça à sobrevivência. Relaciona-se com a crença de insuficiência, pois dificulta a aceitação de imperfeições e vulnerabilidades.\", \"alimentado_por\": [\"Autocrítica Severa e Perfeccionismo\", \"Padrão de Hiperalerta/Vigília Crônica\"], \"relacionado_com\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"]}, \"manifestacoes_atuais\": [\"Dificuldade de se perdoar por erros e falhas\", \"Incapacidade de acolher emoções difíceis sem julgamento\", \"Sensação de que autocuidado é 'fraqueza'\", \"Autoexigência rígida mesmo em momentos de sofrimento\", \"Resistência a receber apoio ou carinho de outros\"], \"orientacoes_transformacao\": [{\"nome\": \"Prática Estruturada de Autocompaixão\", \"passo\": 1, \"como_fazer\": \"Use áudios de práticas de autocompaixão (Kristin Neff) ou escreva cartas para si mesmo em momentos de sofrimento, usando frases como: 'Está tudo bem não ser perfeito', 'Todos erram, inclusive eu'. Repita diariamente, especialmente após situações de autocrítica.\", \"o_que_fazer\": \"Dedicar diariamente 10 minutos para exercícios guiados de autocompaixão.\", \"porque_funciona\": \"A prática regular de autocompaixão ativa redes cerebrais de autocuidado e reduz a ativação do sistema de ameaça, promovendo maior resiliência emocional e flexibilidade diante de desafios.\"}]}");
-
-  const padrao07Data = parsePadrao("{\"padrao\": \"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"categorias\": [\"crença_limitante\"], \"prioridade\": 7, \"areas_impacto\": [\"autoestima\", \"identidade\", \"carreira\", \"propósito\", \"bem_estar_emocional\"], \"origem_estimada\": {\"periodo\": \"Infância e Adolescência (5-18 anos)\", \"contexto_provavel\": \"Provavelmente internalizado a partir do modelo familiar onde o valor era condicionado ao desempenho, especialmente na figura paterna como provedor. Serviu para criar uma ilusão de controle e evitar rejeição. Tornou-se limitante ao gerar ansiedade crônica, medo de relaxar e dependência do reconhecimento externo.\"}, \"conexoes_padroes\": {\"raiz_de\": [\"Desconexão de Propósito e Prazer\"], \"explicacao\": \"A crença de segurança condicional reforça a necessidade de desempenho para sentir-se seguro, alimentando a desconexão de propósito e prazer, pois bloqueia a motivação intrínseca. É alimentada pela crença de insuficiência, pois só ao 'provar' valor sente-se digno de segurança.\", \"alimentado_por\": [\"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": []}, \"manifestacoes_atuais\": [\"Sensação de que só merece descanso após atingir metas altas\", \"Ansiedade intensa quando não está produzindo ou performando\", \"Vincula autoestima a resultados externos\", \"Dificuldade de relaxar ou se permitir lazer sem culpa\"], \"orientacoes_transformacao\": [{\"nome\": \"Redefinição de Valor Pessoal e Segurança\", \"passo\": 1, \"como_fazer\": \"Liste 5 momentos em que recebeu carinho, respeito ou apoio apenas por ser quem é, não por resultados. Releia essas situações diariamente e escreva como se sentiu. Reforce a ideia: 'Meu valor não depende do que faço, mas de quem sou'.\", \"o_que_fazer\": \"Refletir e escrever sobre situações em que se sentiu seguro ou valorizado sem depender de desempenho.\", \"porque_funciona\": \"A repetição de experiências de valor incondicional reforça novas redes neurais de autoestima e reduz a dependência do reconhecimento externo, promovendo motivação autêntica.\"}]}");
-
-  const padrao08Data = parsePadrao("{\"padrao\": \"Desconexão de Propósito e Prazer\", \"categorias\": [\"bloqueio_desenvolvimento_espiritual\", \"padrão_emocional\"], \"prioridade\": 8, \"areas_impacto\": [\"propósito\", \"desenvolvimento_espiritual\", \"bem_estar_emocional\", \"qualidade_vida\"], \"origem_estimada\": {\"periodo\": \"Vida Adulta Jovem (21-26 anos)\", \"contexto_provavel\": \"Possivelmente emergiu como consequência do ciclo de autocrítica, hiperalerta e segurança condicional, bloqueando o acesso ao prazer e ao sentido existencial autêntico. Inicialmente, serviu como defesa contra frustrações profundas. Tornou-se limitante ao gerar vazio existencial, desânimo e dificuldade de se engajar com a vida de forma plena.\"}, \"conexoes_padroes\": {\"raiz_de\": [], \"explicacao\": \"A desconexão de propósito e prazer é alimentada pela crença de valor condicional e insuficiência, que esvaziam a motivação intrínseca e bloqueiam o acesso ao prazer. Relaciona-se com a procrastinação, pois o vazio existencial dificulta o engajamento em ações significativas.\", \"alimentado_por\": [\"Padrão de Segurança Condicional ('Preciso ter desempenho para ter segurança')\", \"Crença de Inadequação Pessoal ('Não sou suficiente')\"], \"relacionado_com\": [\"Procrastinação Autoprotetora\"]}, \"manifestacoes_atuais\": [\"Sensação de vazio e falta de sentido mesmo com metas claras\", \"Dificuldade de sentir prazer mesmo em atividades antes prazerosas\", \"Desânimo persistente e falta de motivação autêntica\", \"Busca por sentido apenas no desempenho e conquistas externas\"], \"orientacoes_transformacao\": [{\"nome\": \"Exploração de Propósito Autêntico (Ikigai/Logoterapia)\", \"passo\": 1, \"como_fazer\": \"Responda por escrito: (1) O que me dá alegria genuína, mesmo sem reconhecimento? (2) O que eu faria se não precisasse provar nada a ninguém? (3) Como posso contribuir para o mundo com meus dons únicos? Faça um mapa Ikigai (o que amo, sei fazer, o mundo precisa, posso ser pago) e reflita sobre ações possíveis.\", \"o_que_fazer\": \"Dedicar tempo semanal para investigar valores, paixões e contribuições além do desempenho.\", \"porque_funciona\": \"A investigação ativa do propósito (Logoterapia, Ikigai) reconecta a motivação intrínseca, amplia o sentido existencial e reduz o vazio gerado por padrões de desempenho condicional.\"}, {\"nome\": \"Práticas de Gratidão e Mindfulness Prazeroso\", \"passo\": 2, \"como_fazer\": \"Todos os dias, registre 3 experiências prazerosas ou motivos de gratidão, por menores que sejam. Pratique mindfulness durante essas experiências, focando nas sensações corporais prazerosas sem julgamento ou cobrança de resultado.\", \"o_que_fazer\": \"Cultivar diariamente a atenção ao prazer e à gratidão para reabilitar o sistema de recompensa natural.\", \"porque_funciona\": \"A prática de gratidão e mindfulness prazeroso ativa as redes cerebrais de recompensa e prazer, recondicionando o cérebro a buscar e valorizar pequenas alegrias, base para reconstrução do sentido de vida.\"}]}");
 
   // @ts-ignore - mockData will be replaced by dynamic data from API
   const [livroVidaData, setLivroVidaData] = useState<{
@@ -3795,16 +3673,16 @@ function MentalidadeSection({
     padrao_09: PadraoItem | null;
     padrao_10: PadraoItem | null;
   }>({
-    resumo_executivo: mockData.resumo_executivo,
-    higiene_sono: mockData.higiene_sono,
-    padrao_01: mockData.padrao_01,
-    padrao_02: mockData.padrao_02,
-    padrao_03: padrao03Data,
-    padrao_04: padrao04Data,
-    padrao_05: padrao05Data,
-    padrao_06: padrao06Data,
-    padrao_07: padrao07Data,
-    padrao_08: padrao08Data,
+    resumo_executivo: '',
+    higiene_sono: { horario_dormir_recomendado: '', horario_acordar_recomendado: '', duracao_alvo: '', janela_sono_semana: '', janela_sono_fds: '', consistencia_horario: '', rotina_pre_sono: [], gatilhos_evitar: [], progressao_ajuste: '', observacoes_clinicas: '' },
+    padrao_01: null,
+    padrao_02: null,
+    padrao_03: null,
+    padrao_04: null,
+    padrao_05: null,
+    padrao_06: null,
+    padrao_07: null,
+    padrao_08: null,
     padrao_09: null,
     padrao_10: null
   });
@@ -4218,7 +4096,7 @@ function MentalidadeSection({
     return (
       <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
         <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -4263,7 +4141,7 @@ function MentalidadeSection({
     return (
       <CollapsibleSection title={`Padrao ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
         <div onClick={() => setViewLivroPopup({ type: 'padrao', padraoNum: numero })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 600, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -4349,7 +4227,7 @@ function MentalidadeSection({
       {/* Resumo Executivo */}
       <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
         <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, position: 'sticky' as any, top: 0, zIndex: 10, background: '#FFFFFF', paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Expandir e Editar
@@ -6826,6 +6704,10 @@ function ConsultasPageContent() {
   const { user } = useAuth();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [doctors, setDoctors] = useState<Array<{id: string, name: string, email: string}>>([]);
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -6871,6 +6753,21 @@ function ConsultasPageContent() {
     };
     checkAdmin();
   }, [user?.id]);
+
+  // Buscar lista de médicos quando for admin (para o filtro de médico)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchDoctors = async () => {
+      try {
+        const { data } = await supabase
+          .from('medicos')
+          .select('id, name, email')
+          .order('name');
+        if (data) setDoctors(data.filter(d => d.name));
+      } catch { /* silently fail */ }
+    };
+    fetchDoctors();
+  }, [isAdmin]);
 
   // Função para voltar para a tela de seleção de soluções
   const handleBackToSolutionSelection = async () => {
@@ -7525,7 +7422,7 @@ function ConsultasPageContent() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, selectedDoctorId]);
 
   // Verificar se o dashboard está completamente carregado
   useEffect(() => {
@@ -7622,7 +7519,7 @@ function ConsultasPageContent() {
       }
       setError(null);
       const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter, selectedDoctorId);
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -7653,7 +7550,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
+  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate, selectedDoctorId]);
 
   // Buscar status de anamnese e primeira consulta por paciente
   useEffect(() => {
@@ -13026,6 +12923,136 @@ function ConsultasPageContent() {
           />
         </div>
 
+        {/* Filtro por médico — visível apenas para admins */}
+        {isAdmin && (
+          <div style={{ position: 'relative', flex: 1, maxWidth: '320px' }}>
+            <div style={{
+              position: 'absolute',
+              top: '-9px',
+              left: '10px',
+              backgroundColor: '#fff7ed',
+              color: '#c2410c',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              border: '1px solid #fed7aa',
+              zIndex: 2,
+              lineHeight: '16px'
+            }}>ADMIN</div>
+            <Search size={20} style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#f97316',
+              pointerEvents: 'none',
+              zIndex: 1
+            }} />
+            <input
+              type="text"
+              placeholder="Filtrar por médico..."
+              value={doctorSearchTerm}
+              onChange={(e) => {
+                setDoctorSearchTerm(e.target.value);
+                setShowDoctorDropdown(true);
+                if (!e.target.value) {
+                  setSelectedDoctorId(null);
+                }
+              }}
+              onFocus={() => setShowDoctorDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDoctorDropdown(false), 200)}
+              style={{
+                width: '100%',
+                padding: '12px 40px 12px 44px',
+                border: `1px solid ${selectedDoctorId ? '#f97316' : '#fed7aa'}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#fff7ed',
+                color: '#111827',
+                transition: 'all 0.2s ease',
+                boxSizing: 'border-box'
+              }}
+            />
+            {selectedDoctorId && (
+              <button
+                onClick={() => {
+                  setSelectedDoctorId(null);
+                  setDoctorSearchTerm('');
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Limpar filtro"
+              >
+                <X size={16} />
+              </button>
+            )}
+            {showDoctorDropdown && doctorSearchTerm && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                zIndex: 50,
+                maxHeight: '220px',
+                overflowY: 'auto'
+              }}>
+                {doctors
+                  .filter(d =>
+                    d.name?.toLowerCase().includes(doctorSearchTerm.toLowerCase()) ||
+                    d.email?.toLowerCase().includes(doctorSearchTerm.toLowerCase())
+                  )
+                  .map(doctor => (
+                    <div
+                      key={doctor.id}
+                      onMouseDown={() => {
+                        setSelectedDoctorId(doctor.id);
+                        setDoctorSearchTerm(doctor.name);
+                        setShowDoctorDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        fontSize: '13px'
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#ffffff'; }}
+                    >
+                      <div style={{ fontWeight: 500, color: '#111827' }}>{doctor.name}</div>
+                      <div style={{ color: '#6b7280', fontSize: '12px' }}>{doctor.email}</div>
+                    </div>
+                  ))
+                }
+                {doctors.filter(d =>
+                  d.name?.toLowerCase().includes(doctorSearchTerm.toLowerCase()) ||
+                  d.email?.toLowerCase().includes(doctorSearchTerm.toLowerCase())
+                ).length === 0 && (
+                  <div style={{ padding: '10px 14px', color: '#6b7280', fontSize: '13px' }}>
+                    Nenhum médico encontrado
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <select
           value={statusFilter}
           onChange={(e) => {
@@ -13172,6 +13199,24 @@ function ConsultasPageContent() {
         <div className="consultas-table">
           {/* Header da tabela */}
           <div className={`table-header ${isAdmin ? 'has-from-col' : ''}`}>
+            {isAdmin && (
+              <div className="header-cell doctor-header">
+                <span style={{
+                  backgroundColor: '#fff7ed',
+                  color: '#c2410c',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid #fed7aa',
+                  lineHeight: '16px',
+                  marginRight: '6px'
+                }}>ADMIN</span>
+                Médico
+              </div>
+            )}
+            {isAdmin && <div className="table-header-divider"></div>}
             <div className="header-cell patient-header">Paciente</div>
             <div className="table-header-divider"></div>
             <div className="header-cell date-header">Data</div>
@@ -13201,6 +13246,12 @@ function ConsultasPageContent() {
                   onClick={() => handleConsultationClick(consultation)}
                   style={{ cursor: 'pointer' }}
                 >
+                  {isAdmin && (
+                    <div className="table-cell doctor-cell">
+                      <span>{consultation.doctor_name || '-'}</span>
+                    </div>
+                  )}
+                  {isAdmin && <div className="table-row-divider"></div>}
                   <div
                     className="table-cell patient-cell"
                     style={{

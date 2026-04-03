@@ -398,22 +398,41 @@ function AnamneseInicialContent() {
               </p>
               <div className="wizard-success-summary">
                 <div className="wizard-success-summary-title">Resumo do envio</div>
-                <div className="wizard-success-summary-row">
-                  <span className="wizard-success-summary-label">Paciente</span>
-                  <span className="wizard-success-summary-value">{formData.nome_completo || '—'}</span>
-                </div>
-                <div className="wizard-success-summary-row">
-                  <span className="wizard-success-summary-label">Altura</span>
-                  <span className="wizard-success-summary-value">{formData.altura ? `${formData.altura} cm` : '—'}</span>
-                </div>
-                <div className="wizard-success-summary-row">
-                  <span className="wizard-success-summary-label">Peso Atual</span>
-                  <span className="wizard-success-summary-value">{formData.peso_atual ? `${parseFloat(formData.peso_atual).toFixed(1)} kg` : '—'}</span>
-                </div>
-                <div className="wizard-success-summary-row">
-                  <span className="wizard-success-summary-label">Objetivo Principal</span>
-                  <span className="wizard-success-summary-value">{formData.objetivo_principal || '—'}</span>
-                </div>
+                {[
+                  { label: 'Paciente', value: formData.nome_completo },
+                  { label: 'Email', value: formData.email },
+                  { label: 'Telefone', value: formData.telefone },
+                  { label: 'Data de Nascimento', value: formData.data_nascimento },
+                  { label: 'Sexo', value: formData.genero },
+                  { label: 'Profissão', value: formData.profissao },
+                  { label: 'Altura', value: formData.altura ? `${formData.altura} cm` : null },
+                  { label: 'Peso Atual', value: formData.peso_atual ? `${parseFloat(formData.peso_atual).toFixed(1)} kg` : null },
+                  { label: 'Peso Desejado', value: formData.peso_desejado ? `${parseFloat(formData.peso_desejado).toFixed(1)} kg` : null },
+                  { label: 'Avaliação do Sono', value: formData.avaliacao_sono ? `${formData.avaliacao_sono}/10` : null },
+                  { label: 'Consumo de Água', value: formData.consumo_agua },
+                  { label: 'Prática de Jejum', value: formData.pratica_jejum },
+                  { label: 'Objetivo Principal', value: formData.objetivo_principal },
+                  { label: 'Pratica Atividade Física', value: formData.patrica_atividade_fisica },
+                  { label: 'Frequência de Treino', value: formData.frequencia_deseja_treinar },
+                  { label: 'Restrição de Movimento', value: formData.restricao_movimento },
+                  { label: 'Proteínas', value: Array.isArray(formData.proteinas) && formData.proteinas.length > 0 ? formData.proteinas.join(', ') : null },
+                  { label: 'Carboidratos', value: Array.isArray(formData.carboidratos) && formData.carboidratos.length > 0 ? formData.carboidratos.join(', ') : null },
+                  { label: 'Vegetais', value: Array.isArray(formData.vegetais) && formData.vegetais.length > 0 ? formData.vegetais.join(', ') : null },
+                  { label: 'Frutas', value: Array.isArray(formData.frutas) && formData.frutas.length > 0 ? formData.frutas.join(', ') : null },
+                  { label: 'Toma Medicamentos', value: formData.toma_medicamentos },
+                  { label: 'Medicamentos', value: formData.medicamentos_detalhes },
+                  { label: 'Suplementos', value: Array.isArray(formData.suplementos) && formData.suplementos.length > 0 ? formData.suplementos.join(', ') : null },
+                  { label: 'Condições Diagnosticadas', value: Array.isArray(formData.condicoes_diagnosticadas) && formData.condicoes_diagnosticadas.length > 0 ? formData.condicoes_diagnosticadas.join(', ') : null },
+                  { label: 'Cirurgia', value: formData.cirurgias_anteriores },
+                  { label: 'Mastigação', value: formData.mastigacao },
+                  { label: 'Avaliação do Intestino', value: formData.avaliacao_intestino ? `${formData.avaliacao_intestino}/10` : null },
+                  { label: 'Escala Bristol', value: formData.tipo_bristol ? `Tipo ${formData.tipo_bristol}` : null },
+                ].filter(r => r.value).map((r, i) => (
+                  <div key={i} className="wizard-success-summary-row">
+                    <span className="wizard-success-summary-label">{r.label}</span>
+                    <span className="wizard-success-summary-value">{r.value}</span>
+                  </div>
+                ))}
               </div>
               <div className="wizard-success-bar" />
             </div>
