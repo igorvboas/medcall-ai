@@ -57,6 +57,8 @@ interface Consultation {
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
   status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
   from?: string | null;
+  doctor_name?: string | null;
+  doctor_email?: string | null;
   etapa?: 'ANAMNESE' | 'DIAGNOSTICO' | 'SOLUCAO';
   solucao_etapa?: 'MENTALIDADE' | 'ALIMENTACAO' | 'SUPLEMENTACAO' | 'ATIVIDADE_FISICA';
   duration?: number;
@@ -146,7 +148,8 @@ async function fetchConsultations(
   limit: number = 20,
   search: string = '',
   status: string = 'all',
-  dateFilter?: { type: 'day' | 'week' | 'month', date: string }
+  dateFilter?: { type: 'day' | 'week' | 'month', date: string },
+  doctorId?: string | null
 ): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -159,6 +162,7 @@ async function fetchConsultations(
     params.append('dateFilter', dateFilter.type);
     params.append('date', dateFilter.date);
   }
+  if (doctorId) params.append('doctor_id', doctorId);
 
   const queryParams: Record<string, string | number | boolean> = {};
   params.forEach((value, key) => {
@@ -6703,6 +6707,10 @@ function ConsultasPageContent() {
   const { user } = useAuth();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [doctors, setDoctors] = useState<Array<{id: string, name: string, email: string}>>([]);
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -6748,6 +6756,21 @@ function ConsultasPageContent() {
     };
     checkAdmin();
   }, [user?.id]);
+
+  // Buscar lista de médicos quando for admin (para o filtro de médico)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchDoctors = async () => {
+      try {
+        const { data } = await supabase
+          .from('medicos')
+          .select('id, name, email')
+          .order('name');
+        if (data) setDoctors(data.filter(d => d.name));
+      } catch { /* silently fail */ }
+    };
+    fetchDoctors();
+  }, [isAdmin]);
 
   // Função para voltar para a tela de seleção de soluções
   const handleBackToSolutionSelection = async () => {
@@ -7402,7 +7425,7 @@ function ConsultasPageContent() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, selectedDoctorId]);
 
   // Verificar se o dashboard está completamente carregado
   useEffect(() => {
@@ -7499,7 +7522,7 @@ function ConsultasPageContent() {
       }
       setError(null);
       const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter);
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter, selectedDoctorId);
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -7530,7 +7553,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate]);
+  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate, selectedDoctorId]);
 
   // Buscar status de anamnese e primeira consulta por paciente
   useEffect(() => {
@@ -12903,6 +12926,136 @@ function ConsultasPageContent() {
           />
         </div>
 
+        {/* Filtro por médico — visível apenas para admins */}
+        {isAdmin && (
+          <div style={{ position: 'relative', flex: 1, maxWidth: '320px' }}>
+            <div style={{
+              position: 'absolute',
+              top: '-9px',
+              left: '10px',
+              backgroundColor: '#fff7ed',
+              color: '#c2410c',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              border: '1px solid #fed7aa',
+              zIndex: 2,
+              lineHeight: '16px'
+            }}>ADMIN</div>
+            <Search size={20} style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#f97316',
+              pointerEvents: 'none',
+              zIndex: 1
+            }} />
+            <input
+              type="text"
+              placeholder="Filtrar por médico..."
+              value={doctorSearchTerm}
+              onChange={(e) => {
+                setDoctorSearchTerm(e.target.value);
+                setShowDoctorDropdown(true);
+                if (!e.target.value) {
+                  setSelectedDoctorId(null);
+                }
+              }}
+              onFocus={() => setShowDoctorDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDoctorDropdown(false), 200)}
+              style={{
+                width: '100%',
+                padding: '12px 40px 12px 44px',
+                border: `1px solid ${selectedDoctorId ? '#f97316' : '#fed7aa'}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#fff7ed',
+                color: '#111827',
+                transition: 'all 0.2s ease',
+                boxSizing: 'border-box'
+              }}
+            />
+            {selectedDoctorId && (
+              <button
+                onClick={() => {
+                  setSelectedDoctorId(null);
+                  setDoctorSearchTerm('');
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Limpar filtro"
+              >
+                <X size={16} />
+              </button>
+            )}
+            {showDoctorDropdown && doctorSearchTerm && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                zIndex: 50,
+                maxHeight: '220px',
+                overflowY: 'auto'
+              }}>
+                {doctors
+                  .filter(d =>
+                    d.name?.toLowerCase().includes(doctorSearchTerm.toLowerCase()) ||
+                    d.email?.toLowerCase().includes(doctorSearchTerm.toLowerCase())
+                  )
+                  .map(doctor => (
+                    <div
+                      key={doctor.id}
+                      onMouseDown={() => {
+                        setSelectedDoctorId(doctor.id);
+                        setDoctorSearchTerm(doctor.name);
+                        setShowDoctorDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        fontSize: '13px'
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#ffffff'; }}
+                    >
+                      <div style={{ fontWeight: 500, color: '#111827' }}>{doctor.name}</div>
+                      <div style={{ color: '#6b7280', fontSize: '12px' }}>{doctor.email}</div>
+                    </div>
+                  ))
+                }
+                {doctors.filter(d =>
+                  d.name?.toLowerCase().includes(doctorSearchTerm.toLowerCase()) ||
+                  d.email?.toLowerCase().includes(doctorSearchTerm.toLowerCase())
+                ).length === 0 && (
+                  <div style={{ padding: '10px 14px', color: '#6b7280', fontSize: '13px' }}>
+                    Nenhum médico encontrado
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <select
           value={statusFilter}
           onChange={(e) => {
@@ -13049,6 +13202,24 @@ function ConsultasPageContent() {
         <div className="consultas-table">
           {/* Header da tabela */}
           <div className={`table-header ${isAdmin ? 'has-from-col' : ''}`}>
+            {isAdmin && (
+              <div className="header-cell doctor-header">
+                <span style={{
+                  backgroundColor: '#fff7ed',
+                  color: '#c2410c',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid #fed7aa',
+                  lineHeight: '16px',
+                  marginRight: '6px'
+                }}>ADMIN</span>
+                Médico
+              </div>
+            )}
+            {isAdmin && <div className="table-header-divider"></div>}
             <div className="header-cell patient-header">Paciente</div>
             <div className="table-header-divider"></div>
             <div className="header-cell date-header">Data</div>
@@ -13078,6 +13249,12 @@ function ConsultasPageContent() {
                   onClick={() => handleConsultationClick(consultation)}
                   style={{ cursor: 'pointer' }}
                 >
+                  {isAdmin && (
+                    <div className="table-cell doctor-cell">
+                      <span>{consultation.doctor_name || '-'}</span>
+                    </div>
+                  )}
+                  {isAdmin && <div className="table-row-divider"></div>}
                   <div
                     className="table-cell patient-cell"
                     style={{
