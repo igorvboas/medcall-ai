@@ -7,7 +7,7 @@ dotenv.config({
   path: path.resolve(process.cwd(), '.env')
 });
 
-// Schema de validação das variáveis de ambiente
+// Schema de validação das variáveis de ambieDEDEDEDnte
 const envSchema = z.object({
   // App Settings
   NODE_ENV: z.enum(['development', 'production', 'test', 'homolog']).default('development'),
