@@ -3657,7 +3657,7 @@ function MentalidadeSection({
   // @ts-ignore - mockData will be replaced by dynamic data from API
   const [livroVidaData, setLivroVidaData] = useState<{
     resumo_executivo: string;
-    higiene_sono: HigieneSono;
+    higiene_sono: HigieneSono | null;
     padrao_01: PadraoItem | null;
     padrao_02: PadraoItem | null;
     padrao_03: PadraoItem | null;
@@ -3763,7 +3763,7 @@ function MentalidadeSection({
     setEditingField({ type, padraoNum, fieldPath });
     if (type === 'resumo') {
       setEditValue(livroVidaData.resumo_executivo);
-    } else if (type === 'higiene_sono' && fieldPath) {
+    } else if (type === 'higiene_sono' && fieldPath && livroVidaData.higiene_sono) {
       const value = getNestedValue(livroVidaData.higiene_sono, fieldPath);
       setEditValue(value === null || value === undefined ? '' :
         typeof value === 'string' ? value :
@@ -4076,6 +4076,7 @@ function MentalidadeSection({
   // Função para renderizar seção de Higiene e Sono - texto corrido
   const renderHigieneSono = () => {
     const h = livroVidaData.higiene_sono;
+    if (!h) return null;
     const fields = [
       { label: 'Dormir', value: h.horario_dormir_recomendado },
       { label: 'Acordar', value: h.horario_acordar_recomendado },
@@ -4284,18 +4285,20 @@ function MentalidadeSection({
                   fields = [{ label: 'Resumo Executivo', value: livroVidaData.resumo_executivo, path: 'mentalidade_data.resumo_executivo' }];
                 } else if (viewLivroPopup.type === 'higiene_sono') {
                   const h = livroVidaData.higiene_sono;
-                  fields = [
-                    { label: 'Horario de Dormir', value: h.horario_dormir_recomendado, path: 'mentalidade_data.higiene_sono.horario_dormir_recomendado' },
-                    { label: 'Horario de Acordar', value: h.horario_acordar_recomendado, path: 'mentalidade_data.higiene_sono.horario_acordar_recomendado' },
-                    { label: 'Duracao Alvo', value: h.duracao_alvo, path: 'mentalidade_data.higiene_sono.duracao_alvo' },
-                    { label: 'Janela Semana', value: h.janela_sono_semana, path: 'mentalidade_data.higiene_sono.janela_sono_semana' },
-                    { label: 'Janela FDS', value: h.janela_sono_fds, path: 'mentalidade_data.higiene_sono.janela_sono_fds' },
-                    { label: 'Consistencia', value: h.consistencia_horario, path: 'mentalidade_data.higiene_sono.consistencia_horario' },
-                    { label: 'Rotina Pre-Sono', value: formatValueForDataField(h.rotina_pre_sono), path: 'mentalidade_data.higiene_sono.rotina_pre_sono' },
-                    { label: 'Gatilhos a Evitar', value: formatValueForDataField(h.gatilhos_evitar), path: 'mentalidade_data.higiene_sono.gatilhos_evitar' },
-                    { label: 'Progressao', value: h.progressao_ajuste, path: 'mentalidade_data.higiene_sono.progressao_ajuste' },
-                    { label: 'Observacoes', value: h.observacoes_clinicas, path: 'mentalidade_data.higiene_sono.observacoes_clinicas' },
-                  ];
+                  if (h) {
+                    fields = [
+                      { label: 'Horario de Dormir', value: h.horario_dormir_recomendado, path: 'mentalidade_data.higiene_sono.horario_dormir_recomendado' },
+                      { label: 'Horario de Acordar', value: h.horario_acordar_recomendado, path: 'mentalidade_data.higiene_sono.horario_acordar_recomendado' },
+                      { label: 'Duracao Alvo', value: h.duracao_alvo, path: 'mentalidade_data.higiene_sono.duracao_alvo' },
+                      { label: 'Janela Semana', value: h.janela_sono_semana, path: 'mentalidade_data.higiene_sono.janela_sono_semana' },
+                      { label: 'Janela FDS', value: h.janela_sono_fds, path: 'mentalidade_data.higiene_sono.janela_sono_fds' },
+                      { label: 'Consistencia', value: h.consistencia_horario, path: 'mentalidade_data.higiene_sono.consistencia_horario' },
+                      { label: 'Rotina Pre-Sono', value: formatValueForDataField(h.rotina_pre_sono), path: 'mentalidade_data.higiene_sono.rotina_pre_sono' },
+                      { label: 'Gatilhos a Evitar', value: formatValueForDataField(h.gatilhos_evitar), path: 'mentalidade_data.higiene_sono.gatilhos_evitar' },
+                      { label: 'Progressao', value: h.progressao_ajuste, path: 'mentalidade_data.higiene_sono.progressao_ajuste' },
+                      { label: 'Observacoes', value: h.observacoes_clinicas, path: 'mentalidade_data.higiene_sono.observacoes_clinicas' },
+                    ];
+                  }
                 } else if (viewLivroPopup.type === 'padrao' && viewLivroPopup.padraoNum) {
                   const key = `padrao_${String(viewLivroPopup.padraoNum).padStart(2, '0')}` as keyof typeof livroVidaData;
                   const p = livroVidaData[key] as PadraoItem | null;
