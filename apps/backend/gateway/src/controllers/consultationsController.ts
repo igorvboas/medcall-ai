@@ -619,6 +619,12 @@ export async function finalizeConsultationDirect(req: AuthenticatedRequest, res:
       return res.status(500).json({ success: false, error: 'Erro ao atualizar consulta' });
     }
 
+    // Atualizar call_sessions.status para 'ended'
+    await supabase
+      .from('call_sessions')
+      .update({ status: 'ended' })
+      .eq('consultation_id', consultationId);
+
     // Buscar transcrição existente (pode estar vazia para presencial)
     const { data: transcription } = await supabase
       .from('transcriptions')
