@@ -18,6 +18,7 @@ import { SingleMicrophoneControl } from '@/components/presencial/SingleMicrophon
 import { formatDuration, blobToBase64 } from '@/lib/audioUtils';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { supabase } from '@/lib/supabase';
+import { getWebhookEndpoints, getWebhookHeaders } from '@/lib/webhook-config';
 
 import { TranscriptionSegment, Speaker } from '@/types/transcription';
 import { useMicMonitor } from '@/hooks/useMicMonitor';
@@ -920,6 +921,19 @@ function PresencialConsultationContent() {
           const currentExams = existing?.exames || [];
           const allExams = [...(Array.isArray(currentExams) ? currentExams : []), ...uploadedUrls];
           await supabase.from('consultations').update({ exames: allExams }).eq('id', consultationId);
+
+          // Disparar webhook de exames para o N8N
+          try {
+            const endpoints = getWebhookEndpoints();
+            const headers = getWebhookHeaders();
+            await fetch(endpoints.exames, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ consulta_id: consultationId }),
+            });
+          } catch (webhookError) {
+            console.error('⚠️ [WEBHOOK] Erro ao disparar webhook de exames:', webhookError);
+          }
         }}
       />
 
