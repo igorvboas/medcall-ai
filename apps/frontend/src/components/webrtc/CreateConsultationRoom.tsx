@@ -450,6 +450,12 @@ export function CreateConsultationRoom({
   }, [selectedMicrophone, consultationType, creationType]);
 
   const handleCreateRoom = async () => {
+    // Bloquear se médico já tem consulta em andamento
+    if (activeConsultationBlock) {
+      showError('Finalize a consulta em andamento antes de iniciar uma nova.', 'Consulta em Andamento');
+      return;
+    }
+
     // Validações
     if (!selectedPatient) {
       showWarning('Por favor, selecione um paciente', 'Validação');
@@ -1388,6 +1394,7 @@ export function CreateConsultationRoom({
               handleCreateRoom();
             }}
             disabled={
+              !!activeConsultationBlock ||
               isCreatingRoom ||
               loadingPatients ||
               loadingDoctor ||
@@ -1408,7 +1415,7 @@ export function CreateConsultationRoom({
               alignItems: 'center',
               gap: 8,
               transition: 'all 0.2s',
-              opacity: (isCreatingRoom || !selectedPatient || !consent || (consultationType === 'online' && !selectedMicrophone)) ? 0.5 : 1,
+              opacity: (!!activeConsultationBlock || isCreatingRoom || !selectedPatient || !consent || (consultationType === 'online' && !selectedMicrophone)) ? 0.5 : 1,
               boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
             }}
             onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#16a34a'; }}
