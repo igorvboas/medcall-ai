@@ -3,7 +3,7 @@
 import { useNotifications } from '@/components/shared/NotificationSystem';
 import { useState, useEffect, useRef } from 'react';
 import { gatewayClient } from '@/lib/gatewayClient';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AlertCircle, Video, X, CheckCircle } from 'lucide-react';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +24,7 @@ interface ActiveConsultation {
 
 export function ActiveConsultationBanner() {
   const { showError } = useNotifications();
+  const pathname = usePathname();
   const [activeConsultation, setActiveConsultation] = useState<ActiveConsultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -251,6 +252,11 @@ export function ActiveConsultationBanner() {
     activeConsultationRef.current = null;
     setActiveConsultation(null);
   };
+
+  // Não exibir o banner durante consultas ativas (online ou presencial)
+  if (pathname?.startsWith('/consulta/')) {
+    return null;
+  }
 
   if (loading || !activeConsultation) {
     return null;
