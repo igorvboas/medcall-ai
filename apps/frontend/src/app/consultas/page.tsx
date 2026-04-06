@@ -55,7 +55,7 @@ interface Consultation {
   patient_name: string;
   patient_context?: string;
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA';
-  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO';
+  status: 'CREATED' | 'RECORDING' | 'PROCESSING' | 'VALIDATION' | 'VALID_ANAMNESE' | 'VALID_DIAGNOSTICO' | 'VALID_SOLUCAO' | 'ERROR' | 'CANCELLED' | 'COMPLETED' | 'AGENDAMENTO' | 'DELETED';
   from?: string | null;
   doctor_name?: string | null;
   doctor_email?: string | null;
@@ -7527,9 +7527,8 @@ function ConsultasPageContent() {
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
-        // Preservar itens marcados como deletados localmente que o backend ainda não retorna
-        // (gap entre atualização local e deploy do backend)
-        const locallyDeleted = prev.filter(p => p.deletado && !response.consultations.find(r => r.id === p.id));
+        // Preservar itens com status DELETED que ainda não chegam na resposta do backend
+        const locallyDeleted = prev.filter(p => p.status === 'DELETED' && !response.consultations.find(r => r.id === p.id));
 
         const merged = locallyDeleted.length > 0
           ? [...response.consultations, ...locallyDeleted]
@@ -7543,8 +7542,7 @@ function ConsultasPageContent() {
             return oldConsultation.id !== newConsultation.id ||
               oldConsultation.status !== newConsultation.status ||
               oldConsultation.etapa !== newConsultation.etapa ||
-              oldConsultation.updated_at !== newConsultation.updated_at ||
-              oldConsultation.deletado !== newConsultation.deletado;
+              oldConsultation.updated_at !== newConsultation.updated_at;
           });
 
         if (hasChanges) {
@@ -8616,8 +8614,8 @@ function ConsultasPageContent() {
       if (!response.success) { throw new Error(response.error || "Erro na requisição"); }
 
       if (isAdmin) {
-        // Admin vê consultas deletadas com tag — apenas atualiza o estado local
-        setConsultations(prev => prev.map(c => c.id === consultationToDelete.id ? { ...c, deletado: true } : c));
+        // Admin vê consultas deletadas com status DELETED — apenas atualiza o estado local
+        setConsultations(prev => prev.map(c => c.id === consultationToDelete.id ? { ...c, status: 'DELETED' as const } : c));
       } else {
         // Não-admin não vê deletadas — remove da lista
         setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
@@ -13326,28 +13324,13 @@ function ConsultasPageContent() {
                     </div>
                   </div>
                   <div className="table-row-divider"></div>
-                  <div className="table-cell status-cell" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="table-cell status-cell">
                     <StatusBadge
                       status={mapBackendStatus(consultation.status)}
                       size="md"
                       showIcon={true}
                       variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' || consultation.status === 'VALIDATION' ? 'outlined' : 'default'}
                     />
-                    {isAdmin && consultation.deletado && (
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        color: '#fff',
-                        background: '#ef4444',
-                        borderRadius: '4px',
-                        padding: '2px 6px',
-                        letterSpacing: '0.03em',
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        Deletado
-                      </span>
-                    )}
                   </div>
                   {isAdmin && <div className="table-row-divider"></div>}
                   {isAdmin && (

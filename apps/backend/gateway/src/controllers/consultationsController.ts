@@ -73,7 +73,7 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
 
     // Admin vê todas (incluindo deletadas); não-admin só vê não-deletadas
     if (!medico.admin) {
-      query = query.eq('deletado', false);
+      query = query.eq('deletado', false).neq('status', 'DELETED');
     }
 
     if (effectiveDoctorId) {
@@ -469,10 +469,10 @@ export async function deleteConsultation(req: AuthenticatedRequest, res: Respons
       }
     }
 
-    // Soft delete: marcar como deletado
+    // Soft delete: marcar status como DELETED (e deletado=true para retrocompatibilidade)
     let updateQuery = supabase
       .from('consultations')
-      .update({ deletado: true })
+      .update({ status: 'DELETED', deletado: true })
       .eq('id', id);
 
     if (!medico.admin) {

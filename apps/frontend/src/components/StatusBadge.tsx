@@ -17,7 +17,8 @@ export type StatusType =
   | 'confirmed' | 'pending' | 'cancelled' | 'completed' 
   | 'in-progress' | 'scheduled' | 'waiting' | 'recording' 
   | 'processing' | 'error' | 'created' | 'rescheduled'
-  | 'validation' | 'validation-anamnese' | 'validation-diagnostico' | 'validation-solucao';
+  | 'validation' | 'validation-anamnese' | 'validation-diagnostico' | 'validation-solucao'
+  | 'deleted';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -157,6 +158,14 @@ const statusConfig = {
     bgColor: '#d1fae5',
     textColor: '#065f46',
     borderColor: '#10b981'
+  },
+  deleted: {
+    icon: XCircle,
+    label: 'Deletada',
+    color: 'danger',
+    bgColor: '#fee2e2',
+    textColor: '#991b1b',
+    borderColor: '#ef4444'
   }
 };
 
@@ -238,7 +247,8 @@ export function mapBackendStatus(backendStatus: string): StatusType {
     'RESCHEDULED': 'rescheduled',
     'Confirmed': 'confirmed',
     'Pending': 'pending',
-    'Cancelled': 'cancelled'
+    'Cancelled': 'cancelled',
+    'DELETED': 'deleted'
   };
 
   return statusMap[backendStatus] || 'pending';
