@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler, ValidationError } from '../middleware/errorHandler';
-import { db } from '../config/database';
+import { db, supabase } from '../config/database';
 import { generateSimpleProtocol } from '../services/protocolService';
 import auditService from '../services/auditService';
 
@@ -44,6 +44,22 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   // Verificar consentimento
   if (!consent) {
     throw new ValidationError('Consentimento é obrigatório para iniciar a sessão');
+  }
+
+  // Bloquear se médico já tem consulta em andamento (RECORDING)
+  const doctorId = validationResult.data.participants.doctor.id;
+  const { data: activeConsultation } = await supabase
+    .from('consultations')
+    .select('id')
+    .eq('doctor_id', doctorId)
+    .eq('status', 'RECORDING')
+    .maybeSingle();
+
+  if (activeConsultation && activeConsultation.id !== validationResult.data.consultation_id) {
+    return res.status(409).json({
+      error: 'Médico já possui uma consulta em andamento. Finalize a consulta atual antes de iniciar outra.',
+      activeConsultationId: activeConsultation.id,
+    });
   }
 
   try {

@@ -157,6 +157,23 @@ function SetupInner() {
     setError(null);
 
     try {
+      // Verificar se médico já tem consulta em andamento
+      if (doctorId) {
+        const { data: activeConsultation } = await supabase
+          .from('consultations')
+          .select('id')
+          .eq('doctor_id', doctorId)
+          .eq('status', 'RECORDING')
+          .neq('id', consultationId)
+          .maybeSingle();
+
+        if (activeConsultation) {
+          setError('Você já possui uma consulta em andamento. Finalize a consulta atual antes de iniciar outra.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Parar preview antes de criar a sessão
       stopPreview();
 
