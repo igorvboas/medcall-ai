@@ -7527,12 +7527,17 @@ function ConsultasPageContent() {
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
-        // Preservar itens com status DELETED que ainda não chegam na resposta do backend
-        const locallyDeleted = prev.filter(p => p.status === 'DELETED' && !response.consultations.find(r => r.id === p.id));
+        // IDs que o usuário marcou como DELETED nesta sessão — não deixar polling sobrescrever
+        const prevDeletedIds = new Set(prev.filter(p => p.status === 'DELETED').map(p => p.id));
 
-        const merged = locallyDeleted.length > 0
-          ? [...response.consultations, ...locallyDeleted]
-          : response.consultations;
+        // Mesclar: preservar DELETED para itens que voltam do servidor com status diferente
+        const serverMerged = response.consultations.map(r =>
+          prevDeletedIds.has(r.id) ? { ...r, status: 'DELETED' as const } : r
+        );
+
+        // Adicionar itens DELETED que o servidor não retornou (ex: não-admin ou antes do deploy)
+        const missingLocally = prev.filter(p => p.status === 'DELETED' && !response.consultations.find(r => r.id === p.id));
+        const merged = missingLocally.length > 0 ? [...serverMerged, ...missingLocally] : serverMerged;
 
         // Comparar IDs e status para detectar mudanças
         const hasChanges = prev.length !== merged.length ||
