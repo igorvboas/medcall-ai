@@ -149,7 +149,8 @@ async function fetchConsultations(
   limit: number = 20,
   search: string = '',
   status: string = 'all',
-  dateFilter?: { type: 'day' | 'week' | 'month', date: string },
+  dateFrom?: string,
+  dateTo?: string,
   doctorId?: string | null
 ): Promise<ConsultationsResponse> {
   const params = new URLSearchParams({
@@ -159,10 +160,8 @@ async function fetchConsultations(
 
   if (search) params.append('search', search);
   if (status && status !== 'all') params.append('status', status);
-  if (dateFilter) {
-    params.append('dateFilter', dateFilter.type);
-    params.append('date', dateFilter.date);
-  }
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
   if (doctorId) params.append('doctor_id', doctorId);
 
   const queryParams: Record<string, string | number | boolean> = {};
@@ -6722,8 +6721,8 @@ function ConsultasPageContent() {
   const [dashboardLoaded, setDashboardLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilterType, setDateFilterType] = useState<'day' | 'week' | 'month' | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const isInitialMount = useRef(true);
 
   // Estados para visualização de detalhes
@@ -7426,7 +7425,7 @@ function ConsultasPageContent() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, selectedDoctorId]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo, selectedDoctorId]);
 
   // Verificar se o dashboard está completamente carregado
   useEffect(() => {
@@ -7522,8 +7521,7 @@ function ConsultasPageContent() {
         setLoading(true);
       }
       setError(null);
-      const dateFilter = dateFilterType && selectedDate ? { type: dateFilterType, date: selectedDate } : undefined;
-      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFilter, selectedDoctorId);
+      const response = await fetchConsultations(currentPage, 20, searchTerm, statusFilter, dateFrom || undefined, dateTo || undefined, selectedDoctorId);
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
@@ -7566,7 +7564,7 @@ function ConsultasPageContent() {
         setLoading(false);
       }
     }
-  }, [currentPage, searchTerm, statusFilter, dateFilterType, selectedDate, selectedDoctorId]);
+  }, [currentPage, searchTerm, statusFilter, dateFrom, dateTo, selectedDoctorId]);
 
   // Buscar status de anamnese e primeira consulta por paciente
   useEffect(() => {
@@ -13110,34 +13108,21 @@ function ConsultasPageContent() {
           <option value="CANCELLED">Cancelada</option>
         </select>
 
-        {/* Filtro de Data */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center',
-          minWidth: '280px'
-        }}>
-          <select
-            value={dateFilterType || ''}
-            onChange={(e) => {
-              const type = e.target.value as 'day' | 'week' | 'month' | '';
-              setDateFilterType(type || null);
-              if (!type) {
-                setSelectedDate('');
-              } else if (!selectedDate) {
-                // Se não há data selecionada, usar data atual
-                setSelectedDate(new Date().toISOString().split('T')[0]);
-              }
-            }}
+        {/* Filtro de Intervalo de Data */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            title="Data início"
             style={{
               padding: '12px 16px',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
               fontSize: '14px',
               backgroundColor: '#ffffff',
-              color: '#111827',
+              color: dateFrom ? '#111827' : '#9ca3af',
               cursor: 'pointer',
-              minWidth: '120px',
               transition: 'all 0.2s ease'
             }}
             onFocus={(e) => {
@@ -13148,46 +13133,36 @@ function ConsultasPageContent() {
               e.target.style.borderColor = '#e5e7eb';
               e.target.style.boxShadow = 'none';
             }}
-          >
-            <option value="">Sem filtro de data</option>
-            <option value="day">Dia</option>
-            <option value="week">Semana</option>
-            <option value="month">Mês</option>
-          </select>
-
-          {dateFilterType && (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                padding: '12px 16px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#ffffff',
-                color: '#111827',
-                cursor: 'pointer',
-                flex: 1,
-                transition: 'all 0.2s ease'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#1B4266';
-                e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          )}
-
-          {dateFilterType && (
+          />
+          <span style={{ color: '#6b7280', fontSize: '14px', whiteSpace: 'nowrap' }}>até</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+            title="Data fim"
+            style={{
+              padding: '12px 16px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: '#ffffff',
+              color: dateTo ? '#111827' : '#9ca3af',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#1B4266';
+              e.target.style.boxShadow = '0 0 0 3px rgba(27, 66, 102, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#e5e7eb';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          {(dateFrom || dateTo) && (
             <button
-              onClick={() => {
-                setDateFilterType(null);
-                setSelectedDate('');
-              }}
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
               style={{
                 padding: '12px',
                 border: '1px solid #e5e7eb',

@@ -36,8 +36,8 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       search,
       status,
       type: consultationType,
-      dateFilter,
-      date,
+      dateFrom,
+      dateTo,
       page = '1',
       limit = '20',
       doctor_id: queryDoctorId
@@ -91,43 +91,17 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       query = query.eq('consultation_type', consultationType);
     }
 
-    // Aplicar filtro de data
-    if (dateFilter && date) {
-      const selectedDate = new Date(date as string);
-
-      if (dateFilter === 'day') {
-        const startOfDay = new Date(selectedDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(selectedDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        query = query.gte('created_at', startOfDay.toISOString())
-          .lte('created_at', endOfDay.toISOString());
-      } else if (dateFilter === 'week') {
-        const dayOfWeek = selectedDate.getDay();
-        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const startOfWeek = new Date(selectedDate);
-        startOfWeek.setDate(selectedDate.getDate() + diff);
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        query = query.gte('created_at', startOfWeek.toISOString())
-          .lte('created_at', endOfWeek.toISOString());
-      } else if (dateFilter === 'month') {
-        const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-        endOfMonth.setHours(23, 59, 59, 999);
-
-        query = query.gte('created_at', startOfMonth.toISOString())
-          .lte('created_at', endOfMonth.toISOString());
-      }
+    // Aplicar filtro de intervalo de data
+    if (dateFrom) {
+      const from = new Date(dateFrom as string);
+      from.setHours(0, 0, 0, 0);
+      query = query.gte('created_at', from.toISOString());
     }
-
+    if (dateTo) {
+      const to = new Date(dateTo as string);
+      to.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', to.toISOString());
+    }
     // Paginação
     const from = (pageNum - 1) * limitNum;
     const to = from + limitNum - 1;
