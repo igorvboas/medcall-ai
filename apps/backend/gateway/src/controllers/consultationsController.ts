@@ -71,9 +71,11 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
       `, { count: 'exact' })
       .order('created_at', { ascending: false });
 
-    // Admin vê todas (incluindo deletadas); não-admin só vê não-deletadas
+    // Admin vê todas (incluindo deletadas e em gravação); não-admin tem restrições
     if (!medico.admin) {
-      query = query.eq('deletado', false).neq('status', 'DELETED');
+      query = query
+        .eq('deletado', false)
+        .not('status', 'in', '("DELETED","AGENDAMENTO","RECORDING")');
     }
 
     if (effectiveDoctorId) {
