@@ -231,13 +231,11 @@ export function ActiveConsultationBanner() {
         console.warn('Finalize-remote falhou, usando fallback direto:', e);
       }
 
-      // Fallback: atualizar status diretamente no banco
+      // Fallback: finalizar via gateway (atualiza status + envia webhook)
       if (!finalized) {
-        const response = await gatewayClient.patch(`/consultations/${activeConsultation.id}`, {
-          status: 'PROCESSING',
-          consulta_finalizada: true,
-          consulta_fim: new Date().toISOString(),
-        });
+        const response = await gatewayClient.post(
+          `/consultations/${activeConsultation.id}/finalize-direct`
+        );
         if (!response.success) {
           throw new Error(response.error || 'Erro ao finalizar consulta');
         }
