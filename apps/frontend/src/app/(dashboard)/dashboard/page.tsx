@@ -26,7 +26,6 @@ import { Calendar } from '../../../components/Calendar';
 import { StatusBadge, mapBackendStatus } from '../../../components/StatusBadge';
 import { ConsultationStatusChart } from '../../../components/ConsultationStatusChart';
 import { LoadingScreen } from '../../../components/shared/LoadingScreen';
-import { ActiveConsultationBanner } from '../../../components/dashboard/ActiveConsultationBanner';
 import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
 import { DASHBOARD_STEPS } from '@/components/dashboard/tutorialSteps';
 import '../../../components/Calendar.css';
@@ -526,9 +525,6 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-exact">
-      {/* Banner de consulta em andamento */}
-      <ActiveConsultationBanner />
-
       {/* Saudação do dashboard */}
       <div className="dashboard-greeting-section">
         <h1 className="dashboard-title">

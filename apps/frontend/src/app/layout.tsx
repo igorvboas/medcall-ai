@@ -4,6 +4,7 @@ import './globals.css';
 import { ProvidersWrapper } from '@/components/providers/ProvidersWrapper';
 import { SuppressHydrationWarnings } from './suppress-warnings';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import { ActiveConsultationBanner } from '@/components/dashboard/ActiveConsultationBanner';
 
 export const metadata: Metadata = {
   title: 'Auton Health - Plataforma de Consultas',
@@ -65,6 +66,7 @@ export default function RootLayout({
         )}
         <SuppressHydrationWarnings />
         <ProvidersWrapper>
+          <ActiveConsultationBanner />
           {children}
           <WhatsAppButton />
         </ProvidersWrapper>
