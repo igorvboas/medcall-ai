@@ -1,11 +1,12 @@
 .active-consultation-banner {
-  position: relative;
-  z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
   background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
   box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
   animation: slideDown 0.3s ease-out;
-  margin: -2rem -2rem 1.5rem -2rem;
-  border-radius: 0;
 }
 
 @keyframes slideDown {
