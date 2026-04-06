@@ -124,12 +124,7 @@ export default function ConsultasAdminPage() {
 
   // Função para encerrar chamada
   const handleTerminateCall = async (consulta: ConsultaAdmin) => {
-    if (!consulta.room_id) {
-      setError('Esta consulta não possui uma sala ativa (room_id ausente)');
-      return;
-    }
-
-    const confirmMessage = `Tem certeza que deseja encerrar a chamada?\n\nPaciente: ${consulta.patient_name}\nMédico: ${consulta.medico_name || consulta.medico_email || 'Não identificado'}\nRoom ID: ${consulta.room_id}`;
+    const confirmMessage = `Tem certeza que deseja encerrar a chamada?\n\nPaciente: ${consulta.patient_name}\nMédico: ${consulta.medico_name || consulta.medico_email || 'Não identificado'}`;
 
     if (!confirm(confirmMessage)) {
       return;
@@ -140,14 +135,24 @@ export default function ConsultasAdminPage() {
     setTerminateSuccess(null);
 
     try {
-      // Encerrar sessão diretamente pelo room_id
-      const response = await gatewayClient.post(`/admin/consultations/terminate-room/${consulta.room_id}`);
-
-      if (!response.success) {
-        throw new Error(response.error || 'Erro ao encerrar chamada');
+      // 1. Encerrar sala de vídeo (se houver room_id)
+      if (consulta.room_id) {
+        const terminateResponse = await gatewayClient.post(`/admin/consultations/terminate-room/${consulta.room_id}`);
+        if (!terminateResponse.success) {
+          console.warn('[ADMIN] Falha ao encerrar sala:', terminateResponse.error);
+        }
       }
 
-      setTerminateSuccess(`Sessão encerrada com sucesso: ${consulta.room_id}`);
+      // 2. Finalizar consulta: atualiza DB + envia webhook com finalizado_por=admin
+      const finalizeResponse = await gatewayClient.post(`/consultations/${consulta.id}/finalize-direct`, {
+        finalizado_por: 'admin',
+      });
+
+      if (!finalizeResponse.success) {
+        throw new Error((finalizeResponse as any).error || 'Erro ao finalizar consulta');
+      }
+
+      setTerminateSuccess(`Consulta encerrada e webhook disparado: ${consulta.patient_name}`);
 
       // Atualizar lista de consultas
       await fetchConsultas();

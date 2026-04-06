@@ -596,11 +596,12 @@ export async function finalizeConsultationDirect(req: AuthenticatedRequest, res:
     }
 
     const { id: consultationId } = req.params;
+    const { finalizado_por } = req.body || {};
     const doctorAuthId = req.user.id;
 
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, admin')
       .eq('user_auth', doctorAuthId)
       .single();
 
@@ -608,12 +609,17 @@ export async function finalizeConsultationDirect(req: AuthenticatedRequest, res:
       return res.status(404).json({ success: false, error: 'Médico não encontrado' });
     }
 
-    const { data: consultation, error: consultationError } = await supabase
+    let consultaQuery = supabase
       .from('consultations')
       .select('id, doctor_id, patient_id, consultation_type')
-      .eq('id', consultationId)
-      .eq('doctor_id', medico.id)
-      .single();
+      .eq('id', consultationId);
+
+    // Admin pode finalizar qualquer consulta; não-admin só as suas
+    if (!medico.admin) {
+      consultaQuery = consultaQuery.eq('doctor_id', medico.id);
+    }
+
+    const { data: consultation, error: consultationError } = await consultaQuery.single();
 
     if (consultationError || !consultation) {
       return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
@@ -653,7 +659,7 @@ export async function finalizeConsultationDirect(req: AuthenticatedRequest, res:
       ? 'https://triahook.gst.dev.br/webhook/usi-analise-homolog'
       : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
 
-    const webhookPayload = {
+    const webhookPayload: Record<string, unknown> = {
       consultationId,
       doctorId: consultation.doctor_id,
       patientId: consultation.patient_id,
@@ -663,6 +669,10 @@ export async function finalizeConsultationDirect(req: AuthenticatedRequest, res:
       tipo_consulta: consultation.consultation_type || 'PRESENCIAL',
       env: nodeEnv,
     };
+
+    if (finalizado_por) {
+      webhookPayload.finalizado_por = finalizado_por;
+    }
 
     fetch(webhookUrl, {
       method: 'POST',
