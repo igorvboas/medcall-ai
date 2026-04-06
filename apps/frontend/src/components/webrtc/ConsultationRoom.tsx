@@ -3660,7 +3660,20 @@ export function ConsultationRoom({
       console.log('✅ Processo de upload finalizado.');
 
       // Disparar webhook de exames
-      const webhookConsultaId = currentConsultId || roomId;
+      // Resolver consultation_id: preferir estado local, senão buscar via call_sessions pelo roomId
+      let webhookConsultaId = currentConsultId || null;
+      if (!webhookConsultaId && roomId) {
+        const { data: callSession } = await supabase
+          .from('call_sessions')
+          .select('consultation_id')
+          .eq('room_id', roomId)
+          .maybeSingle();
+        webhookConsultaId = callSession?.consultation_id || null;
+        if (webhookConsultaId) {
+          console.log('🔍 [WEBHOOK] consultation_id resolvido via call_sessions:', webhookConsultaId);
+        }
+      }
+
       if (webhookConsultaId) {
         try {
           const endpoints = getWebhookEndpoints();
@@ -3674,6 +3687,8 @@ export function ConsultationRoom({
         } catch (webhookError) {
           console.error('⚠️ [WEBHOOK] Erro ao disparar webhook de exames:', webhookError);
         }
+      } else {
+        console.warn('⚠️ [WEBHOOK] consultation_id não encontrado — webhook não disparado');
       }
 
     } catch (error: any) {
