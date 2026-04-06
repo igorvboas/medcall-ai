@@ -74,6 +74,7 @@ export function CreateConsultationRoom({
   const [showDualMicWarning, setShowDualMicWarning] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [activeConsultationBlock, setActiveConsultationBlock] = useState<{ id: string; patient_name: string } | null>(null);
 
   // Novos estados para agendamento
   const [creationType, setCreationType] = useState<'instantanea' | 'agendamento' | ''>('instantanea');
@@ -221,6 +222,19 @@ export function CreateConsultationRoom({
           const doctorName = medico.name || 'Dr. Médico';
           setHostName(doctorName);
           console.log('✅ Dados do médico carregados:', doctorName);
+
+          // Verificar se médico já tem consulta em andamento
+          const { data: activeConsult } = await supabase
+            .from('consultations')
+            .select('id, patient_name, patients(name)')
+            .eq('doctor_id', medico.id)
+            .eq('status', 'RECORDING')
+            .maybeSingle();
+
+          if (activeConsult) {
+            const patientName = (activeConsult as any).patients?.name || activeConsult.patient_name || 'Paciente';
+            setActiveConsultationBlock({ id: activeConsult.id, patient_name: patientName });
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dados do médico:', error);
@@ -923,6 +937,50 @@ export function CreateConsultationRoom({
           <path d="M11.125 3.125V10.125H4.125V11.875H11.125V18.875H12.875V11.875H19.875V10.125H12.875V3.125H11.125Z" fill="currentColor" />
         </svg>
       </div>
+
+      {/* Aviso de consulta em andamento */}
+      {activeConsultationBlock && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1px solid #F59E0B',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 600, color: '#92400E', marginBottom: '4px', fontSize: '15px' }}>
+              Você já tem uma consulta em andamento
+            </p>
+            <p style={{ color: '#92400E', fontSize: '14px', marginBottom: '12px' }}>
+              Paciente: <strong>{activeConsultationBlock.patient_name}</strong>. Finalize a consulta atual antes de iniciar uma nova.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push(`/consultas?consulta_id=${activeConsultationBlock.id}`)}
+              style={{
+                background: '#D97706',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Retornar à Consulta
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Container dos três cards */}
       <form id="consultation-form" onSubmit={(e) => { e.preventDefault(); handleCreateRoom(); }} className="consultation-cards-container">
