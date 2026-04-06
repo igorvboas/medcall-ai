@@ -64,17 +64,17 @@
   flex-wrap: wrap;
 }
 
-.patient-name {
+.active-consultation-banner .patient-name {
   font-weight: 500;
   color: white !important;
 }
 
-.separator {
+.active-consultation-banner .separator {
   opacity: 0.6;
   color: white !important;
 }
 
-.consultation-type {
+.active-consultation-banner .consultation-type {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
