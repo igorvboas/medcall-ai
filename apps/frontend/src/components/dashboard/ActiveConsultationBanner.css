@@ -1,11 +1,13 @@
 .active-consultation-banner {
-  position: relative;
-  z-index: 1000;
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 9999;
   background: linear-gradient(135deg, #1B4266 0%, #153350 100%);
-  box-shadow: 0 4px 12px rgba(27, 66, 102, 0.3);
+  box-shadow: 0 4px 20px rgba(27, 66, 102, 0.4);
+  border-radius: 12px;
   animation: slideDown 0.3s ease-out;
-  margin: -2rem -2rem 1.5rem -2rem;
-  border-radius: 0;
 }
 
 @keyframes slideDown {
@@ -62,20 +64,26 @@
   flex-wrap: wrap;
 }
 
-.patient-name {
+.active-consultation-banner .patient-name {
+  font-weight: 500;
+  color: white !important;
+}
+
+.active-consultation-banner .separator {
+  opacity: 0.6;
+  color: white !important;
+}
+
+.active-consultation-banner .consultation-type {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.active-consultation-banner .status-badge {
+  color: white !important;
+  background: none !important;
+  padding: 0 !important;
   font-weight: 500;
 }
-
-.separator {
-  opacity: 0.6;
-}
-
-.consultation-type {
-  color: white;
-  opacity: 0.9;
-}
-
-/* Status badge: usar StatusBadge.css como fonte única */
 
 .banner-actions {
   display: flex;

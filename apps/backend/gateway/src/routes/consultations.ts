@@ -6,6 +6,7 @@ import {
   updateConsultation,
   deleteConsultation,
   finalizeConsultationRemote,
+  finalizeConsultationDirect,
   createScheduledConsultation
 } from '../controllers/consultationsController';
 
@@ -23,6 +24,12 @@ router.get('/', authenticateToken, getConsultations);
  * Usado pelo popup "Consulta em Andamento" quando o médico clica em Finalizar.
  */
 router.post('/:id/finalize-remote', authenticateToken, finalizeConsultationRemote);
+
+/**
+ * POST /consultations/:id/finalize-direct
+ * Fallback: atualiza PROCESSING + envia webhook (para consultas sem sala ativa).
+ */
+router.post('/:id/finalize-direct', authenticateToken, finalizeConsultationDirect);
 
 /**
  * POST /consultations/schedule

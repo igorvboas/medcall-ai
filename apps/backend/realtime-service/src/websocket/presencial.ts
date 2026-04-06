@@ -88,6 +88,25 @@ export function setupPresencialWebSocket(io: SocketIOServer): void {
 
                     console.log(`[PRESENCIAL] Sessao ${sessionId} reconnected by ${userName}`);
                 } else {
+                    // Bloquear se médico já tem outra consulta em andamento (RECORDING)
+                    const { data: activeConsultation } = await supabase
+                        .from('consultations')
+                        .select('id')
+                        .eq('doctor_id', consultation.doctor_id)
+                        .eq('status', 'RECORDING')
+                        .neq('id', consultationId)
+                        .maybeSingle();
+
+                    if (activeConsultation) {
+                        console.warn(`[PRESENCIAL] Médico ${consultation.doctor_id} já tem consulta ${activeConsultation.id} em andamento`);
+                        callback({
+                            success: false,
+                            error: 'Médico já possui uma consulta em andamento. Finalize a consulta atual antes de iniciar outra.',
+                            activeConsultationId: activeConsultation.id,
+                        });
+                        return;
+                    }
+
                     // Fresh session: create new
                     sessionId = 'pres-' + crypto.randomBytes(6).toString('hex');
 

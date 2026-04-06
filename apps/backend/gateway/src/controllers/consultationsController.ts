@@ -571,6 +571,109 @@ export async function finalizeConsultationRemote(req: AuthenticatedRequest, res:
 }
 
 /**
+ * POST /consultations/:id/finalize-direct
+ * Fallback de finalização: atualiza status para PROCESSING e envia webhook de transcrição.
+ * Usado quando finalize-remote falha (ex: consulta presencial sem sala ativa).
+ */
+export async function finalizeConsultationDirect(req: AuthenticatedRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Não autorizado' });
+    }
+
+    const { id: consultationId } = req.params;
+    const doctorAuthId = req.user.id;
+
+    const { data: medico, error: medicoError } = await supabase
+      .from('medicos')
+      .select('id')
+      .eq('user_auth', doctorAuthId)
+      .single();
+
+    if (medicoError || !medico) {
+      return res.status(404).json({ success: false, error: 'Médico não encontrado' });
+    }
+
+    const { data: consultation, error: consultationError } = await supabase
+      .from('consultations')
+      .select('id, doctor_id, patient_id, consultation_type')
+      .eq('id', consultationId)
+      .eq('doctor_id', medico.id)
+      .single();
+
+    if (consultationError || !consultation) {
+      return res.status(404).json({ success: false, error: 'Consulta não encontrada' });
+    }
+
+    // Atualizar status para PROCESSING
+    const { error: updateError } = await supabase
+      .from('consultations')
+      .update({
+        status: 'PROCESSING',
+        consulta_finalizada: true,
+        consulta_fim: new Date().toISOString(),
+      })
+      .eq('id', consultationId);
+
+    if (updateError) {
+      return res.status(500).json({ success: false, error: 'Erro ao atualizar consulta' });
+    }
+
+    // Atualizar call_sessions.status para 'ended'
+    await supabase
+      .from('call_sessions')
+      .update({ status: 'ended' })
+      .eq('consultation_id', consultationId);
+
+    // Buscar transcrição existente (pode estar vazia para presencial)
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('raw_text')
+      .eq('consultation_id', consultationId)
+      .maybeSingle();
+
+    // Enviar webhook de transcrição
+    const nodeEnv = process.env.NODE_ENV || 'production';
+    const isHomolog = nodeEnv === 'homolog';
+    const webhookUrl = isHomolog
+      ? 'https://triahook.gst.dev.br/webhook/usi-analise-homolog'
+      : 'https://triahook.gst.dev.br/webhook/usi-analise-v2';
+
+    const webhookPayload = {
+      consultationId,
+      doctorId: consultation.doctor_id,
+      patientId: consultation.patient_id,
+      transcription: transcription?.raw_text || '',
+      consulta_finalizada: true,
+      paciente_entrou_sala: false,
+      tipo_consulta: consultation.consultation_type || 'PRESENCIAL',
+      env: nodeEnv,
+    };
+
+    fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': process.env.WEBHOOK_AUTH_HEADER || '',
+      },
+      body: JSON.stringify(webhookPayload),
+    }).catch((err) => {
+      console.error('[FINALIZE-DIRECT] Webhook falhou:', err);
+    });
+
+    console.log(`✅ [FINALIZE-DIRECT] Consulta ${consultationId} finalizada e webhook disparado`);
+
+    return res.json({ success: true, message: 'Consulta finalizada e webhook disparado' });
+  } catch (error) {
+    console.error('Erro ao finalizar consulta diretamente:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro interno do servidor',
+    });
+  }
+}
+
+/**
  * POST /consultations/schedule
  * Cria um agendamento de consulta com verificação de conflito de horário
  */
