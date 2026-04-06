@@ -74,7 +74,6 @@ export function CreateConsultationRoom({
   const [showDualMicWarning, setShowDualMicWarning] = useState(false);
   const [loadingDoctor, setLoadingDoctor] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
-  const [activeConsultationBlock, setActiveConsultationBlock] = useState<{ id: string; patient_name: string } | null>(null);
   const doctorMedicoIdRef = useRef<string | null>(null);
 
   // Novos estados para agendamento
@@ -474,8 +473,8 @@ export function CreateConsultationRoom({
         .maybeSingle();
 
       if (activeConsult) {
-        const patientName = (activeConsult as any).patients?.name || activeConsult.patient_name || 'Paciente';
-        setActiveConsultationBlock({ id: activeConsult.id, patient_name: patientName });
+        const patientName = (activeConsult as any).patients?.name || (activeConsult as any).patient_name || 'Paciente';
+        showError(`Você já tem uma consulta em andamento com ${patientName}. Finalize a consulta atual antes de iniciar uma nova.`, 'Consulta em Andamento');
         return;
       }
     }
@@ -1377,49 +1376,6 @@ export function CreateConsultationRoom({
           >
             {isCreatingRoom ? 'Criando...' : 'Iniciar Consulta'}
           </button>
-        </div>
-      )}
-
-      {activeConsultationBlock && (
-        <div style={{
-          background: '#FEF3C7',
-          border: '1px solid #F59E0B',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          marginTop: '8px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '12px',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 600, color: '#92400E', marginBottom: '4px', fontSize: '15px' }}>
-              Você já tem uma consulta em andamento
-            </p>
-            <p style={{ color: '#92400E', fontSize: '14px', marginBottom: '12px' }}>
-              Paciente: <strong>{activeConsultationBlock.patient_name}</strong>. Finalize a consulta atual antes de iniciar uma nova.
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push(`/consultas?consulta_id=${activeConsultationBlock.id}`)}
-              style={{
-                background: '#D97706',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Retornar à Consulta
-            </button>
-          </div>
         </div>
       )}
 
