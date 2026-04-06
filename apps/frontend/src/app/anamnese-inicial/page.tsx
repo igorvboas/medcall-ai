@@ -136,15 +136,19 @@ function SelectField({ icon: Icon, children, ...props }: any) {
   );
 }
 
-function NavButtons({ isLast = false, onPrev, onNext, onSubmit, saving }: {
+function NavButtons({ isLast = false, onPrev, onNext, onSubmit, saving, error }: {
   isLast?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onSubmit: () => void;
   saving: boolean;
+  error?: string;
 }) {
   return (
     <div className="wizard-actions">
+      {error && (
+        <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 8, width: '100%' }}>{error}</p>
+      )}
       <button type="button" className="wizard-btn-secondary" onClick={onPrev}>
         <ArrowLeft size={18} /> Voltar
       </button>
@@ -369,8 +373,59 @@ function AnamneseInicialContent() {
     }
   };
 
-  const nextStep = () => { if (currentStep < TOTAL_STEPS) setCurrentStep(prev => prev + 1); };
-  const prevStep = () => { if (currentStep > 0) setCurrentStep(prev => prev - 1); };
+  const [stepError, setStepError] = useState('');
+
+  const validateAndNext = () => {
+    setStepError('');
+    switch (currentStep) {
+      case 0: break; // Welcome - no validation
+      case 1: break; // Dados Pessoais - has its own inline validation
+      case 2: // Sono, Água e Jejum
+        if (!formData.avaliacao_sono) { setStepError('Informe sua avaliação do sono.'); return; }
+        if (!formData.consumo_agua) { setStepError('Informe seu consumo de água.'); return; }
+        break;
+      case 3: break; // Fotos - pode pular
+      case 4: // Medidas
+        if (!formData.altura) { setStepError('Informe sua altura.'); return; }
+        if (!formData.peso_atual) { setStepError('Informe seu peso atual.'); return; }
+        break;
+      case 5: { // Preferências Alimentares - mínimo 4 de cada
+        const cats = [
+          { name: 'Proteínas', items: formData.proteinas || [] },
+          { name: 'Carboidratos', items: formData.carboidratos || [] },
+          { name: 'Vegetais', items: formData.vegetais || [] },
+          { name: 'Leguminosas', items: formData.leguminosas || [] },
+          { name: 'Gorduras', items: formData.gorduras || [] },
+          { name: 'Frutas', items: formData.frutas || [] },
+        ];
+        const missing = cats.filter(c => c.items.length < 4);
+        if (missing.length > 0) {
+          setStepError(`Selecione no mínimo 4 itens em cada categoria. Faltam: ${missing.map(c => `${c.name} (${c.items.length}/4)`).join(', ')}`);
+          return;
+        }
+        break;
+      }
+      case 6: // Atividade Física
+        if (!formData.objetivo_principal) { setStepError('Informe seu objetivo principal.'); return; }
+        if (!formData.patrica_atividade_fisica) { setStepError('Informe se pratica atividade física.'); return; }
+        if (formData.patrica_atividade_fisica === 'Sim') {
+          if (!formData.nivel_atividade) { setStepError('Selecione o nível de atividade.'); return; }
+          if (!formData.modalidades || (formData.modalidades as string[]).length === 0) { setStepError('Selecione pelo menos uma modalidade.'); return; }
+          if (!formData.frequencia_semanal) { setStepError('Informe a frequência semanal.'); return; }
+        }
+        break;
+      case 7: // Saúde e Medicamentos
+        if (!formData.toma_medicamentos) { setStepError('Informe se toma medicamentos.'); return; }
+        break;
+      case 8: // Saúde Digestiva
+        if (!formData.mastigacao) { setStepError('Informe como é sua mastigação.'); return; }
+        break;
+    }
+    if (currentStep < TOTAL_STEPS) setCurrentStep(prev => prev + 1);
+  };
+
+  const nextStep = validateAndNext;
+  const prevStep = () => { setStepError(''); if (currentStep > 0) setCurrentStep(prev => prev - 1); };
 
   const progress = currentStep === 0 ? 0 : (currentStep / TOTAL_STEPS) * 100;
 
@@ -664,7 +719,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -712,7 +767,7 @@ function AnamneseInicialContent() {
                 ))}
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -762,7 +817,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -888,7 +943,7 @@ function AnamneseInicialContent() {
                 )}
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -986,7 +1041,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -1183,7 +1238,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons isLast onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons isLast onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
@@ -1267,7 +1322,7 @@ function AnamneseInicialContent() {
                 </div>
               </div>
 
-              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} />
+              <NavButtons onPrev={prevStep} onNext={nextStep} onSubmit={handleSubmit} saving={saving} error={stepError} />
             </div>
             <div className="wizard-footer">
               <Shield className="wizard-footer-icon" />
