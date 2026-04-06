@@ -69,8 +69,12 @@ export async function getConsultations(req: AuthenticatedRequest, res: Response)
           email
         )
       `, { count: 'exact' })
-      .eq('deletado', false)
       .order('created_at', { ascending: false });
+
+    // Admin vê todas (incluindo deletadas); não-admin só vê não-deletadas
+    if (!medico.admin) {
+      query = query.eq('deletado', false);
+    }
 
     if (effectiveDoctorId) {
       query = query.eq('doctor_id', effectiveDoctorId);
@@ -421,7 +425,7 @@ export async function deleteConsultation(req: AuthenticatedRequest, res: Respons
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, admin')
       .eq('user_auth', doctorAuthId)
       .single();
 
@@ -433,12 +437,17 @@ export async function deleteConsultation(req: AuthenticatedRequest, res: Respons
     }
 
     // 🔍 Buscar consulta antes de deletar para verificar se tem evento no Google Calendar
-    const { data: consulta, error: consultaError } = await supabase
+    let consultaQuery = supabase
       .from('consultations')
       .select('id, google_event_id')
-      .eq('id', id)
-      .eq('doctor_id', medico.id)
-      .single();
+      .eq('id', id);
+
+    // Admin pode deletar qualquer consulta; não-admin só as suas
+    if (!medico.admin) {
+      consultaQuery = consultaQuery.eq('doctor_id', medico.id);
+    }
+
+    const { data: consulta, error: consultaError } = await consultaQuery.single();
 
     if (consultaError || !consulta) {
       return res.status(404).json({
@@ -461,11 +470,16 @@ export async function deleteConsultation(req: AuthenticatedRequest, res: Respons
     }
 
     // Soft delete: marcar como deletado
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('consultations')
       .update({ deletado: true })
-      .eq('id', id)
-      .eq('doctor_id', medico.id);
+      .eq('id', id);
+
+    if (!medico.admin) {
+      updateQuery = updateQuery.eq('doctor_id', medico.id);
+    }
+
+    const { error } = await updateQuery;
 
     if (error) {
       console.error('Erro ao deletar consulta:', error);

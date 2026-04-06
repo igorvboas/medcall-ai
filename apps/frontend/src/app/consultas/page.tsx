@@ -77,6 +77,7 @@ interface Consultation {
   next_appointment?: string;
   consulta_inicio?: string;
   consulta_fim?: string;
+  deletado?: boolean;
   created_at: string;
   updated_at: string;
   transcription?: {
@@ -7526,19 +7527,28 @@ function ConsultasPageContent() {
 
       // Atualizar apenas se houver mudanças (evita re-renders desnecessários)
       setConsultations(prev => {
+        // Preservar itens marcados como deletados localmente que o backend ainda não retorna
+        // (gap entre atualização local e deploy do backend)
+        const locallyDeleted = prev.filter(p => p.deletado && !response.consultations.find(r => r.id === p.id));
+
+        const merged = locallyDeleted.length > 0
+          ? [...response.consultations, ...locallyDeleted]
+          : response.consultations;
+
         // Comparar IDs e status para detectar mudanças
-        const hasChanges = prev.length !== response.consultations.length ||
+        const hasChanges = prev.length !== merged.length ||
           prev.some((oldConsultation, index) => {
-            const newConsultation = response.consultations[index];
+            const newConsultation = merged[index];
             if (!newConsultation) return true;
             return oldConsultation.id !== newConsultation.id ||
               oldConsultation.status !== newConsultation.status ||
               oldConsultation.etapa !== newConsultation.etapa ||
-              oldConsultation.updated_at !== newConsultation.updated_at;
+              oldConsultation.updated_at !== newConsultation.updated_at ||
+              oldConsultation.deletado !== newConsultation.deletado;
           });
 
         if (hasChanges) {
-          return response.consultations;
+          return merged;
         }
         return prev;
       });
@@ -8605,9 +8615,14 @@ function ConsultasPageContent() {
 
       if (!response.success) { throw new Error(response.error || "Erro na requisição"); }
 
-      // Atualiza a lista removendo a consulta excluída
-      setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
-      setTotalConsultations(prev => prev - 1);
+      if (isAdmin) {
+        // Admin vê consultas deletadas com tag — apenas atualiza o estado local
+        setConsultations(prev => prev.map(c => c.id === consultationToDelete.id ? { ...c, deletado: true } : c));
+      } else {
+        // Não-admin não vê deletadas — remove da lista
+        setConsultations(prev => prev.filter(c => c.id !== consultationToDelete.id));
+        setTotalConsultations(prev => prev - 1);
+      }
 
       // Fecha o modal
       setShowDeleteModal(false);
@@ -13311,13 +13326,28 @@ function ConsultasPageContent() {
                     </div>
                   </div>
                   <div className="table-row-divider"></div>
-                  <div className="table-cell status-cell">
+                  <div className="table-cell status-cell" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <StatusBadge
                       status={mapBackendStatus(consultation.status)}
                       size="md"
                       showIcon={true}
                       variant={consultation.status === 'RECORDING' || consultation.status === 'PROCESSING' || consultation.status === 'VALIDATION' ? 'outlined' : 'default'}
                     />
+                    {isAdmin && consultation.deletado && (
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: '#fff',
+                        background: '#ef4444',
+                        borderRadius: '4px',
+                        padding: '2px 6px',
+                        letterSpacing: '0.03em',
+                        textTransform: 'uppercase',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        Deletado
+                      </span>
+                    )}
                   </div>
                   {isAdmin && <div className="table-row-divider"></div>}
                   {isAdmin && (

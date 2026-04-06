@@ -474,7 +474,7 @@ export function CreateConsultationRoom({
 
       if (activeConsult) {
         const patientName = (activeConsult as any).patients?.name || (activeConsult as any).patient_name || 'Paciente';
-        showError(`Você já tem uma consulta em andamento com ${patientName}. Finalize a consulta atual antes de iniciar uma nova.`, 'Consulta em Andamento');
+        showWarning(`Você já tem uma consulta em andamento com ${patientName}. Finalize a consulta atual antes de iniciar uma nova.`, 'Consulta em Andamento');
         return;
       }
     }
