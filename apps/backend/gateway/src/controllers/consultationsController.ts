@@ -276,7 +276,7 @@ export async function updateConsultation(req: AuthenticatedRequest, res: Respons
     // Buscar médico
     const { data: medico, error: medicoError } = await supabase
       .from('medicos')
-      .select('id')
+      .select('id, admin')
       .eq('user_auth', doctorAuthId)
       .single();
 
@@ -293,7 +293,7 @@ export async function updateConsultation(req: AuthenticatedRequest, res: Respons
 
     console.log('✅ [UPDATE CONSULTATION] Médico encontrado:', medico.id);
 
-    // Verificar se a consulta existe e pertence ao médico antes de atualizar
+    // Verificar se a consulta existe antes de atualizar
     const { data: existingConsultation, error: checkError } = await supabase
       .from('consultations')
       .select('id, doctor_id, status')
@@ -308,8 +308,8 @@ export async function updateConsultation(req: AuthenticatedRequest, res: Respons
       });
     }
 
-    // Verificar se a consulta pertence ao médico
-    if (existingConsultation.doctor_id !== medico.id) {
+    // Verificar permissão: admin pode editar qualquer consulta; não-admin só as suas
+    if (!medico.admin && existingConsultation.doctor_id !== medico.id) {
       console.error('Tentativa de atualizar consulta de outro médico:', {
         consultationDoctorId: existingConsultation.doctor_id,
         currentMedicoId: medico.id
@@ -351,16 +351,20 @@ export async function updateConsultation(req: AuthenticatedRequest, res: Respons
     }
 
     // Atualizar consulta
-    const { data: consultation, error } = await supabase
+    let updateQuery = supabase
       .from('consultations')
       .update({
         ...updateData,
         updated_at: new Date().toISOString()
       })
-      .eq('id', id)
-      .eq('doctor_id', medico.id)
-      .select()
-      .single();
+      .eq('id', id);
+
+    // Admin pode atualizar qualquer consulta; não-admin só as suas
+    if (!medico.admin) {
+      updateQuery = updateQuery.eq('doctor_id', medico.id);
+    }
+
+    const { data: consultation, error } = await updateQuery.select().single();
 
     if (error) {
       console.error('Erro ao atualizar consulta no Supabase:', {
