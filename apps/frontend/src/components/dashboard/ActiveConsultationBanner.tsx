@@ -203,13 +203,9 @@ export function ActiveConsultationBanner() {
     }
   };
 
-  const handleFinishConsultation = async () => {
+  const handleFinishConsultation = () => {
     if (!activeConsultation) return;
-    const patName = activeConsultation?.patients?.name || activeConsultation?.patient_name || 'paciente';
-    const confirmed = window.confirm(`Tem certeza que deseja encerrar a consulta com ${patName}?\n\nA consulta será finalizada e o processamento será iniciado.`);
-    if (confirmed) {
-      await handleConfirmFinish();
-    }
+    setShowFinishConfirm(true);
   };
 
   const handleConfirmFinish = async () => {
