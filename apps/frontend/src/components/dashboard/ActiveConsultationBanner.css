@@ -66,18 +66,24 @@
 
 .patient-name {
   font-weight: 500;
+  color: white !important;
 }
 
 .separator {
   opacity: 0.6;
+  color: white !important;
 }
 
 .consultation-type {
-  color: white;
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
-/* Status badge: usar StatusBadge.css como fonte única */
+.active-consultation-banner .status-badge {
+  color: white !important;
+  background: none !important;
+  padding: 0 !important;
+  font-weight: 500;
+}
 
 .banner-actions {
   display: flex;
