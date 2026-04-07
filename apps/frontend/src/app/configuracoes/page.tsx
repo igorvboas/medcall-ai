@@ -83,6 +83,25 @@ export default function ConfiguracoesPage() {
 
       setMedico(medico);
 
+      // Buscar assinatura real da tabela assinaturas
+      let subscriptionType: 'FREE' | 'PRO' | 'ENTERPRISE' = medico.subscription_type || 'FREE';
+      try {
+        const { data: assinatura } = await supabase
+          .from('assinaturas')
+          .select('assinatura_ativa, value, cycle')
+          .eq('doctor_id', medico.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (assinatura?.assinatura_ativa) {
+          // Determinar plano pelo valor ou ciclo
+          subscriptionType = 'PRO';
+        }
+      } catch (e) {
+        console.error('Erro ao buscar assinatura:', e);
+      }
+
       // Preencher formulário com dados existentes e aplicar máscaras
       setFormData({
         name: medico.name || '',
@@ -92,7 +111,7 @@ export default function ConfiguracoesPage() {
         crm: medico.crm || '',
         cpf: medico.cpf ? formatCPF(medico.cpf) : '',
         birth_date: medico.birth_date || '',
-        subscription_type: medico.subscription_type || 'FREE'
+        subscription_type: subscriptionType
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
