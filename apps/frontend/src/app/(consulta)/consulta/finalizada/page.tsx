@@ -51,13 +51,9 @@ function ConsultaFinalizadaContent() {
         </div>
 
         <div className="consulta-finalizada-actions">
-          <button
-            className="btn-home"
-            onClick={() => router.push('/')}
-          >
-            <Home size={18} />
-            Voltar para Home
-          </button>
+          <p style={{ fontSize: 14, color: '#9CA3AF', margin: 0 }}>
+            Você já pode fechar esta janela.
+          </p>
         </div>
       </div>
 

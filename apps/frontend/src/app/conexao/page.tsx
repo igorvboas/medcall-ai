@@ -174,12 +174,12 @@ export default function ConexaoPage() {
 
           <h2 className="conexao-section-title">
             <MessageSquare size={20} />
-            WhatsApp do Medico
+            WhatsApp Profissional
           </h2>
 
           <p className="conexao-description">
-            Ao conectar seu numero, as notificacoes de consulta (lembretes, confirmacoes e mensagens ao paciente)
-            serao enviadas pelo seu proprio WhatsApp, dando mais confianca e proximidade ao paciente.
+            Ao conectar seu número, as notificações de consulta (lembretes, confirmações e mensagens ao paciente)
+            serão enviadas pelo seu próprio WhatsApp, dando mais confiança e proximidade ao paciente.
           </p>
 
           {/* Desconectado */}

@@ -592,6 +592,20 @@ interface ChatMessage {
 // Limpar texto com barras escapadas (ex: \" \n \\ vindos do JSON)
 function cleanText(val: any): string {
   if (val === null || val === undefined) return '';
+  // Se for objeto ou array, formatar como lista de chave: valor
+  if (typeof val === 'object') {
+    if (Array.isArray(val)) {
+      return val.map(item => typeof item === 'object' ? cleanText(item) : String(item)).join(', ');
+    }
+    return Object.entries(val)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const value = typeof v === 'object' ? cleanText(v) : String(v);
+        return `${label}: ${value}`;
+      })
+      .join('\n');
+  }
   let s = String(val);
   // Remover barras escapadas comuns de JSON stringificado
   s = s.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\t/g, ' ').replace(/\\r/g, '');
@@ -967,7 +981,7 @@ function AnamneseSection({
       {/* Síntese Analítica - Agora dentro do menu */}
       {shouldShowSection('Síntese') && sinteseAnalitica && (
         <CollapsibleSection title="Sintese Analitica" defaultOpen={activeTab === 'Síntese' || !activeTab}>
-          <div onClick={() => setViewPopupSection('sintese')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('sintese')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -984,7 +998,7 @@ function AnamneseSection({
                 { label: 'Achados Urgentes', value: s.achados_criticos_urgentes },
                 { label: 'Achados Importantes', value: s.achados_criticos_importantes },
                 { label: 'Psicoemocional', value: s.psicoemocional },
-                { label: 'Intervencao Imediata', value: s.intervencao_imediata },
+                { label: 'Intervenção Imediata', value: s.intervencao_imediata },
                 { label: 'Proximas Etapas', value: s.proximas_etapas },
                 { label: 'Exames Faltantes', value: s.exames_faltantes },
                 { label: 'Encaminhar', value: s.encaminhar },
@@ -998,9 +1012,9 @@ function AnamneseSection({
               return (<>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Sintese Analitica</div>
                 {fields.map((f, i) => (
-                  <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                    <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                    <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                  <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                    <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                    <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                   </div>
                 ))}
               </>);
@@ -1018,7 +1032,7 @@ function AnamneseSection({
               <p>Carregando dados do paciente...</p>
             </div>
           ) : cadastroAnamnese ? (
-            <div onClick={() => setViewPopupSection('dados_paciente')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+            <div onClick={() => setViewPopupSection('dados_paciente')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
                 <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1028,7 +1042,7 @@ function AnamneseSection({
               {(() => {
                 const c = cadastroAnamnese;
                 const sections = [
-                  { title: 'Identificacao', fields: [
+                  { title: 'Identificação', fields: [
                     { label: 'Nome', value: c.nome_completo }, { label: 'Data Nasc.', value: c.data_nascimento },
                     { label: 'CPF', value: c.cpf }, { label: 'Estado Civil', value: c.estado_civil },
                     { label: 'Email', value: c.email }, { label: 'Profissao', value: c.profissao },
@@ -1053,9 +1067,9 @@ function AnamneseSection({
                       <div key={section.title} style={{ marginBottom: 16 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>
                         {vf.map((f, i) => (
-                          <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                            <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                            <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                          <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                            <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                            <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                           </div>
                         ))}
                       </div>
@@ -1080,8 +1094,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('objetivos_queixas')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1108,7 +1122,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Impacto das Queixas', fields: [
                   { label: 'Vida Diaria', value: q.impacto_queixas_vida_como_afeta_vida_diaria },
-                  { label: 'Limitacoes', value: q.impacto_queixas_vida_limitacoes_causadas },
+                  { label: 'Limitações', value: q.impacto_queixas_vida_limitacoes_causadas },
                   { label: 'Areas Impactadas', value: q.impacto_queixas_vida_areas_impactadas },
                 ]},
                 { title: 'Objetivos e Expectativas', fields: [
@@ -1127,7 +1141,7 @@ function AnamneseSection({
                   { label: 'Profissional', value: q.projeto_de_vida_profissional },
                   { label: 'Sonhos', value: q.projeto_de_vida_sonhos },
                 ]},
-                { title: 'Motivacao e Mudanca', fields: [
+                { title: 'Motivação e Mudança', fields: [
                   { label: 'Nivel de Motivacao', value: q.nivel_motivacao },
                   { label: 'Prontidao', value: q.prontidao_para_mudanca },
                   { label: 'Mudancas Necessarias', value: q.mudancas_considera_necessarias },
@@ -1142,14 +1156,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1174,8 +1188,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('historico_risco')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1203,14 +1217,14 @@ function AnamneseSection({
                   { label: 'Avos Maternos', value: q.antecedentes_familiares_avos_maternos },
                   { label: 'Causas de Morte dos Avos', value: q.antecedentes_familiares_causas_morte_avos },
                 ]},
-                { title: 'Condicoes e Tratamentos', fields: [
+                { title: 'Condições e Tratamentos', fields: [
                   { label: 'Condicoes Geneticas Conhecidas', value: q.condicoes_geneticas_conhecidas },
                   { label: 'Cirurgias/Procedimentos', value: q.cirurgias_procedimentos },
                   { label: 'Medicacoes Atuais', value: q.medicacoes_atuais },
                   { label: 'Medicacoes Continuas', value: q.medicacoes_continuas },
                   { label: 'Ja Usou Corticoides', value: q.ja_usou_corticoides },
                 ]},
-                { title: 'Alergias e Exposicoes', fields: [
+                { title: 'Alergias e Exposições', fields: [
                   { label: 'Alergias/Intolerancias Conhecidas', value: q.alergias_intolerancias_conhecidas },
                   { label: 'Alergias/Intolerancias Suspeitas', value: q.alergias_intolerancias_suspeitas },
                   { label: 'Exposicao Toxica', value: q.exposicao_toxica },
@@ -1233,14 +1247,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1265,8 +1279,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('observacao_clinica_lab')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1380,14 +1394,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1412,8 +1426,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('historia_vida')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1448,7 +1462,7 @@ function AnamneseSection({
                   { label: 'Saude da Mae na Gestacao', value: q.saude_mae_gestacao },
                   { label: 'Tracos/Comportamentos Repetitivos', value: q.tracos_comportamentos_repetitivos_ao_longo_vida },
                 ]},
-                { title: 'Superacao e Identidade', fields: [
+                { title: 'Superação e Identidade', fields: [
                   { label: 'Experiencia de Virada', value: q.experiencia_considera_virada },
                   { label: 'Identifica com Superacao ou Defesa', value: q.identifica_com_superacao_ou_defesa },
                   { label: 'Conexao com Identidade e Proposito', value: q.conexao_identidade_proposito },
@@ -1464,14 +1478,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1496,8 +1510,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('setenios_eventos')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1513,7 +1527,7 @@ function AnamneseSection({
               const q = setenios_eventos;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
-                { title: 'Concepcao e Gestacao', fields: [
+                { title: 'Concepção e Gestação', fields: [
                   { label: 'Planejamento', value: q.concepcao_gestacao_planejamento },
                   { label: 'Ambiente Gestacional', value: q.concepcao_gestacao_ambiente_gestacional },
                   { label: 'Saude da Mae', value: q.concepcao_gestacao_saude_mae_gestacao },
@@ -1542,7 +1556,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Quarto Setenio (21-28 anos)', fields: [
                   { label: 'Eventos Significativos', value: q.quarto_setenio_21_28_eventos_significativos },
-                  { label: 'Formacao Profissional', value: q.quarto_setenio_21_28_formacao_profissional },
+                  { label: 'Formação Profissional', value: q.quarto_setenio_21_28_formacao_profissional },
                 ]},
                 { title: 'Decenios (28-40+ anos)', fields: [
                   { label: 'Climaterio/Menopausa', value: q.decenios_28_40_mais_climaterio_menopausa },
@@ -1551,7 +1565,7 @@ function AnamneseSection({
                   { label: 'Estado Atual', value: q.decenios_28_40_mais_estado_atual },
                   { label: 'Episodios de Estresse Extremo', value: q.decenios_28_40_mais_episodios_estresse_extremo },
                 ]},
-                { title: 'Observacoes Gerais', fields: [
+                { title: 'Observações Gerais', fields: [
                   { label: 'Eventos Criticos Identificados', value: q.eventos_criticos_identificados },
                   { label: 'Experiencia de Virada', value: q.experiencia_considera_virada },
                   { label: 'Diferencas Sazonais/Climaticas nos Sintomas', value: q.diferencas_sazonais_climaticas_sintomas },
@@ -1566,14 +1580,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1598,8 +1612,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('ambiente_contexto')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1621,7 +1635,7 @@ function AnamneseSection({
                   { label: 'Dinamica Familiar', value: q.contexto_familiar_dinamica_familiar },
                   { label: 'Suporte Familiar', value: q.contexto_familiar_suporte_familiar },
                   { label: 'Relacionamento Conjugal', value: q.contexto_familiar_relacionamento_conjugal },
-                  { label: 'Divisao de Tarefas Domesticas', value: q.contexto_familiar_divisao_tarefas_domesticas },
+                  { label: 'Divisão de Tarefas Domésticas', value: q.contexto_familiar_divisao_tarefas_domesticas },
                   { label: 'Vida Sexual Ativa', value: q.contexto_familiar_vida_sexual_ativa },
                   { label: 'Dialogo sobre Sobrecarga', value: q.contexto_familiar_dialogo_sobre_sobrecarga },
                 ]},
@@ -1642,7 +1656,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Habitos de Vida', fields: [
                   { label: 'Sono', value: q.habitos_vida_sono },
-                  { label: 'Alimentacao', value: q.habitos_vida_alimentacao },
+                  { label: 'Alimentação', value: q.habitos_vida_alimentacao },
                   { label: 'Lazer', value: q.habitos_vida_lazer },
                   { label: 'Espiritualidade', value: q.habitos_vida_espiritualidade },
                 ]},
@@ -1665,14 +1679,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1697,8 +1711,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('sensacao_emocoes')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1714,9 +1728,9 @@ function AnamneseSection({
               const q = sensacao_emocoes;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
-                { title: 'Emocoes e Sensacoes', fields: [
-                  { label: 'Emocoes Predominantes', value: q.emocoes_predominantes },
-                  { label: 'Sensacoes Corporais', value: q.sensacoes_corporais },
+                { title: 'Emoções e Sensações', fields: [
+                  { label: 'Emoções Predominantes', value: q.emocoes_predominantes },
+                  { label: 'Sensações Corporais', value: q.sensacoes_corporais },
                   { label: 'Palavras-chave Emocionais', value: q.palavras_chave_emocionais },
                   { label: 'Intensidade Emocional', value: q.intensidade_emocional },
                 ]},
@@ -1724,19 +1738,19 @@ function AnamneseSection({
                   { label: 'Consegue Identificar Gatilhos', value: q.consegue_identificar_gatilhos_emocionais },
                   { label: 'Gatilhos Identificados', value: q.gatilhos_identificados },
                 ]},
-                { title: 'Regulacao Emocional', fields: [
-                  { label: 'Capacidade de Regulacao', value: q.regulacao_emocional_capacidade_regulacao },
-                  { label: 'Forma de Expressao', value: q.regulacao_emocional_forma_expressao },
+                { title: 'Regulação Emocional', fields: [
+                  { label: 'Capacidade de Regulação', value: q.regulacao_emocional_capacidade_regulacao },
+                  { label: 'Forma de Expressão', value: q.regulacao_emocional_forma_expressao },
                   { label: 'Como Gerencia Estresse/Ansiedade', value: q.regulacao_emocional_como_gerencia_estresse_ansiedade },
-                  { label: 'Memoria Afetiva', value: q.memoria_afetiva },
+                  { label: 'Memória Afetiva', value: q.memoria_afetiva },
                 ]},
-                { title: 'Sensacoes Especificas do Reino', fields: [
+                { title: 'Sensações Específicas do Reino', fields: [
                   { label: 'Usa Palavras Como', value: q.sensacoes_especificas_reino_usa_palavras_como },
-                  { label: 'Descreve Sensacoes Como', value: q.sensacoes_especificas_reino_descreve_sensacoes_como },
-                  { label: 'Padroes de Discurso', value: q.sensacoes_especificas_reino_padroes_discurso },
+                  { label: 'Descreve Sensações Como', value: q.sensacoes_especificas_reino_descreve_sensacoes_como },
+                  { label: 'Padrões de Discurso', value: q.sensacoes_especificas_reino_padroes_discurso },
                 ]},
-                { title: 'Conexao Corpo-Mente', fields: [
-                  { label: 'Percebe Manifestacoes Corporais das Emocoes', value: q.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes },
+                { title: 'Conexão Corpo-Mente', fields: [
+                  { label: 'Percebe Manifestações Corporais das Emoções', value: q.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes },
                   { label: 'Exemplos', value: q.conexao_corpo_mente_exemplos },
                 ]},
               ];
@@ -1749,14 +1763,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1781,8 +1795,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('preocupacoes_crencas')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1798,11 +1812,11 @@ function AnamneseSection({
               const q = preocupacoes_crencas;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
-                { title: 'Percepcao do Problema', fields: [
+                { title: 'Percepção do Problema', fields: [
                   { label: 'Como Percebe o Problema', value: q.como_percebe_problema },
                   { label: 'Compreensao sobre Causa dos Sintomas', value: q.compreensao_sobre_causa_sintomas },
                 ]},
-                { title: 'Crencas e Preocupacoes', fields: [
+                { title: 'Crenças e Preocupações', fields: [
                   { label: 'Crencas Limitantes', value: q.crencas_limitantes },
                   { label: 'Preocupacoes Explicitas', value: q.preocupacoes_explicitas },
                   { label: 'Preocupacoes Implicitas', value: q.preocupacoes_implicitas },
@@ -1829,14 +1843,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1861,8 +1875,8 @@ function AnamneseSection({
             onClick={() => setViewPopupSection('reino_miasma')}
             style={{
               cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9,
-              padding: '20px 24px', background: '#FFFFFF', borderRadius: 12,
-              border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s',
+              padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12,
+              border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s',
               maxHeight: 500, overflowY: 'auto', position: 'relative' as any,
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'}
@@ -1891,14 +1905,14 @@ function AnamneseSection({
                 ]},
                 { title: 'Analise Detalhada - Reino Animal', fields: [
                   { label: 'Palavras Usadas', value: q.analise_detalhada_reino_animal_palavras_usadas },
-                  { label: 'Descreve Sensacoes Como', value: q.analise_detalhada_reino_animal_descreve_sensacoes_como },
+                  { label: 'Descreve Sensações Como', value: q.analise_detalhada_reino_animal_descreve_sensacoes_como },
                 ]},
-                { title: 'Implicacoes Terapeuticas', fields: [
+                { title: 'Implicações Terapêuticas', fields: [
                   { label: 'Comunicacao', value: q.implicacoes_terapeuticas_comunicacao },
                   { label: 'Abordagem', value: q.implicacoes_terapeuticas_abordagem },
                   { label: 'Outras Terapias Alinhadas', value: q.implicacoes_terapeuticas_outras_terapias_alinhadas },
                 ]},
-                { title: 'Observacoes Comportamentais', fields: [
+                { title: 'Observações Comportamentais', fields: [
                   { label: 'Padrao de Discurso', value: q.padrao_discurso },
                 ]},
               ];
@@ -1911,14 +1925,14 @@ function AnamneseSection({
                     if (validFields.length === 0) return null;
                     return (
                       <div key={section.title} style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>
                           {section.title}
                         </div>
-                        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
                           {validFields.map((f, i) => (
-                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}>
-                              <strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong>
-                              <div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div>
+                            <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}>
+                              <strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong>
+                              <div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div>
                             </div>
                           ))}
                         </div>
@@ -1979,7 +1993,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Impacto das Queixas na Vida', fields: [
                   { label: 'Como Afeta a Vida Diaria', key: 'impacto_queixas_vida_como_afeta_vida_diaria', path: 'a_objetivos_queixas.impacto_queixas_vida_como_afeta_vida_diaria' },
-                  { label: 'Limitacoes Causadas', key: 'impacto_queixas_vida_limitacoes_causadas', path: 'a_objetivos_queixas.impacto_queixas_vida_limitacoes_causadas' },
+                  { label: 'Limitações Causadas', key: 'impacto_queixas_vida_limitacoes_causadas', path: 'a_objetivos_queixas.impacto_queixas_vida_limitacoes_causadas' },
                   { label: 'Areas Impactadas', key: 'impacto_queixas_vida_areas_impactadas', path: 'a_objetivos_queixas.impacto_queixas_vida_areas_impactadas' },
                 ]},
                 { title: 'Objetivos e Expectativas', fields: [
@@ -1999,7 +2013,7 @@ function AnamneseSection({
                   { label: 'Profissional', key: 'projeto_de_vida_profissional', path: 'a_objetivos_queixas.projeto_de_vida_profissional' },
                   { label: 'Sonhos', key: 'projeto_de_vida_sonhos', path: 'a_objetivos_queixas.projeto_de_vida_sonhos' },
                 ]},
-                { title: 'Motivacao e Mudanca', fields: [
+                { title: 'Motivação e Mudança', fields: [
                   { label: 'Nivel de Motivacao', key: 'nivel_motivacao', path: 'a_objetivos_queixas.nivel_motivacao' },
                   { label: 'Prontidao para Mudanca', key: 'prontidao_para_mudanca', path: 'a_objetivos_queixas.prontidao_para_mudanca' },
                   { label: 'Mudancas Considera Necessarias', key: 'mudancas_considera_necessarias', path: 'a_objetivos_queixas.mudancas_considera_necessarias' },
@@ -2106,14 +2120,14 @@ function AnamneseSection({
                   { label: 'Avos Maternos', key: 'antecedentes_familiares_avos_maternos', path: 'a_historico_risco.antecedentes_familiares_avos_maternos' },
                   { label: 'Causas de Morte dos Avos', key: 'antecedentes_familiares_causas_morte_avos', path: 'a_historico_risco.antecedentes_familiares_causas_morte_avos' },
                 ]},
-                { title: 'Condicoes e Tratamentos', fields: [
+                { title: 'Condições e Tratamentos', fields: [
                   { label: 'Condicoes Geneticas Conhecidas', key: 'condicoes_geneticas_conhecidas', path: 'a_historico_risco.condicoes_geneticas_conhecidas' },
                   { label: 'Cirurgias/Procedimentos', key: 'cirurgias_procedimentos', path: 'a_historico_risco.cirurgias_procedimentos' },
                   { label: 'Medicacoes Atuais', key: 'medicacoes_atuais', path: 'a_historico_risco.medicacoes_atuais' },
                   { label: 'Medicacoes Continuas', key: 'medicacoes_continuas', path: 'a_historico_risco.medicacoes_continuas' },
                   { label: 'Ja Usou Corticoides', key: 'ja_usou_corticoides', path: 'a_historico_risco.ja_usou_corticoides' },
                 ]},
-                { title: 'Alergias e Exposicoes', fields: [
+                { title: 'Alergias e Exposições', fields: [
                   { label: 'Alergias/Intolerancias Conhecidas', key: 'alergias_intolerancias_conhecidas', path: 'a_historico_risco.alergias_intolerancias_conhecidas' },
                   { label: 'Alergias/Intolerancias Suspeitas', key: 'alergias_intolerancias_suspeitas', path: 'a_historico_risco.alergias_intolerancias_suspeitas' },
                   { label: 'Exposicao Toxica', key: 'exposicao_toxica', path: 'a_historico_risco.exposicao_toxica' },
@@ -2325,7 +2339,7 @@ function AnamneseSection({
                   { label: 'Saude da Mae na Gestacao', key: 'saude_mae_gestacao', path: 'a_historia_vida.saude_mae_gestacao' },
                   { label: 'Tracos/Comportamentos Repetitivos', key: 'tracos_comportamentos_repetitivos_ao_longo_vida', path: 'a_historia_vida.tracos_comportamentos_repetitivos_ao_longo_vida' },
                 ]},
-                { title: 'Superacao e Identidade', fields: [
+                { title: 'Superação e Identidade', fields: [
                   { label: 'Experiencia de Virada', key: 'experiencia_considera_virada', path: 'a_historia_vida.experiencia_considera_virada' },
                   { label: 'Identifica com Superacao ou Defesa', key: 'identifica_com_superacao_ou_defesa', path: 'a_historia_vida.identifica_com_superacao_ou_defesa' },
                   { label: 'Conexao com Identidade e Proposito', key: 'conexao_identidade_proposito', path: 'a_historia_vida.conexao_identidade_proposito' },
@@ -2356,7 +2370,7 @@ function AnamneseSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Concepcao e Gestacao', fields: [
+                { title: 'Concepção e Gestação', fields: [
                   { label: 'Planejamento', key: 'concepcao_gestacao_planejamento', path: 'a_setenios_eventos.concepcao_gestacao_planejamento' },
                   { label: 'Ambiente Gestacional', key: 'concepcao_gestacao_ambiente_gestacional', path: 'a_setenios_eventos.concepcao_gestacao_ambiente_gestacional' },
                   { label: 'Saude da Mae', key: 'concepcao_gestacao_saude_mae_gestacao', path: 'a_setenios_eventos.concepcao_gestacao_saude_mae_gestacao' },
@@ -2385,7 +2399,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Quarto Setenio (21-28 anos)', fields: [
                   { label: 'Eventos Significativos', key: 'quarto_setenio_21_28_eventos_significativos', path: 'a_setenios_eventos.quarto_setenio_21_28_eventos_significativos' },
-                  { label: 'Formacao Profissional', key: 'quarto_setenio_21_28_formacao_profissional', path: 'a_setenios_eventos.quarto_setenio_21_28_formacao_profissional' },
+                  { label: 'Formação Profissional', key: 'quarto_setenio_21_28_formacao_profissional', path: 'a_setenios_eventos.quarto_setenio_21_28_formacao_profissional' },
                 ]},
                 { title: 'Decenios (28-40+ anos)', fields: [
                   { label: 'Climaterio/Menopausa', key: 'decenios_28_40_mais_climaterio_menopausa', path: 'a_setenios_eventos.decenios_28_40_mais_climaterio_menopausa' },
@@ -2394,7 +2408,7 @@ function AnamneseSection({
                   { label: 'Estado Atual', key: 'decenios_28_40_mais_estado_atual', path: 'a_setenios_eventos.decenios_28_40_mais_estado_atual' },
                   { label: 'Episodios de Estresse Extremo', key: 'decenios_28_40_mais_episodios_estresse_extremo', path: 'a_setenios_eventos.decenios_28_40_mais_episodios_estresse_extremo' },
                 ]},
-                { title: 'Observacoes Gerais', fields: [
+                { title: 'Observações Gerais', fields: [
                   { label: 'Eventos Criticos Identificados', key: 'eventos_criticos_identificados', path: 'a_setenios_eventos.eventos_criticos_identificados' },
                   { label: 'Experiencia de Virada', key: 'experiencia_considera_virada', path: 'a_setenios_eventos.experiencia_considera_virada' },
                   { label: 'Diferencas Sazonais/Climaticas nos Sintomas', key: 'diferencas_sazonais_climaticas_sintomas', path: 'a_setenios_eventos.diferencas_sazonais_climaticas_sintomas' },
@@ -2430,7 +2444,7 @@ function AnamneseSection({
                   { label: 'Dinamica Familiar', key: 'contexto_familiar_dinamica_familiar', path: 'a_ambiente_contexto.contexto_familiar_dinamica_familiar' },
                   { label: 'Suporte Familiar', key: 'contexto_familiar_suporte_familiar', path: 'a_ambiente_contexto.contexto_familiar_suporte_familiar' },
                   { label: 'Relacionamento Conjugal', key: 'contexto_familiar_relacionamento_conjugal', path: 'a_ambiente_contexto.contexto_familiar_relacionamento_conjugal' },
-                  { label: 'Divisao de Tarefas Domesticas', key: 'contexto_familiar_divisao_tarefas_domesticas', path: 'a_ambiente_contexto.contexto_familiar_divisao_tarefas_domesticas' },
+                  { label: 'Divisão de Tarefas Domésticas', key: 'contexto_familiar_divisao_tarefas_domesticas', path: 'a_ambiente_contexto.contexto_familiar_divisao_tarefas_domesticas' },
                   { label: 'Vida Sexual Ativa', key: 'contexto_familiar_vida_sexual_ativa', path: 'a_ambiente_contexto.contexto_familiar_vida_sexual_ativa' },
                   { label: 'Dialogo sobre Sobrecarga', key: 'contexto_familiar_dialogo_sobre_sobrecarga', path: 'a_ambiente_contexto.contexto_familiar_dialogo_sobre_sobrecarga' },
                 ]},
@@ -2450,7 +2464,7 @@ function AnamneseSection({
                 ]},
                 { title: 'Habitos de Vida', fields: [
                   { label: 'Sono', key: 'habitos_vida_sono', path: 'a_ambiente_contexto.habitos_vida_sono' },
-                  { label: 'Alimentacao', key: 'habitos_vida_alimentacao', path: 'a_ambiente_contexto.habitos_vida_alimentacao' },
+                  { label: 'Alimentação', key: 'habitos_vida_alimentacao', path: 'a_ambiente_contexto.habitos_vida_alimentacao' },
                   { label: 'Lazer', key: 'habitos_vida_lazer', path: 'a_ambiente_contexto.habitos_vida_lazer' },
                   { label: 'Espiritualidade', key: 'habitos_vida_espiritualidade', path: 'a_ambiente_contexto.habitos_vida_espiritualidade' },
                 ]},
@@ -2488,9 +2502,9 @@ function AnamneseSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Emocoes e Sensacoes', fields: [
-                  { label: 'Emocoes Predominantes', key: 'emocoes_predominantes', path: 'a_sensacao_emocoes.emocoes_predominantes' },
-                  { label: 'Sensacoes Corporais', key: 'sensacoes_corporais', path: 'a_sensacao_emocoes.sensacoes_corporais' },
+                { title: 'Emoções e Sensações', fields: [
+                  { label: 'Emoções Predominantes', key: 'emocoes_predominantes', path: 'a_sensacao_emocoes.emocoes_predominantes' },
+                  { label: 'Sensações Corporais', key: 'sensacoes_corporais', path: 'a_sensacao_emocoes.sensacoes_corporais' },
                   { label: 'Palavras-chave Emocionais', key: 'palavras_chave_emocionais', path: 'a_sensacao_emocoes.palavras_chave_emocionais' },
                   { label: 'Intensidade Emocional', key: 'intensidade_emocional', path: 'a_sensacao_emocoes.intensidade_emocional' },
                 ]},
@@ -2498,19 +2512,19 @@ function AnamneseSection({
                   { label: 'Consegue Identificar Gatilhos', key: 'consegue_identificar_gatilhos_emocionais', path: 'a_sensacao_emocoes.consegue_identificar_gatilhos_emocionais' },
                   { label: 'Gatilhos Identificados', key: 'gatilhos_identificados', path: 'a_sensacao_emocoes.gatilhos_identificados' },
                 ]},
-                { title: 'Regulacao Emocional', fields: [
-                  { label: 'Capacidade de Regulacao', key: 'regulacao_emocional_capacidade_regulacao', path: 'a_sensacao_emocoes.regulacao_emocional_capacidade_regulacao' },
-                  { label: 'Forma de Expressao', key: 'regulacao_emocional_forma_expressao', path: 'a_sensacao_emocoes.regulacao_emocional_forma_expressao' },
+                { title: 'Regulação Emocional', fields: [
+                  { label: 'Capacidade de Regulação', key: 'regulacao_emocional_capacidade_regulacao', path: 'a_sensacao_emocoes.regulacao_emocional_capacidade_regulacao' },
+                  { label: 'Forma de Expressão', key: 'regulacao_emocional_forma_expressao', path: 'a_sensacao_emocoes.regulacao_emocional_forma_expressao' },
                   { label: 'Como Gerencia Estresse/Ansiedade', key: 'regulacao_emocional_como_gerencia_estresse_ansiedade', path: 'a_sensacao_emocoes.regulacao_emocional_como_gerencia_estresse_ansiedade' },
-                  { label: 'Memoria Afetiva', key: 'memoria_afetiva', path: 'a_sensacao_emocoes.memoria_afetiva' },
+                  { label: 'Memória Afetiva', key: 'memoria_afetiva', path: 'a_sensacao_emocoes.memoria_afetiva' },
                 ]},
-                { title: 'Sensacoes Especificas do Reino', fields: [
+                { title: 'Sensações Específicas do Reino', fields: [
                   { label: 'Usa Palavras Como', key: 'sensacoes_especificas_reino_usa_palavras_como', path: 'a_sensacao_emocoes.sensacoes_especificas_reino_usa_palavras_como' },
-                  { label: 'Descreve Sensacoes Como', key: 'sensacoes_especificas_reino_descreve_sensacoes_como', path: 'a_sensacao_emocoes.sensacoes_especificas_reino_descreve_sensacoes_como' },
-                  { label: 'Padroes de Discurso', key: 'sensacoes_especificas_reino_padroes_discurso', path: 'a_sensacao_emocoes.sensacoes_especificas_reino_padroes_discurso' },
+                  { label: 'Descreve Sensações Como', key: 'sensacoes_especificas_reino_descreve_sensacoes_como', path: 'a_sensacao_emocoes.sensacoes_especificas_reino_descreve_sensacoes_como' },
+                  { label: 'Padrões de Discurso', key: 'sensacoes_especificas_reino_padroes_discurso', path: 'a_sensacao_emocoes.sensacoes_especificas_reino_padroes_discurso' },
                 ]},
-                { title: 'Conexao Corpo-Mente', fields: [
-                  { label: 'Percebe Manifestacoes Corporais das Emocoes', key: 'conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes', path: 'a_sensacao_emocoes.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes' },
+                { title: 'Conexão Corpo-Mente', fields: [
+                  { label: 'Percebe Manifestações Corporais das Emoções', key: 'conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes', path: 'a_sensacao_emocoes.conexao_corpo_mente_percebe_manifestacoes_corporais_emocoes' },
                   { label: 'Exemplos', key: 'conexao_corpo_mente_exemplos', path: 'a_sensacao_emocoes.conexao_corpo_mente_exemplos' },
                 ]},
               ].map((section) => {
@@ -2538,11 +2552,11 @@ function AnamneseSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Percepcao do Problema', fields: [
+                { title: 'Percepção do Problema', fields: [
                   { label: 'Como Percebe o Problema', key: 'como_percebe_problema', path: 'a_preocupacoes_crencas.como_percebe_problema' },
                   { label: 'Compreensao sobre Causa dos Sintomas', key: 'compreensao_sobre_causa_sintomas', path: 'a_preocupacoes_crencas.compreensao_sobre_causa_sintomas' },
                 ]},
-                { title: 'Crencas e Preocupacoes', fields: [
+                { title: 'Crenças e Preocupações', fields: [
                   { label: 'Crencas Limitantes', key: 'crencas_limitantes', path: 'a_preocupacoes_crencas.crencas_limitantes' },
                   { label: 'Preocupacoes Explicitas', key: 'preocupacoes_explicitas', path: 'a_preocupacoes_crencas.preocupacoes_explicitas' },
                   { label: 'Preocupacoes Implicitas', key: 'preocupacoes_implicitas', path: 'a_preocupacoes_crencas.preocupacoes_implicitas' },
@@ -2597,14 +2611,14 @@ function AnamneseSection({
                 ]},
                 { title: 'Analise Detalhada - Reino Animal', fields: [
                   { label: 'Palavras Usadas', key: 'analise_detalhada_reino_animal_palavras_usadas', path: 'a_reino_miasma.analise_detalhada_reino_animal_palavras_usadas' },
-                  { label: 'Descreve Sensacoes Como', key: 'analise_detalhada_reino_animal_descreve_sensacoes_como', path: 'a_reino_miasma.analise_detalhada_reino_animal_descreve_sensacoes_como' },
+                  { label: 'Descreve Sensações Como', key: 'analise_detalhada_reino_animal_descreve_sensacoes_como', path: 'a_reino_miasma.analise_detalhada_reino_animal_descreve_sensacoes_como' },
                 ]},
-                { title: 'Implicacoes Terapeuticas', fields: [
+                { title: 'Implicações Terapêuticas', fields: [
                   { label: 'Comunicacao', key: 'implicacoes_terapeuticas_comunicacao', path: 'a_reino_miasma.implicacoes_terapeuticas_comunicacao' },
                   { label: 'Abordagem', key: 'implicacoes_terapeuticas_abordagem', path: 'a_reino_miasma.implicacoes_terapeuticas_abordagem' },
                   { label: 'Outras Terapias Alinhadas', key: 'implicacoes_terapeuticas_outras_terapias_alinhadas', path: 'a_reino_miasma.implicacoes_terapeuticas_outras_terapias_alinhadas' },
                 ]},
-                { title: 'Observacoes Comportamentais', fields: [
+                { title: 'Observações Comportamentais', fields: [
                   { label: 'Padrao de Discurso', key: 'padrao_discurso', path: 'a_reino_miasma.padrao_discurso' },
                 ]},
               ].map((section) => {
@@ -2640,7 +2654,7 @@ function AnamneseSection({
                   { label: 'Achados Urgentes', key: 'achados_criticos_urgentes', path: 'a_sintese_analitica.achados_criticos_urgentes' },
                   { label: 'Achados Importantes', key: 'achados_criticos_importantes', path: 'a_sintese_analitica.achados_criticos_importantes' },
                   { label: 'Psicoemocional', key: 'psicoemocional', path: 'a_sintese_analitica.psicoemocional' },
-                  { label: 'Intervencao Imediata', key: 'intervencao_imediata', path: 'a_sintese_analitica.intervencao_imediata' },
+                  { label: 'Intervenção Imediata', key: 'intervencao_imediata', path: 'a_sintese_analitica.intervencao_imediata' },
                   { label: 'Proximas Etapas', key: 'proximas_etapas', path: 'a_sintese_analitica.proximas_etapas' },
                   { label: 'Exames Faltantes', key: 'exames_faltantes', path: 'a_sintese_analitica.exames_faltantes' },
                   { label: 'Encaminhar', key: 'encaminhar', path: 'a_sintese_analitica.encaminhar' },
@@ -2676,7 +2690,7 @@ function AnamneseSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Identificacao', fields: [
+                { title: 'Identificação', fields: [
                   { label: 'Nome', key: 'nome_completo', path: 'a_cadastro_anamnese.nome_completo' },
                   { label: 'Data Nasc.', key: 'data_nascimento', path: 'a_cadastro_anamnese.data_nascimento' },
                   { label: 'CPF', key: 'cpf', path: 'a_cadastro_anamnese.cpf' },
@@ -2907,7 +2921,7 @@ function DiagnosticoSection({
       {/* ==================== DIAGNÓSTICO PRINCIPAL ==================== */}
       {shouldShowSection('1. Diagnóstico Principal') && (
         <CollapsibleSection title="1. Diagnóstico Principal" defaultOpen={activeTab === 'Diagnóstico Principal' || !activeTab}>
-          <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('diagnostico_principal')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -2919,7 +2933,7 @@ function DiagnosticoSection({
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
                 { title: 'CID e Diagnosticos', fields: [{ label: 'CID Principal', value: q.cid_principal },{ label: 'Diagnosticos Associados (CID)', value: q.diagnosticos_associados_cid }]},
-                { title: 'Avaliacao Diagnostica Sistematica (ADS)', fields: [{ label: 'Sintese', value: q.ads_sintese },{ label: 'Biologico', value: q.ads_biologico },{ label: 'Psicologico', value: q.ads_psicologico },{ label: 'Emocional', value: q.ads_emocional },{ label: 'Social', value: q.ads_social },{ label: 'Espiritual', value: q.ads_espiritual },{ label: 'Trilha Causal Sintetica', value: q.ads_trilha_causal_sintetica },{ label: 'Tipo de Sindrome', value: q.ads_tipo_sindrome }]},
+                { title: 'Avaliação Diagnóstica Sistemática (ADS)', fields: [{ label: 'Sintese', value: q.ads_sintese },{ label: 'Biologico', value: q.ads_biologico },{ label: 'Psicologico', value: q.ads_psicologico },{ label: 'Emocional', value: q.ads_emocional },{ label: 'Social', value: q.ads_social },{ label: 'Espiritual', value: q.ads_espiritual },{ label: 'Trilha Causal Sintetica', value: q.ads_trilha_causal_sintetica },{ label: 'Tipo de Sindrome', value: q.ads_tipo_sindrome }]},
                 { title: 'Gravidade', fields: [{ label: 'Nivel de Gravidade', value: q.grav_nivel },{ label: 'Justificativa', value: q.grav_justificativa },{ label: 'Janela de Intervencao', value: q.grav_janela_intervencao },{ label: 'Risco Iminente', value: q.grav_risco_iminente }]},
                 { title: 'Homeopatia', fields: [{ label: 'Reino Predominante', value: q.reino_predominante },{ label: 'Caracteristicas do Reino', value: q.reino_caracteristicas },{ label: 'Medicamento Principal', value: q.homeo_medicamento_principal },{ label: 'Justificativa', value: q.homeo_justificativa },{ label: 'Potencia Inicial', value: q.homeo_potencia_inicial },{ label: 'Frequencia', value: q.homeo_frequencia },{ label: 'Medicamentos Complementares', value: q.medicamentos_complementares }]},
                 { title: 'Florais de Bach', fields: [{ label: 'Florais Indicados', value: q.florais_bach_indicados },{ label: 'Formula Floral Sugerida', value: q.formula_floral_sugerida }]},
@@ -2928,7 +2942,7 @@ function DiagnosticoSection({
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -2937,7 +2951,7 @@ function DiagnosticoSection({
       {/* ==================== ESTADO GERAL ==================== */}
       {shouldShowSection('2. Estado Geral') && (
         <CollapsibleSection title="2. Estado Geral" defaultOpen={activeTab === 'Estado Geral' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_geral')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -2948,19 +2962,19 @@ function DiagnosticoSection({
               const q = estado_geral;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
-                { title: 'Avaliacao Global', fields: [{ label: 'Estado Geral', value: q.avaliacao_estado },{ label: 'Score de Vitalidade', value: q.avaliacao_score_vitalidade },{ label: 'Tendencia', value: q.avaliacao_tendencia },{ label: 'Reserva Fisiologica', value: q.avaliacao_reserva_fisiologica }]},
-                { title: 'Energia Vital', fields: [{ label: 'Nivel', value: q.energia_vital_nivel },{ label: 'Descricao', value: q.energia_vital_descricao },{ label: 'Manifestacao', value: q.energia_vital_manifestacao },{ label: 'Impacto', value: q.energia_vital_impacto }]},
-                { title: 'Adaptacao ao Stress', fields: [{ label: 'Nivel', value: q.adapt_stress_nivel },{ label: 'Descricao', value: q.adapt_stress_descricao },{ label: 'Reserva Adaptativa', value: q.adapt_stress_reserva_adaptativa },{ label: 'Manifestacao', value: q.adapt_stress_manifestacao }]},
-                { title: 'Resiliencia', fields: [{ label: 'Nivel', value: q.resiliencia_nivel },{ label: 'Descricao', value: q.resiliencia_descricao },{ label: 'Elasticidade', value: q.resiliencia_elasticidade },{ label: 'Tempo de Recuperacao', value: q.resiliencia_tempo_recuperacao }]},
-                { title: 'Observacao Clinica', fields: [{ label: 'Facies', value: q.obs_facies },{ label: 'Postura', value: q.obs_postura },{ label: 'Marcha', value: q.obs_marcha },{ label: 'Tonus Muscular', value: q.obs_tonus_muscular },{ label: 'Aparencia Geral', value: q.obs_aparencia_geral },{ label: 'Contato Visual', value: q.obs_contato_visual },{ label: 'Voz', value: q.obs_voz }]},
+                { title: 'Avaliação Global', fields: [{ label: 'Estado Geral', value: q.avaliacao_estado },{ label: 'Score de Vitalidade', value: q.avaliacao_score_vitalidade },{ label: 'Tendencia', value: q.avaliacao_tendencia },{ label: 'Reserva Fisiologica', value: q.avaliacao_reserva_fisiologica }]},
+                { title: 'Energia Vital', fields: [{ label: 'Nível', value: q.energia_vital_nivel },{ label: 'Descrição', value: q.energia_vital_descricao },{ label: 'Manifestação', value: q.energia_vital_manifestacao },{ label: 'Impacto', value: q.energia_vital_impacto }]},
+                { title: 'Adaptação ao Stress', fields: [{ label: 'Nível', value: q.adapt_stress_nivel },{ label: 'Descrição', value: q.adapt_stress_descricao },{ label: 'Reserva Adaptativa', value: q.adapt_stress_reserva_adaptativa },{ label: 'Manifestação', value: q.adapt_stress_manifestacao }]},
+                { title: 'Resiliência', fields: [{ label: 'Nível', value: q.resiliencia_nivel },{ label: 'Descrição', value: q.resiliencia_descricao },{ label: 'Elasticidade', value: q.resiliencia_elasticidade },{ label: 'Tempo de Recuperação', value: q.resiliencia_tempo_recuperacao }]},
+                { title: 'Observação Clínica', fields: [{ label: 'Facies', value: q.obs_facies },{ label: 'Postura', value: q.obs_postura },{ label: 'Marcha', value: q.obs_marcha },{ label: 'Tonus Muscular', value: q.obs_tonus_muscular },{ label: 'Aparencia Geral', value: q.obs_aparencia_geral },{ label: 'Contato Visual', value: q.obs_contato_visual },{ label: 'Voz', value: q.obs_voz }]},
                 { title: 'AVD', fields: [{ label: 'Autocuidado Basico', value: q.avd_autocuidado_basico },{ label: 'Trabalho Profissional', value: q.avd_trabalho_profissional },{ label: 'Cuidado com Filhos', value: q.avd_cuidado_filhos },{ label: 'Tarefas Domesticas', value: q.avd_tarefas_domesticas },{ label: 'Lazer e Social', value: q.avd_lazer_social },{ label: 'Autocuidado Ampliado', value: q.avd_autocuidado_ampliado }]},
-                { title: 'Funcionalidade e Qualidade de Vida', fields: [{ label: 'Score Karnofsky', value: q.funcionalidade_score_karnofsky },{ label: 'Limitacoes Funcionais', value: q.limitacoes_funcionais_especificas },{ label: 'WHOQOL Score Geral', value: q.whoqol_score_geral }]},
-                { title: 'Sinais de Alerta e Evolucao', fields: [{ label: 'Sinais de Alerta', value: q.sinais_alerta_deterioracao },{ label: 'Atual', value: q.evo_atual },{ label: 'Projecao 6 Meses (Sem Intervencao)', value: q.projecao_6_meses_sem_intervencao }]},
+                { title: 'Funcionalidade e Qualidade de Vida', fields: [{ label: 'Score Karnofsky', value: q.funcionalidade_score_karnofsky },{ label: 'Limitações Funcionais', value: q.limitacoes_funcionais_especificas },{ label: 'WHOQOL Score Geral', value: q.whoqol_score_geral }]},
+                { title: 'Sinais de Alerta e Evolução', fields: [{ label: 'Sinais de Alerta', value: q.sinais_alerta_deterioracao },{ label: 'Atual', value: q.evo_atual },{ label: 'Projecao 6 Meses (Sem Intervencao)', value: q.projecao_6_meses_sem_intervencao }]},
                 { title: 'Impacto', fields: [{ label: 'Profissional', value: q.impacto_profissional },{ label: 'Familiar', value: q.impacto_familiar },{ label: 'Social', value: q.impacto_social },{ label: 'Pessoal', value: q.impacto_pessoal },{ label: 'Saude', value: q.impacto_saude }]},
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -2969,7 +2983,7 @@ function DiagnosticoSection({
       {/* ====================ESTADO MENTAL ==================== */}
       {shouldShowSection('3. Estado Mental') && (
         <CollapsibleSection title="3. Estado Mental" defaultOpen={activeTab === 'Estado Mental' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_mental')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -2981,18 +2995,18 @@ function DiagnosticoSection({
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
               const sections = [
                 { title: 'Memoria', fields: [{ label: 'Curto Prazo', value: q.memoria_curto_prazo },{ label: 'Longo Prazo', value: q.memoria_longo_prazo },{ label: 'De Trabalho', value: q.memoria_de_trabalho },{ label: 'Score', value: q.memoria_score }]},
-                { title: 'Atencao', fields: [{ label: 'Sustentada', value: q.atencao_sustentada },{ label: 'Seletiva', value: q.atencao_seletiva },{ label: 'Score', value: q.atencao_score }]},
-                { title: 'Funcoes Executivas', fields: [{ label: 'Planejamento', value: q.exec_planejamento },{ label: 'Organizacao', value: q.exec_organizacao },{ label: 'Tomada de Decisao', value: q.exec_tomada_decisao },{ label: 'Score', value: q.exec_score }]},
+                { title: 'Atenção', fields: [{ label: 'Sustentada', value: q.atencao_sustentada },{ label: 'Seletiva', value: q.atencao_seletiva },{ label: 'Score', value: q.atencao_score }]},
+                { title: 'Funções Executivas', fields: [{ label: 'Planejamento', value: q.exec_planejamento },{ label: 'Organização', value: q.exec_organizacao },{ label: 'Tomada de Decisão', value: q.exec_tomada_decisao },{ label: 'Score', value: q.exec_score }]},
                 { title: 'Humor e Afeto', fields: [{ label: 'Tipo de Humor', value: q.humor_tipo },{ label: 'Intensidade', value: q.humor_intensidade },{ label: 'Variabilidade', value: q.humor_variabilidade },{ label: 'Expressao do Afeto', value: q.afeto_expressao }]},
-                { title: 'Ansiedade', fields: [{ label: 'Nivel', value: q.ansiedade_nivel },{ label: 'Tipo Predominante', value: q.ansiedade_tipo_predominante },{ label: 'Score GAD-7', value: q.ansiedade_score_gad7_estimado }]},
+                { title: 'Ansiedade', fields: [{ label: 'Nível', value: q.ansiedade_nivel },{ label: 'Tipo Predominante', value: q.ansiedade_tipo_predominante },{ label: 'Score GAD-7', value: q.ansiedade_score_gad7_estimado }]},
                 { title: 'PHQ-9 (Depressao)', fields: [{ label: 'Humor Deprimido', value: q.phq9_humor_deprimido },{ label: 'Anedonia', value: q.phq9_anedonia },{ label: 'Fadiga', value: q.phq9_fadiga },{ label: 'Score PHQ-9', value: q.phq9_score_estimado }]},
                 { title: 'Autoestima', fields: [{ label: 'Autoestima Global', value: q.autoestima_global },{ label: 'Autopercepcao', value: q.autopercepcao },{ label: 'Autoeficacia', value: q.autoeficacia }]},
                 { title: 'Risco de Suicidio', fields: [{ label: 'Nivel de Risco', value: q.risco_nivel },{ label: 'Ideacao', value: q.risco_ideacao },{ label: 'Acao Requerida', value: q.risco_acao_requerida }]},
-                { title: 'Diagnosticos e Intervencoes', fields: [{ label: 'Diagnosticos DSM-5', value: q.diagnosticos_mentais_dsm5_sugeridos },{ label: 'Psicoterapia', value: q.intervencao_psicoterapia },{ label: 'Psiquiatria', value: q.intervencao_psiquiatria }]},
+                { title: 'Diagnósticos e Intervenções', fields: [{ label: 'Diagnosticos DSM-5', value: q.diagnosticos_mentais_dsm5_sugeridos },{ label: 'Psicoterapia', value: q.intervencao_psicoterapia },{ label: 'Psiquiatria', value: q.intervencao_psiquiatria }]},
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel. Clique para visualizar.</span>;
-              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
+              return (<>{sections.map((section) => { const validFields = section.fields.filter(f => f.value); if (validFields.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>); })}</>);
             })()}
           </div>
         </CollapsibleSection>
@@ -3002,7 +3016,7 @@ function DiagnosticoSection({
       {/* ==================== ESTADO FISIOLÓGICO ==================== */}
       {shouldShowSection('4. Estado Fisiológico (Resumo - devido ao volume de campos)') && (
         <CollapsibleSection title="4. Estado Fisiologico" defaultOpen={activeTab === 'Estado Fisiológico' || !activeTab}>
-          <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('estado_fisiologico')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -3025,7 +3039,7 @@ function DiagnosticoSection({
                 {sections.map((section) => {
                   const validFields = section.fields.filter(f => f.value);
                   if (validFields.length === 0) return null;
-                  return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>);
+                  return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{validFields.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>);
                 })}
                 <div style={{ marginTop: 8, fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid #F1F5F9' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -3040,7 +3054,7 @@ function DiagnosticoSection({
       {/* ==================== INTEGRAÇÃO DIAGNÓSTICA ==================== */}
       {shouldShowSection('5. Integração Diagnóstica') && (
         <CollapsibleSection title="5. Integracao Diagnostica" defaultOpen={activeTab === 'Integração Diagnóstica' || !activeTab}>
-          <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('integracao_diagnostica')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -3054,12 +3068,12 @@ function DiagnosticoSection({
                 { title: 'Diagnostico Integrado', fields: [{ label: 'Titulo', value: q.diagnostico_titulo },{ label: 'CID Primario', value: q.diagnostico_cid_primario },{ label: 'CIDs Associados', value: q.diagnostico_cids_associados },{ label: 'Sintese Executiva', value: q.diagnostico_sintese_executiva }]},
                 { title: 'Metafora da Casa', fields: [{ label: 'Fundacao Status', value: q.fundacao_status },{ label: 'Fundacao Eventos', value: q.fundacao_eventos },{ label: 'Colunas Status', value: q.colunas_status },{ label: 'Colunas Eventos', value: q.colunas_eventos },{ label: 'Cumeeira Status', value: q.cumeeira_status },{ label: 'Cumeeira Eventos', value: q.cumeeira_eventos }]},
                 { title: 'Diagnosticos Especificos', fields: [{ label: 'Biologico', value: q.diagnostico_biologico },{ label: 'Emocional', value: q.diagnostico_emocional },{ label: 'Social', value: q.diagnostico_social },{ label: 'Energetico', value: q.diagnostico_energetico },{ label: 'Espiritual', value: q.diagnostico_espiritual }]},
-                { title: 'Confianca', fields: [{ label: 'Nivel', value: q.nivel_confianca_diagnostico }]},
+                { title: 'Confianca', fields: [{ label: 'Nível', value: q.nivel_confianca_diagnostico }]},
               ];
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
               return (<>
-                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>); })}
+                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>); })}
                 
               </>);
             })()}
@@ -3070,7 +3084,7 @@ function DiagnosticoSection({
       {/* ==================== HÁBITOS DE VIDA ==================== */}
       {shouldShowSection('6. Hábitos de Vida (Resumo dos 5 Pilares)') && (
         <CollapsibleSection title="6. Habitos de Vida (5 Pilares)" defaultOpen={activeTab === 'Hábitos de Vida' || !activeTab}>
-          <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+          <div onClick={() => setViewPopupSection('habitos_vida')} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -3081,10 +3095,10 @@ function DiagnosticoSection({
               const q = habitos_vida;
               if (!q) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
               const sections = [
-                { title: 'Alimentacao', fields: [{ label: 'Status', value: q.pilar1_alimentacao_status_global },{ label: 'Score', value: q.pilar1_alimentacao_score_qualidade },{ label: 'Problemas', value: q.pilar1_alimentacao_problemas_identificados },{ label: 'Intervencao', value: q.pilar1_intervencao_requerida_nutricional }]},
-                { title: 'Atividade Fisica', fields: [{ label: 'Status', value: q.pilar2_atividade_fisica_status_global },{ label: 'Score', value: q.pilar2_atividade_fisica_score },{ label: 'Padrao', value: q.pilar2_padrao_pratica_exercicio },{ label: 'Prescricao', value: q.pilar2_prescricao_fase1_objetivo }]},
-                { title: 'Sono', fields: [{ label: 'Status', value: q.pilar3_sono_status_global },{ label: 'Score', value: q.pilar3_sono_score },{ label: 'Qualidade', value: q.pilar3_padrao_qualidade_subjetiva },{ label: 'Intervencao', value: q.pilar3_intervencao_prioridade }]},
-                { title: 'Gestao de Stress', fields: [{ label: 'Status', value: q.pilar4_stress_status_global },{ label: 'Score', value: q.pilar4_stress_score },{ label: 'Nivel', value: q.pilar4_stress_nivel_atual },{ label: 'Fontes', value: q.pilar4_fontes_stress_profissional }]},
+                { title: 'Alimentação', fields: [{ label: 'Status', value: q.pilar1_alimentacao_status_global },{ label: 'Score', value: q.pilar1_alimentacao_score_qualidade },{ label: 'Problemas', value: q.pilar1_alimentacao_problemas_identificados },{ label: 'Intervenção', value: q.pilar1_intervencao_requerida_nutricional }]},
+                { title: 'Atividade Física', fields: [{ label: 'Status', value: q.pilar2_atividade_fisica_status_global },{ label: 'Score', value: q.pilar2_atividade_fisica_score },{ label: 'Padrao', value: q.pilar2_padrao_pratica_exercicio },{ label: 'Prescrição', value: q.pilar2_prescricao_fase1_objetivo }]},
+                { title: 'Sono', fields: [{ label: 'Status', value: q.pilar3_sono_status_global },{ label: 'Score', value: q.pilar3_sono_score },{ label: 'Qualidade', value: q.pilar3_padrao_qualidade_subjetiva },{ label: 'Intervenção', value: q.pilar3_intervencao_prioridade }]},
+                { title: 'Gestao de Stress', fields: [{ label: 'Status', value: q.pilar4_stress_status_global },{ label: 'Score', value: q.pilar4_stress_score },{ label: 'Nível', value: q.pilar4_stress_nivel_atual },{ label: 'Fontes', value: q.pilar4_fontes_stress_profissional }]},
                 { title: 'Espiritualidade', fields: [{ label: 'Status', value: q.pilar5_espiritualidade_status_global },{ label: 'Score', value: q.pilar5_espiritualidade_score },{ label: 'Praticas', value: q.pilar5_espiritualidade_praticas_atuais }]},
                 { title: 'Ritmo Circadiano', fields: [{ label: 'Status', value: q.ritmo_circadiano_status },{ label: 'Problemas', value: q.ritmo_circadiano_problemas },{ label: 'Impacto', value: q.ritmo_circadiano_impacto }]},
                 { title: 'Resumo', fields: [{ label: 'Score Geral', value: q.score_habitos_vida_geral },{ label: 'Prioridades', value: q.prioridades_intervencao_habitos }]},
@@ -3092,7 +3106,7 @@ function DiagnosticoSection({
               const hasSomething = sections.some(s => s.fields.some(f => f.value));
               if (!hasSomething) return <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Nenhum dado disponivel.</span>;
               return (<>
-                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid #E2E8F0' }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong><div style={{ color: '#0F172A', marginTop: 2 }}>{cleanText(f.value)}</div></div>))}</div>); })}
+                {sections.map((section) => { const vf = section.fields.filter(f => f.value); if (vf.length === 0) return null; return (<div key={section.title} style={{ marginBottom: 16 }}><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>{section.title}</div>{vf.map((f, i) => (<div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--border-color, #E2E8F0)' }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong><div style={{ color: 'var(--text-primary, #0F172A)', marginTop: 2, whiteSpace: 'pre-line' }}>{cleanText(f.value)}</div></div>))}</div>); })}
                 
               </>);
             })()}
@@ -3119,7 +3133,7 @@ function DiagnosticoSection({
                   { label: 'CID Principal', key: 'cid_principal', path: 'd_diagnostico_principal.cid_principal' },
                   { label: 'Diagnosticos Associados (CID)', key: 'diagnosticos_associados_cid', path: 'd_diagnostico_principal.diagnosticos_associados_cid' },
                 ]},
-                { title: 'Avaliacao Diagnostica Sistematica (ADS)', fields: [
+                { title: 'Avaliação Diagnóstica Sistemática (ADS)', fields: [
                   { label: 'Sintese', key: 'ads_sintese', path: 'd_diagnostico_principal.ads_sintese' },
                   { label: 'Biologico', key: 'ads_biologico', path: 'd_diagnostico_principal.ads_biologico' },
                   { label: 'Psicologico', key: 'ads_psicologico', path: 'd_diagnostico_principal.ads_psicologico' },
@@ -3183,31 +3197,31 @@ function DiagnosticoSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Avaliacao Global', fields: [
+                { title: 'Avaliação Global', fields: [
                   { label: 'Estado Geral', key: 'avaliacao_estado', path: 'd_estado_geral.avaliacao_estado' },
                   { label: 'Score de Vitalidade', key: 'avaliacao_score_vitalidade', path: 'd_estado_geral.avaliacao_score_vitalidade' },
                   { label: 'Tendencia', key: 'avaliacao_tendencia', path: 'd_estado_geral.avaliacao_tendencia' },
                   { label: 'Reserva Fisiologica', key: 'avaliacao_reserva_fisiologica', path: 'd_estado_geral.avaliacao_reserva_fisiologica' },
                 ]},
                 { title: 'Energia Vital', fields: [
-                  { label: 'Nivel', key: 'energia_vital_nivel', path: 'd_estado_geral.energia_vital_nivel' },
-                  { label: 'Descricao', key: 'energia_vital_descricao', path: 'd_estado_geral.energia_vital_descricao' },
-                  { label: 'Manifestacao', key: 'energia_vital_manifestacao', path: 'd_estado_geral.energia_vital_manifestacao' },
+                  { label: 'Nível', key: 'energia_vital_nivel', path: 'd_estado_geral.energia_vital_nivel' },
+                  { label: 'Descrição', key: 'energia_vital_descricao', path: 'd_estado_geral.energia_vital_descricao' },
+                  { label: 'Manifestação', key: 'energia_vital_manifestacao', path: 'd_estado_geral.energia_vital_manifestacao' },
                   { label: 'Impacto', key: 'energia_vital_impacto', path: 'd_estado_geral.energia_vital_impacto' },
                 ]},
-                { title: 'Adaptacao ao Stress', fields: [
-                  { label: 'Nivel', key: 'adapt_stress_nivel', path: 'd_estado_geral.adapt_stress_nivel' },
-                  { label: 'Descricao', key: 'adapt_stress_descricao', path: 'd_estado_geral.adapt_stress_descricao' },
+                { title: 'Adaptação ao Stress', fields: [
+                  { label: 'Nível', key: 'adapt_stress_nivel', path: 'd_estado_geral.adapt_stress_nivel' },
+                  { label: 'Descrição', key: 'adapt_stress_descricao', path: 'd_estado_geral.adapt_stress_descricao' },
                   { label: 'Reserva Adaptativa', key: 'adapt_stress_reserva_adaptativa', path: 'd_estado_geral.adapt_stress_reserva_adaptativa' },
-                  { label: 'Manifestacao', key: 'adapt_stress_manifestacao', path: 'd_estado_geral.adapt_stress_manifestacao' },
+                  { label: 'Manifestação', key: 'adapt_stress_manifestacao', path: 'd_estado_geral.adapt_stress_manifestacao' },
                 ]},
-                { title: 'Resiliencia', fields: [
-                  { label: 'Nivel', key: 'resiliencia_nivel', path: 'd_estado_geral.resiliencia_nivel' },
-                  { label: 'Descricao', key: 'resiliencia_descricao', path: 'd_estado_geral.resiliencia_descricao' },
+                { title: 'Resiliência', fields: [
+                  { label: 'Nível', key: 'resiliencia_nivel', path: 'd_estado_geral.resiliencia_nivel' },
+                  { label: 'Descrição', key: 'resiliencia_descricao', path: 'd_estado_geral.resiliencia_descricao' },
                   { label: 'Elasticidade', key: 'resiliencia_elasticidade', path: 'd_estado_geral.resiliencia_elasticidade' },
-                  { label: 'Tempo de Recuperacao', key: 'resiliencia_tempo_recuperacao', path: 'd_estado_geral.resiliencia_tempo_recuperacao' },
+                  { label: 'Tempo de Recuperação', key: 'resiliencia_tempo_recuperacao', path: 'd_estado_geral.resiliencia_tempo_recuperacao' },
                 ]},
-                { title: 'Observacao Clinica', fields: [
+                { title: 'Observação Clínica', fields: [
                   { label: 'Facies', key: 'obs_facies', path: 'd_estado_geral.obs_facies' },
                   { label: 'Postura', key: 'obs_postura', path: 'd_estado_geral.obs_postura' },
                   { label: 'Marcha', key: 'obs_marcha', path: 'd_estado_geral.obs_marcha' },
@@ -3226,10 +3240,10 @@ function DiagnosticoSection({
                 ]},
                 { title: 'Funcionalidade e Qualidade de Vida', fields: [
                   { label: 'Score Karnofsky', key: 'funcionalidade_score_karnofsky', path: 'd_estado_geral.funcionalidade_score_karnofsky' },
-                  { label: 'Limitacoes Funcionais', key: 'limitacoes_funcionais_especificas', path: 'd_estado_geral.limitacoes_funcionais_especificas' },
+                  { label: 'Limitações Funcionais', key: 'limitacoes_funcionais_especificas', path: 'd_estado_geral.limitacoes_funcionais_especificas' },
                   { label: 'WHOQOL Score Geral', key: 'whoqol_score_geral', path: 'd_estado_geral.whoqol_score_geral' },
                 ]},
-                { title: 'Sinais de Alerta e Evolucao', fields: [
+                { title: 'Sinais de Alerta e Evolução', fields: [
                   { label: 'Sinais de Alerta', key: 'sinais_alerta_deterioracao', path: 'd_estado_geral.sinais_alerta_deterioracao' },
                   { label: 'Atual', key: 'evo_atual', path: 'd_estado_geral.evo_atual' },
                   { label: 'Projecao 6 Meses (Sem Intervencao)', key: 'projecao_6_meses_sem_intervencao', path: 'd_estado_geral.projecao_6_meses_sem_intervencao' },
@@ -3272,15 +3286,15 @@ function DiagnosticoSection({
                   { label: 'De Trabalho', key: 'memoria_de_trabalho', path: 'd_estado_mental.memoria_de_trabalho' },
                   { label: 'Score', key: 'memoria_score', path: 'd_estado_mental.memoria_score' },
                 ]},
-                { title: 'Atencao', fields: [
+                { title: 'Atenção', fields: [
                   { label: 'Sustentada', key: 'atencao_sustentada', path: 'd_estado_mental.atencao_sustentada' },
                   { label: 'Seletiva', key: 'atencao_seletiva', path: 'd_estado_mental.atencao_seletiva' },
                   { label: 'Score', key: 'atencao_score', path: 'd_estado_mental.atencao_score' },
                 ]},
-                { title: 'Funcoes Executivas', fields: [
+                { title: 'Funções Executivas', fields: [
                   { label: 'Planejamento', key: 'exec_planejamento', path: 'd_estado_mental.exec_planejamento' },
-                  { label: 'Organizacao', key: 'exec_organizacao', path: 'd_estado_mental.exec_organizacao' },
-                  { label: 'Tomada de Decisao', key: 'exec_tomada_decisao', path: 'd_estado_mental.exec_tomada_decisao' },
+                  { label: 'Organização', key: 'exec_organizacao', path: 'd_estado_mental.exec_organizacao' },
+                  { label: 'Tomada de Decisão', key: 'exec_tomada_decisao', path: 'd_estado_mental.exec_tomada_decisao' },
                   { label: 'Score', key: 'exec_score', path: 'd_estado_mental.exec_score' },
                 ]},
                 { title: 'Humor e Afeto', fields: [
@@ -3290,7 +3304,7 @@ function DiagnosticoSection({
                   { label: 'Expressao do Afeto', key: 'afeto_expressao', path: 'd_estado_mental.afeto_expressao' },
                 ]},
                 { title: 'Ansiedade', fields: [
-                  { label: 'Nivel', key: 'ansiedade_nivel', path: 'd_estado_mental.ansiedade_nivel' },
+                  { label: 'Nível', key: 'ansiedade_nivel', path: 'd_estado_mental.ansiedade_nivel' },
                   { label: 'Tipo Predominante', key: 'ansiedade_tipo_predominante', path: 'd_estado_mental.ansiedade_tipo_predominante' },
                   { label: 'Score GAD-7', key: 'ansiedade_score_gad7_estimado', path: 'd_estado_mental.ansiedade_score_gad7_estimado' },
                 ]},
@@ -3310,7 +3324,7 @@ function DiagnosticoSection({
                   { label: 'Ideacao', key: 'risco_ideacao', path: 'd_estado_mental.risco_ideacao' },
                   { label: 'Acao Requerida', key: 'risco_acao_requerida', path: 'd_estado_mental.risco_acao_requerida' },
                 ]},
-                { title: 'Diagnosticos e Intervencoes', fields: [
+                { title: 'Diagnósticos e Intervenções', fields: [
                   { label: 'Diagnosticos DSM-5', key: 'diagnosticos_mentais_dsm5_sugeridos', path: 'd_estado_mental.diagnosticos_mentais_dsm5_sugeridos' },
                   { label: 'Psicoterapia', key: 'intervencao_psicoterapia', path: 'd_estado_mental.intervencao_psicoterapia' },
                   { label: 'Psiquiatria', key: 'intervencao_psiquiatria', path: 'd_estado_mental.intervencao_psiquiatria' },
@@ -3360,7 +3374,7 @@ function DiagnosticoSection({
                   { label: 'Pressao', key: 'cv_pressao_arterial', path: 'd_estado_fisiologico.cv_pressao_arterial' },
                   { label: 'Acao', key: 'cv_acao', path: 'd_estado_fisiologico.cv_acao' },
                 ]},
-                { title: 'Inflamacao', fields: [
+                { title: 'Inflamação', fields: [
                   { label: 'Nivel Inflamacao', key: 'infl_sist_nivel', path: 'd_estado_fisiologico.infl_sist_nivel' },
                   { label: 'Causas', key: 'infl_sist_causas', path: 'd_estado_fisiologico.infl_sist_causas' },
                   { label: 'Estresse Oxidativo', key: 'oxi_nivel', path: 'd_estado_fisiologico.oxi_nivel' },
@@ -3417,7 +3431,7 @@ function DiagnosticoSection({
                   { label: 'Espiritual', key: 'diagnostico_espiritual', path: 'd_agente_integracao_diagnostica.diagnostico_espiritual' },
                 ]},
                 { title: 'Confianca', fields: [
-                  { label: 'Nivel', key: 'nivel_confianca_diagnostico', path: 'd_agente_integracao_diagnostica.nivel_confianca_diagnostico' },
+                  { label: 'Nível', key: 'nivel_confianca_diagnostico', path: 'd_agente_integracao_diagnostica.nivel_confianca_diagnostico' },
                 ]},
               ].map((section) => {
                 const hasData = section.fields.some(f => integracao_diagnostica[f.key]);
@@ -3444,28 +3458,28 @@ function DiagnosticoSection({
             </div>
             <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
               {[
-                { title: 'Alimentacao', fields: [
+                { title: 'Alimentação', fields: [
                   { label: 'Status', key: 'pilar1_alimentacao_status_global', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_status_global' },
                   { label: 'Score', key: 'pilar1_alimentacao_score_qualidade', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_score_qualidade' },
                   { label: 'Problemas', key: 'pilar1_alimentacao_problemas_identificados', path: 'd_agente_habitos_vida_sistemica.pilar1_alimentacao_problemas_identificados' },
-                  { label: 'Intervencao', key: 'pilar1_intervencao_requerida_nutricional', path: 'd_agente_habitos_vida_sistemica.pilar1_intervencao_requerida_nutricional' },
+                  { label: 'Intervenção', key: 'pilar1_intervencao_requerida_nutricional', path: 'd_agente_habitos_vida_sistemica.pilar1_intervencao_requerida_nutricional' },
                 ]},
-                { title: 'Atividade Fisica', fields: [
+                { title: 'Atividade Física', fields: [
                   { label: 'Status', key: 'pilar2_atividade_fisica_status_global', path: 'd_agente_habitos_vida_sistemica.pilar2_atividade_fisica_status_global' },
                   { label: 'Score', key: 'pilar2_atividade_fisica_score', path: 'd_agente_habitos_vida_sistemica.pilar2_atividade_fisica_score' },
                   { label: 'Padrao', key: 'pilar2_padrao_pratica_exercicio', path: 'd_agente_habitos_vida_sistemica.pilar2_padrao_pratica_exercicio' },
-                  { label: 'Prescricao', key: 'pilar2_prescricao_fase1_objetivo', path: 'd_agente_habitos_vida_sistemica.pilar2_prescricao_fase1_objetivo' },
+                  { label: 'Prescrição', key: 'pilar2_prescricao_fase1_objetivo', path: 'd_agente_habitos_vida_sistemica.pilar2_prescricao_fase1_objetivo' },
                 ]},
                 { title: 'Sono', fields: [
                   { label: 'Status', key: 'pilar3_sono_status_global', path: 'd_agente_habitos_vida_sistemica.pilar3_sono_status_global' },
                   { label: 'Score', key: 'pilar3_sono_score', path: 'd_agente_habitos_vida_sistemica.pilar3_sono_score' },
                   { label: 'Qualidade', key: 'pilar3_padrao_qualidade_subjetiva', path: 'd_agente_habitos_vida_sistemica.pilar3_padrao_qualidade_subjetiva' },
-                  { label: 'Intervencao', key: 'pilar3_intervencao_prioridade', path: 'd_agente_habitos_vida_sistemica.pilar3_intervencao_prioridade' },
+                  { label: 'Intervenção', key: 'pilar3_intervencao_prioridade', path: 'd_agente_habitos_vida_sistemica.pilar3_intervencao_prioridade' },
                 ]},
                 { title: 'Gestao de Stress', fields: [
                   { label: 'Status', key: 'pilar4_stress_status_global', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_status_global' },
                   { label: 'Score', key: 'pilar4_stress_score', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_score' },
-                  { label: 'Nivel', key: 'pilar4_stress_nivel_atual', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_nivel_atual' },
+                  { label: 'Nível', key: 'pilar4_stress_nivel_atual', path: 'd_agente_habitos_vida_sistemica.pilar4_stress_nivel_atual' },
                   { label: 'Fontes', key: 'pilar4_fontes_stress_profissional', path: 'd_agente_habitos_vida_sistemica.pilar4_fontes_stress_profissional' },
                 ]},
                 { title: 'Espiritualidade', fields: [
@@ -4096,7 +4110,7 @@ function MentalidadeSection({
 
     return (
       <CollapsibleSection title="Higiene e Sono" defaultOpen={true}>
-        <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+        <div onClick={() => setViewLivroPopup({ type: 'higiene_sono' })} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -4106,7 +4120,7 @@ function MentalidadeSection({
           {fields.length > 0 ? (
             <>
               {fields.map((f, i) => (
-                <div key={i} style={{ marginBottom: 6 }}><strong style={{ color: '#1B4266', fontSize: 12 }}>{f.label}:</strong> {cleanText(f.value)}</div>
+                <div key={i} style={{ marginBottom: 6 }}><strong style={{ color: 'var(--accent-color, #1B4266)', fontSize: 12 }}>{f.label}:</strong> {cleanText(f.value)}</div>
               ))}
               
             </>
@@ -4141,7 +4155,7 @@ function MentalidadeSection({
 
     return (
       <CollapsibleSection title={`Padrao ${numero}: ${padrao.padrao}`} defaultOpen={numero <= 2}>
-        <div onClick={() => setViewLivroPopup({ type: 'padrao', padraoNum: numero })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 600, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+        <div onClick={() => setViewLivroPopup({ type: 'padrao', padraoNum: numero })} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 600, overflowY: 'auto' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -4150,8 +4164,8 @@ function MentalidadeSection({
             </div>
           {/* Info basica */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Informacoes e Origem</div>
-            <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>Informacoes e Origem</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>
               {allFields.map((f, i) => (
                 <div key={i} style={{ marginBottom: 8 }}><strong style={{ color: '#0F172A' }}>{f.label}:</strong> {cleanText(f.value)}</div>
               ))}
@@ -4161,7 +4175,7 @@ function MentalidadeSection({
           {/* Orientacoes */}
           {orientacoes.length > 0 && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1B4266', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid #EBF3F6' }}>Orientacoes de Transformacao</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-color, #1B4266)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10, textAlign: 'center' as const, paddingBottom: 8, borderBottom: '2px solid var(--border-color, #EBF3F6)' }}>Orientacoes de Transformacao</div>
               {orientacoes.map((o, idx) => (
                 <div key={idx} style={{ marginBottom: 12, paddingLeft: 12, borderLeft: '3px solid #E2E8F0' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Passo {o.passo}: {o.nome}</div>
@@ -4227,7 +4241,7 @@ function MentalidadeSection({
     <div className="anamnese-sections">
       {/* Resumo Executivo */}
       <CollapsibleSection title="Resumo Executivo" defaultOpen={true}>
-        <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: '#0F172A', lineHeight: 1.9, padding: '20px 24px', background: '#FFFFFF', borderRadius: 12, border: '1.5px solid #E2E8F0', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+        <div onClick={() => setViewLivroPopup({ type: 'resumo' })} style={{ cursor: 'pointer', fontSize: 14, color: 'var(--text-primary, #0F172A)', lineHeight: 1.9, padding: '20px 24px', background: 'var(--card-bg, #FFFFFF)', borderRadius: 12, border: '1.5px solid var(--border-color, #E2E8F0)', transition: 'border-color 0.2s', maxHeight: 500, overflowY: 'auto', position: 'relative' as any }} onMouseEnter={e => e.currentTarget.style.borderColor = '#1B4266'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color, #E2E8F0)'}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, position: 'sticky' as any, top: 0, zIndex: 10, background: 'transparent', paddingTop: 2, paddingBottom: 2 }}>
               <span style={{ fontSize: 12, color: '#1B4266', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EBF3F6', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -4236,7 +4250,7 @@ function MentalidadeSection({
             </div>
           {livroVidaData.resumo_executivo ? (
             <>
-              <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{livroVidaData.resumo_executivo}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary, #374151)', lineHeight: 1.8 }}>{livroVidaData.resumo_executivo}</div>
               
             </>
           ) : (
@@ -7867,10 +7881,10 @@ function ConsultasPageContent() {
         }
 
         if (response.success) {
-          const data = response;
-          const newConsultation = data.consultation;
+          const data = response.data || response;
+          const newConsultation = data.consultation || data;
 
-          if (!newConsultation) {
+          if (!newConsultation || !newConsultation.status) {
             return;
           }
 
@@ -7892,8 +7906,15 @@ function ConsultasPageContent() {
             const solucaoEtapaChanged = prev.solucao_etapa !== newSolucaoEtapa;
             const updatedAtChanged = prev.updated_at !== newUpdatedAt;
 
+            // Se status mudou, fazer fetch completo para garantir todos os dados
+            if (statusChanged) {
+              console.log(`🔄 [Polling] Status mudou: ${prev.status} → ${newStatus}, recarregando dados completos...`);
+              fetchConsultaDetails(consultaId!, true);
+              return newConsultation; // Atualizar imediatamente com os dados do polling
+            }
+
             // Se QUALQUER campo importante mudou, atualizar
-            if (statusChanged || etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
+            if (etapaChanged || solucaoEtapaChanged || updatedAtChanged) {
               return newConsultation;
             }
 
@@ -9236,7 +9257,7 @@ function ConsultasPageContent() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '80px 20px',
-          background: 'white',
+          background: 'var(--card-bg, #FFFFFF)',
           borderRadius: '16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
           border: '1px solid #f0f0f0',
@@ -9547,9 +9568,12 @@ function ConsultasPageContent() {
                   marginBottom: '20px'
                 }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
-                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
-                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                    <path d="M2 12h20"></path>
+                    <path d="M20 12c0-4.4-3.6-8-8-8s-8 3.6-8 8"></path>
+                    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path>
+                    <path d="M7.5 12V9"></path>
+                    <path d="M12 12V7"></path>
+                    <path d="M16.5 12V9"></path>
                   </svg>
                 </div>
                 <h3>Alimentação</h3>
@@ -9585,9 +9609,8 @@ function ConsultasPageContent() {
                   marginBottom: '20px'
                 }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="8" width="18" height="12" rx="2"></rect>
-                    <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path>
-                    <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                    <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
+                    <path d="m8.5 8.5 7 7"></path>
                   </svg>
                 </div>
                 <h3>Suplementação</h3>
@@ -9623,10 +9646,11 @@ function ConsultasPageContent() {
                   marginBottom: '20px'
                 }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6.5 6.5h11l-1 7h-9l1-7z"></path>
-                    <path d="M9.5 6.5V4.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2"></path>
-                    <path d="M12 13.5v5"></path>
-                    <path d="M8 16.5h8"></path>
+                    <path d="M14.4 14.4 9.6 9.6"></path>
+                    <path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"></path>
+                    <path d="m21.5 21.5-1.4-1.4"></path>
+                    <path d="M3.9 3.9 2.5 2.5"></path>
+                    <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path>
                   </svg>
                 </div>
                 <h3>Atividade Física</h3>
@@ -10630,7 +10654,7 @@ function ConsultasPageContent() {
               <ArrowLeft className="w-5 h-5" />
               Voltar
             </button>
-            <h1 className="consultas-title" style={{ flex: 1 }}>Evolucao Mensal</h1>
+            <h1 className="consultas-title" style={{ flex: 1 }}>Evolução Mensal</h1>
           </div>
           <div style={{ padding: '0 8px' }}>
             <EvolucaoSection
@@ -10756,7 +10780,7 @@ function ConsultasPageContent() {
                   e.preventDefault();
                 }}
                 style={{
-                  background: 'white',
+                  background: 'var(--card-bg, #FFFFFF)',
                   borderRadius: '12px',
                   padding: '32px',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
@@ -10827,7 +10851,7 @@ function ConsultasPageContent() {
                   e.preventDefault();
                 }}
                 style={{
-                  background: 'white',
+                  background: 'var(--card-bg, #FFFFFF)',
                   borderRadius: '12px',
                   padding: '32px',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
@@ -10898,7 +10922,7 @@ function ConsultasPageContent() {
                   e.preventDefault();
                 }}
                 style={{
-                  background: 'white',
+                  background: 'var(--card-bg, #FFFFFF)',
                   borderRadius: '12px',
                   padding: '32px',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
@@ -11070,7 +11094,7 @@ function ConsultasPageContent() {
             <div className="anamnese-container" style={{
               marginTop: '24px',
               marginBottom: '32px',
-              background: 'white',
+              background: 'var(--card-bg, #FFFFFF)',
               borderRadius: '16px',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid #e5e7eb'
@@ -13079,7 +13103,7 @@ function ConsultasPageContent() {
           }}
           className="status-filter"
           style={{
-            padding: '12px 16px',
+            padding: '12px 32px 12px 16px',
             border: '1px solid #e5e7eb',
             borderRadius: '8px',
             fontSize: '14px',
@@ -13087,7 +13111,12 @@ function ConsultasPageContent() {
             color: '#111827',
             cursor: 'pointer',
             minWidth: '180px',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 12px center'
           }}
           onFocus={(e) => {
             e.target.style.borderColor = '#1B4266';

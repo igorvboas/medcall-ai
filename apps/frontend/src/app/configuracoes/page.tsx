@@ -215,7 +215,7 @@ export default function ConfiguracoesPage() {
 
       <div className="consultation-form">
         <form onSubmit={handleSubmit} className="form-card">
-          <div className="form-section-title">
+          <div className="form-section-title" data-tutorial="info-pessoais">
             <User className="form-section-icon" />
             <span>Informações Pessoais</span>
           </div>
@@ -238,7 +238,7 @@ export default function ConfiguracoesPage() {
 
           {/* Upload de Logo para Documentos */}
           {medico && (
-            <div className="form-group" style={{ marginBottom: '2rem' }}>
+            <div className="form-group" data-tutorial="logo-upload" style={{ marginBottom: '2rem' }}>
               <label className="form-label" style={{ marginBottom: 12 }}>
                 <ImageIcon style={{ width: 16, height: 16, display: 'inline', marginRight: 8 }} />
                 Logo para Documentos (Receitas/Prescrições)
@@ -393,7 +393,7 @@ export default function ConfiguracoesPage() {
             />
           </div>
 
-          <div className="form-section-title" style={{ marginTop: '2rem' }}>
+          <div className="form-section-title" data-tutorial="info-profissionais" style={{ marginTop: '2rem' }}>
             <Stethoscope className="form-section-icon" />
             <span>Informações Profissionais</span>
           </div>
@@ -485,8 +485,8 @@ export default function ConfiguracoesPage() {
           </div>
         </form>
       </div>
-      {/* Card Conexao WhatsApp */}
-      <Link href="/conexao" style={{ textDecoration: 'none', display: 'block', marginTop: 24 }}>
+      {/* Card Conexão WhatsApp */}
+      <Link href="/conexao" data-tutorial="whatsapp-conexao" style={{ textDecoration: 'none', display: 'block', marginTop: 24 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 16,
           padding: '20px 24px', borderRadius: 12,
@@ -504,7 +504,7 @@ export default function ConfiguracoesPage() {
             <Smartphone size={22} style={{ color: '#1B4266' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #0F172A)' }}>Conexao WhatsApp</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #0F172A)' }}>Conexão WhatsApp</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>Conecte seu dispositivo para envio de mensagens</div>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary, #94A3B8)" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>

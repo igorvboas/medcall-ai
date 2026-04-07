@@ -78,11 +78,8 @@ export function Header() {
     router.push('/auth/signin');
   };
 
-  // Tutorial: reiniciar
+  // Tutorial: reiniciar apenas a página atual
   const handleRestartTutorial = () => {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('auton_tutorial_done_'));
-    keys.forEach(k => localStorage.removeItem(k));
-    localStorage.setItem('auton_tutorial_active', 'true');
     setShowHelpDropdown(false);
     window.dispatchEvent(new CustomEvent('tutorial-restart'));
   };

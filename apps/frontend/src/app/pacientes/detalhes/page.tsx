@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { ArrowLeft, Mail, Phone, Moon, Activity, Utensils, Scale, TrendingUp, FileText, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +38,7 @@ interface PatientMetrics {
 
 function PatientDetailsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const id = searchParams?.get('id') ?? '';
 
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -155,10 +156,10 @@ function PatientDetailsContent() {
     <div className="patients-page">
       <div className="patients-container patient-details-container">
         <div className="patient-details-header">
-          <Link href="/pacientes/" className="btn-back-details">
+          <button onClick={() => router.back()} className="btn-back-details" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <ArrowLeft size={20} />
-            Voltar à lista de pacientes
-          </Link>
+            Voltar
+          </button>
           <div className="patient-details-title-row">
             <div className="patient-details-avatar">
               {patient.profile_pic ? (
@@ -306,12 +307,12 @@ function PatientDetailsContent() {
           )}
         </section>
 
-        {/* Evolucao do Paciente */}
+        {/* Evolução do Paciente */}
         {latestConsultaId && (
           <section className="patient-info-section">
             <h2 className="patient-info-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <TrendingUp size={20} />
-              Evolucao
+              Evolução
             </h2>
             <EvolucaoSection
               consultaId={latestConsultaId}

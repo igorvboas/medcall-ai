@@ -311,12 +311,23 @@ export default function AgendaPage() {
         duration: number | null;
         created_at: string;
         consulta_inicio: string | null;
+        consulta_fim: string | null;
       }>;
 
       const mapped: ConsultationEvent[] = items.map((c) => {
         // Usar consulta_inicio se disponível, senão created_at
         const d = c.consulta_inicio ? new Date(c.consulta_inicio) : new Date(c.created_at);
         const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        // Calcular duração: 1) duration real (segundos), 2) consulta_inicio/fim, 3) fallback 60min
+        let durationMin = 60;
+        if (c.duration) {
+          durationMin = Math.round(c.duration / 60);
+        } else if (c.consulta_inicio && c.consulta_fim) {
+          const diffMs = new Date(c.consulta_fim).getTime() - new Date(c.consulta_inicio).getTime();
+          durationMin = Math.round(diffMs / 60000);
+        }
+
         return {
           id: c.id,
           title: 'Consulta',
@@ -326,7 +337,7 @@ export default function AgendaPage() {
           time,
           type: c.consultation_type,
           status: c.status as ConsultationEvent['status'], // Status real do banco
-          duration: c.duration ? Math.round(c.duration / 60) : 30
+          duration: durationMin
         };
       });
       setConsultations(mapped);
@@ -832,7 +843,7 @@ export default function AgendaPage() {
 
         {/* Painel lateral com detalhes */}
         <div className="agenda-sidebar">
-          <div className="sidebar-section">
+          <div className="sidebar-section" data-tutorial="selecione-data">
             <h3 className="sidebar-title">
               {selectedDate ? (
                 <>
@@ -995,7 +1006,7 @@ export default function AgendaPage() {
           </div>
 
           {/* Resumo do mês */}
-          <div className="sidebar-section">
+          <div className="sidebar-section" data-tutorial="resumo-mes">
             <h3 className="sidebar-title">
               <Calendar className="sidebar-icon" />
               Resumo do Mês

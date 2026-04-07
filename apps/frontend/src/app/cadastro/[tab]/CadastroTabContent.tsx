@@ -14,6 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { gatewayClient } from '@/lib/gatewayClient';
 import { supabase } from '@/lib/supabase';
 import ClinicManagementPage from '@/app/clinica/gestao/page';
+import { TutorialPopup } from '@/components/dashboard/TutorialPopup';
+import { CADASTRO_STEPS } from '@/components/dashboard/tutorialSteps';
 import '../cadastro.css';
 
 // Types
@@ -188,7 +190,7 @@ const TABS: { key: TabType; label: string; icon: React.ElementType; adminOnly?: 
   { key: 'alimentos', label: 'Alimentos', icon: UtensilsCrossed },
   { key: 'refeicoes', label: 'Refeicoes', icon: UtensilsCrossed },
   { key: 'treinos', label: 'Treinos', icon: Dumbbell },
-  { key: 'prescricoes', label: 'Prescricoes', icon: Pill },
+  { key: 'prescricoes', label: 'Prescrições', icon: Pill },
   { key: 'clinica', label: 'Gestao de Clinica', icon: Building2, adminOnly: true },
 ];
 
@@ -376,6 +378,13 @@ export default function CadastroTabContent() {
 
   const handleSaveTreino = async () => {
     if (!treinoFormData.nome.trim()) { showError('Nome é obrigatório'); return; }
+    // Verificar nome duplicado
+    const nomeLower = treinoFormData.nome.trim().toLowerCase();
+    const duplicado = treinos.find(t => t.nome.toLowerCase() === nomeLower && t.id !== editingTreino?.id);
+    if (duplicado) {
+      showError('Já existe um treino com esse nome');
+      return;
+    }
     try {
       if (editingTreino) {
         const resp = await gatewayClient.put(`/cadastro-treinos/${editingTreino.id}`, treinoFormData);
@@ -391,6 +400,8 @@ export default function CadastroTabContent() {
         if (detail.success) {
           setEditingTreino(detail.treino);
           setTreinoFormData({ nome: detail.treino.nome, categoria: detail.treino.categoria || '', descricao: detail.treino.descricao || '', tags: detail.treino.tags || [] });
+          // Auto-abrir busca de exercícios para o usuário adicionar imediatamente
+          setShowExercicioSearch(true);
         }
       }
       fetchTreinos(1, treinoSearch);
@@ -610,6 +621,13 @@ export default function CadastroTabContent() {
       showError('Nome é obrigatório');
       return;
     }
+    // Verificar nome duplicado
+    const nomeLower = refeicaoFormData.nome.trim().toLowerCase();
+    const duplicada = refeicoes.find(r => r.nome.toLowerCase() === nomeLower && r.id !== editingRefeicao?.id);
+    if (duplicada) {
+      showError('Já existe uma refeição com esse nome');
+      return;
+    }
     try {
       if (editingRefeicao) {
         const resp = await gatewayClient.put(`/cadastro-refeicoes/${editingRefeicao.id}`, refeicaoFormData);
@@ -632,6 +650,8 @@ export default function CadastroTabContent() {
             descricao: detail.refeicao.descricao || '',
             tags: detail.refeicao.tags || [],
           });
+          // Auto-abrir busca de alimentos para o usuário adicionar imediatamente
+          setShowAlimentoSearch(true);
         }
       }
       fetchRefeicoes(1, refeicaoSearch);
@@ -774,7 +794,7 @@ export default function CadastroTabContent() {
   };
 
   const handleSavePrescricao = async () => {
-    if (!prescricaoFormData.catalogo_id) { showError('Selecione um item do catalogo'); return; }
+    if (!prescricaoFormData.catalogo_id) { showError('Selecione um item do catálogo'); return; }
     try {
       const tipo = prescricaoFormData.tipo;
       const payload = {
@@ -788,29 +808,29 @@ export default function CadastroTabContent() {
       if (editingPrescricao) {
         const resp = await gatewayClient.put(`/cadastro-prescricoes/${editingPrescricao._tipo}/${editingPrescricao.id}`, payload);
         if (!resp.success) throw new Error(resp.error);
-        showSuccess('Prescricao atualizada');
+        showSuccess('Prescrição atualizada');
       } else {
         const resp = await gatewayClient.post(`/cadastro-prescricoes/${tipo}`, payload);
         if (!resp.success) throw new Error(resp.error);
-        showSuccess('Prescricao criada');
+        showSuccess('Prescrição criada');
       }
       setShowPrescricaoModal(false);
       setEditingPrescricao(null);
       fetchPrescricoes(prescricaoSearch);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao salvar prescricao');
+      showError(err instanceof Error ? err.message : 'Erro ao salvar prescrição');
     }
   };
 
   const handleDeletePrescricao = async (prescricao: any) => {
-    if (!confirm('Excluir esta prescricao?')) return;
+    if (!confirm('Excluir esta prescrição?')) return;
     try {
       const resp = await gatewayClient.delete(`/cadastro-prescricoes/${prescricao._tipo}/${prescricao.id}`);
       if (!resp.success) throw new Error(resp.error);
-      showSuccess('Prescricao removida');
+      showSuccess('Prescrição removida');
       fetchPrescricoes(prescricaoSearch);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao remover prescricao');
+      showError(err instanceof Error ? err.message : 'Erro ao remover prescrição');
     }
   };
 
@@ -1269,7 +1289,7 @@ export default function CadastroTabContent() {
     switch (activeTab) {
       case 'refeicoes': return 'Refeicoes';
       case 'treinos': return 'Exercicios';
-      case 'prescricoes': return 'Prescricoes';
+      case 'prescricoes': return 'Prescrições';
       case 'alimentos': return 'Alimentos';
     }
   };
@@ -1278,7 +1298,7 @@ export default function CadastroTabContent() {
     switch (activeTab) {
       case 'refeicoes': return 'Cadastre refeicoes para usar nos planos alimentares';
       case 'treinos': return 'Cadastre exercicios para montar protocolos de treino';
-      case 'prescricoes': return 'Suplementos e fitoterapicos com dosagens personalizadas';
+      case 'prescricoes': return 'Suplementos e fitoterápicos com dosagens personalizadas';
       case 'alimentos': return 'Cadastre alimentos individuais para montar refeicoes';
     }
   };
@@ -1415,6 +1435,7 @@ export default function CadastroTabContent() {
 
   return (
     <div className="cadastro-page">
+      <TutorialPopup steps={CADASTRO_STEPS} pageKey="cadastro" />
       <div className="cadastro-container">
         {/* Header */}
         <div className="cadastro-header">
@@ -1913,11 +1934,6 @@ export default function CadastroTabContent() {
                       <X size={18} />
                     </button>
                   </div>
-                  {!editingRefeicao && (
-                    <p style={{ fontSize: '13px', color: '#64748B', padding: '0 24px', marginTop: '-8px', marginBottom: '8px' }}>
-                      Preencha os dados e clique em "Cadastrar" para depois adicionar os alimentos.
-                    </p>
-                  )}
                   <div className="cadastro-modal-body">
                     <div className="cadastro-form-group">
                       <label className="cadastro-form-label">Nome *</label>
@@ -2487,11 +2503,6 @@ export default function CadastroTabContent() {
                     <h3 className="cadastro-modal-title">{editingTreino ? 'Editar Treino' : 'Novo Treino'}</h3>
                     <button className="cadastro-modal-close" onClick={() => { setShowTreinoModal(false); setEditingTreino(null); setShowExercicioSearch(false); setShowCreateExercicio(false); }}><X size={18} /></button>
                   </div>
-                  {!editingTreino && (
-                    <p style={{ fontSize: '13px', color: '#64748B', padding: '0 24px', marginTop: '-8px', marginBottom: '8px' }}>
-                      Preencha os dados e clique em "Cadastrar" para depois adicionar os exercícios.
-                    </p>
-                  )}
                   <div className="cadastro-modal-body">
                     <div className="cadastro-form-group">
                       <label className="cadastro-form-label">Nome *</label>
@@ -2692,11 +2703,11 @@ export default function CadastroTabContent() {
           <div>
             <div className="cadastro-section-header">
               <div>
-                <h2 className="cadastro-section-title">Prescricoes</h2>
-                <p className="cadastro-section-subtitle">Suplementos e fitoterapicos com dosagens personalizadas</p>
+                <h2 className="cadastro-section-title">Prescrições</h2>
+                <p className="cadastro-section-subtitle">Suplementos e fitoterápicos com dosagens personalizadas</p>
               </div>
               <button className="cadastro-btn-add" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setEditingPrescricao(null); setShowPrescricaoModal(true); setShowCatalogoSearch(false); setCatalogoSearch(''); setCatalogoResults([]); }}>
-                <Plus size={18} /> Nova Prescricao
+                <Plus size={18} /> Nova Prescrição
               </button>
             </div>
 
@@ -2720,10 +2731,10 @@ export default function CadastroTabContent() {
             ) : prescricoes.length === 0 ? (
               <div className="cadastro-empty">
                 <div className="cadastro-empty-icon"><Pill size={28} /></div>
-                <h3 className="cadastro-empty-title">Nenhuma prescricao cadastrada</h3>
-                <p className="cadastro-empty-text">Adicione prescricoes de suplementos e fitoterapicos.</p>
+                <h3 className="cadastro-empty-title">Nenhuma prescrição cadastrada</h3>
+                <p className="cadastro-empty-text">Adicione prescrições de suplementos e fitoterápicos.</p>
                 <button className="cadastro-empty-btn" onClick={() => { setPrescricaoFormData({ catalogo_id: '', dosagem: '', horarios: [], descricao: '', tags: [], tipo: 'suplementos' }); setShowPrescricaoModal(true); }}>
-                  <Plus size={16} /> Nova Prescricao
+                  <Plus size={16} /> Nova Prescrição
                 </button>
               </div>
             ) : (
@@ -2778,7 +2789,7 @@ export default function CadastroTabContent() {
               <div className="cadastro-modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowPrescricaoModal(false); setEditingPrescricao(null); } }}>
                 <div className="cadastro-modal">
                   <div className="cadastro-modal-header">
-                    <h3 className="cadastro-modal-title">{editingPrescricao ? 'Editar Prescricao' : 'Nova Prescricao'}</h3>
+                    <h3 className="cadastro-modal-title">{editingPrescricao ? 'Editar Prescrição' : 'Nova Prescrição'}</h3>
                     <button className="cadastro-modal-close" onClick={() => { setShowPrescricaoModal(false); setEditingPrescricao(null); }}><X size={18} /></button>
                   </div>
                   <div className="cadastro-modal-body">
@@ -2834,23 +2845,8 @@ export default function CadastroTabContent() {
                       </div>
                     </div>
                     <div className="cadastro-form-group">
-                      <label className="cadastro-form-label">Descricao</label>
-                      <textarea className="cadastro-form-input" placeholder="Observacoes sobre a prescricao" rows={3} value={prescricaoFormData.descricao} onChange={e => setPrescricaoFormData(p => ({ ...p, descricao: e.target.value }))} style={{ resize: 'vertical' }} />
-                    </div>
-                    <div className="cadastro-form-group">
-                      <label className="cadastro-form-label">Tags</label>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                        {prescricaoFormData.tags.map((t, i) => (
-                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '16px', background: '#F1F5F9', border: '1px solid #E2E8F0', fontSize: '12px' }}>
-                            {t}
-                            <button onClick={() => setPrescricaoFormData(p => ({ ...p, tags: p.tags.filter((_, idx) => idx !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '14px' }}>x</button>
-                          </span>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input className="cadastro-form-input" placeholder="Adicionar tag" value={prescricaoTagInput} onChange={e => setPrescricaoTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && prescricaoTagInput.trim()) { setPrescricaoFormData(p => ({ ...p, tags: [...p.tags, prescricaoTagInput.trim()] })); setPrescricaoTagInput(''); } }} style={{ flex: 1 }} />
-                        <button className="cadastro-btn-save" style={{ padding: '8px 16px' }} onClick={() => { if (prescricaoTagInput.trim()) { setPrescricaoFormData(p => ({ ...p, tags: [...p.tags, prescricaoTagInput.trim()] })); setPrescricaoTagInput(''); } }}>+</button>
-                      </div>
+                      <label className="cadastro-form-label">Descrição</label>
+                      <textarea className="cadastro-form-input" placeholder="Observações sobre a prescrição" rows={3} value={prescricaoFormData.descricao} onChange={e => setPrescricaoFormData(p => ({ ...p, descricao: e.target.value }))} style={{ resize: 'vertical' }} />
                     </div>
                   </div>
                   <div className="cadastro-modal-footer">
@@ -3041,7 +3037,7 @@ export default function CadastroTabContent() {
               </div>
               <button className="cadastro-btn-add" onClick={openAddModal}>
                 <Plus size={18} />
-                {activeTab === 'prescricoes' ? 'Nova Prescricao' : activeTab === 'alimentos' ? 'Novo Alimento' : 'Novo'}
+                {activeTab === 'prescricoes' ? 'Nova Prescrição' : activeTab === 'alimentos' ? 'Novo Alimento' : 'Novo'}
               </button>
             </div>
 

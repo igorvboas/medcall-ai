@@ -43,9 +43,16 @@ export const DASHBOARD_STEPS: TutorialStep[] = [
     expandSidebar: true,
   },
   {
+    selector: '[data-tutorial-nav="cadastro"]',
+    title: 'Cadastro',
+    description: 'Gerencie seus cadastros de alimentos, refeições, treinos e prescrições.',
+    position: 'right',
+    expandSidebar: true,
+  },
+  {
     selector: '[data-tutorial-nav="configuracoes"]',
-    title: 'Configuracoes',
-    description: 'Ajuste suas preferencias e dados do perfil.',
+    title: 'Configurações',
+    description: 'Ajuste suas preferências e dados do perfil.',
     position: 'right',
     expandSidebar: true,
   },
@@ -256,52 +263,79 @@ export const NOVA_CONSULTA_STEPS: TutorialStep[] = [
   {
     selector: '.consultation-cards-container .consultation-card:nth-child(1)',
     title: 'Selecionar Paciente',
-    description: 'Escolha o paciente para esta consulta.',
+    description: 'Escolha o paciente e defina se é uma consulta nova ou retorno.',
     position: 'bottom',
   },
   {
     selector: '.consultation-cards-container .consultation-card:nth-child(2)',
     title: 'Tipo de Atendimento',
-    description: 'Selecione se sera presencial ou telemedicina.',
+    description: 'Selecione entre consulta presencial ou telemedicina, e escolha entre iniciar agora ou agendar.',
     position: 'bottom',
   },
   {
     selector: '.consultation-cards-container .consultation-card:nth-child(3)',
-    title: 'Microfone / Agendamento',
-    description: 'Configure o microfone ou agende para depois.',
+    title: 'Configuração e Início',
+    description: 'Configure o microfone (presencial) ou data/horário (agendamento) e crie a consulta.',
     position: 'bottom',
-  },
-  {
-    selector: '.consultation-type-btn:first-child',
-    title: 'Consulta Imediata',
-    description: 'Inicie a consulta agora mesmo.',
-    position: 'top',
-  },
-  {
-    selector: '.consultation-type-btn:last-child',
-    title: 'Agendar Consulta',
-    description: 'Agende a consulta para uma data futura.',
-    position: 'top',
-  },
-  {
-    selector: '.btn-criar',
-    title: 'Criar Consulta',
-    description: 'Confirme e crie a consulta.',
-    position: 'top',
   },
 ];
 
 export const CONFIGURACOES_STEPS: TutorialStep[] = [
   {
     selector: '.configuracoes-header',
-    title: 'Configuracoes',
-    description: 'Gerencie suas configuracoes pessoais e da clinica.',
+    title: 'Configurações',
+    description: 'Gerencie suas configurações pessoais e da clínica.',
     position: 'bottom',
   },
   {
-    selector: '.form-card',
-    title: 'Dados do Perfil',
-    description: 'Atualize seus dados pessoais, especialidade e foto.',
+    selector: '[data-tutorial="info-pessoais"]',
+    title: 'Informações Pessoais',
+    description: 'Atualize seu nome, email, telefone, CPF, foto de perfil e data de nascimento.',
+    position: 'bottom',
+  },
+  {
+    selector: '[data-tutorial="logo-upload"]',
+    title: 'Logo para Documentos',
+    description: 'Adicione a logo da sua clínica que aparecerá nas receitas e prescrições geradas.',
+    position: 'bottom',
+  },
+  {
+    selector: '[data-tutorial="info-profissionais"]',
+    title: 'Informações Profissionais',
+    description: 'Preencha sua especialidade, CRM, endereço e dados da clínica.',
+    position: 'bottom',
+  },
+  {
+    selector: '[data-tutorial="whatsapp-conexao"]',
+    title: 'Conexão WhatsApp',
+    description: 'Conecte seu WhatsApp para enviar lembretes e mensagens diretamente aos pacientes.',
+    position: 'top',
+  },
+];
+
+export const CADASTRO_STEPS: TutorialStep[] = [
+  {
+    selector: '.cadastro-header',
+    title: 'Cadastro',
+    description: 'Gerencie todos os cadastros da sua clinica: pacientes, alimentos, refeicoes, treinos e prescricoes.',
+    position: 'bottom',
+  },
+  {
+    selector: '.cadastro-tabs',
+    title: 'Abas de Cadastro',
+    description: 'Navegue entre as categorias: Pacientes, Alimentos, Refeicoes, Treinos e Prescricoes.',
+    position: 'bottom',
+  },
+  {
+    selector: '.cadastro-section-header',
+    title: 'Acoes',
+    description: 'Adicione novos itens e pesquise nos cadastros existentes.',
+    position: 'bottom',
+  },
+  {
+    selector: '.cadastro-grid',
+    title: 'Lista de Itens',
+    description: 'Visualize, edite, favorite ou exclua os itens cadastrados.',
     position: 'top',
   },
 ];

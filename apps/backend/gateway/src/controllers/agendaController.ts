@@ -45,19 +45,21 @@ export async function getAgenda(req: AuthenticatedRequest, res: Response) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01T00:00:00`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}T23:59:59`;
 
-    const selectFields = `id, patient_name, patient_id, consultation_type, status, duration, created_at, consulta_inicio`;
+    const selectFields = `id, patient_name, patient_id, consultation_type, status, duration, created_at, consulta_inicio, consulta_fim`;
 
     // Buscar em paralelo: por consulta_inicio e por created_at (sem consulta_inicio)
     const [byInicio, byCreated] = await Promise.all([
       supabase.from('consultations').select(selectFields)
         .eq('doctor_id', medico.id)
         .not('consulta_inicio', 'is', null)
+        .neq('status', 'DELETED')
         .gte('consulta_inicio', startDate)
         .lte('consulta_inicio', endDate)
         .order('consulta_inicio', { ascending: true }),
       supabase.from('consultations').select(selectFields)
         .eq('doctor_id', medico.id)
         .is('consulta_inicio', null)
+        .neq('status', 'DELETED')
         .gte('created_at', startDate)
         .lte('created_at', endDate)
         .order('created_at', { ascending: true }),
@@ -86,7 +88,8 @@ export async function getAgenda(req: AuthenticatedRequest, res: Response) {
       status: c.status,
       duration: c.duration,
       created_at: c.created_at,
-      consulta_inicio: c.consulta_inicio
+      consulta_inicio: c.consulta_inicio,
+      consulta_fim: c.consulta_fim
     }));
 
     return res.json({

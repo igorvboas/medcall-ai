@@ -777,7 +777,7 @@ function PresencialConsultationContent() {
               />
             )}
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
               <button
                 onClick={() => { setSelectedAnamneseIndex(0); setShowAnamnesePopup(true); }}
                 disabled={allAnamneses.length === 0}

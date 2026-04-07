@@ -32,6 +32,7 @@ const ALL_PAGE_KEYS = [
   'agenda',
   'gestao',
   'configuracoes',
+  'cadastro',
 ];
 
 function getStorageKey(pageKey: string) {
@@ -325,18 +326,13 @@ export function TutorialPopup({
     }, 50);
   }, [blockScroll, goToStep]);
 
-  // --- Restart handler ---
+  // --- Restart handler (only resets current page, not all pages) ---
   const restart = useCallback(() => {
     localStorage.removeItem(getStorageKey(pageKey));
-    setTutorialActive(true);
     setCurrentStep(0);
     setShowSkipConfirm(false);
-    if (showWelcome) {
-      setPhase('welcome');
-    } else {
-      startTour();
-    }
-  }, [pageKey, showWelcome, startTour]);
+    startTour();
+  }, [pageKey, startTour]);
 
   // --- Mount logic: tutorial only on first access (check DB first) ---
   useEffect(() => {

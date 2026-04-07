@@ -123,11 +123,11 @@
   flex: 1 1 0;
   min-width: 280px;
   max-width: 409px;
-  height: 431px;
+  min-height: 431px;
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -408,7 +408,7 @@
   font-size: 13px;
   color: #6C6C6C;
   line-height: 1.4;
-  margin: 0;
+  margin: 0 0 8px 0;
   width: 100%;
   max-width: 325px;
   flex-shrink: 0;

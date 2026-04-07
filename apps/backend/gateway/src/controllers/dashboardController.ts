@@ -61,7 +61,7 @@ export async function getDashboardData(req: AuthenticatedRequest, res: Response)
     }
 
     // Período alvo
-    const { year, period, chartPeriod, chartDate, chartMonth, chartYear } = req.query;
+    const { year, period, chartPeriod, chartDate, chartMonth, chartYear, chartDateFrom, chartDateTo } = req.query;
     const targetYear = year ? Number(year) : new Date().getFullYear();
 
     // Calcular período para filtros de estatísticas
@@ -468,15 +468,10 @@ export async function getDashboardData(req: AuthenticatedRequest, res: Response)
       chartStartDate.setHours(0, 0, 0, 0);
       chartEndDate = new Date(selectedDate);
       chartEndDate.setHours(23, 59, 59, 999);
-    } else if (chartPeriod === 'week' && chartDate) {
-      const selectedDate = new Date(chartDate + 'T00:00:00');
-      const dayOfWeek = selectedDate.getDay();
-      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      chartStartDate = new Date(selectedDate);
-      chartStartDate.setDate(selectedDate.getDate() + diff);
+    } else if (chartPeriod === 'range' && chartDateFrom && chartDateTo) {
+      chartStartDate = new Date(chartDateFrom + 'T00:00:00');
       chartStartDate.setHours(0, 0, 0, 0);
-      chartEndDate = new Date(chartStartDate);
-      chartEndDate.setDate(chartStartDate.getDate() + 6);
+      chartEndDate = new Date(chartDateTo + 'T00:00:00');
       chartEndDate.setHours(23, 59, 59, 999);
     } else if (chartPeriod === 'month' && chartMonth) {
       const [yearNum, monthNum] = (chartMonth as string).split('-').map(Number);

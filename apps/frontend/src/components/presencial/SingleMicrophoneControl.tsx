@@ -156,22 +156,6 @@ export function SingleMicrophoneControl({
                         </option>
                     ))}
                 </select>
-                <div className="audio-level-section">
-                    <label className="audio-level-label">Nivel de Audio</label>
-                    <div className="audio-progress-container">
-                        <div className="audio-progress-bar">
-                            <div
-                                className="audio-progress-fill"
-                                style={{ width: `${Math.min(audioLevel * 100, 100)}%` }}
-                            ></div>
-                        </div>
-                        <img
-                            src="/muted-mic.svg"
-                            alt={audioLevel > 0.02 ? "Microfone ativo" : "Microfone mudo"}
-                            className={`audio-mute-icon ${audioLevel > 0.02 ? 'active' : 'muted'}`}
-                        />
-                    </div>
-                </div>
             </div>
 
             <style jsx>{`

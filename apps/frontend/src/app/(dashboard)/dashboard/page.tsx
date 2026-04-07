@@ -119,8 +119,10 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState<string>('hoje');
-  const [chartPeriodType, setChartPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('year');
+  const [chartPeriodType, setChartPeriodType] = useState<'day' | 'range' | 'month' | 'year'>('year');
   const [chartSelectedDate, setChartSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [chartRangeFrom, setChartRangeFrom] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [chartRangeTo, setChartRangeTo] = useState<string>(new Date().toISOString().split('T')[0]);
   const [chartSelectedMonth, setChartSelectedMonth] = useState<string>(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -249,9 +251,10 @@ export default function DashboardPage() {
         if (chartPeriodType === 'day') {
           queryParams.chartPeriod = 'day';
           queryParams.chartDate = chartSelectedDate;
-        } else if (chartPeriodType === 'week') {
-          queryParams.chartPeriod = 'week';
-          queryParams.chartDate = chartSelectedDate;
+        } else if (chartPeriodType === 'range') {
+          queryParams.chartPeriod = 'range';
+          queryParams.chartDateFrom = chartRangeFrom;
+          queryParams.chartDateTo = chartRangeTo;
         } else if (chartPeriodType === 'month') {
           queryParams.chartPeriod = 'month';
           queryParams.chartMonth = chartSelectedMonth;
@@ -330,9 +333,10 @@ export default function DashboardPage() {
         if (chartPeriodType === 'day') {
           queryParams.chartPeriod = 'day';
           queryParams.chartDate = chartSelectedDate;
-        } else if (chartPeriodType === 'week') {
-          queryParams.chartPeriod = 'week';
-          queryParams.chartDate = chartSelectedDate;
+        } else if (chartPeriodType === 'range') {
+          queryParams.chartPeriod = 'range';
+          queryParams.chartDateFrom = chartRangeFrom;
+          queryParams.chartDateTo = chartRangeTo;
         } else if (chartPeriodType === 'month') {
           queryParams.chartPeriod = 'month';
           queryParams.chartMonth = chartSelectedMonth;
@@ -378,7 +382,7 @@ export default function DashboardPage() {
       clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartPeriodType, chartSelectedDate, chartSelectedMonth, chartSelectedYear]); // Usar chartSelectedYear ao invés de selectedYear
+  }, [chartPeriodType, chartSelectedDate, chartSelectedMonth, chartSelectedYear, chartRangeFrom, chartRangeTo]); // Usar chartSelectedYear ao invés de selectedYear
 
   const fetchDashboardData = async () => {
     try {
@@ -394,9 +398,10 @@ export default function DashboardPage() {
       if (chartPeriodType === 'day') {
         queryParams.chartPeriod = 'day';
         queryParams.chartDate = chartSelectedDate;
-      } else if (chartPeriodType === 'week') {
-        queryParams.chartPeriod = 'week';
-        queryParams.chartDate = chartSelectedDate;
+      } else if (chartPeriodType === 'range') {
+        queryParams.chartPeriod = 'range';
+        queryParams.chartDateFrom = chartRangeFrom;
+        queryParams.chartDateTo = chartRangeTo;
       } else if (chartPeriodType === 'month') {
         queryParams.chartPeriod = 'month';
         queryParams.chartMonth = chartSelectedMonth;
@@ -640,11 +645,11 @@ export default function DashboardPage() {
               <select
                 className="year-select"
                 value={chartPeriodType}
-                onChange={(e) => setChartPeriodType(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                onChange={(e) => setChartPeriodType(e.target.value as 'day' | 'range' | 'month' | 'year')}
                 style={{ minWidth: '100px' }}
               >
                 <option value="day">Dia</option>
-                <option value="week">Semana</option>
+                <option value="range">Intervalo</option>
                 <option value="month">Mês</option>
                 <option value="year">Ano</option>
               </select>
@@ -659,14 +664,26 @@ export default function DashboardPage() {
                 />
               )}
 
-              {chartPeriodType === 'week' && (
-                <input
-                  type="date"
-                  className="year-select"
-                  value={chartSelectedDate}
-                  onChange={(e) => setChartSelectedDate(e.target.value)}
-                  style={{ minWidth: '140px' }}
-                />
+              {chartPeriodType === 'range' && (
+                <>
+                  <input
+                    type="date"
+                    className="year-select"
+                    value={chartRangeFrom}
+                    onChange={(e) => setChartRangeFrom(e.target.value)}
+                    style={{ minWidth: '130px' }}
+                    title="De"
+                  />
+                  <span style={{ color: '#94A3B8', fontSize: 13, alignSelf: 'center' }}>até</span>
+                  <input
+                    type="date"
+                    className="year-select"
+                    value={chartRangeTo}
+                    onChange={(e) => setChartRangeTo(e.target.value)}
+                    style={{ minWidth: '130px' }}
+                    title="Até"
+                  />
+                </>
               )}
 
               {chartPeriodType === 'month' && (
