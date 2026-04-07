@@ -27,6 +27,7 @@ interface Lesson {
   category: string;
   icon: React.ReactNode;
   videoUrl?: string;
+  thumbnail?: string;
 }
 
 const categories: { key: string; label: string }[] = [
@@ -40,6 +41,7 @@ const categories: { key: string; label: string }[] = [
 const lessons: Lesson[] = [
   {
     id: 'boas-vindas',
+    thumbnail: '/UX/CAPA AULA 1.png',
     title: 'Boas vindas à plataforma',
     description: 'Conheça a plataforma Auton Health, entenda como ela funciona e descubra como otimizar seus atendimentos.',
     duration: '',
@@ -49,6 +51,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'home',
+    thumbnail: '/UX/CAPA AULA 2.png',
     title: 'Home',
     description: 'Explore a tela inicial da plataforma, atalhos rápidos e visão geral do seu dia a dia.',
     duration: '',
@@ -58,6 +61,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'configuracoes',
+    thumbnail: '/UX/CAPA AULA 3.png',
     title: 'Configurações',
     description: 'Personalize a plataforma de acordo com suas necessidades — perfil, logo, integrações e preferências.',
     duration: '',
@@ -67,6 +71,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'cadastrar-pacientes',
+    thumbnail: '/UX/CAPA AULA 4.png',
     title: 'Como cadastrar e gerenciar seus pacientes',
     description: 'Cadastre e gerencie seus pacientes com facilidade, acesse prontuários e mantenha tudo organizado.',
     duration: '',
@@ -76,6 +81,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'consulta-online',
+    thumbnail: '/UX/CAPA AULA 5.png',
     title: 'Como criar uma consulta online',
     description: 'Aprenda a realizar consultas online com vídeo integrado, gravação de sessão e transcrição automática.',
     duration: '',
@@ -85,6 +91,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'consulta-presencial',
+    thumbnail: '/UX/CAPA AULA 6.png',
     title: 'Como criar uma consulta presencial',
     description: 'Veja como registrar consultas presenciais, utilizar gravação de áudio e captura com microfone.',
     duration: '',
@@ -94,6 +101,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'analise-consultas',
+    thumbnail: '/UX/CAPA AULA 7.png',
     title: 'Análise de consultas',
     description: 'Entenda como acessar e interpretar a análise completa gerada após cada consulta.',
     duration: '',
@@ -103,6 +111,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'diagnostico',
+    thumbnail: '/UX/CAPA AULA 8.png',
     title: 'Diagnóstico',
     description: 'Aprenda a navegar pelo diagnóstico integrado e entender os dados gerados pela IA.',
     duration: '',
@@ -112,6 +121,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'cadastro',
+    thumbnail: '/UX/CAPA AULA 9.png',
     title: 'Cadastro',
     description: 'Aprenda a cadastrar alimentos, refeições, treinos e prescrições para usar nos protocolos.',
     duration: '',
@@ -121,6 +131,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'anexar-exames',
+    thumbnail: '/UX/CAPA AULA 10.png',
     title: 'Como e quando anexar os exames',
     description: 'Saiba como e em qual momento anexar exames do paciente para enriquecer a análise da consulta.',
     duration: '',
@@ -130,6 +141,7 @@ const lessons: Lesson[] = [
   },
   {
     id: 'evolucao-paciente',
+    thumbnail: '/UX/CAPA AULA 11.png',
     title: 'Como acompanhar a evolução do paciente',
     description: 'Acompanhe a evolução dos seus pacientes com métricas, gráficos e histórico de consultas.',
     duration: '',
@@ -198,8 +210,12 @@ export default function TreinamentoPage() {
               onClick={() => setSelectedVideo(lesson)}
             >
               {/* Thumbnail */}
-              <div className="treinamento-thumb">
-                <span className="treinamento-thumb-icon">{lesson.icon}</span>
+              <div className="treinamento-thumb" style={lesson.thumbnail ? { background: 'none', padding: 0 } : {}}>
+                {lesson.thumbnail ? (
+                  <img src={lesson.thumbnail} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                ) : (
+                  <span className="treinamento-thumb-icon">{lesson.icon}</span>
+                )}
                 <PlayCircle size={56} className="treinamento-play-icon" />
                 {lesson.duration && <span className="treinamento-duration">{lesson.duration}</span>}
               </div>
