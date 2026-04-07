@@ -4646,8 +4646,6 @@ export function ConsultationRoom({
         console.log('🔍 DEBUG [REFERENCIA] Sala finalizada com sucesso');
         setIsEndingRoom(false);
 
-        showSuccess(`Sala finalizada!\n\nTranscrições salvas no banco de dados\nTotal: ${response.saveResult.transcriptionsCount} transcrições`, 'Sala Finalizada');
-
         router.push('/consulta/nova');
 
       } else {

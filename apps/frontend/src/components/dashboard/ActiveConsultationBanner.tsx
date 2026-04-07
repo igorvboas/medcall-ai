@@ -162,44 +162,37 @@ export function ActiveConsultationBanner() {
     if (!activeConsultation) return;
 
     try {
-      // Buscar detalhes da consulta para obter roomId
       const response = await gatewayClient.get(`/consultations/${activeConsultation.id}`);
-      
+
       if (!response.success) {
-        // Se não conseguir buscar, navegar para página de consultas
         router.push(`/consultas?consulta_id=${activeConsultation.id}`);
         return;
       }
 
-      const data = response;
-      const consultation = data.consultation;
-      
-      // Se tiver roomId, navegar diretamente para a sala
-      if (consultation.roomId) {
-        const patientId = consultation.patient_id || activeConsultation.patient_id || activeConsultation.patients?.id;
-        const patientName = consultation.patients?.name || activeConsultation.patients?.name || activeConsultation.patient_name;
-        
-        // Determinar tipo de consulta e navegar para a sala correta
-        if (consultation.consultation_type === 'PRESENCIAL') {
-          // Para presencial, precisamos de mais informações - redirecionar para consultas
-          router.push(`/consultas?consulta_id=${activeConsultation.id}`);
-        } else {
-          // Para telemedicina, navegar para a sala de vídeo
-          const params = new URLSearchParams({
-            roomId: consultation.roomId,
-            role: 'host',
-            ...(patientId && { patientId }),
-            ...(patientName && { patientName })
-          });
-          router.push(`/consulta/online/doctor?${params.toString()}`);
-        }
+      const consultation = response.consultation;
+      const patientId = consultation.patient_id || activeConsultation.patient_id || activeConsultation.patients?.id;
+
+      if (consultation.consultation_type === 'PRESENCIAL') {
+        // Presencial: redirecionar para página presencial com consultationId
+        const params = new URLSearchParams({
+          consultationId: activeConsultation.id,
+          autoStart: 'true',
+          micMode: 'single',
+        });
+        router.push(`/consulta/presencial?${params.toString()}`);
+      } else if (consultation.roomId) {
+        // Online: redirecionar para sala de vídeo
+        const params = new URLSearchParams({
+          roomId: consultation.roomId,
+          role: 'host',
+          ...(patientId && { patientId }),
+        });
+        router.push(`/consulta/online/doctor?${params.toString()}`);
       } else {
-        // Se não tiver roomId, navegar para página de consultas
         router.push(`/consultas?consulta_id=${activeConsultation.id}`);
       }
     } catch (error) {
       console.error('Erro ao buscar detalhes da consulta:', error);
-      // Em caso de erro, navegar para página de consultas
       router.push(`/consultas?consulta_id=${activeConsultation.id}`);
     }
   };
@@ -253,8 +246,17 @@ export function ActiveConsultationBanner() {
     setActiveConsultation(null);
   };
 
-  // Não exibir o banner durante consultas ativas (online ou presencial)
-  if (pathname?.startsWith('/consulta/')) {
+  // Só exibir o banner em páginas internas do app (não em landing, auth, termos, etc.)
+  const internalPrefixes = [
+    '/consultas', '/consulta/', '/consultas-admin', '/dashboard',
+    '/pacientes', '/agenda', '/documentos', '/configuracoes',
+    '/treinamento', '/anamnese-inicial', '/anamnese-personalizada',
+    '/clinica', '/conexao', '/administracao', '/admin', '/cadastro',
+  ];
+  const isInternalPage = pathname ? internalPrefixes.some(prefix => pathname.startsWith(prefix)) : false;
+
+  // Não exibir na própria página da consulta (online ou presencial)
+  if (!isInternalPage || pathname?.startsWith('/consulta/')) {
     return null;
   }
 
